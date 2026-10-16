@@ -18,3 +18,14 @@ final class const AgentHttpException(final int statusCode, final String body)
   @override
   String toString() => 'AgentHttpException: $statusCode $body';
 }
+
+/// The agent's run ended with `RUN_ERROR`. The session reports it for the
+/// logs only: the chat shows a notice and never the [message].
+final class const AgentRunException(final String? code, final String? message)
+    implements Exception {
+  /// The run failed with [code], such as `EXECUTION_ERROR`, and [message].
+  this;
+
+  @override
+  String toString() => 'AgentRunException: ${[?code, ?message].join(' ')}';
+}

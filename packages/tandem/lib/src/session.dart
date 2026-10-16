@@ -35,7 +35,7 @@ void _report(Object err, StackTrace st) => FlutterError.reportError(
 
 /// Called after the agent called a listed method and it returned: [tool] is
 /// the method's snake_case name and [result] its result as JSON. Not called
-/// for a call that was refused or threw.
+/// for a call that was refused or threw, nor once the session is disposed.
 typedef AgentCallListener = void Function(
   String tool,
   Map<String, Object?> arguments,
@@ -104,8 +104,8 @@ final class TandemSession({
 
   /// Stops the open run. It is still read to its end, because ADK goes on
   /// anyway and the thread stays consistent only that way, but its later
-  /// text is hidden, none of its calls runs, and no run follows it. Does
-  /// nothing when no run is open.
+  /// text is hidden, none of its remaining calls runs, and no run follows it.
+  /// Does nothing when no run is open.
   void stop() {
     final run = _run;
     if (run == null || _stopping) {
@@ -158,37 +158,45 @@ final class TandemSession({
   }
 
   /// Opens a run that answers the calls of the last run and then says
-  /// [text], if any. A card still pending is cancelled.
+  /// [text], if any. A card still pending is cancelled. When the app's agent
+  /// list or the connection throws, the run fails before it goes out, and
+  /// its messages go with the next run.
   void _start([String? text]) {
     for (final call in _calls) {
       if (call.pending) {
         _decide(call, .cancelled, _cancelled);
       }
     }
-    final listing = AgentListing.of(_surface);
     _history.addAll([
       for (final call in _calls) toolAnswer(call.id, call.answer ?? _cancelled),
       if (text != null) userMessage(newId(), text),
     ]);
     _calls = [];
-    final run = _run = _Run(listing);
-    final input = runInput(
-      threadId: _threadId,
-      runId: newId(),
-      messages: [..._history],
-      listing: listing,
-    );
-    _subscription = _connection
-        .run(input)
-        .listen(
-          (json) => _read(run, .fromJson(json)),
-          onError: (Object err, StackTrace st) {
-            _report(err, st);
-            _break(run);
-          },
-          onDone: () => _break(run),
-          cancelOnError: true,
-        );
+    try {
+      final listing = AgentListing.of(_surface);
+      final run = _run = _Run(listing);
+      final input = runInput(
+        threadId: _threadId,
+        runId: newId(),
+        messages: [..._history],
+        listing: listing,
+      );
+      _subscription = _connection
+          .run(input)
+          .listen(
+            (json) => _read(run, .fromJson(json)),
+            onError: (Object err, StackTrace st) {
+              _report(err, st);
+              _break(run);
+            },
+            onDone: () => _break(run),
+            cancelOnError: true,
+          );
+    } catch (err, st) {
+      _report(err, st);
+      _items.add(const ChatNotice(.runFailed));
+      _end();
+    }
   }
 
   void _read(_Run run, AgentEvent event) {
@@ -196,8 +204,9 @@ final class TandemSession({
       case RunFinished():
         run.ended = true;
         unawaited(_finish(run));
-      case RunFailed():
+      case RunFailed(:final code, :final message):
         run.ended = true;
+        _report(AgentRunException(code, message), .current);
         // ADK never saw the calls of this run answered: they are dropped.
         _history.addAll(run.said);
         _items.add(const ChatNotice(.runFailed));
@@ -217,7 +226,9 @@ final class TandemSession({
   }
 
   /// Keeps what [run] said and called, runs its calls in order, shows a card
-  /// for each call that needs approval, and starts the next run.
+  /// for each call that needs approval, and starts the next run. When the
+  /// app's agent list throws, the run fails, the calls left get no card, and
+  /// the next message takes the answers.
   Future<void> _finish(_Run run) async {
     _calls = [...run.calls.values];
     _history.addAll([
@@ -225,28 +236,32 @@ final class TandemSession({
       for (final call in _calls)
         assistantToolCall(call.id, call.tool, call.json),
     ]);
-    for (final call in _calls) {
-      // Stop can come while an earlier call runs.
-      if (_stopping) {
-        break;
-      }
-      if (!run.listing.needsApproval(call.tool)) {
-        call.answer = await _execute(run.listing, call);
-        if (_run != run) {
-          return; // Disposed meanwhile.
+    try {
+      for (final call in _calls) {
+        // Stop can come while an earlier call runs.
+        if (_stopping) {
+          break;
+        }
+        if (!run.listing.needsApproval(call.tool)) {
+          call.answer = await _execute(run, call);
+          if (_run != run) {
+            return; // Disposed meanwhile.
+          }
         }
       }
-    }
-    if (!_stopping) {
-      _cardContext = _context();
-      final docs = {
-        for (final tool in run.listing.tools) tool['name']: tool['description'],
-      };
-      for (final call in _calls.where((call) => call.answer == null)) {
-        final doc = docs[call.tool]! as String;
-        call.request = ApprovalRequest(call.id, call.tool, doc, call.json);
-        _items.add(call.request!);
+      if (!_stopping) {
+        _cardContext = _context();
+        for (final call in _calls.where((call) => call.answer == null)) {
+          final doc = run.listing.description(call.tool);
+          call.request = ApprovalRequest(call.id, call.tool, doc, call.json);
+          _items.add(call.request!);
+        }
       }
+    } catch (err, st) {
+      _report(err, st);
+      _items.add(const ChatNotice(.runFailed));
+      _end();
+      return;
     }
     _end(followUp: _canFollowUp);
   }
@@ -257,27 +272,36 @@ final class TandemSession({
   Future<void> _runApproved(_Call call) async {
     final run = _run = _Run(AgentListing.of(_surface));
     notifyListeners();
-    call.answer = await _execute(run.listing, call);
+    call.answer = await _execute(run, call);
     if (_run == run) {
       _end(followUp: _canFollowUp);
     }
   }
 
   /// Calls the method behind [call] and returns the answer for the agent.
-  Future<String> _execute(AgentListing listing, _Call call) async {
+  /// Never throws. The listener hears the call only while [run] is open.
+  Future<String> _execute(_Run run, _Call call) async {
     final Map<String, Object?> args;
     final Object? result;
+    final String answer;
     try {
       args = jsonDecode(call.json) as Map<String, Object?>;
-      result = await listing.call(call.tool, args, approved: call.approved);
+      result = await run.listing.call(call.tool, args, approved: call.approved);
+      answer = jsonEncode(result);
     } on ToolCallRefused catch (err) {
       return _refused(err.message);
     } catch (err, st) {
       _report(err, st);
       return _failed(err);
     }
-    _onAgentCall?.call(call.tool, args, result);
-    return jsonEncode(result);
+    if (_run == run) {
+      try {
+        _onAgentCall?.call(call.tool, args, result);
+      } catch (err, st) {
+        _report(err, st);
+      }
+    }
+    return answer;
   }
 
   /// The call of [request] while its card is pending and nothing runs.
@@ -372,7 +396,7 @@ final class _Run(final AgentListing listing) {
         texts[messageId] = (texts[messageId] ?? '') + delta;
         return messageId;
       case ToolCallStarted(:final toolCallId, :final name)
-          when listing.tools.any((tool) => tool['name'] == name):
+          when listing.lists(name):
         calls[toolCallId] = _Call(toolCallId, name);
       case ToolCallArgs(:final toolCallId, :final delta):
         calls[toolCallId]?.arguments += delta;

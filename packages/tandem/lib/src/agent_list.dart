@@ -94,6 +94,12 @@ final class AgentListing._(
       },
   ];
 
+  /// Whether [tool] was listed when this listing was read.
+  bool lists(String tool) => _tools.containsKey(tool);
+
+  /// The doc comment of [tool], one of the tools this listing [lists].
+  String description(String tool) => _tools[tool]!.description;
+
   /// Whether a call of [tool] waits for the user's approval, by the agent
   /// list as it is now.
   bool needsApproval(String tool) => _now(tool)?.needsApproval ?? false;

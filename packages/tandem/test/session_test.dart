@@ -16,13 +16,18 @@ void main() {
     agentCalls = [];
   });
 
-  TandemSession open(AgentConnection connection) {
+  TandemSession open(
+    AgentConnection connection, {
+    AgentCallListener? onAgentCall,
+  }) {
     final session = TandemSession(
       surface: shop,
       changes: shop.changes,
       connection: connection,
-      onAgentCall: (tool, arguments, result) =>
-          agentCalls.add([tool, arguments, result]),
+      onAgentCall:
+          onAgentCall ??
+          (tool, arguments, result) =>
+              agentCalls.add([tool, arguments, result]),
     );
     addTearDown(session.dispose);
     return session;
@@ -153,7 +158,14 @@ void main() {
         'status': 'failed',
         'error': contains('item'),
       });
-      expect(reported.single.exception, isArgumentError);
+      expect(reported.map((details) => details.exception), [
+        isArgumentError,
+        isA<AgentRunException>().having(
+          (err) => err.message,
+          'message',
+          'boom',
+        ),
+      ]);
       expect(agentCalls, isEmpty);
       expect(_shown(session.items), [('user', 'a'), ChatNoticeKind.runFailed]);
 
@@ -163,6 +175,29 @@ void main() {
       expect(_lines(agent.requests[2]).last, 'user: b');
     },
   );
+
+  test('a throwing onAgentCall is reported; the next message works', () async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('add', {'item': 'milk'}),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+      (_) => const [AgentStep.say('Hi')],
+    ]);
+    final reported = _collectReports();
+    final session = open(
+      agent,
+      onAgentCall: (_, _, _) => throw StateError('highlight'),
+    )..send('add milk');
+    await pumpEventQueue();
+
+    expect(reported.single.exception, isStateError);
+    expect(_lines(agent.requests[1]).last, 'tool-call-1 null');
+
+    session.send('hello?');
+    await pumpEventQueue();
+    expect(_shown(session.items).last, ('agent', 'Hi', false));
+  });
 
   test(
     'a broken stream shows connection lost and starts a new thread',

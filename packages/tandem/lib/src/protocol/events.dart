@@ -4,13 +4,14 @@ sealed class const AgentEvent() {
   this;
 
   /// Reads one decoded event of the stream. Never throws: an event of any
-  /// other type, and an event of a known type that lacks a field or has one of
-  /// the wrong type, is an [IgnoredEvent].
+  /// other type, and an event of a known type that lacks a field it needs or
+  /// has one of the wrong type, is an [IgnoredEvent].
   factory fromJson(Map<String, Object?> json) => switch (json) {
     {'type': 'RUN_FINISHED'} => const RunFinished(),
-    {'type': 'RUN_ERROR', 'code': final String code} => RunFailed(code),
-    {'type': 'TEXT_MESSAGE_START', 'messageId': final String messageId} =>
-      TextStarted(messageId),
+    {'type': 'RUN_ERROR'} => RunFailed(
+      _string(json['code']),
+      _string(json['message']),
+    ),
     {
       'type': 'TEXT_MESSAGE_CONTENT',
       'messageId': final String messageId,
@@ -39,16 +40,13 @@ final class const RunFinished() extends AgentEvent {
   this;
 }
 
-/// The run ended with an error. Only the code is kept: the message can be
-/// 2 KB of the model provider's JSON and is not for the user.
-final class const RunFailed(final String code) extends AgentEvent {
-  /// The run ended with the error [code], such as `EXECUTION_ERROR`.
-  this;
-}
-
-/// The agent starts a text message.
-final class const TextStarted(final String messageId) extends AgentEvent {
-  /// The message [messageId] starts.
+/// The run ended with an error, whatever fields its `RUN_ERROR` has. They go
+/// only to the logs: the message can be 2 KB of the model provider's JSON and
+/// is never shown.
+final class const RunFailed(final String? code, final String? message)
+    extends AgentEvent {
+  /// The run ended with the error [code], such as `EXECUTION_ERROR`, and
+  /// [message].
   this;
 }
 
@@ -73,9 +71,14 @@ final class const ToolCallArgs(final String toolCallId, final String delta)
   this;
 }
 
-/// Every event the session does not read: run start, ends of messages and
-/// calls, tool results, state and reasoning events, and unknown types.
+/// Every event the session does not read: run start, starts and ends of
+/// messages, ends of calls, tool results, state and reasoning events, and
+/// unknown types.
 final class const IgnoredEvent() extends AgentEvent {
   /// The session reads nothing in this event.
   this;
 }
+
+/// [value] when it is a string: an optional field of the wrong type is left
+/// out instead of failing the event.
+String? _string(Object? value) => value is String ? value : null;

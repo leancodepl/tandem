@@ -15,7 +15,8 @@ export 'src/chat/chat_item.dart'
         ChatNoticeKind,
         UserMessage;
 export 'src/chat/tandem_chat.dart' show ApprovalBuilder, TandemChat;
-export 'src/errors.dart' show AgentHttpException, ToolCallRefused;
+export 'src/errors.dart'
+    show AgentHttpException, AgentRunException, ToolCallRefused;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
 export 'src/session.dart' show AgentCallListener, TandemSession;
