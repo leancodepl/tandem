@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-L","runId":"run-L2","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"1843db2f-6a6d-46e3-b716-3d2b02a679a3","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"1843db2f-6a6d-46e3-b716-3d2b02a679a3","delta":"Got a result from "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"1843db2f-6a6d-46e3-b716-3d2b02a679a3","delta":"unknown: {\"result\": \"approved by "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"1843db2f-6a6d-46e3-b716-3d2b02a679a3","delta":"user\", \"status\": \"completed\", \"success\": "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"1843db2f-6a6d-46e3-b716-3d2b02a679a3","delta":"true}"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"1843db2f-6a6d-46e3-b716-3d2b02a679a3"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"},"_ag_ui_thread_id":"thread-L","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user","pending_tool_calls":[]}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-L","runId":"run-L2"}
+

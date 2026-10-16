@@ -1,0 +1,22 @@
+name: tandem_bloc
+description: Connects Tandem to bloc. An existing Cubit or Bloc holds the shared state, and a TandemScope makes the screen below it agent-aware.
+version: 0.0.1
+repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem_bloc
+issue_tracker: https://github.com/leancodepl/tandem/issues
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.38.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.0
+  tandem: ^0.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  leancode_lint: ^27.0.0

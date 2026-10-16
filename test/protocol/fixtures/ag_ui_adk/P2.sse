@@ -1,0 +1,16 @@
+data: {"type":"RUN_STARTED","threadId":"thread-P","runId":"run-P2","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"31e90e8a-e4e5-454b-bfad-552ab21906bb","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"31e90e8a-e4e5-454b-bfad-552ab21906bb","delta":"You said: '#chat hold on'. Draft "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"31e90e8a-e4e5-454b-bfad-552ab21906bb","delta":"I see: {\"amount\": 250.0, \"iban\": \"PL61109010140000071219812874\", "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"31e90e8a-e4e5-454b-bfad-552ab21906bb","delta":"\"recipient\": \"Anna Kowalska\", \"title\": \"Rent October\"}"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"31e90e8a-e4e5-454b-bfad-552ab21906bb"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"},"_ag_ui_thread_id":"thread-P","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user","pending_tool_calls":[]}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-P","runId":"run-P2"}
+

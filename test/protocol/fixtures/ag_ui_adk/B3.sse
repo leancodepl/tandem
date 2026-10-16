@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-B","runId":"run-B3","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"b040a1bd-1d3f-4e95-9a57-c44cbf76418c","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b040a1bd-1d3f-4e95-9a57-c44cbf76418c","delta":"request_transfer returned {\"approved\": true, \"transferId\": \"TX-0002\"}. Draft "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b040a1bd-1d3f-4e95-9a57-c44cbf76418c","delta":"I see in session state: {\"amount\": 300.0, "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b040a1bd-1d3f-4e95-9a57-c44cbf76418c","delta":"\"iban\": \"PL61109010140000071219812874\", \"recipient\": \"Anna Kowalska\", \"title\": \"Rent "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b040a1bd-1d3f-4e95-9a57-c44cbf76418c","delta":"October\"}"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"b040a1bd-1d3f-4e95-9a57-c44cbf76418c"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":300.0,"title":"Rent October"},"_ag_ui_thread_id":"thread-B","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user","pending_tool_calls":[]}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-B","runId":"run-B3"}
+

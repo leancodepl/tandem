@@ -1,0 +1,2 @@
+data: {"type":"RUN_ERROR","message":"Resume entry references unknown interrupt 'nope': it is not a pending tool call or an open interrupt on this thread.","code":"UNKNOWN_INTERRUPT"}
+

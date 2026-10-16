@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-H2","runId":"run-H2","protocolVersion":"1.0"}
+
+data: {"type":"TOOL_CALL_START","toolCallId":"adk-1def58df-fe23-46b6-9845-1b7470008c52","toolCallName":"execute_transfer"}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"adk-1def58df-fe23-46b6-9845-1b7470008c52"}
+
+data: {"type":"TOOL_CALL_START","toolCallId":"adk-3c6bba49-922e-4e17-bb14-604893f94c90","toolCallName":"adk_request_confirmation"}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"adk-3c6bba49-922e-4e17-bb14-604893f94c90","delta":"{\"originalFunctionCall\":{\"id\":\"adk-1def58df-fe23-46b6-9845-1b7470008c52\",\"args\":{},\"name\":\"execute_transfer\"},\"toolConfirmation\":{\"hint\":\"Please approve or reject the tool call execute_transfer() by responding with a FunctionResponse with an expected ToolConfirmation payload.\",\"confirmed\":false}}"}
+
+data: {"type":"TOOL_CALL_RESULT","messageId":"3e7dd92a-bf5a-4380-965d-0532aa15dbd3","toolCallId":"adk-1def58df-fe23-46b6-9845-1b7470008c52","content":"{\"error\": \"This tool call requires confirmation, please approve or reject.\"}"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"},"_ag_ui_thread_id":"thread-H2","_ag_ui_app_name":"tandem_probe_interrupts","_ag_ui_user_id":"probe-user"}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"adk-3c6bba49-922e-4e17-bb14-604893f94c90"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-H2","runId":"run-H2","outcome":{"type":"interrupt","interrupts":[{"id":"adk-3c6bba49-922e-4e17-bb14-604893f94c90","reason":"confirmation","message":"Please approve or reject the tool call execute_transfer() by responding with a FunctionResponse with an expected ToolConfirmation payload.","toolCallId":"adk-3c6bba49-922e-4e17-bb14-604893f94c90","metadata":{"adk":{"originalFunctionCall":{"id":"adk-1def58df-fe23-46b6-9845-1b7470008c52","args":{},"name":"execute_transfer"},"toolConfirmation":{"hint":"Please approve or reject the tool call execute_transfer() by responding with a FunctionResponse with an expected ToolConfirmation payload.","confirmed":false}}}}]}}
+

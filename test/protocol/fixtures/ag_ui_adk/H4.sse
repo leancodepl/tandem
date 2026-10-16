@@ -1,0 +1,2 @@
+data: {"type":"RUN_ERROR","message":"Thread has open interrupt(s) ['adk-3c6bba49-922e-4e17-bb14-604893f94c90']; the run must answer them through RunAgentInput.resume.","code":"INTERRUPT_RESUME_REQUIRED"}
+

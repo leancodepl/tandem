@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-F","runId":"F1","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"2b2604bb-c622-41f5-a912-0c27e4345f56","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"2b2604bb-c622-41f5-a912-0c27e4345f56","delta":"You said: '#chat one'. Draft "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"2b2604bb-c622-41f5-a912-0c27e4345f56","delta":"I see: {\"amount\": 10, \"iban\": "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"2b2604bb-c622-41f5-a912-0c27e4345f56","delta":"\"PL61109010140000071219812874\", \"recipient\": \"Anna Kowalska\", \"title\": "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"2b2604bb-c622-41f5-a912-0c27e4345f56","delta":"\"t\"}"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"2b2604bb-c622-41f5-a912-0c27e4345f56"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":10,"title":"t"},"uiFlag":true,"_ag_ui_thread_id":"thread-F","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user"}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-F","runId":"F1"}
+

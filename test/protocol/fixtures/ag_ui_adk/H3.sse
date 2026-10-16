@@ -1,0 +1,20 @@
+data: {"type":"RUN_STARTED","threadId":"thread-H2","runId":"run-H3","protocolVersion":"1.0"}
+
+data: {"type":"TOOL_CALL_RESULT","messageId":"0a7e40e0-3c84-4174-8d1c-b1434f314b8f","toolCallId":"adk-1def58df-fe23-46b6-9845-1b7470008c52","content":"{\"status\": \"executed\", \"transfer\": {\"recipient\": \"Anna Kowalska\", \"iban\": \"PL61109010140000071219812874\", \"amount\": 250.0, \"title\": \"Rent October\"}}"}
+
+data: {"type":"STATE_DELTA","delta":[{"op":"add","path":"/last_executed_transfer","value":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"}}]}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"1cff1bd7-7192-4b45-ba2a-bc53a550ac54","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"1cff1bd7-7192-4b45-ba2a-bc53a550ac54","delta":"execute_transfer returned {\"status\": \"executed\", \"transfer\": "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"1cff1bd7-7192-4b45-ba2a-bc53a550ac54","delta":"{\"amount\": 250.0, \"iban\": \"PL61109010140000071219812874\", \"recipient\": "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"1cff1bd7-7192-4b45-ba2a-bc53a550ac54","delta":"\"Anna Kowalska\", \"title\": \"Rent October\"}}."}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"1cff1bd7-7192-4b45-ba2a-bc53a550ac54"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"},"_ag_ui_thread_id":"thread-H2","_ag_ui_app_name":"tandem_probe_interrupts","_ag_ui_user_id":"probe-user","pending_tool_calls":[],"last_executed_transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"}}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-H2","runId":"run-H3"}
+

@@ -1,0 +1,8 @@
+# The same rules as the root package. The leancode_lint plugin is enabled in
+# the root file, because a pub workspace allows analyzer plugins only in the
+# workspace root, and this include makes it run here too.
+include: ../../analysis_options.yaml
+
+analyzer:
+  exclude:
+    - build/**

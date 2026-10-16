@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-Ey","runId":"run-E2","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"6dc94b60-a865-43dc-8002-01dee7911d84","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"6dc94b60-a865-43dc-8002-01dee7911d84","delta":"You said: '#chat actually wait, what is "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"6dc94b60-a865-43dc-8002-01dee7911d84","delta":"the title?'. Draft I see: {\"amount\": 250.0, "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"6dc94b60-a865-43dc-8002-01dee7911d84","delta":"\"iban\": \"PL61109010140000071219812874\", \"recipient\": \"Anna Kowalska\", \"title\": \"Rent "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"6dc94b60-a865-43dc-8002-01dee7911d84","delta":"October\"}"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"6dc94b60-a865-43dc-8002-01dee7911d84"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"},"_ag_ui_thread_id":"thread-Ey","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user","pending_tool_calls":["adk-ef5063f3-2764-4395-913b-a2a61863120a"]}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-Ey","runId":"run-E2"}
+

@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-slow","runId":"r1","protocolVersion":"1.0"}
+
+: ping - 2026-10-16 09:29:14.826732+00:00
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"3ab71437-5988-47e6-80ee-ced63a7ea42c","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"3ab71437-5988-47e6-80ee-ced63a7ea42c","delta":"You said: '#slow "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"3ab71437-5988-47e6-80ee-ced63a7ea42c","delta":"#chat hello'. Draft "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"3ab71437-5988-47e6-80ee-ced63a7ea42c","delta":"I see: null"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"3ab71437-5988-47e6-80ee-ced63a7ea42c"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"_ag_ui_thread_id":"thread-slow","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user"}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-slow","runId":"r1"}
+

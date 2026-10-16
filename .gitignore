@@ -32,3 +32,9 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 /build/
 /coverage/
+
+# Secrets and Python (example agent)
+.env
+.venv/
+__pycache__/
+.pytest_cache/

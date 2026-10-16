@@ -1,0 +1,16 @@
+data: {"type":"RUN_STARTED","threadId":"thread-F","runId":"F2","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"c11433e3-c154-4615-a9ce-66a8e3c182e5","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"c11433e3-c154-4615-a9ce-66a8e3c182e5","delta":"You said: '#chat "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"c11433e3-c154-4615-a9ce-66a8e3c182e5","delta":"two'. Draft I "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"c11433e3-c154-4615-a9ce-66a8e3c182e5","delta":"see: {\"amount\": 99}"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"c11433e3-c154-4615-a9ce-66a8e3c182e5"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"amount":99},"uiFlag":true,"_ag_ui_thread_id":"thread-F","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user"}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-F","runId":"F2"}
+

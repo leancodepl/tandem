@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-N","runId":"run-N1","protocolVersion":"1.0"}
+
+data: {"type":"TOOL_CALL_START","toolCallId":"adk-b76b5db4-5361-4ab9-9d6f-e506acf753e8","toolCallName":"execute_transfer"}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"adk-b76b5db4-5361-4ab9-9d6f-e506acf753e8"}
+
+data: {"type":"TOOL_CALL_START","toolCallId":"adk-2f4c62ff-2984-4d39-b049-d87e44b186fc","toolCallName":"adk_request_confirmation"}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"adk-2f4c62ff-2984-4d39-b049-d87e44b186fc","delta":"{\"originalFunctionCall\":{\"id\":\"adk-b76b5db4-5361-4ab9-9d6f-e506acf753e8\",\"args\":{},\"name\":\"execute_transfer\"},\"toolConfirmation\":{\"hint\":\"Please approve or reject the tool call execute_transfer() by responding with a FunctionResponse with an expected ToolConfirmation payload.\",\"confirmed\":false}}"}
+
+data: {"type":"TOOL_CALL_RESULT","messageId":"682d01a3-1b5c-4ccb-a022-07bb3b91a527","toolCallId":"adk-b76b5db4-5361-4ab9-9d6f-e506acf753e8","content":"{\"error\": \"This tool call requires confirmation, please approve or reject.\"}"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":{"recipient":"Anna Kowalska","iban":"PL61109010140000071219812874","amount":250.0,"title":"Rent October"},"_ag_ui_thread_id":"thread-N","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user"}}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"adk-2f4c62ff-2984-4d39-b049-d87e44b186fc"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-N","runId":"run-N1"}
+

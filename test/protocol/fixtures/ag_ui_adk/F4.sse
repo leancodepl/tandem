@@ -1,0 +1,18 @@
+data: {"type":"RUN_STARTED","threadId":"thread-F","runId":"F4","protocolVersion":"1.0"}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"b0822996-d7eb-4721-95e0-80d97a6553b2","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b0822996-d7eb-4721-95e0-80d97a6553b2","delta":"You said: "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b0822996-d7eb-4721-95e0-80d97a6553b2","delta":"'#chat four'. "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b0822996-d7eb-4721-95e0-80d97a6553b2","delta":"Draft I "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"b0822996-d7eb-4721-95e0-80d97a6553b2","delta":"see: null"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"b0822996-d7eb-4721-95e0-80d97a6553b2"}
+
+data: {"type":"STATE_SNAPSHOT","snapshot":{"transfer":null,"uiFlag":true,"_ag_ui_thread_id":"thread-F","_ag_ui_app_name":"tandem_probe","_ag_ui_user_id":"probe-user"}}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-F","runId":"F4"}
+
