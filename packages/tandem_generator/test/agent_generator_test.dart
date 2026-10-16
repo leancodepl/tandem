@@ -1,6 +1,6 @@
 import 'package:build/build.dart';
 import 'package:build_test/build_test.dart';
-import 'package:tandem_generator/builder.dart';
+import 'package:tandem_generator/tandem_generator.dart';
 import 'package:test/test.dart';
 
 void main() {
