@@ -24,7 +24,7 @@ void main() {
 
     await _askToClear(
       tester,
-      approvalBuilder: (_, request) => Text('Custom ${request.tool}'),
+      approvalBuilder: (context, request) => Text('Custom ${request.tool}'),
     );
 
     expect(find.text('Custom clear'), findsOneWidget);

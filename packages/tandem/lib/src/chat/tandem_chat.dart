@@ -67,7 +67,7 @@ final class _TandemChatState() extends State<TandemChat> {
                 reverse: true,
                 padding: const .all(_gap),
                 itemCount: items.length,
-                itemBuilder: (_, index) =>
+                itemBuilder: (context, index) =>
                     _show(items[items.length - 1 - index]),
               ),
             ),
