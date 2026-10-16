@@ -1,0 +1,222 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tandem/tandem.dart';
+
+import 'support/shop.dart';
+
+void main() {
+  late Shop shop;
+  late List<List<Object?>> agentCalls;
+
+  setUp(() {
+    shop = Shop();
+    agentCalls = [];
+  });
+
+  TandemSession open(AgentConnection connection) {
+    final session = TandemSession(
+      surface: shop,
+      changes: shop.changes,
+      connection: connection,
+      onAgentCall: (tool, arguments, result) =>
+          agentCalls.add([tool, arguments, result]),
+    );
+    addTearDown(session.dispose);
+    return session;
+  }
+
+  test('a call runs at once and its result goes in the next run', () async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('find_customer', {'q': 'Acme'}),
+        AgentStep.callTool('add', {'item': 'milk'}),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+    ]);
+    final session = open(agent)..send('add milk');
+    await pumpEventQueue();
+
+    expect(shop.items, ['milk']);
+    expect(agent.requests, hasLength(2));
+    final messages = _messages(agent.requests[1]);
+    expect(messages.skip(messages.length - 2), [
+      {
+        'id': 'asst-call-2',
+        'role': 'assistant',
+        'toolCalls': [
+          {
+            'id': 'call-2',
+            'type': 'function',
+            'function': {'name': 'add', 'arguments': '{"item":"milk"}'},
+          },
+        ],
+      },
+      {
+        'id': 'tool-call-2',
+        'role': 'tool',
+        'toolCallId': 'call-2',
+        'content': 'null',
+      },
+    ]);
+    expect(
+      jsonEncode(agent.requests[1]),
+      isNot(anyOf(contains('call-1'), contains('find_customer'))),
+    );
+    expect(agentCalls, [
+      [
+        'add',
+        {'item': 'milk'},
+        null,
+      ],
+    ]);
+    expect(_shown(session.items), [
+      ('user', 'add milk'),
+      ('agent', 'Done.', false),
+    ]);
+  });
+
+  test('Stop hides the rest of the run, runs nothing from it, and the next '
+      'message waits', () async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        const AgentStep.say('Working'),
+        AgentStep.waitFor(gate.future),
+        const AgentStep.say(' more'),
+        const AgentStep.callTool('add', {'item': 'x'}),
+      ],
+      (_) => const [AgentStep.say('Hi')],
+    ]);
+    final session = open(agent)..send('go');
+    await pumpEventQueue();
+    expect(_shown(session.items), [
+      ('user', 'go'),
+      ('agent', 'Working', false),
+    ]);
+
+    session.stop();
+    expect(session.isStopping, isTrue);
+    session.send('next');
+    expect(agent.requests, hasLength(1));
+    gate.complete();
+    await pumpEventQueue();
+
+    expect(shop.items, isEmpty);
+    expect(_shown(session.items), [
+      ('user', 'go'),
+      ('agent', 'Working', true),
+      ('user', 'next'),
+      ('agent', 'Hi', false),
+    ]);
+    expect(_lines(agent.requests[1]), [
+      'user: go',
+      'assistant: Working',
+      'asst-call-1 add {"item":"x"}',
+      'tool-call-1 {"status":"cancelled"}',
+      'user: next',
+    ]);
+    expect(agent.requests, hasLength(2));
+  });
+
+  test(
+    'errors go back to the agent or into the chat; the next message works',
+    () async {
+      final agent = ScriptedAgent([
+        (_) => const [
+          AgentStep.callTool('add', {'item': ''}),
+        ],
+        (_) => const [AgentStep.fail('boom')],
+        (_) => const [AgentStep.say('Hi')],
+      ]);
+      final session = open(agent)..send('a');
+      await pumpEventQueue();
+
+      final answer = _messages(agent.requests[1]).last['content']! as String;
+      expect(jsonDecode(answer), {
+        'status': 'failed',
+        'error': contains('item'),
+      });
+      expect(agentCalls, isEmpty);
+      expect(_shown(session.items), [('user', 'a'), ChatNoticeKind.runFailed]);
+
+      session.send('b');
+      await pumpEventQueue();
+      expect(_shown(session.items).last, ('agent', 'Hi', false));
+      expect(_lines(agent.requests[2]).last, 'user: b');
+    },
+  );
+
+  test(
+    'a broken stream shows connection lost and starts a new thread',
+    () async {
+      final connection = _DropsFirstRun(
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Back')],
+        ]),
+      );
+      final session = open(connection)..send('a');
+      await pumpEventQueue();
+      expect(_shown(session.items), [
+        ('user', 'a'),
+        ChatNoticeKind.connectionLost,
+      ]);
+
+      session.send('b');
+      await pumpEventQueue();
+      final [first, second] = connection.requests;
+      expect(second['threadId'], isNot(first['threadId']));
+      expect(_lines(second), ['user: b']);
+      expect(_shown(session.items).last, ('agent', 'Back', false));
+    },
+  );
+}
+
+/// A connection whose first run breaks after `RUN_STARTED`, as a dropped
+/// connection does. Later runs play [_agent].
+final class _DropsFirstRun(final ScriptedAgent _agent)
+    implements AgentConnection {
+  final requests = <Map<String, Object?>>[];
+
+  @override
+  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
+    requests.add(input);
+    return requests.length == 1
+        ? Stream.value({'type': 'RUN_STARTED'})
+        : _agent.run(input);
+  }
+}
+
+List<Map<String, Object?>> _messages(Map<String, Object?> request) =>
+    (request['messages']! as List<Object?>).cast();
+
+/// The messages of [request], one line each: `user: go` for a text,
+/// `asst-call-1 add {"item":"x"}` for a call, `tool-call-1 null` for its
+/// answer.
+List<String> _lines(Map<String, Object?> request) => [
+  for (final message in _messages(request))
+    switch (message) {
+      {'role': 'tool', 'id': final id, 'content': final content} =>
+        '$id $content',
+      {
+        'id': final id,
+        'toolCalls': [
+          {'function': {'name': final name, 'arguments': final arguments}},
+        ],
+      } =>
+        '$id $name $arguments',
+      {'role': final role, 'content': final content} => '$role: $content',
+      _ => '$message',
+    },
+];
+
+/// [items] as values that compare by value.
+List<Object> _shown(List<ChatItem> items) => [
+  for (final item in items)
+    switch (item) {
+      UserMessage(:final text) => ('user', text),
+      AgentMessage(:final text, :final stopped) => ('agent', text, stopped),
+      ChatNotice(:final kind) => kind,
+    },
+];
