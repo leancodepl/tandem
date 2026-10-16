@@ -83,7 +83,7 @@ The agent changes the screen through the same methods as your buttons, so the sa
 
 A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees at the moment it asks. If that changes, Approve turns off until the agent asks again.
 
-Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing from it.
+Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing more from it.
 
 ## The agent
 
@@ -111,11 +111,13 @@ final agent = ScriptedAgent([
 ]);
 
 await tester.pumpWidget(
-  BlocProvider(
-    create: (_) => OrderCubit(catalog: catalog, orders: orders),
-    child: TandemScope<OrderCubit>.connected(
-      connection: agent,
-      child: const Row(children: [OrderForm(), TandemChat()]),
+  MaterialApp(
+    home: BlocProvider(
+      create: (_) => OrderCubit(catalog: catalog, orders: orders),
+      child: TandemScope<OrderCubit>.connected(
+        connection: agent,
+        child: const Row(children: [Expanded(child: OrderForm()), TandemChat()]),
+      ),
     ),
   ),
 );

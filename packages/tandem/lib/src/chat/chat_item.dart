@@ -25,7 +25,7 @@ enum ChatNoticeKind() {
   /// The user stopped a run before the agent said anything.
   stopped,
 
-  /// The run ended with an error.
+  /// The run ended with an error, or the app's agent list threw.
   runFailed,
 
   /// The run broke off; the next message starts a new conversation.
@@ -43,7 +43,7 @@ enum ApprovalStatus() {
   /// It waits for the user.
   pending,
 
-  /// The user approved it, and its method was called.
+  /// The user approved it.
   approved,
 
   /// The user rejected it.

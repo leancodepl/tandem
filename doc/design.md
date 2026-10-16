@@ -26,13 +26,13 @@ The root README and `packages/tandem_bloc/README.md` are the same file.
 - Several calls in one turn, one of them with approval: the ones without run first, then the card freezes. One run carries all the answers, and it starts when every call of the turn has one.
 - Reject answers its call at once. Invalidation does not start a run: `invalidated` goes with the user's next message.
 - **Stop does not close the connection.** Closing does not stop ADK: the model keeps generating, the answer lands in the server's session, and a run sent right after mixes up the history. Stop hides the rest of the text and reads the run to `RUN_FINISHED` or `RUN_ERROR`. The connection closes only with the screen.
-- After Stop, the text already shown stays, marked "Stopped", and only that text goes back in the history. No call of that run runs. Until the run ends the chat shows "Stopping…" and a new message waits.
+- After Stop, the text already shown stays, marked "Stopped", and only that text goes back in the history. None of its remaining calls runs. Until the run ends the chat shows "Stopping…" and a new message waits.
 - Before each new user message, every call without an answer is answered, all in one run, the message last. Executed: the real result. Not executed (Stop, or the user wrote instead of deciding): `cancelled`. Invalidated: `invalidated`. The status goes in `content`, because the middleware ignores `error` and the model reads an empty `content` as success. AG-UI 1.0 also wants every call answered before the thread goes on.
 - A run is never sent twice: the server would answer with an empty `RUN_STARTED`/`RUN_FINISHED` pair.
 - A run that breaks without a final event shows "Connection lost" and the next message starts a new thread with fresh history.
 - No bytes for 60 s counts as a broken run. ADK pings every 15 s, but the parser drops comments, so the timeout watches the raw bytes.
 - `threadId` lives as long as `TandemScope` and never comes back after the screen closes: an orphaned ADK run would mix up the history.
-- A run error shows in the chat, and the next message works as usual.
+- A run error shows in the chat, and the next message works as usual. Its code and message, like every error the session catches, go to `FlutterError.reportError`, never to the chat.
 
 ## Wire rules
 
@@ -61,7 +61,7 @@ The `content` of the tool message. The constants are in `session.dart`.
 | not executed, or the user wrote instead of deciding | `{"status":"cancelled"}` |
 | invalidated | `{"status":"invalidated"}` |
 
-A bare `rejected` is out: Gemini read it as a refusal of the system. `rejected_by_user` is provisional until the real Gemini test.
+A bare `rejected` is out: Gemini read it as a refusal of the system. `rejected_by_user` is provisional: it is not yet checked against a real model.
 
 ## Deferred
 

@@ -12,7 +12,7 @@ const _notStreamable =
 ///
 /// ```dart
 /// BlocProvider(
-///   create: (context) => OrderCubit(),
+///   create: (context) => OrderCubit(catalog: catalog, orders: orders),
 ///   child: TandemScope<OrderCubit>(
 ///     agent: Uri.parse('https://example.com/agent'),
 ///     child: Row(children: [OrderForm(), TandemChat()]),
@@ -20,9 +20,9 @@ const _notStreamable =
 /// )
 /// ```
 ///
-/// When [C] changes state, the approvals still pending are invalidated. The
-/// session is created once, so the conversation is one AG-UI thread, and it
-/// is disposed before the `BlocProvider` closes [C].
+/// When what the agent sees (`.sees`) changes, the approvals still pending
+/// are invalidated. The session is created once, so the conversation is one
+/// AG-UI thread, and it is disposed before the `BlocProvider` closes [C].
 final class TandemScope<C extends AgentSurface> extends StatefulWidget {
   /// A scope that talks to the AG-UI endpoint `agent`. [onAgentCall] hears
   /// every call of a listed method that ran.

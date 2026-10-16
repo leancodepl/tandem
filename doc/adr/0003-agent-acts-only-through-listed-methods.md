@@ -2,7 +2,7 @@
 
 ## Context
 
-PR #1 gave the agent a shared state it could write. Tandem diffed and patched it, and told the user's edits from its own writes by content. That was half of the code and the source of the review's worst bugs, and an agent writing state skips the validation the screen's buttons run.
+leancodepl/tandem#1 gave the agent a shared state it could write. Tandem diffed and patched it, and told the user's edits from its own writes by content. That was half of the code and the source of its worst bugs, and an agent writing state skips the validation the screen's buttons run.
 
 ## Decision
 
@@ -14,7 +14,7 @@ The list is read again before every run and before every call: a method that lef
 
 ## Consequences
 
-- The shared state from PR #1 is gone, and so is ADR 0002.
+- The shared state from leancodepl/tandem#1 is gone, and ADR 0002 is superseded.
 - Whatever the agent should change needs a listed method. Whatever an approval card shows must be in `.sees`, or the approval does not cover it.
 - The list is read by generated code, so `.sees` must stand directly in the list and the code must be generated again after the list changes.
 - The backend has to put `context` into the model's prompt itself.

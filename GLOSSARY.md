@@ -33,7 +33,7 @@ The state of an approval request when what the agent sees changed after the card
 _Avoid_: stale, expired, outdated
 
 **Stop**:
-The user's end of a run. The run is still read to its end, but its later text is hidden and none of its calls runs.
+The user's end of a run. The run is still read to its end, but its later text is hidden and none of its remaining calls runs.
 _Avoid_: abort, disconnect
 
 **Chat**:
