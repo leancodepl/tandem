@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 
@@ -130,6 +131,7 @@ void main() {
         (_) => const [AgentStep.fail('boom')],
         (_) => const [AgentStep.say('Hi')],
       ]);
+      final reported = _collectReports();
       final session = open(agent)..send('a');
       await pumpEventQueue();
 
@@ -138,6 +140,7 @@ void main() {
         'status': 'failed',
         'error': contains('item'),
       });
+      expect(reported.single.exception, isArgumentError);
       expect(agentCalls, isEmpty);
       expect(_shown(session.items), [('user', 'a'), ChatNoticeKind.runFailed]);
 
@@ -151,7 +154,8 @@ void main() {
   test(
     'a broken stream shows connection lost and starts a new thread',
     () async {
-      final connection = _DropsFirstRun(
+      final connection = _BreaksFirstRun(
+        Stream.value({'type': 'RUN_STARTED'}),
         ScriptedAgent([
           (_) => const [AgentStep.say('Back')],
         ]),
@@ -171,21 +175,43 @@ void main() {
       expect(_shown(session.items).last, ('agent', 'Back', false));
     },
   );
+
+  test('a stream error is reported and shows connection lost', () async {
+    const error = AgentHttpException(422, 'messages: field required');
+    final reported = _collectReports();
+    final session = open(
+      _BreaksFirstRun(Stream.error(error), ScriptedAgent([])),
+    )..send('a');
+    await pumpEventQueue();
+
+    expect(reported.single.exception, error);
+    expect('${reported.single.exception}', contains('422'));
+    expect(_shown(session.items).last, ChatNoticeKind.connectionLost);
+  });
 }
 
-/// A connection whose first run breaks after `RUN_STARTED`, as a dropped
-/// connection does. Later runs play [_agent].
-final class _DropsFirstRun(final ScriptedAgent _agent)
-    implements AgentConnection {
+/// A connection whose first run is [_first], such as a stream that ends
+/// after `RUN_STARTED`. Later runs play [_agent].
+final class _BreaksFirstRun(
+  final Stream<Map<String, Object?>> _first,
+  final ScriptedAgent _agent,
+) implements AgentConnection {
   final requests = <Map<String, Object?>>[];
 
   @override
   Stream<Map<String, Object?>> run(Map<String, Object?> input) {
     requests.add(input);
-    return requests.length == 1
-        ? Stream.value({'type': 'RUN_STARTED'})
-        : _agent.run(input);
+    return requests.length == 1 ? _first : _agent.run(input);
   }
+}
+
+/// Collects the errors reported to Flutter until the test ends.
+List<FlutterErrorDetails> _collectReports() {
+  final reported = <FlutterErrorDetails>[];
+  final onError = FlutterError.onError;
+  FlutterError.onError = reported.add;
+  addTearDown(() => FlutterError.onError = onError);
+  return reported;
 }
 
 List<Map<String, Object?>> _messages(Map<String, Object?> request) =>

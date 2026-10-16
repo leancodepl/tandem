@@ -14,4 +14,7 @@ final class const AgentHttpException(final int statusCode, final String body)
     implements Exception {
   /// The endpoint answered with [statusCode] and [body].
   this;
+
+  @override
+  String toString() => 'AgentHttpException: $statusCode $body';
 }

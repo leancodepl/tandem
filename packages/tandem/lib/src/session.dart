@@ -22,6 +22,14 @@ String _failed(Object err) => jsonEncode({'status': 'failed', 'error': '$err'});
 // The arguments of a call that has no `TOOL_CALL_ARGS`.
 const _noArguments = '{}';
 
+// The library named in the errors the session reports.
+const _library = 'tandem';
+
+/// Reports an error the session caught, so that it reaches the logs.
+void _report(Object err, StackTrace st) => FlutterError.reportError(
+  FlutterErrorDetails(exception: err, stack: st, library: _library),
+);
+
 /// Called after the agent called a listed method and it returned: [tool] is
 /// the method's snake_case name and [result] its result as JSON. Not called
 /// for a call that was refused or threw.
@@ -140,7 +148,10 @@ final class TandemSession({
         .run(input)
         .listen(
           (json) => _read(run, .fromJson(json)),
-          onError: (Object _) => _break(run),
+          onError: (Object err, StackTrace st) {
+            _report(err, st);
+            _break(run);
+          },
           onDone: () => _break(run),
           cancelOnError: true,
         );
@@ -207,7 +218,8 @@ final class TandemSession({
       result = await listing.call(call.tool, arguments);
     } on ToolCallRefused catch (err) {
       return _refused(err.message);
-    } catch (err) {
+    } catch (err, st) {
+      _report(err, st);
       return _failed(err);
     }
     _onAgentCall?.call(call.tool, arguments, result);
