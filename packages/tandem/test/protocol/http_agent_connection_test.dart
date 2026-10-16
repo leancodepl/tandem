@@ -106,4 +106,25 @@ void main() {
     expect(done, isTrue);
     expect(sourceCancelled, isTrue);
   });
+
+  testWidgets('a connection that never answers ends with an error', (
+    tester,
+  ) async {
+    final client = MockClient.streaming(
+      (request, bodyStream) => Completer<http.StreamedResponse>().future,
+    );
+    final errors = <Object>[];
+    var done = false;
+
+    HttpAgentConnection(
+          Uri.parse('http://localhost:8000/agent'),
+          client: client,
+        )
+        .run(const {})
+        .listen(null, onError: errors.add, onDone: () => done = true);
+    await tester.pump(_pastIdleTimeout);
+
+    expect(errors, [isA<TimeoutException>()]);
+    expect(done, isTrue);
+  });
 }

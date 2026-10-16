@@ -12,7 +12,8 @@ const _headers = {
 const _statusOk = 200;
 
 // ADK sends a `: ping` comment every 15 s. parseSse drops it, so the timeout
-// watches the raw bytes: 60 s without any means the connection is dead.
+// watches the raw bytes: 60 s without any, or without the response headers,
+// means the connection is dead.
 const _idleTimeout = Duration(seconds: 60);
 
 // Without `onTimeout`, `timeout` only adds the error and keeps the dead
@@ -32,9 +33,8 @@ abstract interface class AgentConnection() {
   /// run as decoded JSON.
   ///
   /// The stream ends after `RUN_FINISHED` or `RUN_ERROR`. A stream that ends
-  /// earlier, or fails, means the run broke: a failure is an error event that
-  /// is followed by the end of the stream. Cancelling the subscription closes
-  /// the connection: do it only when the screen goes away.
+  /// earlier, or fails, means the run broke. Cancelling the subscription
+  /// closes the connection: do it only when the screen goes away.
   /// Stopping a run must not cancel it, because ADK keeps running and the
   /// thread stays consistent only if its events are read to the end.
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
@@ -55,11 +55,11 @@ final class HttpAgentConnection(final Uri endpoint, {final http.Client? client})
         ..headers.addAll(_headers)
         // Bytes, not `body`, which would add a charset to the content type.
         ..bodyBytes = utf8.encode(jsonEncode(input));
-      final response = await used.send(request);
+      final response = await used.send(request).timeout(_idleTimeout);
       if (response.statusCode != _statusOk) {
         throw AgentHttpException(
           response.statusCode,
-          await response.stream.bytesToString(),
+          await response.stream.bytesToString().timeout(_idleTimeout),
         );
       }
       // `yield*` and `map`, not `await for` and `yield`: the latter delays a
