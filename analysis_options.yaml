@@ -1,14 +1,8 @@
-include: package:flutter_lints/flutter.yaml
+include: package:leancode_lint/analysis_options_package.yaml
+
+plugins:
+  leancode_lint: ^27.0.0
 
 analyzer:
   exclude:
     - build/**
-    - android/**
-    - ios/**
-    - web/**
-    - windows/**
-    - macos/**
-    - linux/**
-
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
