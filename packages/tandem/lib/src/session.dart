@@ -123,7 +123,7 @@ final class TandemSession({
   /// Calls the method of [request] and, once every call of its turn has an
   /// answer, takes the answers to the agent. When what the agent sees changed
   /// since the card showed, invalidates it instead. Does nothing unless
-  /// [request] is pending, or while an approved method runs.
+  /// [request] is pending, or while [isRunning] (an approved method runs).
   void approve(ApprovalRequest request) {
     _invalidate();
     if (_undecided(request) case final call?) {
@@ -134,7 +134,7 @@ final class TandemSession({
 
   /// Tells the agent the user rejected [request], at once when every other
   /// call of its turn has an answer. Does nothing unless [request] is
-  /// pending, or while an approved method runs.
+  /// pending, or while [isRunning] (an approved method runs).
   void reject(ApprovalRequest request) {
     if (_undecided(request) case final call?) {
       _decide(call, .rejected, _rejected);
