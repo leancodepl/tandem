@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// One entry of the chat. Items are immutable: the session replaces an item
 /// to change it.
 sealed class const ChatItem() {
@@ -34,4 +36,58 @@ enum ChatNoticeKind() {
 final class const ChatNotice(final ChatNoticeKind kind) extends ChatItem {
   /// A notice of [kind].
   this;
+}
+
+/// What became of an [ApprovalRequest].
+enum ApprovalStatus() {
+  /// It waits for the user.
+  pending,
+
+  /// The user approved it, and its method was called.
+  approved,
+
+  /// The user rejected it.
+  rejected,
+
+  /// What the agent sees changed after it showed, so it can no longer be
+  /// approved.
+  invalidated,
+
+  /// The user sent a message instead of deciding.
+  cancelled,
+}
+
+/// A call of a method listed with `.callsWithApproval`. The method runs only
+/// once the user approves it.
+final class const ApprovalRequest(
+  /// The id of the call in the AG-UI thread.
+  final String toolCallId,
+
+  /// The method's name in snake_case.
+  final String tool,
+
+  /// The method's doc comment.
+  final String description,
+  final String _arguments, {
+
+  /// What became of the request.
+  final ApprovalStatus status = .pending,
+}) extends ChatItem {
+  /// The agent called [tool] in the call [toolCallId], with its arguments as
+  /// the JSON it sent.
+  this;
+
+  /// The arguments the agent sent. They are decoded again on every read, so
+  /// changing the map changes nothing the method gets.
+  Map<String, Object?> get arguments =>
+      jsonDecode(_arguments) as Map<String, Object?>;
+
+  /// This request with [status].
+  ApprovalRequest withStatus(ApprovalStatus status) => ApprovalRequest(
+    toolCallId,
+    tool,
+    description,
+    _arguments,
+    status: status,
+  );
 }

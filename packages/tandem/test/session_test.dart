@@ -28,6 +28,19 @@ void main() {
     return session;
   }
 
+  /// A session whose agent asked to clear the list `['x']`. Its next run
+  /// says `Cleared.`.
+  Future<(TandemSession, ScriptedAgent)> askToClear() async {
+    shop.add('x');
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('clear')],
+      (_) => const [AgentStep.say('Cleared.')],
+    ]);
+    final session = open(agent)..send('clear it');
+    await pumpEventQueue();
+    return (session, agent);
+  }
+
   test('a call runs at once and its result goes in the next run', () async {
     final agent = ScriptedAgent([
       (_) => const [
@@ -188,7 +201,119 @@ void main() {
     expect('${reported.single.exception}', contains('422'));
     expect(_shown(session.items).last, ChatNoticeKind.connectionLost);
   });
+
+  test('Approve runs the method once and continues', () async {
+    final (session, agent) = await askToClear();
+    final card = _card(session);
+    expect(
+      [card.tool, card.arguments, card.status],
+      ['clear', <String, Object?>{}, ApprovalStatus.pending],
+    );
+    expect(shop.items, ['x']);
+
+    session
+      ..approve(card)
+      ..approve(card);
+    await pumpEventQueue();
+
+    expect(shop.items, isEmpty);
+    expect(agent.requests, hasLength(2));
+    expect(_lines(agent.requests[1]), [
+      'user: clear it',
+      'asst-call-1 clear {}',
+      'tool-call-1 null',
+    ]);
+    expect(_card(session).status, ApprovalStatus.approved);
+    expect(agentCalls, [
+      ['clear', <String, Object?>{}, null],
+    ]);
+  });
+
+  test('Reject answers rejected_by_user at once', () async {
+    final (session, agent) = await askToClear();
+
+    session.reject(_card(session));
+    await pumpEventQueue();
+
+    expect(_lines(agent.requests[1]), [
+      'user: clear it',
+      'asst-call-1 clear {}',
+      'tool-call-1 {"status":"rejected_by_user"}',
+    ]);
+    expect(shop.items, ['x']);
+    expect(_card(session).status, ApprovalStatus.rejected);
+  });
+
+  test('an edit invalidates the card for good; the answer goes with the next '
+      'message', () async {
+    final (session, agent) = await askToClear();
+    final card = _card(session);
+
+    shop.add('y');
+    await pumpEventQueue();
+    expect(_card(session).status, ApprovalStatus.invalidated);
+    session.approve(card);
+    await pumpEventQueue();
+    expect(shop.items, ['x', 'y']);
+    expect(agent.requests, hasLength(1));
+
+    session.send('ok');
+    await pumpEventQueue();
+    expect(_lines(agent.requests[1]), [
+      'user: clear it',
+      'asst-call-1 clear {}',
+      'tool-call-1 {"status":"invalidated"}',
+      'user: ok',
+    ]);
+  });
+
+  test('a message while a card is open cancels it first', () async {
+    final (session, agent) = await askToClear();
+
+    session.send('wait');
+    await pumpEventQueue();
+
+    expect(_card(session).status, ApprovalStatus.cancelled);
+    expect(_lines(agent.requests[1]), [
+      'user: clear it',
+      'asst-call-1 clear {}',
+      'tool-call-1 {"status":"cancelled"}',
+      'user: wait',
+    ]);
+  });
+
+  test('several calls in one turn are answered in one run', () async {
+    shop.add('x');
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('add', {'item': 'y'}),
+        AgentStep.callTool('clear'),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+    ]);
+    final session = open(agent)..send('go');
+    await pumpEventQueue();
+    expect(shop.items, ['x', 'y']);
+    expect(_card(session).status, ApprovalStatus.pending);
+    expect(agent.requests, hasLength(1));
+
+    session.approve(_card(session));
+    await pumpEventQueue();
+
+    expect(agent.requests, hasLength(2));
+    expect(_lines(agent.requests[1]), [
+      'user: go',
+      'asst-call-1 add {"item":"y"}',
+      'asst-call-2 clear {}',
+      'tool-call-1 null',
+      'tool-call-2 null',
+    ]);
+  });
 }
+
+/// The only approval card of [session], as the chat shows it now.
+ApprovalRequest _card(TandemSession session) =>
+    session.items.whereType<ApprovalRequest>().single;
 
 /// A connection whose first run is [_first], such as a stream that ends
 /// after `RUN_STARTED`. Later runs play [_agent].
@@ -244,5 +369,6 @@ List<Object> _shown(List<ChatItem> items) => [
       UserMessage(:final text) => ('user', text),
       AgentMessage(:final text, :final stopped) => ('agent', text, stopped),
       ChatNotice(:final kind) => kind,
+      ApprovalRequest(:final tool, :final status) => (tool, status),
     },
 ];
