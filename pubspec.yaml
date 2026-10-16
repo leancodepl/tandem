@@ -1,18 +1,16 @@
-name: tandem
-description: TODO Describe what tandem does in one sentence of 60 to 180 characters.
-version: 0.0.1
-repository: https://github.com/leancodepl/tandem
-issue_tracker: https://github.com/leancodepl/tandem/issues
+name: tandem_workspace
+publish_to: none
 
 environment:
-  sdk: ^3.10.0
-  flutter: ">=3.38.0"
+  sdk: ^3.13.0
 
-dependencies:
-  flutter:
-    sdk: flutter
+# packages/tandem_generator is not a member: its dev dependency `test` needs a
+# test_api that the Flutter SDK's flutter_test pin rules out, so it has its own
+# lock and the example depends on it by path.
+workspace:
+  - packages/tandem
+  - packages/tandem_bloc
+  - example
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   leancode_lint: ^27.0.0

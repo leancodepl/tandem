@@ -1,0 +1,25 @@
+name: example
+description: Example Flutter app that makes a bloc-based screen agent-aware with Tandem.
+version: 0.1.0
+publish_to: none
+repository: https://github.com/leancodepl/tandem/tree/main/example
+issue_tracker: https://github.com/leancodepl/tandem/issues
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.0
+  tandem_bloc: ^0.1.0
+
+dev_dependencies:
+  build_runner: ^2.16.0
+  flutter_test:
+    sdk: flutter
+  tandem_generator:
+    path: ../packages/tandem_generator

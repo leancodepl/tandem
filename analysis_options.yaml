@@ -6,3 +6,4 @@ plugins:
 analyzer:
   exclude:
     - build/**
+    - "**/build/**"
