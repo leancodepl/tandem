@@ -63,15 +63,6 @@ The `content` of the tool message. The constants are in `session.dart`.
 
 A bare `rejected` is out: Gemini read it as a refusal of the system. `rejected_by_user` is provisional until the real Gemini test.
 
-## Choices behind the behaviour
-
-- `refused` and `failed` are ours. The plan needs the agent to tell a method that did not run from one that broke, and names no wording.
-- Invalidation compares the `.sees` JSON with the copy frozen when the cards showed, on every cubit emission and at Approve. Latching on any emission would let the late emission of a plain call from the same turn invalidate a fresh card. The comparison misses only an A to B to A inside one microtask, which the user never sees.
-- After Stop no call of the run runs, also one whose `TOOL_CALL_START` came before Stop: app calls run only at `RUN_FINISHED`, and the user asked to stop.
-- No loop guard. Stop is the brake.
-- `AgentConnection` is JSON in, JSON out. Events and the run input stay internal, and `ScriptedAgent` goes through the same decoding.
-- `TandemScope.connected(connection:)` is the seam for tests.
-
 ## Deferred
 
 - Riverpod.
