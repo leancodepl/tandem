@@ -6,3 +6,5 @@ export 'src/agent_list.dart' show AgentCapability, AgentListing;
 export 'src/agent_schema.dart'
     show AgentSchema, AgentSurface, AgentTool, AgentView, ToolArgs;
 export 'src/errors.dart' show AgentHttpException, ToolCallRefused;
+export 'src/protocol/agent_connection.dart'
+    show AgentConnection, HttpAgentConnection;
