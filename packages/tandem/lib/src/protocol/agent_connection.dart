@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -14,6 +15,14 @@ const _statusOk = 200;
 // watches the raw bytes: 60 s without any means the connection is dead.
 const _idleTimeout = Duration(seconds: 60);
 
+// Without `onTimeout`, `timeout` only adds the error and keeps the dead
+// connection open: this one ends the stream, which cancels the connection.
+void _endWithTimeout(EventSink<List<int>> sink) {
+  sink
+    ..addError(TimeoutException('No bytes from the agent', _idleTimeout))
+    ..close();
+}
+
 /// The link to the agent: one AG-UI run per call.
 abstract interface class AgentConnection() {
   /// For the classes that implement a connection.
@@ -23,9 +32,9 @@ abstract interface class AgentConnection() {
   /// run as decoded JSON.
   ///
   /// The stream ends after `RUN_FINISHED` or `RUN_ERROR`. A stream that ends
-  /// earlier, or fails, means the run broke: listen with `cancelOnError: true`,
-  /// because a failure does not end the stream by itself. Cancelling the
-  /// subscription closes the connection: do it only when the screen goes away.
+  /// earlier, or fails, means the run broke: a failure is an error event that
+  /// is followed by the end of the stream. Cancelling the subscription closes
+  /// the connection: do it only when the screen goes away.
   /// Stopping a run must not cancel it, because ADK keeps running and the
   /// thread stays consistent only if its events are read to the end.
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
@@ -55,8 +64,9 @@ final class HttpAgentConnection(final Uri endpoint, {final http.Client? client})
       }
       // `yield*` and `map`, not `await for` and `yield`: the latter delays a
       // cancel until the next event arrives.
-      yield* parseSse(response.stream.timeout(_idleTimeout))
-          .map((event) => jsonDecode(event) as Map<String, Object?>);
+      yield* parseSse(
+        response.stream.timeout(_idleTimeout, onTimeout: _endWithTimeout),
+      ).map((event) => jsonDecode(event) as Map<String, Object?>);
     } finally {
       if (client == null) {
         used.close();

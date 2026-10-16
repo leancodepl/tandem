@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,6 +9,7 @@ import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 
 const _recordedChunkSize = 7;
+const _pastIdleTimeout = Duration(seconds: 61);
 
 void main() {
   test('streams a recorded ag-ui-adk run', () async {
@@ -70,5 +72,38 @@ void main() {
           )
           .having((event) => event.name, 'name', 'request_transfer'),
     );
+  });
+
+  testWidgets('a silent connection ends with an error and is cancelled', (
+    tester,
+  ) async {
+    var sourceCancelled = false;
+    final source = StreamController<List<int>>(
+      onCancel: () => sourceCancelled = true,
+    )..add(utf8.encode('data: {"type":"RUN_STARTED"}\n\n'));
+    final client = MockClient.streaming(
+      (request, bodyStream) async => http.StreamedResponse(source.stream, 200),
+    );
+    final events = <Map<String, Object?>>[];
+    final errors = <Object>[];
+    var done = false;
+
+    HttpAgentConnection(
+          Uri.parse('http://localhost:8000/agent'),
+          client: client,
+        )
+        .run(const {})
+        .listen(events.add, onError: errors.add, onDone: () => done = true);
+    await tester.pump(_pastIdleTimeout);
+    // The end of a cancelled stream waits for a root-zone microtask.
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+
+    expect(events, [
+      {'type': 'RUN_STARTED'},
+    ]);
+    expect(errors, [isA<TimeoutException>()]);
+    expect(done, isTrue);
+    expect(sourceCancelled, isTrue);
   });
 }
