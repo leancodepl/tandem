@@ -13,6 +13,9 @@ final class Shop() implements AgentSurface {
   /// Emits after every change of [items].
   Stream<Object?> get changes => _changes.stream;
 
+  /// Closes [changes]. Dispose the session that listens to it first.
+  Future<void> close() => _changes.close();
+
   @override
   List<AgentCapability> get agent => [
     .sees(items),

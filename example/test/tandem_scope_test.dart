@@ -26,7 +26,7 @@ void main() {
             child: const Row(
               children: [
                 Expanded(child: SizedBox()),
-                TandemChat(),
+                SizedBox(width: 360, child: TandemChat()),
               ],
             ),
           ),

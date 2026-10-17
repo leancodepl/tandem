@@ -24,9 +24,9 @@ final class const TandemSessionScope({
   static TandemSession of(BuildContext context) {
     final scope = context
         .dependOnInheritedWidgetOfExactType<TandemSessionScope>();
-    if (scope == null) {
-      throw FlutterError(_missingScope);
+    if (scope?.notifier case final session?) {
+      return session;
     }
-    return scope.notifier!;
+    throw FlutterError(_missingScope);
   }
 }

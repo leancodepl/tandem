@@ -3,7 +3,6 @@ import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/session.dart';
 import 'package:tandem/src/session_scope.dart';
 
-const _width = 360.0;
 const _gap = 8.0;
 
 const _hint = 'Message';
@@ -27,9 +26,10 @@ typedef ApprovalBuilder = Widget Function(
 );
 
 /// The chat of the user and the agent: its messages, the cards that ask for
-/// approval, and the field to write in. It has its own width and background,
-/// so it goes next to the screen, as in `Row(children: [OrderForm(),
-/// TandemChat()])`.
+/// approval, and the field to write in. It fills its parent and has its own
+/// background. Next to the screen, give it a width, as in
+/// `Row(children: [Expanded(child: OrderForm()), SizedBox(width: 360, child:
+/// TandemChat())])`.
 final class const TandemChat({
   super.key,
   final ApprovalBuilder? approvalBuilder,
@@ -44,11 +44,11 @@ final class const TandemChat({
 }
 
 final class _TandemChatState() extends State<TandemChat> {
-  final _text = TextEditingController();
+  final _messageController = TextEditingController();
 
   @override
   void dispose() {
-    _text.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -56,36 +56,38 @@ final class _TandemChatState() extends State<TandemChat> {
   Widget build(BuildContext context) {
     final session = TandemSessionScope.of(context);
     final items = session.items;
-    return SizedBox(
-      width: _width,
-      child: Material(
-        child: Column(
-          children: [
-            Expanded(
-              // Reversed, so that the newest item stays in view.
-              child: ListView.builder(
-                reverse: true,
-                padding: const .all(_gap),
-                itemCount: items.length,
-                itemBuilder: (context, index) =>
-                    _show(items[items.length - 1 - index]),
-              ),
+    return Material(
+      child: Column(
+        children: [
+          Expanded(
+            // Reversed, so that the newest item stays in view.
+            child: ListView.builder(
+              reverse: true,
+              padding: const .all(_gap),
+              itemCount: items.length,
+              itemBuilder: (context, index) =>
+                  _buildItem(session, items[items.length - 1 - index]),
             ),
-            _InputRow(session, _text),
-          ],
-        ),
+          ),
+          _InputRow(session, _messageController),
+        ],
       ),
     );
   }
 
-  Widget _show(ChatItem item) => switch (item) {
+  Widget _buildItem(TandemSession session, ChatItem item) => switch (item) {
     UserMessage(:final text) => _Bubble(text, fromUser: true),
     AgentMessage(:final text, :final stopped) => _Bubble(
       text,
       stopped: stopped,
     ),
     ChatNotice(:final kind) => _Notice(kind),
-    ApprovalRequest() => _ApprovalCard(item, widget.approvalBuilder),
+    // A card of another call that lands at the same index gets a new state.
+    ApprovalRequest(:final toolCallId) => _ApprovalCard(
+      item,
+      widget.approvalBuilder,
+      key: ValueKey((session, toolCallId)),
+    ),
   };
 }
 
@@ -135,13 +137,14 @@ final class const _Notice(final ChatNoticeKind kind) extends StatelessWidget {
 
 final class const _ApprovalCard(
   final ApprovalRequest request,
-  final ApprovalBuilder? builder,
-) extends StatelessWidget {
+  final ApprovalBuilder? builder, {
+  super.key,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = TandemSessionScope.of(context);
     // The session ignores both while a method of the turn runs.
-    final idle = !session.isRunning;
+    final canDecide = !session.isRunning;
     return Card(
       child: Padding(
         padding: const .all(_gap),
@@ -159,15 +162,18 @@ final class const _ApprovalCard(
                   ],
                 ),
             switch (request.status) {
-              .pending => Row(
+              .pending => Wrap(
                 spacing: _gap,
+                runSpacing: _gap,
                 children: [
                   FilledButton(
-                    onPressed: idle ? () => session.approve(request) : null,
+                    onPressed: canDecide
+                        ? () => session.approve(request)
+                        : null,
                     child: const Text(_approve),
                   ),
                   OutlinedButton(
-                    onPressed: idle ? () => session.reject(request) : null,
+                    onPressed: canDecide ? () => session.reject(request) : null,
                     child: const Text(_reject),
                   ),
                 ],
@@ -186,11 +192,11 @@ final class const _ApprovalCard(
 
 final class const _InputRow(
   final TandemSession session,
-  final TextEditingController text,
+  final TextEditingController messageController,
 ) extends StatelessWidget {
   void _sendText() {
-    session.send(text.text);
-    text.clear();
+    session.send(messageController.text);
+    messageController.clear();
   }
 
   @override
@@ -207,7 +213,7 @@ final class const _InputRow(
         children: [
           Expanded(
             child: TextField(
-              controller: text,
+              controller: messageController,
               decoration: const InputDecoration(hintText: _hint),
               // Unlike onSubmitted, it leaves the focus in the field.
               onEditingComplete: _sendText,

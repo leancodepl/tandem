@@ -25,6 +25,9 @@ String _failed(Object err) => jsonEncode({'status': 'failed', 'error': '$err'});
 // The arguments of a call that has no `TOOL_CALL_ARGS`.
 const _noArguments = '{}';
 
+// Why a call that needs approval gets no card.
+const _argumentsNotAnObject = 'The arguments must be a JSON object.';
+
 // The library named in the errors the session reports.
 const _library = 'tandem';
 
@@ -47,9 +50,11 @@ typedef AgentCallListener = void Function(
 /// Every run reads the screen's agent list again. When a run finishes, the
 /// calls of listed methods run, and the next run, which starts at once,
 /// takes their answers to the agent. A call that needs approval shows as an
-/// [ApprovalRequest] instead, and the next run waits for the user. One run
-/// is open at a time: a message sent meanwhile shows at once and waits. A
-/// run that breaks off moves the chat to a new AG-UI thread.
+/// [ApprovalRequest] instead, and the next run waits for the user. Any
+/// change `changes` reports once the card shows invalidates it for good. One
+/// run is open at a time: a message sent meanwhile shows at once and goes
+/// with the next run, after the answers. A run that breaks off moves the
+/// chat to a new AG-UI thread.
 final class TandemSession({
   required final AgentSurface _surface,
   required Stream<Object?> changes,
@@ -60,13 +65,15 @@ final class TandemSession({
   /// `connection`. `onAgentCall` hears every call of a listed method that
   /// ran.
   this {
-    _changes = changes.listen((_) => _invalidate());
+    _stateChangesSubscription = changes.listen(
+      (_) => _invalidatePendingApprovals(),
+    );
   }
 
-  late final StreamSubscription<Object?> _changes;
-  StreamSubscription<Map<String, Object?>>? _subscription;
+  late final StreamSubscription<Object?> _stateChangesSubscription;
+  StreamSubscription<Map<String, Object?>>? _runSubscription;
   final _items = <ChatItem>[];
-  final _waiting = <String>[];
+  final _queuedMessages = <String>[];
   final _history = <Map<String, Object?>>[];
   var _threadId = newId();
   _Run? _run;
@@ -95,9 +102,10 @@ final class TandemSession({
       return;
     }
     _items.add(UserMessage(message));
-    _waiting.add(message);
-    if (!isRunning) {
-      _sendNext();
+    if (isRunning) {
+      _queuedMessages.add(message);
+    } else {
+      _start(message);
     }
     notifyListeners();
   }
@@ -112,8 +120,10 @@ final class TandemSession({
       return;
     }
     _stopping = true;
-    if (run.texts.keys.lastOrNull case final last?) {
-      _items[run.items[last]!] = AgentMessage(run.texts[last]!, stopped: true);
+    final lastMessageId = run.messageText.keys.lastOrNull;
+    if ((run.messageText[lastMessageId], run.textItemIndices[lastMessageId])
+        case (final text?, final itemIndex?)) {
+      _items[itemIndex] = AgentMessage(text, stopped: true);
     } else {
       _items.add(const ChatNotice(.stopped));
     }
@@ -125,10 +135,14 @@ final class TandemSession({
   /// since the card showed, invalidates it instead. Does nothing unless
   /// [request] is pending, or while [isRunning] (an approved method runs).
   void approve(ApprovalRequest request) {
-    _invalidate();
-    if (_undecided(request) case final call?) {
-      _decide(call, .approved);
-      unawaited(_runApproved(call));
+    if (_pendingApprovalCall(request) case final call?) {
+      // `changes` may not report every value the agent sees.
+      if (_context() == _cardContext) {
+        _decide(call, .approved);
+        unawaited(_runApproved(call));
+      } else {
+        _invalidatePendingApprovals();
+      }
     }
   }
 
@@ -136,9 +150,9 @@ final class TandemSession({
   /// call of its turn has an answer. Does nothing unless [request] is
   /// pending, or while [isRunning] (an approved method runs).
   void reject(ApprovalRequest request) {
-    if (_undecided(request) case final call?) {
+    if (_pendingApprovalCall(request) case final call?) {
       _decide(call, .rejected, _rejected);
-      _end(followUp: _canFollowUp);
+      _completeOperation(followUp: _canFollowUp);
     }
   }
 
@@ -146,15 +160,9 @@ final class TandemSession({
   @override
   void dispose() {
     _run = null;
-    unawaited(_subscription?.cancel());
-    unawaited(_changes.cancel());
+    unawaited(_runSubscription?.cancel());
+    unawaited(_stateChangesSubscription.cancel());
     super.dispose();
-  }
-
-  void _sendNext() {
-    if (_waiting.isNotEmpty) {
-      _start(_waiting.removeAt(0));
-    }
   }
 
   /// Opens a run that answers the calls of the last run and then says
@@ -181,25 +189,25 @@ final class TandemSession({
         messages: [..._history],
         listing: listing,
       );
-      _subscription = _connection
+      _runSubscription = _connection
           .run(input)
           .listen(
-            (json) => _read(run, .fromJson(json)),
+            (json) => _handleEvent(run, .fromJson(json)),
             onError: (Object err, StackTrace st) {
               _report(err, st);
-              _break(run);
+              _handleConnectionLost(run);
             },
-            onDone: () => _break(run),
+            onDone: () => _handleConnectionLost(run),
             cancelOnError: true,
           );
     } catch (err, st) {
       _report(err, st);
       _items.add(const ChatNotice(.runFailed));
-      _end();
+      _completeOperation();
     }
   }
 
-  void _read(_Run run, AgentEvent event) {
+  void _handleEvent(_Run run, AgentEvent event) {
     switch (event) {
       case RunFinished():
         run.ended = true;
@@ -208,16 +216,19 @@ final class TandemSession({
         run.ended = true;
         _report(AgentRunException(code, message), .current);
         // ADK never saw the calls of this run answered: they are dropped.
-        _history.addAll(run.said);
+        _history.addAll(run.assistantMessages);
         _items.add(const ChatNotice(.runFailed));
-        _end();
+        _completeOperation();
       case _:
-        if (run.read(event, showText: !_stopping) case final messageId?) {
-          final message = AgentMessage(run.texts[messageId]!);
-          if (run.items[messageId] case final index?) {
-            _items[index] = message;
+        if (run.read(event, showText: !_stopping) case (
+          :final messageId,
+          :final text,
+        )) {
+          final message = AgentMessage(text);
+          if (run.textItemIndices[messageId] case final itemIndex?) {
+            _items[itemIndex] = message;
           } else {
-            run.items[messageId] = _items.length;
+            run.textItemIndices[messageId] = _items.length;
             _items.add(message);
           }
           notifyListeners();
@@ -226,15 +237,16 @@ final class TandemSession({
   }
 
   /// Keeps what [run] said and called, runs its calls in order, shows a card
-  /// for each call that needs approval, and starts the next run. When the
-  /// app's agent list throws, the run fails, the calls left get no card, and
-  /// the next message takes the answers.
+  /// for each call that needs approval, and starts the next run. A call that
+  /// needs approval but whose arguments are not a JSON object is refused
+  /// instead. When the app's agent list throws, the run fails, the calls left
+  /// get no card, and the next message takes the answers.
   Future<void> _finish(_Run run) async {
     _calls = [...run.calls.values];
     _history.addAll([
-      ...run.said,
+      ...run.assistantMessages,
       for (final call in _calls)
-        assistantToolCall(call.id, call.tool, call.json),
+        assistantToolCall(call.id, call.tool, call.argumentsJson),
     ]);
     try {
       for (final call in _calls) {
@@ -247,23 +259,43 @@ final class TandemSession({
           if (_run != run) {
             return; // Disposed meanwhile.
           }
+        } else if (!call.hasObjectArguments) {
+          call.answer = _refused(_argumentsNotAnObject);
         }
       }
-      if (!_stopping) {
+      final callsAwaitingApproval = [
+        for (final call in _calls)
+          if (call.answer == null) call,
+      ];
+      if (!_stopping && callsAwaitingApproval.isNotEmpty) {
         _cardContext = _context();
-        for (final call in _calls.where((call) => call.answer == null)) {
-          final doc = run.listing.description(call.tool);
-          call.request = ApprovalRequest(call.id, call.tool, doc, call.json);
-          _items.add(call.request!);
+        // The changes of the calls above arrive before the cards show, so
+        // they invalidate nothing.
+        await Future<void>.delayed(.zero);
+        if (_run != run) {
+          return; // Disposed meanwhile.
+        }
+        // Stop can come meanwhile too.
+        if (!_stopping) {
+          for (final call in callsAwaitingApproval) {
+            final request = ApprovalRequest(
+              toolCallId: call.id,
+              tool: call.tool,
+              description: run.listing.description(call.tool),
+              argumentsJson: call.argumentsJson,
+            );
+            call.request = request;
+            _items.add(request);
+          }
         }
       }
     } catch (err, st) {
       _report(err, st);
       _items.add(const ChatNotice(.runFailed));
-      _end();
+      _completeOperation();
       return;
     }
-    _end(followUp: _canFollowUp);
+    _completeOperation(followUp: _canFollowUp);
   }
 
   /// Runs the approved [call] like the calls at the end of a run, under a
@@ -274,7 +306,7 @@ final class TandemSession({
     notifyListeners();
     call.answer = await _execute(run, call);
     if (_run == run) {
-      _end(followUp: _canFollowUp);
+      _completeOperation(followUp: _canFollowUp);
     }
   }
 
@@ -285,7 +317,7 @@ final class TandemSession({
     final Object? result;
     final String answer;
     try {
-      args = jsonDecode(call.json) as Map<String, Object?>;
+      args = jsonDecode(call.argumentsJson) as Map<String, Object?>;
       result = await run.listing.call(call.tool, args, approved: call.approved);
       answer = jsonEncode(result);
     } on ToolCallRefused catch (err) {
@@ -305,25 +337,29 @@ final class TandemSession({
   }
 
   /// The call of [request] while its card is pending and nothing runs.
-  _Call? _undecided(ApprovalRequest request) => isRunning
-      ? null
-      : _calls
-            .where((call) => call.request == request && call.pending)
-            .firstOrNull;
+  _Call? _pendingApprovalCall(ApprovalRequest request) {
+    if (isRunning) {
+      return null;
+    }
+    return _calls
+        .where((call) => call.request == request && call.pending)
+        .firstOrNull;
+  }
 
   /// Shows the card of [call] as [status], with [answer] for the agent.
   void _decide(_Call call, ApprovalStatus status, [String? answer]) {
-    final request = call.request!;
-    _items[_items.indexOf(request)] = call.request = request.withStatus(status);
+    if (call.request case final request?) {
+      final updatedRequest = request.withStatus(status);
+      _items[_items.indexOf(request)] = updatedRequest;
+      call.request = updatedRequest;
+    }
     call.answer = answer;
   }
 
-  /// Invalidates the pending cards, for good, when what the agent sees
-  /// changed since they showed. It compares values, so the late emission of
-  /// a change made before the cards showed invalidates nothing.
-  void _invalidate() {
+  /// Invalidates the pending cards for good.
+  void _invalidatePendingApprovals() {
     final pending = _calls.where((call) => call.pending).toList();
-    if (pending.isNotEmpty && _context() != _cardContext) {
+    if (pending.isNotEmpty) {
       for (final call in pending) {
         _decide(call, .invalidated, _invalidated);
       }
@@ -343,25 +379,26 @@ final class TandemSession({
 
   /// [run] broke off without `RUN_FINISHED` or `RUN_ERROR`. What ADK kept of
   /// it is unknown, so the chat goes on in a new thread with no history.
-  void _break(_Run run) {
+  void _handleConnectionLost(_Run run) {
     if (run.ended) {
       return;
     }
     _items.add(const ChatNotice(.connectionLost));
     _threadId = newId();
     _history.clear();
-    _end();
+    _completeOperation();
   }
 
-  /// Closes the open run and starts the follow-up run that answers its calls,
-  /// or the run of the next waiting message.
-  void _end({bool followUp = false}) {
+  /// Ends the open run, or the approved call, and starts the next run: the
+  /// first queued message after the answers of the last turn, or, when no
+  /// message waits and [followUp], a run with just the answers.
+  void _completeOperation({bool followUp = false}) {
     _run = null;
     _stopping = false;
-    if (followUp) {
+    if (_queuedMessages.isNotEmpty) {
+      _start(_queuedMessages.removeAt(0));
+    } else if (followUp) {
       _start();
-    } else {
-      _sendNext();
     }
     notifyListeners();
   }
@@ -370,11 +407,11 @@ final class TandemSession({
 /// One run, assembled from its events: the text the user saw, and the calls
 /// of the tools [listing] lists. Calls of other tools run on the server.
 final class _Run(final AgentListing listing) {
-  /// The text shown, per `messageId`.
-  final texts = <String, String>{};
+  /// The text shown so far, per `messageId`.
+  final messageText = <String, String>{};
 
-  /// Where each message of [texts] is in the chat.
-  final items = <String, int>{};
+  /// Where each message of [messageText] is in the chat, per `messageId`.
+  final textItemIndices = <String, int>{};
 
   /// The calls of listed tools, per `toolCallId`.
   final calls = <String, _Call>{};
@@ -382,19 +419,23 @@ final class _Run(final AgentListing listing) {
   /// Whether `RUN_FINISHED` or `RUN_ERROR` came.
   bool ended = false;
 
-  /// [texts] as assistant messages of the history.
-  List<Map<String, Object?>> get said => [
-    for (final MapEntry(:key, :value) in texts.entries)
+  /// [messageText] as assistant messages of the history.
+  List<Map<String, Object?>> get assistantMessages => [
+    for (final MapEntry(:key, :value) in messageText.entries)
       assistantText(key, value),
   ];
 
-  /// Reads [event], with its text only while [showText]. Returns the id of
-  /// the message whose text grew.
-  String? read(AgentEvent event, {required bool showText}) {
+  /// Reads [event], with its text only while [showText]. Returns the message
+  /// whose text grew, with all its text so far.
+  ({String messageId, String text})? read(
+    AgentEvent event, {
+    required bool showText,
+  }) {
     switch (event) {
       case TextDelta(:final messageId, :final delta) when showText:
-        texts[messageId] = (texts[messageId] ?? '') + delta;
-        return messageId;
+        final text = (messageText[messageId] ?? '') + delta;
+        messageText[messageId] = text;
+        return (messageId: messageId, text: text);
       case ToolCallStarted(:final toolCallId, :final name)
           when listing.lists(name):
         calls[toolCallId] = _Call(toolCallId, name);
@@ -424,5 +465,14 @@ final class _Call(final String id, final String tool) {
   bool get approved => request?.status == .approved;
 
   /// [arguments], or an empty object when the agent sent none.
-  String get json => arguments.isEmpty ? _noArguments : arguments;
+  String get argumentsJson => arguments.isEmpty ? _noArguments : arguments;
+
+  /// Whether [argumentsJson] is a JSON object, as a method's arguments are.
+  bool get hasObjectArguments {
+    try {
+      return jsonDecode(argumentsJson) is Map<String, Object?>;
+    } on FormatException {
+      return false;
+    }
+  }
 }

@@ -72,7 +72,12 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
      create: (_) => OrderCubit(catalog: catalog, orders: orders),
      child: TandemScope<OrderCubit>(
        agent: Uri.parse('http://localhost:8000/agent'),
-       child: const Row(children: [OrderForm(), TandemChat()]),
+       child: const Row(
+         children: [
+           Expanded(child: OrderForm()),
+           SizedBox(width: 360, child: TandemChat()),
+         ],
+       ),
      ),
    )
    ```
@@ -116,7 +121,12 @@ await tester.pumpWidget(
       create: (_) => OrderCubit(catalog: catalog, orders: orders),
       child: TandemScope<OrderCubit>.connected(
         connection: agent,
-        child: const Row(children: [Expanded(child: OrderForm()), TandemChat()]),
+        child: const Row(
+          children: [
+            Expanded(child: OrderForm()),
+            SizedBox(width: 360, child: TandemChat()),
+          ],
+        ),
       ),
     ),
   ),

@@ -59,35 +59,35 @@ enum ApprovalStatus() {
 
 /// A call of a method listed with `.callsWithApproval`. The method runs only
 /// once the user approves it.
-final class const ApprovalRequest(
+final class const ApprovalRequest({
   /// The id of the call in the AG-UI thread.
-  final String toolCallId,
+  required final String toolCallId,
 
   /// The method's name in snake_case.
-  final String tool,
+  required final String tool,
 
   /// The method's doc comment.
-  final String description,
-  final String _arguments, {
+  required final String description,
+  required final String _argumentsJson,
 
   /// What became of the request.
   final ApprovalStatus status = .pending,
 }) extends ChatItem {
-  /// The agent called [tool] in the call [toolCallId], with its arguments as
-  /// the JSON it sent.
+  /// The agent called [tool] in the call [toolCallId], with `argumentsJson`,
+  /// the JSON object it sent as the arguments.
   this;
 
   /// The arguments the agent sent. They are decoded again on every read, so
   /// changing the map changes nothing the method gets.
   Map<String, Object?> get arguments =>
-      jsonDecode(_arguments) as Map<String, Object?>;
+      jsonDecode(_argumentsJson) as Map<String, Object?>;
 
   /// This request with [status].
   ApprovalRequest withStatus(ApprovalStatus status) => ApprovalRequest(
-    toolCallId,
-    tool,
-    description,
-    _arguments,
+    toolCallId: toolCallId,
+    tool: tool,
+    description: description,
+    argumentsJson: _argumentsJson,
     status: status,
   );
 }

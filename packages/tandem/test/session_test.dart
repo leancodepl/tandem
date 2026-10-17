@@ -7,12 +7,21 @@ import 'package:tandem/tandem.dart';
 
 import 'support/shop.dart';
 
+/// What `onAgentCall` heard.
+typedef _AgentCall = ({
+  String tool,
+  Map<String, Object?> arguments,
+  Object? result,
+});
+
 void main() {
   late Shop shop;
-  late List<List<Object?>> agentCalls;
+  late List<_AgentCall> agentCalls;
 
   setUp(() {
     shop = Shop();
+    // Tear-downs run last first: the session goes before the shop.
+    addTearDown(shop.close);
     agentCalls = [];
   });
 
@@ -26,8 +35,11 @@ void main() {
       connection: connection,
       onAgentCall:
           onAgentCall ??
-          (tool, arguments, result) =>
-              agentCalls.add([tool, arguments, result]),
+          (tool, arguments, result) => agentCalls.add((
+            tool: tool,
+            arguments: arguments,
+            result: result,
+          )),
     );
     addTearDown(session.dispose);
     return session;
@@ -83,13 +95,9 @@ void main() {
       jsonEncode(agent.requests[1]),
       isNot(anyOf(contains('call-1'), contains('find_customer'))),
     );
-    expect(agentCalls, [
-      [
-        'add',
-        {'item': 'milk'},
-        null,
-      ],
-    ]);
+    final [(:tool, :arguments, :result)] = agentCalls;
+    expect((tool, result), ('add', null));
+    expect(arguments, {'item': 'milk'});
     expect(_shown(session.items), [
       ('user', 'add milk'),
       ('agent', 'Done.', false),
@@ -153,7 +161,7 @@ void main() {
       final session = open(agent)..send('a');
       await pumpEventQueue();
 
-      final answer = _messages(agent.requests[1]).last['content']! as String;
+      final {'content': answer as String} = _messages(agent.requests[1]).last;
       expect(jsonDecode(answer), {
         'status': 'failed',
         'error': contains('item'),
@@ -202,7 +210,7 @@ void main() {
   test(
     'a broken stream shows connection lost and starts a new thread',
     () async {
-      final connection = _BreaksFirstRun(
+      final connection = _RawFirstRun(
         Stream.value({'type': 'RUN_STARTED'}),
         ScriptedAgent([
           (_) => const [AgentStep.say('Back')],
@@ -227,9 +235,8 @@ void main() {
   test('a stream error is reported and shows connection lost', () async {
     const error = AgentHttpException(422, 'messages: field required');
     final reported = _collectReports();
-    final session = open(
-      _BreaksFirstRun(Stream.error(error), ScriptedAgent([])),
-    )..send('a');
+    final session = open(_RawFirstRun(Stream.error(error), ScriptedAgent([])))
+      ..send('a');
     await pumpEventQueue();
 
     expect(reported.single.exception, error);
@@ -259,9 +266,9 @@ void main() {
       'tool-call-1 null',
     ]);
     expect(_card(session).status, ApprovalStatus.approved);
-    expect(agentCalls, [
-      ['clear', <String, Object?>{}, null],
-    ]);
+    final [(:tool, :arguments, :result)] = agentCalls;
+    expect((tool, result), ('clear', null));
+    expect(arguments, isEmpty);
   });
 
   test('Reject answers rejected_by_user at once', () async {
@@ -279,17 +286,19 @@ void main() {
     expect(_card(session).status, ApprovalStatus.rejected);
   });
 
-  test('an edit invalidates the card for good; the answer goes with the next '
-      'message', () async {
+  test('an edit invalidates the card for good, even one undone at once; the '
+      'answer goes with the next message', () async {
     final (session, agent) = await askToClear();
     final card = _card(session);
 
-    shop.add('y');
+    shop
+      ..clear()
+      ..add('x');
     await pumpEventQueue();
     expect(_card(session).status, ApprovalStatus.invalidated);
     session.approve(card);
     await pumpEventQueue();
-    expect(shop.items, ['x', 'y']);
+    expect(shop.items, ['x']);
     expect(agent.requests, hasLength(1));
 
     session.send('ok');
@@ -315,6 +324,58 @@ void main() {
       'tool-call-1 {"status":"cancelled"}',
       'user: wait',
     ]);
+  });
+
+  test('a message sent during a run goes after the answers of its calls, in '
+      'the same run', () async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        AgentStep.waitFor(gate.future),
+        const AgentStep.callTool('add', {'item': 'bread'}),
+      ],
+      (_) => const [AgentStep.say('Removed it.')],
+    ]);
+    final session = open(agent)..send('add bread');
+    await pumpEventQueue();
+    session.send('no bread after all');
+    gate.complete();
+    await pumpEventQueue();
+
+    expect(agent.requests, hasLength(2));
+    expect(_lines(agent.requests[1]), [
+      'user: add bread',
+      'asst-call-1 add {"item":"bread"}',
+      'tool-call-1 null',
+      'user: no bread after all',
+    ]);
+  });
+
+  test('a call that needs approval with arguments that are not an object is '
+      'refused without a card', () async {
+    shop.add('x');
+    final connection = _RawFirstRun(
+      Stream.fromIterable([
+        {
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'c1',
+          'toolCallName': 'clear',
+        },
+        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '[]'},
+        {'type': 'RUN_FINISHED'},
+      ]),
+      ScriptedAgent([
+        (_) => const [AgentStep.say('Sorry.')],
+      ]),
+    );
+    final session = open(connection)..send('clear it');
+    await pumpEventQueue();
+
+    expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+    expect(shop.items, ['x']);
+    final {'content': answer as String} = _messages(connection.requests[1])
+        .last;
+    expect(jsonDecode(answer), {'status': 'refused', 'reason': isNotEmpty});
   });
 
   test('several calls in one turn are answered in one run', () async {
@@ -350,9 +411,9 @@ void main() {
 ApprovalRequest _card(TandemSession session) =>
     session.items.whereType<ApprovalRequest>().single;
 
-/// A connection whose first run is [_first], such as a stream that ends
-/// after `RUN_STARTED`. Later runs play [_agent].
-final class _BreaksFirstRun(
+/// A connection whose first run is [_first], raw events such as a stream
+/// that ends after `RUN_STARTED`. Later runs play [_agent].
+final class _RawFirstRun(
   final Stream<Map<String, Object?>> _first,
   final ScriptedAgent _agent,
 ) implements AgentConnection {
@@ -374,8 +435,10 @@ List<FlutterErrorDetails> _collectReports() {
   return reported;
 }
 
-List<Map<String, Object?>> _messages(Map<String, Object?> request) =>
-    (request['messages']! as List<Object?>).cast();
+List<Map<String, Object?>> _messages(Map<String, Object?> request) {
+  final {'messages': messages as List<Object?>} = request;
+  return messages.cast();
+}
 
 /// The messages of [request], one line each: `user: go` for a text,
 /// `asst-call-1 add {"item":"x"}` for a call, `tool-call-1 null` for its

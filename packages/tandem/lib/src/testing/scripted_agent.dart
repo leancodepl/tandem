@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
-import 'package:tandem/src/ids.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 
+const _messagePrefix = 'msg-';
 const _toolCallPrefix = 'call-';
 const _failCode = 'SCRIPTED';
 const _scriptEndedCode = 'SCRIPT_ENDED';
@@ -55,6 +55,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
   this;
 
   final _requests = <Map<String, Object?>>[];
+  var _textMessages = 0;
   var _toolCalls = 0;
 
   /// The body of every run so far, oldest first.
@@ -83,7 +84,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
     for (final step in turns[turn](input)) {
       switch (step) {
         case _Say(:final text):
-          final messageId = newId();
+          final messageId = '$_messagePrefix${++_textMessages}';
           yield {
             'type': 'TEXT_MESSAGE_START',
             'messageId': messageId,
