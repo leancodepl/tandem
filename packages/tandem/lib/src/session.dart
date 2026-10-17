@@ -7,10 +7,10 @@ import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/errors.dart';
-import 'package:tandem/src/ids.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
+import 'package:uuid/uuid.dart';
 
 // Tool answers carry their status in `content`: ag-ui-adk ignores a tool
 // message's `error`, and the model reads an empty content as success.
@@ -68,7 +68,7 @@ final class TandemSession({
   final _items = <ChatItem>[];
   final _queuedMessages = <String>[];
   final _history = <Map<String, Object?>>[];
-  var _threadId = newId();
+  var _threadId = const Uuid().v4();
   _Run? _run;
   var _stopping = false;
 
@@ -162,7 +162,7 @@ final class TandemSession({
     }
     _history.addAll([
       for (final call in _calls) toolAnswer(call.id, call.answer ?? _cancelled),
-      if (text case final message?) userMessage(newId(), message),
+      if (text case final message?) userMessage(const Uuid().v4(), message),
     ]);
     _calls = [];
     try {
@@ -170,7 +170,7 @@ final class TandemSession({
       final run = _run = _Run(listing);
       final input = runInput(
         threadId: _threadId,
-        runId: newId(),
+        runId: const Uuid().v4(),
         messages: [..._history],
         listing: listing,
       );
@@ -364,7 +364,7 @@ final class TandemSession({
     }
     _items.add(const ChatNotice(.connectionLost));
     // What ADK kept of the run is unknown, so the chat moves to a new thread.
-    _threadId = newId();
+    _threadId = const Uuid().v4();
     _history.clear();
     _completeOperation();
   }
