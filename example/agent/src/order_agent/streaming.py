@@ -13,6 +13,9 @@ from google.adk.models import Gemini, LlmRequest, LlmResponse
 from google.adk.utils.streaming_utils import StreamingResponseAggregator
 from google.genai import types
 
+# Only paces the words so that the chat shows them arriving. Any value works, 0 too.
+_PACE_SECONDS = 0.03
+
 
 async def stream_turn(parts: list[types.Part]) -> AsyncGenerator[LlmResponse, None]:
     """Yields `parts` the way ADK's streaming Gemini does, which is the path ag-ui-adk uses."""
@@ -21,8 +24,7 @@ async def stream_turn(parts: list[types.Part]) -> AsyncGenerator[LlmResponse, No
         chunk = types.GenerateContentResponse(candidates=[candidate])
         async for response in aggregator.process_response(chunk):
             yield response
-        # The pace of a streaming model.
-        await asyncio.sleep(0.03)
+        await asyncio.sleep(_PACE_SECONDS)
     if (final := aggregator.close()) is not None:
         yield final
 
