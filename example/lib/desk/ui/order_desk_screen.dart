@@ -17,50 +17,49 @@ final class const OrderDeskScreen({
   final AgentConnection? connection,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final screen = Scaffold(
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: .stretch,
-          children: [
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: .stretch,
-                children: [
-                  Padding(padding: .fromLTRB(16, 16, 16, 0), child: _Header()),
-                  Expanded(child: OrderForm()),
-                ],
-              ),
-            ),
-            const VerticalDivider(width: 1),
-            SizedBox(
-              width: 360,
-              child: TandemChat(
-                approvalBuilder: (context, request) => const OrderSummary(),
-              ),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => BlocProvider(
+    create: (context) =>
+        OrderDeskCubit(catalog: .demo(), customers: .demo(), orders: Orders()),
+    child: switch (connection) {
+      final connection? => TandemScope<OrderDeskCubit>.connected(
+        connection: connection,
+        child: const _OrderDeskView(),
       ),
-    );
-    return BlocProvider(
-      create: (context) => OrderDeskCubit(
-        catalog: .demo(),
-        customers: .demo(),
-        orders: Orders(),
+      null => TandemScope<OrderDeskCubit>(
+        agent: Uri.parse('http://localhost:8000/agent'),
+        child: const _OrderDeskView(),
       ),
-      child: switch (connection) {
-        final connection? => TandemScope<OrderDeskCubit>.connected(
-          connection: connection,
-          child: screen,
-        ),
-        null => TandemScope<OrderDeskCubit>(
-          agent: Uri.parse('http://localhost:8000/agent'),
-          child: screen,
-        ),
-      },
-    );
-  }
+    },
+  );
+}
+
+final class const _OrderDeskView() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Row(
+        crossAxisAlignment: .stretch,
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: .stretch,
+              children: [
+                Padding(padding: .fromLTRB(16, 16, 16, 0), child: _Header()),
+                Expanded(child: OrderForm()),
+              ],
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          SizedBox(
+            width: 360,
+            child: TandemChat(
+              approvalBuilder: (context, request) => const OrderSummary(),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 final class const _Header() extends StatelessWidget {
