@@ -1,6 +1,4 @@
-/// A product the desk sells.
 class const Product({
-  /// The product's code in the catalog.
   required final String sku,
   required final String name,
   required final String description,
@@ -9,7 +7,6 @@ class const Product({
   required final double price,
 });
 
-/// The products the user can order.
 class Catalog(final List<Product> products) {
   new demo()
     : this(const [

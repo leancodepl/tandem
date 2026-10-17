@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-// The LeanCode palette.
 const _black = Color(0xFF0A0A0A);
 const _surface = Color(0xFF151513);
 const _surfaceRaised = Color(0xFF1D1D1A);
@@ -10,26 +9,17 @@ const _body = Color(0xFFD8D8D4);
 const _muted = Color(0xFFA3A3A0);
 const _yellow = Color(0xFFF0FD06);
 
-/// The colour of a done state, such as a placed order.
 const success = Color(0xFF80C340);
 
 /// The border of the brand callout, which marks what the agent changed.
 const calloutBorder = Color.fromRGBO(240, 253, 6, .5);
-
-/// The wash of the brand callout.
 const calloutWash = Color.fromRGBO(240, 253, 6, .06);
 
-/// The corners of a card. Blocks, such as buttons, have none.
+/// Cards have rounded corners; blocks, such as buttons, are sharp.
 const cardCorners = BorderRadius.all(.circular(4));
 
-// The system type. The LeanCode fonts, Switzer and Cabinet Grotesk, are not in
-// the repo: their ITF Free Font License forbids sharing them through one.
-const _title = TextStyle(fontWeight: .w600);
-const _display = TextStyle(fontWeight: .w700);
-const _sharp = RoundedRectangleBorder();
-
-/// The LeanCode dark look of the demo: yellow only for emphasis, such as the
-/// button that approves, with black text on it.
+/// The LeanCode dark look: yellow only for emphasis, such as the approve
+/// button.
 final deskTheme = ThemeData(
   colorScheme: const .dark(
     primary: _yellow,
@@ -43,11 +33,12 @@ final deskTheme = ThemeData(
     outline: _hairline,
     outlineVariant: _hairline,
   ),
+  // System fonts: the LeanCode fonts' license forbids sharing them in a repo.
   textTheme: const TextTheme(
-    displaySmall: _display,
-    titleLarge: _display,
-    titleMedium: _title,
-    titleSmall: _title,
+    displaySmall: TextStyle(fontWeight: .w700),
+    titleLarge: TextStyle(fontWeight: .w700),
+    titleMedium: TextStyle(fontWeight: .w600),
+    titleSmall: TextStyle(fontWeight: .w600),
     bodyLarge: TextStyle(color: _body),
     bodyMedium: TextStyle(color: _body),
     bodySmall: TextStyle(color: _muted),
@@ -63,10 +54,13 @@ final deskTheme = ThemeData(
     ),
   ),
   filledButtonTheme: FilledButtonThemeData(
-    style: FilledButton.styleFrom(shape: _sharp),
+    style: FilledButton.styleFrom(shape: const RoundedRectangleBorder()),
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
-    style: OutlinedButton.styleFrom(foregroundColor: _white, shape: _sharp),
+    style: OutlinedButton.styleFrom(
+      foregroundColor: _white,
+      shape: const RoundedRectangleBorder(),
+    ),
   ),
   textButtonTheme: TextButtonThemeData(
     style: TextButton.styleFrom(foregroundColor: _white),

@@ -162,7 +162,6 @@ void main() {
     expect(cubit.order.lines.single.quantity, 2);
     expect(cubit.canPlace, isFalse);
     expect(cubit.canEdit, isFalse);
-    // The agent can no longer change the order, nor place it again.
     expect(AgentListing.of(cubit).tools.map((tool) => tool['name']), [
       'search_catalog',
     ]);
@@ -198,7 +197,6 @@ void main() {
   });
 }
 
-/// [Orders] that take their time: they number an order once [gate] is open.
 final class _SlowOrders(final Future<void> gate) extends Orders {
   @override
   Future<OrderId> place(DeskOrder order) async {

@@ -5,20 +5,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem_bloc/tandem_bloc.dart';
 import 'package:tandem_bloc/testing.dart';
 
-Widget _screen(
-  ShoppingListCubit cubit,
-  AgentConnection agent, {
-  void Function(BuildContext context, AgentCall call)? onAgentCall,
-}) => MaterialApp(
-  home: BlocProvider.value(
-    value: cubit,
-    child: TandemScope<ShoppingListCubit>.connected(
-      connection: agent,
-      onAgentCall: onAgentCall,
-      child: const TandemChat(),
+final class const _Screen({
+  required final ShoppingListCubit cubit,
+  required final AgentConnection agent,
+  final void Function(BuildContext context, AgentCall call)? onAgentCall,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: BlocProvider.value(
+      value: cubit,
+      child: TandemScope<ShoppingListCubit>.connected(
+        connection: agent,
+        onAgentCall: onAgentCall,
+        child: const TandemChat(),
+      ),
     ),
-  ),
-);
+  );
+}
 
 Future<void> _send(WidgetTester tester, String text) async {
   await tester.enterText(find.byType(TextField), text);
@@ -56,9 +59,7 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextField), 'milk please');
-    await tester.tap(find.text('Send'));
-    await tester.pumpAndSettle();
+    await _send(tester, 'milk please');
 
     final cubit = tester
         .element(find.byType(TandemChat))
@@ -88,8 +89,8 @@ void main() {
       ],
       (_) => const [AgentStep.say('Added milk.')],
     ]);
-    await tester.pumpWidget(_screen(first, agent));
-    await tester.pumpWidget(_screen(second, agent));
+    await tester.pumpWidget(_Screen(cubit: first, agent: agent));
+    await tester.pumpWidget(_Screen(cubit: second, agent: agent));
 
     await _send(tester, 'milk please');
 
@@ -111,11 +112,19 @@ void main() {
     ]);
     final heard = <String>[];
     await tester.pumpWidget(
-      _screen(cubit, agent, onAgentCall: (context, _) => heard.add('first')),
+      _Screen(
+        cubit: cubit,
+        agent: agent,
+        onAgentCall: (context, _) => heard.add('first'),
+      ),
     );
     await _send(tester, 'milk please');
     await tester.pumpWidget(
-      _screen(cubit, agent, onAgentCall: (context, _) => heard.add('second')),
+      _Screen(
+        cubit: cubit,
+        agent: agent,
+        onAgentCall: (context, _) => heard.add('second'),
+      ),
     );
     await _send(tester, 'and bread');
 

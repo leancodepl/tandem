@@ -1,16 +1,12 @@
-/// A company that orders from the desk.
 class const Customer({
   required final String id,
   required final String name,
 
   /// The person at the customer who sends the orders.
   required final String contact,
-
-  /// The price list the customer's prices follow.
   required final String priceList,
 });
 
-/// The companies the user can order for.
 class Customers(final List<Customer> all) {
   new demo()
     : this(const [

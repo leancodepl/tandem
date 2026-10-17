@@ -7,24 +7,8 @@ import 'package:example/desk/ui/highlights.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-const _gap = 16.0;
-const _lineGap = 4.0;
-// How the lines table shares its width, so it shrinks with the form. A price
-// like `15 550.05 PLN` must fit its column.
-const _productFlex = 7;
-const _quantityFlex = 4;
-const _priceFlex = 5;
-const _discountFlex = 3;
-const _pickerSpan = Duration(days: 365);
-
-const _labelGap = '  ';
-const _empty = 'Paste a customer e-mail into the chat to start an order.';
-const _noDiscount = '–';
-
-/// The order as the user sees it: the customer, the lines with their prices,
-/// the delivery and the total. The agent fills it through the cubit's
-/// methods, and the user changes it through the same ones, until it is
-/// placed.
+/// The order as the user sees it. The agent and the user change it through
+/// the same cubit methods, until it is placed.
 final class const OrderForm({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -40,12 +24,14 @@ final class const OrderForm({super.key}) extends StatelessWidget {
     final customer = order.customer;
     final delivery = order.delivery;
     if (customer == null && order.lines.isEmpty && delivery == null) {
-      return const Center(child: Text(_empty));
+      return const Center(
+        child: Text('Paste a customer e-mail into the chat to start an order.'),
+      );
     }
     return SingleChildScrollView(
-      padding: const .all(_gap),
+      padding: const .all(16),
       child: Column(
-        spacing: _gap,
+        spacing: 16,
         crossAxisAlignment: .stretch,
         children: [
           if (placed != null) _PlacedBanner(placed),
@@ -53,7 +39,7 @@ final class const OrderForm({super.key}) extends StatelessWidget {
             // Side by side, so the whole order fits an iPad screen.
             IntrinsicHeight(
               child: Row(
-                spacing: _gap,
+                spacing: 16,
                 crossAxisAlignment: .stretch,
                 children: [
                   if (customer != null)
@@ -84,9 +70,9 @@ final class const _PlacedBanner(final PlacedOrder placed)
         side: BorderSide(color: success),
       ),
       child: Padding(
-        padding: const .all(_gap),
+        padding: const .all(16),
         child: Row(
-          spacing: _gap,
+          spacing: 16,
           children: [
             const Icon(Icons.check_circle, color: success),
             Column(
@@ -143,8 +129,8 @@ final class const _DeliveryCard(
     final date = await showDatePicker(
       context: context,
       initialDate: delivery.date,
-      firstDate: delivery.date.subtract(_pickerSpan),
-      lastDate: delivery.date.add(_pickerSpan),
+      firstDate: delivery.date.subtract(const Duration(days: 365)),
+      lastDate: delivery.date.add(const Duration(days: 365)),
     );
     if (date != null && context.mounted) {
       context.read<OrderDeskCubit>().setDelivery(delivery.address, date);
@@ -152,7 +138,6 @@ final class const _DeliveryCard(
   }
 }
 
-/// A card with a [title] that is highlighted as [area].
 final class const _Section({
   required final String title,
   required final String area,
@@ -164,9 +149,9 @@ final class const _Section({
     child: Highlighted(
       area: area,
       child: Padding(
-        padding: const .all(_gap),
+        padding: const .all(16),
         child: Column(
-          spacing: _lineGap,
+          spacing: 4,
           crossAxisAlignment: .start,
           children: [
             Text(title, style: Theme.of(context).textTheme.labelMedium),
@@ -178,7 +163,6 @@ final class const _Section({
   );
 }
 
-/// A [label] in the muted colour, then its [value].
 final class const _Detail(final String label, final String value)
     extends StatelessWidget {
   @override
@@ -186,7 +170,7 @@ final class const _Detail(final String label, final String value)
     TextSpan(
       children: [
         TextSpan(
-          text: '$label$_labelGap',
+          text: '$label  ',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -209,13 +193,13 @@ final class const _Lines(
       child: Column(
         children: [
           Padding(
-            padding: const .all(_gap),
-            child: _columns(
-              Text('Product', style: label),
-              Text('Quantity', style: label, textAlign: .center),
-              Text('Unit price', style: label, textAlign: .end),
-              Text('Discount', style: label, textAlign: .end),
-              Text('Total', style: label, textAlign: .end),
+            padding: const .all(16),
+            child: _Columns(
+              product: Text('Product', style: label),
+              quantity: Text('Quantity', style: label, textAlign: .center),
+              unitPrice: Text('Unit price', style: label, textAlign: .end),
+              discount: Text('Discount', style: label, textAlign: .end),
+              total: Text('Total', style: label, textAlign: .end),
             ),
           ),
           for (final line in lines)
@@ -232,70 +216,71 @@ final class const _LineRow({
   required final bool editable,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return Highlighted(
-      area: lineArea(line.sku),
-      child: Padding(
-        padding: const .all(_gap),
-        child: _columns(
-          Column(
-            crossAxisAlignment: .start,
+  Widget build(BuildContext context) => Highlighted(
+    area: lineArea(line.sku),
+    child: Padding(
+      padding: const .all(16),
+      child: _Columns(
+        product: Column(
+          crossAxisAlignment: .start,
+          children: [
+            Text(line.name),
+            Text(line.sku, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+        quantity: FittedBox(
+          fit: .scaleDown,
+          child: Row(
+            mainAxisSize: .min,
             children: [
-              Text(line.name),
-              Text(line.sku, style: Theme.of(context).textTheme.bodySmall),
+              IconButton(
+                icon: const Icon(Icons.remove),
+                tooltip: 'One less',
+                onPressed: editable
+                    ? () => _setQuantity(context, line.quantity - 1)
+                    : null,
+              ),
+              Text('${line.quantity}'),
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: 'One more',
+                onPressed: editable
+                    ? () => _setQuantity(context, line.quantity + 1)
+                    : null,
+              ),
             ],
           ),
-          FittedBox(
-            fit: .scaleDown,
-            child: Row(
-              mainAxisSize: .min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove),
-                  tooltip: 'One less',
-                  onPressed: editable
-                      ? () => _setQuantity(context, line.quantity - 1)
-                      : null,
-                ),
-                Text('${line.quantity}'),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  tooltip: 'One more',
-                  onPressed: editable
-                      ? () => _setQuantity(context, line.quantity + 1)
-                      : null,
-                ),
-              ],
-            ),
-          ),
-          Text(line.unitPrice, textAlign: .end),
-          Text(line.discount ?? _noDiscount, textAlign: .end),
-          Text(line.lineTotal, textAlign: .end),
         ),
+        unitPrice: Text(line.unitPrice, textAlign: .end),
+        discount: Text(line.discount ?? '–', textAlign: .end),
+        total: Text(line.lineTotal, textAlign: .end),
       ),
-    );
-  }
+    ),
+  );
 
   void _setQuantity(BuildContext context, int quantity) =>
       context.read<OrderDeskCubit>().setQuantity(line.sku, quantity);
 }
 
-/// The five columns of the lines table.
-Widget _columns(
-  Widget product,
-  Widget quantity,
-  Widget unitPrice,
-  Widget discount,
-  Widget total,
-) => Row(
-  children: [
-    Expanded(flex: _productFlex, child: product),
-    Expanded(flex: _quantityFlex, child: quantity),
-    Expanded(flex: _priceFlex, child: unitPrice),
-    Expanded(flex: _discountFlex, child: discount),
-    Expanded(flex: _priceFlex, child: total),
-  ],
-);
+final class const _Columns({
+  required final Widget product,
+  required final Widget quantity,
+  required final Widget unitPrice,
+  required final Widget discount,
+  required final Widget total,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Row(
+    // A price like 15 550.05 PLN must fit its column.
+    children: [
+      Expanded(flex: 7, child: product),
+      Expanded(flex: 4, child: quantity),
+      Expanded(flex: 5, child: unitPrice),
+      Expanded(flex: 3, child: discount),
+      Expanded(flex: 5, child: total),
+    ],
+  );
+}
 
 final class const _Total(final String total) extends StatelessWidget {
   @override
@@ -305,10 +290,9 @@ final class const _Total(final String total) extends StatelessWidget {
       mainAxisAlignment: .end,
       crossAxisAlignment: .baseline,
       textBaseline: .alphabetic,
-      spacing: _gap,
+      spacing: 16,
       children: [
         Text('Total', style: text.titleMedium),
-        // Smaller only where the form is too narrow for it.
         Flexible(
           child: FittedBox(
             fit: .scaleDown,

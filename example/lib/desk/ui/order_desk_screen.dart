@@ -8,21 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tandem_bloc/tandem_bloc.dart';
 
-final _agent = Uri.parse('http://localhost:8000/agent');
-
-/// The width of the chat beside the form.
-const _chatWidth = 360.0;
-
-/// The hairline between the form and the chat.
-const _dividerWidth = 1.0;
-
-const _gap = 16.0;
-const _headerPadding = EdgeInsets.fromLTRB(_gap, _gap, _gap, 0);
-const _title = 'Order desk';
-const _titleSeparator = '  ·  ';
-
-/// The order desk: the order form under a header, with the chat of the agent
-/// beside it.
+/// The order form with the agent's chat beside it.
 ///
 /// It talks to the agent at `localhost:8000`, or over [connection], such as
 /// a `ScriptedAgent` in a test.
@@ -50,21 +36,23 @@ final class _OrderDeskScreenState() extends State<OrderDeskScreen> {
       child: Scaffold(
         body: SafeArea(
           child: Row(
-            // The form starts at the top and does not move as it fills.
             crossAxisAlignment: .stretch,
             children: [
               const Expanded(
                 child: Column(
                   crossAxisAlignment: .stretch,
                   children: [
-                    Padding(padding: _headerPadding, child: _Header()),
+                    Padding(
+                      padding: .fromLTRB(16, 16, 16, 0),
+                      child: _Header(),
+                    ),
                     Expanded(child: OrderForm()),
                   ],
                 ),
               ),
-              const VerticalDivider(width: _dividerWidth),
+              const VerticalDivider(width: 1),
               SizedBox(
-                width: _chatWidth,
+                width: 360,
                 child: TandemChat(
                   approvalBuilder: (context, request) => const OrderSummary(),
                 ),
@@ -87,7 +75,7 @@ final class _OrderDeskScreenState() extends State<OrderDeskScreen> {
           child: screen,
         ),
         null => TandemScope<OrderDeskCubit>(
-          agent: _agent,
+          agent: Uri.parse('http://localhost:8000/agent'),
           onAgentCall: (context, call) => _highlights.onAgentCall(call),
           child: screen,
         ),
@@ -96,7 +84,6 @@ final class _OrderDeskScreenState() extends State<OrderDeskScreen> {
   }
 }
 
-/// The title of the screen, with the customer once the order has one.
 final class const _Header() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -106,11 +93,11 @@ final class const _Header() extends StatelessWidget {
     final theme = Theme.of(context);
     return Text.rich(
       TextSpan(
-        text: _title,
+        text: 'Order desk',
         children: [
           if (customer != null)
             TextSpan(
-              text: '$_titleSeparator${customer.name}',
+              text: '  ·  ${customer.name}',
               style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
             ),
         ],

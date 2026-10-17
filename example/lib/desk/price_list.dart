@@ -1,9 +1,3 @@
-const _acmeList = 'Acme 2026';
-const _monitorPrefix = 'VM-';
-const _monitorDiscount = 12;
-const _bulkMonitors = 15;
-const _bulkExtraDiscount = 5;
-
 /// The percent off [sku] for a customer on [priceList] whose order has
 /// [quantities] pieces by sku.
 ///
@@ -14,13 +8,11 @@ int discountPercent(
   String sku,
   Map<String, int> quantities,
 ) {
-  if (priceList != _acmeList || !sku.startsWith(_monitorPrefix)) {
+  if (priceList != 'Acme 2026' || !sku.startsWith('VM-')) {
     return 0;
   }
   final monitors = quantities.entries
-      .where((entry) => entry.key.startsWith(_monitorPrefix))
+      .where((entry) => entry.key.startsWith('VM-'))
       .fold(0, (sum, entry) => sum + entry.value);
-  return monitors >= _bulkMonitors
-      ? _monitorDiscount + _bulkExtraDiscount
-      : _monitorDiscount;
+  return monitors >= 15 ? 17 : 12;
 }

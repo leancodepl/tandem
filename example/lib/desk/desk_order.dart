@@ -5,23 +5,15 @@ import 'package:example/desk/price_list.dart';
 
 /// The order as the user sees it, with every price worked out.
 class const DeskOrder({
-  /// Who the order is for, or null before it is set.
   final Customer? customer,
   required final List<DeskLine> lines,
-
-  /// Where and when the order goes, or null before it is set.
   final DeskDelivery? delivery,
-
-  /// The price of all lines together.
   required final String total,
 });
 
-/// One product of the order.
 class const DeskLine({
   required final String sku,
   required final String name,
-
-  /// How many pieces.
   required final int quantity,
 
   /// The price of one piece after the discount.
@@ -29,12 +21,9 @@ class const DeskLine({
 
   /// The discount on the list price, like `12 %`, or null for none.
   final String? discount,
-
-  /// The unit price times the quantity.
   required final String lineTotal,
 });
 
-/// Where and when the order goes.
 class const DeskDelivery({
   required final String address,
   required final DateTime date,
@@ -56,8 +45,6 @@ class const OrderDeskState({
   /// The pieces by sku, in the order the products were added.
   final Map<String, int> quantities = const {},
   final DeskDelivery? delivery,
-
-  /// What was placed, or null while the order is not placed yet.
   final PlacedOrder? placed,
 }) {
   OrderDeskState copyWith({

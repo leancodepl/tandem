@@ -1,7 +1,5 @@
-/// The state of the order screen.
 class OrderState({required final OrderDraft draft});
 
-/// The order the user is filling in.
 class const OrderDraft({required final List<OrderLine> lines}) {
   static const empty = OrderDraft(lines: []);
 
@@ -36,7 +34,6 @@ class const Product({
 
 extension type const OrderId(String value);
 
-/// The products the user can order.
 class Catalog(final List<Product> products) {
   Future<List<Product>> search(String query) async {
     final normalizedQuery = query.toLowerCase();
@@ -50,7 +47,6 @@ class Catalog(final List<Product> products) {
   }
 }
 
-/// Where placed orders go.
 class Orders() {
   final placed = <OrderDraft>[];
 

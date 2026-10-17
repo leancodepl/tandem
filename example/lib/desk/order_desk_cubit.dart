@@ -30,14 +30,10 @@ class OrderDeskCubit({
   /// The order as the user sees it on the screen.
   DeskOrder get order => state.priced(catalog);
 
-  /// What was placed, or null while the order is not placed yet.
   PlacedOrder? get placed => state.placed;
 
-  /// Whether the order can still change: a placed order is read-only.
   bool get canEdit => placed == null;
 
-  /// Whether the order has lines, a customer and a delivery, and is not
-  /// placed yet.
   bool get canPlace =>
       canEdit &&
       state.quantities.isNotEmpty &&
@@ -71,11 +67,8 @@ class OrderDeskCubit({
 
   /// Places the order exactly as it is on the screen.
   Future<OrderId> placeOrder() async {
-    // Placing takes a while, and the user may change the screen meanwhile:
-    // that is not part of what is placed.
     final snapshot = order;
     final id = await orders.place(snapshot);
-    // The screen may have closed while the order was placed.
     if (!isClosed) {
       emit(
         state.copyWith(

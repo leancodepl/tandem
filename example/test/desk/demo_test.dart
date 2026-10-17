@@ -11,10 +11,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem_bloc/tandem_bloc.dart';
 import 'package:tandem_bloc/testing.dart';
 
-const _email =
-    'Hi, could you send us 40 HDMI cables (2 m) and 12 of the 27-inch '
-    'monitors like last time? Delivery to Magazynowa 5, Poznań by Friday '
-    'please. Thanks, Marta, Acme Office Supply';
 const _empty = 'Paste a customer e-mail into the chat to start an order.';
 const _customer = 'Acme Office Supply Sp. z o.o.';
 const _cables = 'VC-HDMI-2M';
@@ -22,14 +18,7 @@ const _cablesName = 'HDMI 2.1 cable, 2 m';
 const _monitor = 'VM-27Q';
 const _monitorName = 'Voltra ProView 27Q, 27" QHD monitor';
 const _address = 'Magazynowa 5, 61-001 Poznań';
-const _invalidated = 'The screen changed. Ask the agent again.';
 
-// An iPad Pro 11" in landscape, where the demo is shown.
-const _landscape = Size(1180, 820);
-// An iPad Pro 11" held upright: the form gets the 474 pt left beside the chat.
-const _portrait = Size(834, 1194);
-
-/// What the agent does to fill the order in one turn.
 const _fillOrder = [
   AgentStep.callTool('set_customer', {'customerId': 'acme'}),
   AgentStep.callTool('set_quantity', {'sku': _cables, 'quantity': 40}),
@@ -79,7 +68,12 @@ void main() {
       await _pumpScreen(tester, agent);
       expect(find.text(_empty), findsOneWidget);
 
-      await _send(tester, _email);
+      await _send(
+        tester,
+        'Hi, could you send us 40 HDMI cables (2 m) and 12 of the 27-inch '
+        'monitors like last time? Delivery to Magazynowa 5, Poznań by Friday '
+        'please. Thanks, Marta, Acme Office Supply',
+      );
 
       expect(find.text(_empty), findsNothing);
       expect(find.text(_customer), findsOneWidget);
@@ -120,13 +114,11 @@ void main() {
 
       expect(find.text('Order ORD-1042 placed for 23 Oct.'), findsOneWidget);
       expect(find.text('Approved'), findsOneWidget);
-      // The order stays on the screen, shown as placed.
       expect(find.text('Placed as ORD-1042'), findsOneWidget);
       expect(find.text('Delivery on 23 Oct 2026'), findsOneWidget);
       expect(find.text(_customer), findsOneWidget);
       expect(find.text(_monitorName), findsOneWidget);
       expect(find.text(_empty), findsNothing);
-      // The placed order is read-only: no button of the form changes it.
       expect(
         find.descendant(of: find.byType(OrderForm), matching: _enabledButton),
         findsNothing,
@@ -137,8 +129,7 @@ void main() {
       expect(cubit.orders.placed.single.total, '16 710.05 PLN');
 
       final requests = agent.requests;
-      // The answers of set_quantity and set_delivery reached the agent, then
-      // the user's message, and the agent saw the monitors the user added.
+      // The three calls of the second turn each answered null.
       final answers = _messagesOf(requests[2]).reversed.take(3);
       expect(answers.map((message) => message['role']), everyElement('tool'));
       expect(
@@ -155,7 +146,6 @@ void main() {
         _messagesOf(requests[4]).last,
         containsPair('content', '"ORD-1042"'),
       );
-      // Placed: the agent can no longer change the order, nor place it again.
       expect(_toolsOffered(requests[4]), ['search_catalog']);
     },
   );
@@ -188,7 +178,10 @@ void main() {
 
     expect(find.text('24 Oct 2026'), findsOneWidget);
     expect(_inChat('Delivery: $_address, 24 Oct 2026'), findsOneWidget);
-    expect(find.text(_invalidated), findsOneWidget);
+    expect(
+      find.text('The screen changed. Ask the agent again.'),
+      findsOneWidget,
+    );
     expect(find.text('Approve'), findsNothing);
   });
 
@@ -223,7 +216,7 @@ void main() {
       expect(_calloutOf(tester, area), 0);
     }
 
-    // Nothing else lights up.
+    // A change made by the user gets no callout.
     await tester.tap(_plusOf(_monitor));
     await tester.pump();
     expect(_calloutOf(tester, monitor), 0);
@@ -242,7 +235,7 @@ void main() {
         (_) => _fillOrder,
         (_) => const [AgentStep.say('Done.')],
       ]),
-      size: _portrait,
+      size: const Size(834, 1194),
     );
 
     await _send(tester, 'Order');
@@ -252,7 +245,6 @@ void main() {
   });
 }
 
-/// The total the agent sees on the screen in [request].
 String _totalSeen(Map<String, Object?> request) {
   if (request case {'context': [{'value': final String order}]}) {
     if (jsonDecode(order) case {'total': final String total}) {
@@ -269,7 +261,6 @@ List<Map<String, Object?>> _messagesOf(Map<String, Object?> request) {
   throw StateError('The request has no messages: $request');
 }
 
-/// The names of the tools the agent was offered in [request].
 List<Object?> _toolsOffered(Map<String, Object?> request) {
   if (request case {'tools': final List<Object?> tools}) {
     return [
@@ -280,11 +271,10 @@ List<Object?> _toolsOffered(Map<String, Object?> request) {
   throw StateError('The request has no tools: $request');
 }
 
-/// Shows the screen with [agent] as the model, at the size of an iPad.
 Future<void> _pumpScreen(
   WidgetTester tester,
   ScriptedAgent agent, {
-  Size size = _landscape,
+  Size size = const Size(1180, 820), // An iPad Pro 11" in landscape.
 }) async {
   tester.view
     ..physicalSize = size
@@ -295,8 +285,8 @@ Future<void> _pumpScreen(
   );
 }
 
-/// Writes [text] in the chat, sends it and plays the agent's answer, before
-/// the callouts it causes have faded.
+/// Sends [text] and plays the agent's answer, but stops before the callouts
+/// fade.
 Future<void> _type(WidgetTester tester, String text) async {
   await tester.enterText(find.byType(TextField), text);
   await tester.tap(find.text('Send'));
@@ -304,19 +294,16 @@ Future<void> _type(WidgetTester tester, String text) async {
   await tester.pump(const Duration(milliseconds: 100));
 }
 
-/// Like [_type], and waits for the agent to finish and the callouts to fade.
 Future<void> _send(WidgetTester tester, String text) async {
   await _type(tester, text);
   await tester.pumpAndSettle();
 }
 
-/// The + button of the order line of [sku].
 Finder _plusOf(String sku) => find.descendant(
   of: find.byKey(ValueKey(sku)),
   matching: find.byIcon(Icons.add),
 );
 
-/// A button that does something when tapped.
 final _enabledButton = find.byWidgetPredicate(
   (widget) => switch (widget) {
     IconButton(:final onPressed) ||
@@ -325,12 +312,10 @@ final _enabledButton = find.byWidgetPredicate(
   },
 );
 
-/// The [text] shown in the chat, not on the form.
 Finder _inChat(String text) =>
     find.descendant(of: find.byType(TandemChat), matching: find.text(text));
 
-/// How strong the callout of the highlighted area that holds [inside] is, from
-/// 0 (none) to 1 (just changed).
+/// The callout of the area that holds [inside]: 1 just changed, 0 none.
 double _calloutOf(WidgetTester tester, Finder inside) {
   final area = find.ancestor(of: inside, matching: find.byType(Highlighted));
   final box = find.descendant(of: area, matching: find.byType(DecoratedBox));
