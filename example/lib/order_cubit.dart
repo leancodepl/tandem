@@ -33,8 +33,12 @@ class OrderCubit({required final Catalog catalog, required final Orders orders})
 
   /// Places the order exactly as it is on the screen.
   Future<OrderId> placeOrder() async {
-    final id = await orders.place(draft);
-    emit(.new(draft: .empty));
+    final submitted = draft;
+    final id = await orders.place(submitted);
+    // An edit made meanwhile is not in the placed order, so it must stay.
+    if (identical(draft, submitted)) {
+      emit(.new(draft: .empty));
+    }
     return id;
   }
 }

@@ -85,8 +85,19 @@ void main() {
       listing.call('place_order', {}),
       throwsA(isA<ToolCallRefused>()),
     );
-    expect(await listing.call('place_order', {}, approved: true), 'ORD-1042');
+    expect(await listing.call('place_order', {}, approved: true), 'ORD-1');
     expect(cubit.draft.lines, isEmpty);
+  });
+
+  test('an edit made while the order is placed stays on the screen', () async {
+    cubit.setQuantity('VM-27Q', 2);
+
+    final placing = cubit.placeOrder();
+    cubit.setQuantity('VM-27Q', 3);
+    await placing;
+
+    expect(orders.placed.single.lines.map((line) => line.quantity), [2]);
+    expect(cubit.draft.lines.map((line) => line.quantity), [3]);
   });
 
   test(
