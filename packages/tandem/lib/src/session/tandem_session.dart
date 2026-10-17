@@ -270,13 +270,12 @@ final class TandemSession({
         approved: call.approved,
       );
       answer = .returned(result);
+    } on ToolCallRefused catch (refusal) {
+      return .refused(refusal.message);
     } catch (err, st) {
-      switch (err) {
-        case ToolCallRefused(:final message):
-          return .refused(message);
-        // The agent's bad input. A RangeError is a bug, so it is reported.
-        case ArgumentError() when err is! RangeError:
-          return .refused('$err');
+      // The agent's bad input. A RangeError is a bug, so it is reported.
+      if (err is ArgumentError && err is! RangeError) {
+        return .refused('$err');
       }
       _report(err, st);
       return .failed(err);
