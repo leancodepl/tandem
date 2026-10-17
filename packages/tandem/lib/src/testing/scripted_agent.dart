@@ -4,12 +4,6 @@ import 'dart:convert';
 
 import 'package:tandem/src/protocol/agent_connection.dart';
 
-const _messagePrefix = 'msg-';
-const _toolCallPrefix = 'call-';
-const _failCode = 'SCRIPTED';
-const _scriptEndedCode = 'SCRIPT_ENDED';
-const _scriptEndedMessage = 'The script has no more turns.';
-
 /// What the agent does in one run, given the request of that run.
 typedef AgentTurn = List<AgentStep> Function(Map<String, Object?> request);
 
@@ -76,15 +70,15 @@ final class ScriptedAgent(final List<AgentTurn> turns)
     if (turn >= turns.length) {
       yield {
         'type': 'RUN_ERROR',
-        'message': _scriptEndedMessage,
-        'code': _scriptEndedCode,
+        'message': 'The script has no more turns.',
+        'code': 'SCRIPT_ENDED',
       };
       return;
     }
     for (final step in turns[turn](input)) {
       switch (step) {
         case _Say(:final text):
-          final messageId = '$_messagePrefix${++_textMessages}';
+          final messageId = 'msg-${++_textMessages}';
           yield {
             'type': 'TEXT_MESSAGE_START',
             'messageId': messageId,
@@ -97,7 +91,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
           };
           yield {'type': 'TEXT_MESSAGE_END', 'messageId': messageId};
         case _CallTool(:final name, :final arguments):
-          final toolCallId = '$_toolCallPrefix${++_toolCalls}';
+          final toolCallId = 'call-${++_toolCalls}';
           yield {
             'type': 'TOOL_CALL_START',
             'toolCallId': toolCallId,
@@ -114,7 +108,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
         case _WaitFor(:final signal):
           await signal;
         case _Fail(:final message):
-          yield {'type': 'RUN_ERROR', 'message': message, 'code': _failCode};
+          yield {'type': 'RUN_ERROR', 'message': message, 'code': 'SCRIPTED'};
           return;
       }
     }

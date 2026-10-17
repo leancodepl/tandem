@@ -3,22 +3,6 @@ import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/session.dart';
 import 'package:tandem/src/session_scope.dart';
 
-const _gap = 8.0;
-
-const _hint = 'Message';
-const _send = 'Send';
-const _stop = 'Stop';
-const _stopping = 'Stopping…';
-const _stopped = 'Stopped';
-const _runFailed = 'The agent ran into a problem. Try again.';
-const _connectionLost = 'Connection lost. Starting a new conversation.';
-const _approve = 'Approve';
-const _reject = 'Reject';
-const _approved = 'Approved';
-const _rejected = 'Rejected';
-const _cancelled = 'Cancelled';
-const _invalidated = 'The screen changed. Ask the agent again.';
-
 /// Builds what an approval card shows above Tandem's own Approve and Reject.
 typedef ApprovalBuilder = Widget Function(
   BuildContext context,
@@ -63,10 +47,13 @@ final class _TandemChatState() extends State<TandemChat> {
             // Reversed, so that the newest item stays in view.
             child: ListView.builder(
               reverse: true,
-              padding: const .all(_gap),
+              padding: const .all(8),
               itemCount: items.length,
-              itemBuilder: (context, index) =>
-                  _buildItem(session, items[items.length - 1 - index]),
+              itemBuilder: (context, index) => _Item(
+                items[items.length - 1 - index],
+                session,
+                widget.approvalBuilder,
+              ),
             ),
           ),
           _InputRow(session, _messageController),
@@ -74,8 +61,15 @@ final class _TandemChatState() extends State<TandemChat> {
       ),
     );
   }
+}
 
-  Widget _buildItem(TandemSession session, ChatItem item) => switch (item) {
+final class const _Item(
+  final ChatItem item,
+  final TandemSession session,
+  final ApprovalBuilder? approvalBuilder,
+) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => switch (item) {
     UserMessage(:final text) => _Bubble(text, fromUser: true),
     AgentMessage(:final text, :final stopped) => _Bubble(
       text,
@@ -83,10 +77,10 @@ final class _TandemChatState() extends State<TandemChat> {
     ),
     ChatNotice(:final kind) => _Notice(kind),
     // A card of another call that lands at the same index gets a new state.
-    ApprovalRequest(:final toolCallId) => _ApprovalCard(
-      item,
-      widget.approvalBuilder,
-      key: ValueKey((session, toolCallId)),
+    final ApprovalRequest request => _ApprovalCard(
+      request,
+      approvalBuilder,
+      key: ValueKey((session, request.toolCallId)),
     ),
   };
 }
@@ -104,13 +98,13 @@ final class const _Bubble(
       child: Card(
         color: fromUser ? colors.primaryContainer : colors.surfaceContainer,
         child: Padding(
-          padding: const .all(_gap),
+          padding: const .all(8),
           child: Column(
             crossAxisAlignment: .start,
             children: [
               Text(text),
               if (stopped)
-                Text(_stopped, style: Theme.of(context).textTheme.bodySmall),
+                Text('Stopped', style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
         ),
@@ -122,12 +116,12 @@ final class const _Bubble(
 final class const _Notice(final ChatNoticeKind kind) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const .all(_gap),
+    padding: const .all(8),
     child: Text(
       switch (kind) {
-        .stopped => _stopped,
-        .runFailed => _runFailed,
-        .connectionLost => _connectionLost,
+        .stopped => 'Stopped',
+        .runFailed => 'The agent ran into a problem. Try again.',
+        .connectionLost => 'Connection lost. Starting a new conversation.',
       },
       textAlign: .center,
       style: Theme.of(context).textTheme.bodySmall,
@@ -147,7 +141,7 @@ final class const _ApprovalCard(
     final canDecide = !session.isRunning;
     return Card(
       child: Padding(
-        padding: const .all(_gap),
+        padding: const .all(8),
         child: Column(
           crossAxisAlignment: .start,
           children: [
@@ -163,25 +157,27 @@ final class const _ApprovalCard(
                 ),
             switch (request.status) {
               .pending => Wrap(
-                spacing: _gap,
-                runSpacing: _gap,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   FilledButton(
                     onPressed: canDecide
                         ? () => session.approve(request)
                         : null,
-                    child: const Text(_approve),
+                    child: const Text('Approve'),
                   ),
                   OutlinedButton(
                     onPressed: canDecide ? () => session.reject(request) : null,
-                    child: const Text(_reject),
+                    child: const Text('Reject'),
                   ),
                 ],
               ),
-              .approved => const Text(_approved),
-              .rejected => const Text(_rejected),
-              .invalidated => const Text(_invalidated),
-              .cancelled => const Text(_cancelled),
+              .approved => const Text('Approved'),
+              .rejected => const Text('Rejected'),
+              .invalidated => const Text(
+                'The screen changed. Ask the agent again.',
+              ),
+              .cancelled => const Text('Cancelled'),
             },
           ],
         ),
@@ -202,19 +198,19 @@ final class const _InputRow(
   @override
   Widget build(BuildContext context) {
     final (String label, VoidCallback? onPressed) = switch (session) {
-      TandemSession(isStopping: true) => (_stopping, null),
-      TandemSession(isRunning: true) => (_stop, session.stop),
-      _ => (_send, _sendText),
+      TandemSession(isStopping: true) => ('Stopping…', null),
+      TandemSession(isRunning: true) => ('Stop', session.stop),
+      _ => ('Send', _sendText),
     };
     return Padding(
-      padding: const .all(_gap),
+      padding: const .all(8),
       child: Row(
-        spacing: _gap,
+        spacing: 8,
         children: [
           Expanded(
             child: TextField(
               controller: messageController,
-              decoration: const InputDecoration(hintText: _hint),
+              decoration: const InputDecoration(hintText: 'Message'),
               // Unlike onSubmitted, it leaves the focus in the field.
               onEditingComplete: _sendText,
             ),

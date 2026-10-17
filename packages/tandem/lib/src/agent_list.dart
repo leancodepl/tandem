@@ -97,8 +97,8 @@ final class AgentListing._(
   /// Whether [tool] was listed when this listing was read.
   bool lists(String tool) => _tools.containsKey(tool);
 
-  /// The doc comment of [tool]. Throws a [StateError] for a tool this listing
-  /// does not list: callers ask only about listed ones.
+  /// The doc comment of [tool], as the agent got it. Throws a [StateError] for
+  /// a tool this listing does not list.
   String description(String tool) => switch (_tools[tool]) {
     final listed? => listed.description,
     null => throw StateError('This listing does not list $tool.'),
@@ -134,7 +134,6 @@ final class AgentListing._(
     return await target.invoke(ToolArgs(arguments));
   }
 
-  /// The item of the agent list as it is now that lists [tool], or null.
   _Calls? _currentCapabilityFor(String tool) {
     final method = _tools[tool]?.method;
     for (final item in _surface.agentCapabilities) {
@@ -145,8 +144,6 @@ final class AgentListing._(
     return null;
   }
 
-  /// Throws a [ToolCallRefused] for a key in [json], at any depth, that its
-  /// JSON Schema [schema] does not have.
   static void _rejectUnknown(Object? json, Object? schema, String path) {
     switch ((json, schema)) {
       case (

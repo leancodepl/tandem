@@ -66,15 +66,13 @@ final class const ApprovalRequest({
   /// The method's name in snake_case.
   required final String tool,
 
-  /// The method's doc comment.
+  /// The method's doc comment. The default card shows it above the
+  /// arguments.
   required final String description,
   required final String _argumentsJson,
-
-  /// What became of the request.
   final ApprovalStatus status = .pending,
 }) extends ChatItem {
-  /// The agent called [tool] in the call [toolCallId], with `argumentsJson`,
-  /// the JSON object it sent as the arguments.
+  /// `argumentsJson` is the JSON object the agent sent as the arguments.
   this;
 
   /// The arguments the agent sent. They are decoded again on every read, so

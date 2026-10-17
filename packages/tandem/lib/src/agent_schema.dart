@@ -37,14 +37,13 @@ final class AgentView._(
   /// The getter's name in snake_case.
   final String name,
 
-  /// The getter's doc comment.
+  /// The getter's doc comment, sent to the agent with the value.
   final String description,
   final Object? Function(Object? value) _write,
 ) {
-  /// Called by the generated code with a closure that returns the getter,
-  /// which only gives Dart the getter's type [T], so the generated code does
-  /// not have to name it. The closure is never called: the values come from
-  /// the agent list.
+  /// Called by the generated code. The closure only gives Dart the getter's
+  /// type [T], so the generated code does not have to name it; it is never
+  /// called.
   static AgentView of<T>(
     T Function() _,
     String name,
@@ -77,7 +76,7 @@ final class const AgentTool(
   /// The method's name in snake_case.
   required final String name,
 
-  /// The method's doc comment.
+  /// The method's doc comment, sent to the agent as the tool's description.
   required final String description,
 
   /// The JSON Schema of the arguments, built from the parameter types.
@@ -133,13 +132,9 @@ final class ToolArgs(
 
   String _at(String name) => path.isEmpty ? name : '$path.$name';
 
-  /// Null for a nullable [T]. Otherwise refuses the argument [name], which is
-  /// null or missing.
   T _nullOrRefuse<T>(String name) =>
       null is T ? null as T : throw _absent(name, _type<T>());
 
-  /// The refusal for the argument [name] that is not there as [expected]:
-  /// `got null` when the agent sent null, `missing` when it sent nothing.
   ToolCallRefused _absent(String name, String expected) => ToolCallRefused(
     json.containsKey(name)
         ? '${_at(name)}: expected $expected, got null'
@@ -176,9 +171,8 @@ final class ToolArgs(
     ToolCallRefused wrongType() => ToolCallRefused(
       '$path: expected ${_type<T>()}, got ${jsonEncode(value)}',
     );
-    // JSON does not tell 15 from 15.0, and models send either. On the web
-    // every number is a double and `T()` takes a whole one as an int, so an
-    // int refuses one beyond _maxExactInteger first.
+    // JSON does not tell 15 from 15.0. Past 2^53 - 1 a whole double may not be
+    // the number the agent wrote, and on the web `T()` would take it as an int.
     return switch (value) {
       double() when 0 is T && 0.5 is! T && value.abs() > _maxExactInteger =>
         throw wrongType(),
@@ -196,23 +190,17 @@ final class ToolArgs(
     };
   }
 
-  /// 2^53 - 1. Up to it a double holds every integer exactly. Beyond it a
-  /// whole double may already differ from the number the agent wrote, and
-  /// `toInt` clamps one that does not fit an `int`.
   static const _maxExactInteger = 9007199254740991;
 
-  /// The ISO 8601 dates Tandem reads: a day, then optionally a time to the
-  /// minute or second, a fraction of a second and a time zone, Z or an
-  /// offset of at most 23:59.
+  /// A day, then optionally a time and a zone: Z or an offset up to 23:59.
   static final _isoDate = RegExp(
     r'^(\d{4})-(\d{2})-(\d{2})'
     r'(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?'
     r'(?:[zZ]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$',
   );
 
-  /// [text] as a date, or null when it is not all in the form [_isoDate]
-  /// reads, or names a day or time that does not exist, such as 2026-02-30,
-  /// which `DateTime.parse` would roll over into March.
+  /// Null for a day or time that does not exist, such as 2026-02-30, which
+  /// `DateTime.parse` would roll over into March.
   static DateTime? _date(String text) {
     final match = _isoDate.firstMatch(text);
     final date = DateTime.tryParse(text);
@@ -233,6 +221,5 @@ final class ToolArgs(
         : null;
   }
 
-  /// The name of [T] without `?`, as the agent should read it.
   static String _type<T>() => '$T'.replaceAll('?', '');
 }
