@@ -1,6 +1,6 @@
 # Tandem design
 
-Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-protocol-model-behind-agent-connection.md) and [ADR 0003](adr/0003-agent-acts-only-through-listed-methods.md). [ADR 0002](adr/0002-attach-to-the-apps-state-host.md) is superseded.
+Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-protocol-model-behind-agent-connection.md) and [ADR 0003](adr/0003-agent-acts-only-through-listed-methods.md).
 
 ## Packages
 
