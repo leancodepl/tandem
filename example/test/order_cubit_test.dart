@@ -2,6 +2,7 @@ import 'package:example/order.dart';
 import 'package:example/order_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem_bloc/tandem_bloc.dart';
+import 'package:tandem_bloc/testing.dart';
 
 void main() {
   late Orders orders;

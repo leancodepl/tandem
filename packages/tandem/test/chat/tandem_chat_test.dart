@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
+import 'package:tandem/testing.dart';
 
 import '../support/shop.dart';
 

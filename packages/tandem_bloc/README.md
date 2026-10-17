@@ -102,6 +102,8 @@ Any AG-UI endpoint works. What the backend has to do:
 `ScriptedAgent` plays a fixed script instead of a model, so widget tests run without network. `TandemScope.connected` takes it in place of the endpoint:
 
 ```dart
+import 'package:tandem_bloc/testing.dart';
+
 final agent = ScriptedAgent([
   (_) => [AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 15})],
   (_) => [AgentStep.say('Done.')],

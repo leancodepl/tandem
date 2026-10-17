@@ -2,7 +2,7 @@
 /// what the screen shares and acts through listed methods.
 library;
 
-export 'src/agent_list.dart' show AgentCapability, AgentListing;
+export 'src/agent_list.dart' show AgentCapability;
 export 'src/agent_schema.dart'
     show AgentSchema, AgentSurface, AgentTool, AgentView, ToolArgs;
 export 'src/chat/chat_item.dart'
@@ -22,5 +22,3 @@ export 'src/protocol/agent_connection.dart'
 export 'src/session.dart' show AgentCall, AgentCallListener, TandemSession;
 export 'src/session_scope.dart' show TandemSessionScope;
 export 'src/tandem_agent.dart' show TandemAgent;
-export 'src/testing/scripted_agent.dart'
-    show AgentStep, AgentTurn, ScriptedAgent;
