@@ -14,6 +14,7 @@ class Catalog(final List<Product> products) {
 
   Future<List<Product>> search(String query) async {
     final words = query.toLowerCase().split(' ');
+
     return [
       for (final product in products)
         if (words.every(

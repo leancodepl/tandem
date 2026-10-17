@@ -10,6 +10,7 @@ final class const OrderSummary({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final order = context.watch<OrderDeskCubit>().order;
+
     return Column(
       crossAxisAlignment: .start,
       children: [

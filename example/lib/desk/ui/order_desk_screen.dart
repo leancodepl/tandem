@@ -74,6 +74,7 @@ final class const _Header() extends StatelessWidget {
     final customer = context.select<OrderDeskCubit, Customer?>(
       (cubit) => cubit.order.customer,
     );
+
     return Text.rich(
       TextSpan(
         text: 'Order desk',

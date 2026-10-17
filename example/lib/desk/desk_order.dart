@@ -72,6 +72,7 @@ class const OrderDeskState({
         ),
       );
     }
+
     return DeskOrder(
       customer: customer,
       lines: lines,

@@ -14,11 +14,13 @@ final class const OrderForm({super.key}) extends StatelessWidget {
     final cubit = context.watch<OrderDeskCubit>();
     final order = cubit.order;
     final editable = cubit.canEdit;
+
     if (order.isEmpty) {
       return const Center(
         child: Text('Paste a customer e-mail into the chat to start an order.'),
       );
     }
+
     return SingleChildScrollView(
       padding: const .all(16),
       child: Column(
@@ -166,6 +168,7 @@ final class const _Lines(
   @override
   Widget build(BuildContext context) {
     final label = context.textTheme.labelMedium;
+
     return Card(
       child: Column(
         children: [

@@ -36,6 +36,7 @@ extension type const OrderId(String value);
 class Catalog(final List<Product> products) {
   Future<List<Product>> search(String query) async {
     final normalizedQuery = query.toLowerCase();
+
     return [
       for (final product in products)
         if ('${product.name} ${product.description}'.toLowerCase().contains(
