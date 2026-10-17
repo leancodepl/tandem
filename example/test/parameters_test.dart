@@ -110,7 +110,7 @@ void main() {
         isA<ToolCallRefused>().having(
           (error) => error.message,
           'message',
-          'count: missing, expected int',
+          'count: expected int, got null',
         ),
       ),
     );

@@ -108,14 +108,14 @@ final class ToolArgs(
   /// The argument [name] as [T]: a `String`, `int`, `double`, `num`, `bool`
   /// or `DateTime`, one of [oneOf] for an enum, or a nullable one of these.
   T read<T>(String name, {List<T> oneOf = const []}) => switch (json[name]) {
-    null => _missing(name),
+    null => _null(name),
     final value => _convert(_at(name), value, oneOf),
   };
 
   /// The object argument [name], built by [build] from its own arguments.
   T readObject<T>(String name, T Function(ToolArgs object) build) =>
       switch (json[name]) {
-        null => _missing(name),
+        null => _null(name),
         final value => build(_object(_at(name), value)),
       };
 
@@ -133,9 +133,15 @@ final class ToolArgs(
 
   String _at(String name) => path.isEmpty ? name : '$path.$name';
 
-  T _missing<T>(String name) => null is T
+  /// Null for a nullable [T]. Otherwise refuses the argument [name], which is
+  /// null or missing.
+  T _null<T>(String name) => null is T
       ? null as T
-      : throw ToolCallRefused('${_at(name)}: missing, expected ${_type<T>()}');
+      : throw ToolCallRefused(
+          json.containsKey(name)
+              ? '${_at(name)}: expected ${_type<T>()}, got null'
+              : '${_at(name)}: missing, expected ${_type<T>()}',
+        );
 
   List<Object?> _list(String name) => switch (json[name]) {
     final List<Object?> list => list,
