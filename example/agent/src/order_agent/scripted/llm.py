@@ -112,7 +112,7 @@ class _Turn:
         monitors = sum(
             line["quantity"] for line in self._order()["lines"] if line["sku"].startswith("VM-")
         )
-        # Acme's bulk tier, as in example/lib/desk/price_list.dart.
+        # Acme's bulk tier, as in example/lib/desk/data/price_lists.dart.
         if monitors < 15:
             return [_call("place_order")]
         return [
