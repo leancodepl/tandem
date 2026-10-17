@@ -10,11 +10,11 @@ import 'package:source_gen/source_gen.dart';
 /// `DateTime` as ISO 8601, enums by name, extension types over the first five,
 /// lists, and plain classes. Tandem builds an extension type as `Code(value)`,
 /// so its unnamed constructor must be public and take only the value, as a
-/// positional parameter. A plain class is a non-generic class outside the
-/// SDK whose public unnamed constructor takes only parameters named like its
-/// getters, all of them named but at most one. Tandem builds it with that
-/// constructor and writes it as an object of those getters, so it needs
-/// neither `fromJson` nor `toJson`.
+/// positional parameter of the non-null type it wraps. A plain class is a
+/// non-generic class outside the SDK whose public unnamed constructor takes
+/// only parameters named like its getters, all of them named but at most one.
+/// Tandem builds it with that constructor and writes it as an object of those
+/// getters, so it needs neither `fromJson` nor `toJson`.
 ///
 /// The generated code names only core types: it builds classes and extension
 /// types with `.new` and enum values with `.name`, so it compiles without
@@ -70,14 +70,8 @@ final class AgentTypes(
   /// The JSON Schema of [type], which the agent sends at [path].
   Map<String, Object?> schema(DartType type, String path) {
     if (_scalarSchema(type) case final scalar?) {
-      if (type case InterfaceType(element: final ExtensionTypeElement extension)
-          when !_takesValue(extension.unnamedConstructor)) {
-        final name = extension.displayName;
-        throw _error(
-          '$path: Tandem builds $name as $name(value), so its unnamed '
-          'constructor must be public and take the value as its only '
-          'parameter, a positional one',
-        );
+      if (type.element case final ExtensionTypeElement extension) {
+        _checkValueConstructor(extension, path);
       }
       return scalar;
     }
@@ -253,6 +247,34 @@ final class AgentTypes(
     throw _cannot(verb, type, path);
   }
 
+  /// Throws unless the unnamed constructor of [extension], at [path], is
+  /// public and takes only one positional parameter of the non-null type it
+  /// wraps: the type the schema names, so every value the agent may send
+  /// reaches it, and null does not.
+  void _checkValueConstructor(ExtensionTypeElement extension, String path) {
+    final value = _element.library.typeSystem.promoteToNonNull(
+      extension.typeErasure,
+    );
+    final takesValue = switch (extension.unnamedConstructor) {
+      ConstructorElement(
+        isPublic: true,
+        formalParameters: [
+          FormalParameterElement(isPositional: true, :final type),
+        ],
+      ) =>
+        type == value,
+      _ => false,
+    };
+    if (!takesValue) {
+      final name = extension.displayName;
+      throw _error(
+        '$path: Tandem builds $name as $name(value), so its unnamed '
+        'constructor must be public and take only the value: one positional '
+        '${value.getDisplayString()}',
+      );
+    }
+  }
+
   /// The default value of [parameter] as code, or null for none or `null`.
   String? _default(FormalParameterElement parameter) {
     final origin = _origin(parameter);
@@ -335,18 +357,6 @@ final class AgentTypes(
 
   static bool _isExtension(DartType type) =>
       type is InterfaceType && type.element is ExtensionTypeElement;
-
-  /// Whether [constructor] is public and takes one positional parameter and
-  /// nothing else, so that Tandem can pass it an extension type's value.
-  static bool _takesValue(ConstructorElement? constructor) =>
-      switch (constructor) {
-        ConstructorElement(
-          isPublic: true,
-          formalParameters: [FormalParameterElement(isPositional: true)],
-        ) =>
-          true,
-        _ => false,
-      };
 
   /// The core type behind the extension type [type], `?` included, as code.
   static String _erasure(DartType type) =>

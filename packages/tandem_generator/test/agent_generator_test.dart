@@ -111,13 +111,18 @@ class OrderCubit() {
     );
   });
 
-  test(
-    'an extension type with a named constructor parameter fails the build',
-    () async {
-      expect(
-        await _buildErrors('''
+  for (final (shape, constructor) in [
+    ('a named parameter', 'Coupon({required String code}) : this._(code);'),
+    ('another type', r"Coupon(int code) : this._('$code');"),
+    ('a nullable value', "Coupon(String? code) : this._(code ?? '');"),
+  ]) {
+    test(
+      'an extension type whose constructor takes $shape fails the build',
+      () async {
+        expect(
+          await _buildErrors('''
 extension type Coupon._(String code) {
-  Coupon({required String code}) : this._(code);
+  $constructor
 }
 
 @TandemAgent()
@@ -128,14 +133,15 @@ class CartCubit() {
   void redeem(Coupon coupon) {}
 }
 '''),
-        [
-          contains(
-            'coupon: Tandem builds Coupon as Coupon(value), so its unnamed constructor must be public and take the value as its only parameter, a positional one',
-          ),
-        ],
-      );
-    },
-  );
+          [
+            contains(
+              'coupon: Tandem builds Coupon as Coupon(value), so its unnamed constructor must be public and take only the value: one positional String.',
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   test('a default with control characters becomes a valid literal', () async {
     final result = await _build(r'''

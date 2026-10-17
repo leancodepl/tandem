@@ -12,9 +12,9 @@ Parameters of the listed methods become the JSON Schema the agent fills in. Resu
 | --- | --- | --- |
 | `String`, `bool` | string, boolean | |
 | `int`, `double`, `num` | integer, number | `15.0` is read as `15`. An `int` refuses `1.5` and doubles of 2^53 or more in size. |
-| `DateTime` | ISO 8601 string | A day or time that does not exist, such as `2026-02-30`, is refused. |
+| `DateTime` | ISO 8601 string | `2026-10-23`, optionally with a time such as `T10:20`, `T10:20:59.5Z` or `T10:20+02:00`. Other forms, and a day or time that does not exist, such as `2026-02-30`, are refused. |
 | enum | the value's name | |
-| extension type over `String`, `int`, `double`, `num` or `bool` | that value | Built as `Code(value)`: the unnamed constructor must be public and take only the value, as a positional parameter. A factory there checks the agent's values too. |
+| extension type over `String`, `int`, `double`, `num` or `bool` | that value | Built as `Code(value)`: the unnamed constructor must be public and take only the value, as a positional parameter of the type it wraps, without `?`. A factory there checks the agent's values too. |
 | `List<T>` | array | In a parameter, `T` is neither nullable nor a list, and the list has no `?` and no default. |
 | plain class | object | Public, not generic, not from the SDK. Built with its public unnamed constructor, whose parameters are all named except at most one, and written through the getters named like them. No `fromJson` or `toJson`. |
 
@@ -27,7 +27,7 @@ Each type may be nullable. A result may also be `void`, or a `Future` or `Future
 | leaves it out | `1` | `'new'` | `null` |
 | sends `null` | refused | `null` | `null` |
 
-The schema marks a nullable parameter `"nullable": true`, so the agent knows it may send `null`. A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, or `null`.
+The schema marks a nullable parameter `"nullable": true`, so the agent knows it may send `null`. That keyword is OpenAPI's dialect, which Gemini reads: plain JSON Schema ignores it and refuses the `null`. JSON Schema's own form, a list of types, fails in ag-ui-adk 0.9.0. A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, or `null`.
 
 A refused call does not run the method. The agent gets a message that names the argument, also for a wrong type or a key the schema does not have.
 
