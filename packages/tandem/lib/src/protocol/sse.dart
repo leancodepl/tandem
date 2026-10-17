@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 const _dataPrefix = 'data:';
-const _valuePadding = ' ';
-const _dataSeparator = '\n';
 
 /// Parses an SSE byte stream into the `data` of its events, following
 /// https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
@@ -20,22 +18,20 @@ Stream<String> parseSse(Stream<List<int>> bytes) {
 
   void dispatch(EventSink<String> sink) {
     if (data.isNotEmpty) {
-      sink.add(data.join(_dataSeparator));
+      sink.add(data.join('\n'));
       data.clear();
     }
   }
 
   void handleLine(String line, EventSink<String> sink) {
     if (line.isEmpty) {
-      return dispatch(sink);
+      dispatch(sink);
+      return;
     }
     if (line.startsWith(_dataPrefix)) {
       final value = line.substring(_dataPrefix.length);
-      data.add(
-        value.startsWith(_valuePadding)
-            ? value.substring(_valuePadding.length)
-            : value,
-      );
+      // The grammar drops one space after the colon.
+      data.add(value.startsWith(' ') ? value.substring(1) : value);
     }
   }
 

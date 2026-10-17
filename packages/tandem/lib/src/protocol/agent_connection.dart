@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/protocol/chunk_events.dart';
 import 'package:tandem/src/protocol/sse.dart';
 
 const _headers = {
@@ -24,17 +25,33 @@ void _endWithTimeout(EventSink<List<int>> sink) {
     ..close();
 }
 
+// Unlike `takeWhile`, delivers the event that ends the run. Closing the sink
+// cancels the response, which closes the connection if the server keeps it.
+void _endAfterRun(
+  Map<String, Object?> event,
+  EventSink<Map<String, Object?>> sink,
+) {
+  sink.add(event);
+  if (event['type'] case 'RUN_FINISHED' || 'RUN_ERROR') {
+    sink.close();
+  }
+}
+
 /// The link to the agent: one AG-UI run per call.
 abstract interface class AgentConnection() {
   /// For the classes that implement a connection.
   this;
 
   /// Posts [input], the body of one AG-UI run, and streams the events of the
-  /// run as decoded JSON.
+  /// run as decoded JSON. A chunk event, `TEXT_MESSAGE_CHUNK` or
+  /// `TOOL_CALL_CHUNK`, comes as the content, start and args events it
+  /// abbreviates.
   ///
-  /// The stream ends after `RUN_FINISHED` or `RUN_ERROR`. A stream that ends
-  /// earlier, or fails, means the run broke. Cancelling the subscription
-  /// closes the connection: do it only when the screen goes away.
+  /// The stream ends right after `RUN_FINISHED` or `RUN_ERROR`, and the
+  /// connection closes with it. A stream that ends earlier, or fails, means
+  /// the run broke. Cancelling the subscription aborts the request, even when
+  /// it still waits for the response headers: do it only when the screen goes
+  /// away.
   /// Stopping a run must not cancel it, because ADK keeps running and the
   /// thread stays consistent only if its events are read to the end.
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
@@ -48,28 +65,59 @@ final class HttpAgentConnection(final Uri endpoint, {final http.Client? client})
   this;
 
   @override
-  Stream<Map<String, Object?>> run(Map<String, Object?> input) async* {
-    final used = client ?? http.Client();
+  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
+    final abortTrigger = Completer<void>();
+    late final StreamSubscription<Map<String, Object?>> subscription;
+    late final StreamController<Map<String, Object?>> controller;
+    // A cancelled `async*` stream ends only at its next `yield`, so it cannot
+    // abort a request that waits for its headers: the controller can.
+    controller = StreamController(
+      onListen: () {
+        subscription = _events(input, abortTrigger.future).listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+      },
+      onCancel: () {
+        abortTrigger.complete();
+        unawaited(subscription.cancel());
+      },
+    );
+    return controller.stream;
+  }
+
+  Stream<Map<String, Object?>> _events(
+    Map<String, Object?> input,
+    Future<void> abortTrigger,
+  ) async* {
+    final httpClient = client ?? http.Client();
     try {
-      final request = http.Request('POST', endpoint)
-        ..headers.addAll(_headers)
-        // Bytes, not `body`, which would add a charset to the content type.
-        ..bodyBytes = utf8.encode(jsonEncode(input));
-      final response = await used.send(request).timeout(_idleTimeout);
+      final request =
+          http.AbortableRequest('POST', endpoint, abortTrigger: abortTrigger)
+            ..headers.addAll(_headers)
+            // Bytes, not `body`, which would add a charset to the content type.
+            ..bodyBytes = utf8.encode(jsonEncode(input));
+      final response = await httpClient.send(request).timeout(_idleTimeout);
       if (response.statusCode != _statusOk) {
         throw AgentHttpException(
           response.statusCode,
           await response.stream.bytesToString().timeout(_idleTimeout),
         );
       }
-      // `yield*` and `map`, not `await for` and `yield`: the latter delays a
-      // cancel until the next event arrives.
+      // `yield*` and transformers, not `await for` and `yield`: the latter
+      // delays a cancel until the next event arrives.
       yield* parseSse(
-        response.stream.timeout(_idleTimeout, onTimeout: _endWithTimeout),
-      ).map((event) => jsonDecode(event) as Map<String, Object?>);
+            response.stream.timeout(_idleTimeout, onTimeout: _endWithTimeout),
+          )
+          .map((event) => jsonDecode(event) as Map<String, Object?>)
+          .expand(ChunkExpander().call)
+          .transform(StreamTransformer.fromHandlers(handleData: _endAfterRun));
+    } on http.RequestAbortedException {
+      // The caller cancelled the run: nobody is left to hear of it.
     } finally {
       if (client == null) {
-        used.close();
+        httpClient.close();
       }
     }
   }
