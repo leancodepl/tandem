@@ -13,7 +13,7 @@ One item of the agent list: `.sees`, `.calls` or `.callsWithApproval`.
 _Avoid_: permission, grant
 
 **Session**:
-One conversation between a screen and the agent, from opening the screen to closing it. AG-UI calls it a thread.
+One conversation between a screen and the agent, from opening the screen to closing it. AG-UI calls it a thread, and a run that breaks off moves the session to a new one.
 _Avoid_: thread, conversation
 
 **Run**:
