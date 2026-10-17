@@ -83,6 +83,9 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
 The agent changes the screen through the same methods as your buttons, so the same validation runs for both. When the user edits something, the agent sees it on its next turn.
 
+> [!TIP]
+> Setting this up with a coding agent? `dart run skills@ get` installs Tandem's skill from your dependencies, and the agent follows these steps.
+
 ## Approvals
 
 A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees at the moment it asks. If that changes later, even back to what it was, the card is invalidated for good and the agent has to ask again.
