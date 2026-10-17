@@ -1,6 +1,6 @@
 export 'src/agent_list.dart' show AgentCapability;
 export 'src/agent_schema.dart'
-    show AgentSchema, AgentSurface, AgentTool, AgentView, ToolArgs;
+    show AgentSchema, AgentSurface, AgentTool, AgentView;
 export 'src/chat/chat_item.dart'
     show
         AgentMessage,
@@ -19,3 +19,4 @@ export 'src/session/agent_call.dart' show AgentCall, AgentCallListener;
 export 'src/session/session_scope.dart' show TandemSessionScope;
 export 'src/session/tandem_session.dart' show TandemSession;
 export 'src/tandem_agent.dart' show TandemAgent;
+export 'src/tool_args.dart' show ToolArgs;

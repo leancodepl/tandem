@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/tool_args.dart';
 
 sealed class const AgentCapability() {
   /// The agent sees [value] on every turn. Pass a getter of the surface, as
