@@ -12,26 +12,30 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 `tandem` does not know bloc. Riverpod would be a separate `tandem_riverpod` with its own `TandemScope`.
 
-The repo root is a workspace, not a package. `tandem_generator` is not a member: its dev dependency `test` needs a `test_api` that the pin of `flutter_test` rules out. It has its own lock, the example depends on it by path, and CI runs `dart pub get` in it.
+`TandemChat` fills its parent: the app decides where it goes and how wide it is.
+
+The repo root is a workspace, not a package. `tandem_generator` is not a member: its dev dependency `test` needs a `test_api` that the pin of `flutter_test` rules out. It has its own lock, which is not committed, the example depends on it by path, and CI runs `dart pub get` in it. The root `pubspec.lock` is committed, so development and CI resolve the same versions; the packages have none.
 
 The root README and `packages/tandem_bloc/README.md` are the same file.
 
 ## Session rules
 
 - Every run reads the live list: `context` from `.sees`, `tools` from `.calls`. Every tool call checks the list again.
-- One run at a time in a thread. A new message waits until the run ends.
+- One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run.
 - A call without approval runs at once, and its result goes in the next run.
-- After every call of a listed method that returned, also an approved one, the session calls `onAgentCall` with the name, arguments and result. The demo highlights changed fields from it.
-- A call with approval shows a card with frozen arguments (a copy). A change of anything in `.sees` invalidates the card for good.
-- Several calls in one turn, one of them with approval: the ones without run first, then the card freezes. One run carries all the answers, and it starts when every call of the turn has one.
+- After every call of a listed method that returned, also an approved one, the session calls `onAgentCall` with the name, arguments and result. An app can highlight the changed fields from it.
+- A call with approval shows a card with frozen arguments (a copy). Any emission of `changes` after the card shows invalidates it for good, also when the state came back (A, B, A): comparing the latest value would not notice. `.sees` is captured after the turn's calls without approval ran, and the card shows one event-loop turn later, so what those calls emitted is delivered before and invalidates nothing. Approve compares `.sees` again, for values `changes` does not report.
+- Several calls in one turn, one of them with approval: the ones without run first, then the card freezes. One run carries all the answers, and it starts when every call of the turn has one. If a message was queued meanwhile, the same run carries it after the answers, and a run with only the answers starts only when nothing is queued.
 - Reject answers its call at once. Invalidation does not start a run: `invalidated` goes with the user's next message.
 - **Stop does not close the connection.** Closing does not stop ADK: the model keeps generating, the answer lands in the server's session, and a run sent right after mixes up the history. Stop hides the rest of the text and reads the run to `RUN_FINISHED` or `RUN_ERROR`. The connection closes only with the screen.
 - After Stop, the text already shown stays, marked "Stopped", and only that text goes back in the history. None of its remaining calls runs. Until the run ends the chat shows "Stopping…" and a new message waits.
 - Before each new user message, every call without an answer is answered, all in one run, the message last. Executed: the real result. Not executed (Stop, or the user wrote instead of deciding): `cancelled`. Invalidated: `invalidated`. The status goes in `content`, because the middleware ignores `error` and the model reads an empty `content` as success. AG-UI 1.0 also wants every call answered before the thread goes on.
+- A run ends at its `RUN_FINISHED` or `RUN_ERROR` and the connection closes with it, also when the server keeps it open. Closing the session aborts a request that still waits for its response headers.
 - A run is never sent twice: the server would answer with an empty `RUN_STARTED`/`RUN_FINISHED` pair.
 - A run that breaks without a final event shows "Connection lost" and the next message starts a new thread with fresh history.
-- No bytes for 60 s counts as a broken run. ADK pings every 15 s, but the parser drops comments, so the timeout watches the raw bytes.
-- `threadId` lives as long as `TandemScope` and never comes back after the screen closes: an orphaned ADK run would mix up the history.
+- No response headers, or no bytes for 60 s, counts as a broken run. ADK pings every 15 s, but the parser drops comments, so the timeout watches the raw bytes.
+- `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session replaces it, with a new thread, when the provider gives another cubit, `agent` is another `Uri` (`==`), or `connected` gets another connection (`identical`). The old session is disposed first, and a scope that leaves the tree disposes it before the `BlocProvider` closes the cubit. A new `onAgentCall` takes effect at once.
+- `threadId` lives as long as its session and never comes back after it is gone: an orphaned ADK run would mix up the history.
 - A run error shows in the chat, and the next message works as usual. Its code and message, like every error the session catches, go to `FlutterError.reportError`, never to the chat.
 
 ## Wire rules
@@ -47,6 +51,7 @@ For ag-ui-adk 0.9.0. Its behaviour differs between versions.
 - Order inside one run: assistant text, the `asst-` messages of the turn, all tool answers, the user message last.
 - `context`: one `{description: '<name>: <doc comment>', value: <JSON string>}` per `.sees`.
 - A `TOOL_CALL_START` whose name is not in this run's `tools` is a backend tool. It is ignored, never executed, never echoed.
+- `TEXT_MESSAGE_CHUNK` and `TOOL_CALL_CHUNK` are rewritten while decoding as the content, start and args events they abbreviate, so the session reads one form. As in AG-UI, a new id opens a message or call and no id continues the last one. A chunk that belongs to nothing is dropped.
 
 ## Tool answers
 
@@ -71,5 +76,5 @@ A bare `rejected` is out: Gemini read it as a refusal of the system. `rejected_b
 - A loop guard, if a real model loops.
 - l10n: the UI strings are English constants.
 - `additionalProperties: false` in the schemas, after Gemini accepts it.
-- The order-desk demo and `example/agent`, which the README links.
-- Publishing: `publish.yml` is unchanged and still publishes the repo root, which is no longer a package. Three packages need a release each, `tandem` first.
+- The order-desk demo and its agent, in a separate PR.
+- Publishing: `publish.yml` runs by hand only, because it would publish the repo root, which is no longer a package. Three packages need a release each, `tandem` first.

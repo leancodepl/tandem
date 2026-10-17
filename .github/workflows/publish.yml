@@ -1,8 +1,8 @@
 name: publish
 
+# Manual only: package-aware releases are not set up yet.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
 
 jobs:
   publish:

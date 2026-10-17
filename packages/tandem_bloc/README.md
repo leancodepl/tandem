@@ -8,9 +8,7 @@
 
 Let an AI agent work on an existing Flutter screen together with the user. The agent sees what you let it see, calls the same methods your buttons call, and anything that matters waits for the user's approval.
 
-<!-- demo video -->
-
-Tandem speaks [AG-UI](https://docs.ag-ui.com), so the agent can run on any AG-UI backend. The example uses Google ADK.
+Tandem speaks [AG-UI](https://docs.ag-ui.com), so the agent can run on any AG-UI backend.
 
 ## Quick start
 
@@ -86,22 +84,15 @@ The agent changes the screen through the same methods as your buttons, so the sa
 
 ## Approvals
 
-A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees at the moment it asks. If that changes, Approve turns off until the agent asks again.
+A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees at the moment it asks. If that changes later, even back to what it was, the card is invalidated for good and the agent has to ask again.
 
 Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing more from it.
 
 ## The agent
 
-Any AG-UI endpoint works. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK agent in Python for the example app:
+Any AG-UI endpoint works. What the backend has to do:
 
-```sh
-cd example/agent
-uv run order-agent
-```
-
-What the backend has to do:
-
-- Put the AG-UI `context` into the model's prompt. ag-ui-adk does not, so the agent needs one instruction provider, as in the example.
+- Put the AG-UI `context` into the model's prompt. ag-ui-adk does not, so its agent needs an instruction provider that adds it.
 - Accept `tools` on every run. Tandem always sends it, an empty list when no method is listed.
 - On the web, allow your origin with CORS on the server. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement.
 

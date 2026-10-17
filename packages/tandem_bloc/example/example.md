@@ -1,4 +1,4 @@
-A shopping list the agent can read and change. It can empty the list only after the user approves, and only when there is something on it. The full order-desk demo, with its agent, is in [`example/`](https://github.com/leancodepl/tandem/tree/main/example).
+A shopping list the agent can read and change. It can empty the list only after the user approves, and only when there is something on it.
 
 ```dart
 import 'package:flutter/material.dart';
@@ -59,4 +59,4 @@ void main() => runApp(
 );
 ```
 
-Run `dart run build_runner build` to generate `main.g.dart`, then start any AG-UI agent on `localhost:8000`.
+Run `dart run build_runner build` to generate `main.g.dart`, then start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
