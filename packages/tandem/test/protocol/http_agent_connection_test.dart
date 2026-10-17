@@ -27,19 +27,18 @@ http.StreamedResponse _fixture(String name) {
   );
 }
 
-/// The events of the fixture [name], as the session reads them.
-Future<List<AgentEvent>> _agentEvents(String name) async {
+/// The run of the fixture [name], as the connection streams it.
+Stream<Map<String, Object?>> _run(String name) {
   final client = MockClient.streaming(
     (request, bodyStream) async => _fixture(name),
   );
-  return [
-    for (final json in await HttpAgentConnection(
-      _endpoint,
-      client: client,
-    ).run(const {}).toList())
-      AgentEvent.fromJson(json),
-  ];
+  return HttpAgentConnection(_endpoint, client: client).run(const {});
 }
+
+/// The events of the fixture [name], as the session reads them.
+Future<List<AgentEvent>> _agentEvents(String name) async => [
+  for (final json in await _run(name).toList()) AgentEvent.fromJson(json),
+];
 
 /// The text of each message in [events], by its id.
 Map<String, String> _texts(List<AgentEvent> events) {
@@ -196,14 +195,15 @@ void main() {
     expect(events.last, isA<RunFinished>());
   });
 
-  test('an ambiguous chunk ends the run with an error', () async {
-    final events = await _agentEvents('ag_ui_chunk_ambiguous.sse');
-
-    expect(events.whereType<TextDelta>().map((text) => text.delta), ['A', 'B']);
-    expect(events.whereType<RunFinished>(), isEmpty);
-    expect(
-      events.last,
-      isA<RunFailed>().having((e) => e.code, 'code', 'AMBIGUOUS_CHUNK'),
+  test('an ambiguous chunk fails the stream, as malformed JSON does', () async {
+    await expectLater(
+      _run('ag_ui_chunk_ambiguous.sse'),
+      emitsInOrder([
+        {'type': 'RUN_STARTED', 'threadId': 'thread-C', 'runId': 'run-C1'},
+        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'A'},
+        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm2', 'delta': 'B'},
+        emitsError(isFormatException),
+      ]),
     );
   });
 

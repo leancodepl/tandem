@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
@@ -237,6 +239,67 @@ void main() {
     expect(reported.single.exception, error);
     expect('${reported.single.exception}', contains('422'));
     expect(_shown(session.items).last, ChatNoticeKind.connectionLost);
+  });
+
+  test('an ambiguous chunk breaks the run: the response is cancelled, the '
+      'error reported, and the next message starts a new thread', () async {
+    var responseCancelled = false;
+    // Two subagents have a message open when a chunk names neither, and the
+    // server's run goes on.
+    final response =
+        StreamController<List<int>>(onCancel: () => responseCancelled = true)
+          ..add(
+            utf8.encode(
+              [
+                {'type': 'RUN_STARTED'},
+                {
+                  'type': 'TEXT_MESSAGE_CHUNK',
+                  'messageId': 'm1',
+                  'subagentRunId': 's1',
+                  'delta': 'A',
+                },
+                {
+                  'type': 'TEXT_MESSAGE_CHUNK',
+                  'messageId': 'm2',
+                  'subagentRunId': 's2',
+                  'delta': 'B',
+                },
+                {'type': 'TEXT_MESSAGE_CHUNK', 'delta': 'C'},
+              ].map((event) => 'data: ${jsonEncode(event)}\n\n').join(),
+            ),
+          );
+    final client = MockClient.streaming(
+      (request, bodyStream) async =>
+          http.StreamedResponse(response.stream, 200),
+    );
+    final connection = _RawFirstRun(
+      HttpAgentConnection(
+        Uri.parse('http://localhost/agent'),
+        client: client,
+      ).run(const {}),
+      ScriptedAgent([
+        (_) => const [AgentStep.say('Back')],
+      ]),
+    );
+    final reported = _collectReports();
+    final session = open(connection)..send('a');
+    await pumpEventQueue();
+
+    expect(responseCancelled, isTrue);
+    expect(reported.single.exception, isFormatException);
+    expect(_shown(session.items), [
+      ('user', 'a'),
+      ('agent', 'A', false),
+      ('agent', 'B', false),
+      ChatNoticeKind.connectionLost,
+    ]);
+
+    session.send('b');
+    await pumpEventQueue();
+    final [first, second] = connection.requests;
+    expect(second['threadId'], isNot(first['threadId']));
+    expect(_lines(second), ['user: b']);
+    expect(_shown(session.items).last, ('agent', 'Back', false));
   });
 
   test('Approve runs the method once and continues', () async {

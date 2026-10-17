@@ -1,5 +1,3 @@
-const _ambiguousChunkCode = 'AMBIGUOUS_CHUNK';
-
 /// Rewrites the chunk events of one run as the events they abbreviate, so the
 /// session reads a run the same way whichever form the agent uses.
 ///
@@ -14,9 +12,10 @@ const _ambiguousChunkCode = 'AMBIGUOUS_CHUNK';
 /// A chunk with neither id nor `subagentRunId` continues the parent's open
 /// message or call, else the only one open in any subagent. When several
 /// subagents have one open and the parent has none, it could join any of
-/// them: it is refused, and the run ends with a `RUN_ERROR` whose code is
-/// `AMBIGUOUS_CHUNK`. A chunk that belongs to nothing, or opens a call
-/// without its name, is dropped. Every other event passes through.
+/// them: it is refused with a [FormatException], like malformed JSON, so the
+/// stream of the run fails and the run counts as broken. A chunk that
+/// belongs to nothing, or opens a call without its name, is dropped. Every
+/// other event passes through.
 final class ChunkExpander() {
   /// Starts a run with no message or call open. Each run needs its own
   /// expander, which remembers the open message or call of each sender.
@@ -53,7 +52,7 @@ final class ChunkExpander() {
           };
         }
       case _:
-        yield _refuse(chunk);
+        throw _ambiguous(chunk);
     }
   }
 
@@ -84,7 +83,7 @@ final class ChunkExpander() {
           };
         }
       case _:
-        yield _refuse(chunk);
+        throw _ambiguous(chunk);
     }
   }
 }
@@ -114,11 +113,8 @@ List<String> _candidates(
   return sender == null ? [...openIds.values] : [];
 }
 
-/// The `RUN_ERROR` that ends a run whose [chunk] could join several streams.
-Map<String, Object?> _refuse(Map<String, Object?> chunk) => {
-  'type': 'RUN_ERROR',
-  'code': _ambiguousChunkCode,
-  'message':
-      '${chunk['type']} without an id could continue the stream of '
-      'several subagents',
-};
+/// The error that refuses a [chunk] that could join several streams.
+FormatException _ambiguous(Map<String, Object?> chunk) => FormatException(
+  '${chunk['type']} without an id could continue the stream of several '
+  'subagents',
+);

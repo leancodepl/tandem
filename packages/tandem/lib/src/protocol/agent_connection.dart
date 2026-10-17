@@ -47,7 +47,7 @@ abstract interface class AgentConnection() {
   /// `TOOL_CALL_CHUNK`, comes as the content, start and args events it
   /// abbreviates, each sender, parent or subagent, continuing its own open
   /// message or call. A chunk without an id that several subagents could own
-  /// ends the run with a `RUN_ERROR` of code `AMBIGUOUS_CHUNK`.
+  /// fails the stream with a [FormatException], like malformed JSON.
   ///
   /// The stream ends right after `RUN_FINISHED` or `RUN_ERROR`, and the
   /// connection closes with it. A stream that ends earlier, or fails, means
