@@ -40,12 +40,10 @@ def build_app() -> App:
         name="order_agent",
         model=model_from_env(today),
         instruction=build_instruction(today),
-        # AGUIToolset stands for the app's tools, which come with every run.
         tools=[find_customer, get_order_history, AGUIToolset()],
     )
     return App(
         name="tandem_demo",
         root_agent=agent,
-        # ag-ui-adk needs a resumable app for the app's tools.
         resumability_config=ResumabilityConfig(is_resumable=True),
     )
