@@ -89,7 +89,25 @@ jobs:
           path: packages/tandem
         continue-on-error: true
 
+      # pana drops the workspace and overrides and resolves tandem_bloc against
+      # pub.dev. Until the lowest tandem it accepts is on pub.dev, its score only
+      # says tandem is missing, so the score step waits for that tandem.
+      - name: Check whether the tandem of tandem_bloc is on pub.dev
+        id: tandem-on-pub
+        run: |
+          constraint="$(yq '.dependencies.tandem' packages/tandem_bloc/pubspec.yaml)"
+          lower_bound="${constraint#^}"
+          status="$(curl -sS -o /dev/null -w '%{http_code}' "https://pub.dev/api/packages/tandem/versions/$lower_bound" || true)"
+          if [ "$status" = 404 ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=pana (tandem_bloc)::Not scored, tandem $lower_bound is not on pub.dev yet"
+            echo "## pana score for tandem_bloc: not scored, tandem $lower_bound is not on pub.dev yet" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Score tandem_bloc with pana
+        if: steps.tandem-on-pub.outputs.published == 'true'
         uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
         with:
           path: packages/tandem_bloc
