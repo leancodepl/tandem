@@ -53,7 +53,7 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 - The list is read again before every turn and every call, so an `if` can hide a method.
 - Every listed getter and method needs a doc comment, written for the agent: it is all the agent knows about it. The agent calls a method by its name in snake_case, here `set_quantity`.
 - Types of parameters, results and getters: `String`, `bool`, `int`, `double`, `num`, `DateTime`, enums, extension types over a scalar, `List<T>` and plain classes. Maps, sets, records and generic classes fail the build: list a thin method that takes supported types instead. [The rules](https://github.com/leancodepl/tandem/blob/main/packages/tandem_generator/README.md#supported-types).
-- Reject the agent's bad input with an `ArgumentError`: the agent gets its message and tries again. Any other exception is a bug, reported and answered as failed.
+- Reject the agent's bad input with an `ArgumentError` (not a `RangeError`: it is an `ArgumentError`, but Tandem treats it as a bug, so `RangeError.range` does not work here): the agent gets its message and tries again. Any other exception is a bug, reported and answered as failed.
 - After an `await`, check `isClosed` before `emit`: the screen may have closed meanwhile.
 
 **Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, and every `.sees` stands directly in the list, not inside an `if`, a `for` or a spread.
