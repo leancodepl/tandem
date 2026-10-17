@@ -10,6 +10,7 @@ mixin _$ShoppingListCubit implements AgentSurface {
   @override
   AgentSchema get agentSchema {
     final surface = this as ShoppingListCubit;
+
     return AgentSchema(
       sees: [
         AgentView.of(

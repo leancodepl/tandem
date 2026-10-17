@@ -108,6 +108,7 @@ final class AgentTypes(final ExecutableElement _element) {
     final nullable = type.nullabilitySuffix != .none;
     if (_scalarSchema(type) != null) {
       final dot = nullable ? '?.' : '.';
+
       return switch (type) {
         _ when _isDateTime(type) => '$value${dot}toIso8601String()',
         InterfaceType(element: EnumElement()) => '$value${dot}name',
@@ -118,12 +119,14 @@ final class AgentTypes(final ExecutableElement _element) {
       final name = value.split('.').last;
       final nonNull = _element.library.typeSystem.promoteToNonNull(type);
       final written = write(nonNull, name, path);
+
       return written == name
           ? value
           : 'switch ($value) { null => null, final $name => $written }';
     }
     if (_listItemType(type) case final item?) {
       final written = write(item, 'item', '$path[]');
+
       return written == 'item'
           ? value
           : '[for (final item in $value) $written]';
@@ -136,6 +139,7 @@ final class AgentTypes(final ExecutableElement _element) {
           '$value.$name',
           '$path.$name',
         );
+
         return '${dartJsonLiteral(name)}: $written';
       }
 
@@ -163,6 +167,7 @@ final class AgentTypes(final ExecutableElement _element) {
         '$args.readObject($key, ($name) => .new(${_build(type, name)}))',
       null => '$args.read($key${_oneOf(type)})',
     };
+
     // An explicit null is a value: the default is only for a missing key.
     return switch (_default(parameter)) {
       final fallback? => '$args.json.containsKey($key) ? $code : $fallback',
@@ -385,6 +390,7 @@ String? documentationOf(Element? element) {
       variable.documentationComment,
     _ => element?.documentationComment,
   };
+
   return comment
       ?.split('\n')
       .map((line) => line.replaceFirst(RegExp(r'^\s*/// ?'), ''))
@@ -403,6 +409,7 @@ final _jsonString = RegExp(r'"((?:[^"\\]|\\.)*)"');
 
 String _dartString(String escaped) {
   final contents = escaped.replaceAll(r'$', r'\$');
+
   return contents.contains("'") && !contents.contains(r'\"')
       ? '"$contents"'
       : "'${contents.replaceAll(r'\"', '"').replaceAll("'", r"\'")}'";

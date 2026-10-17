@@ -10,6 +10,7 @@ mixin _$Shelf implements AgentSurface {
   @override
   AgentSchema get agentSchema {
     final surface = this as Shelf;
+
     return AgentSchema(
       sees: const [],
       calls: [
@@ -60,6 +61,7 @@ mixin _$Dispatch implements AgentSurface {
   @override
   AgentSchema get agentSchema {
     final surface = this as Dispatch;
+
     return AgentSchema(
       sees: [
         AgentView.of(
@@ -168,6 +170,7 @@ mixin _$Dispatch implements AgentSurface {
                 ),
               ),
             );
+
             return {
               'address': {
                 'street': result.address.street,

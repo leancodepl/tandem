@@ -40,6 +40,7 @@ final class _TandemChatState() extends State<TandemChat> {
   Widget build(BuildContext context) {
     final session = TandemSessionScope.of(context);
     final items = session.items;
+
     return Material(
       child: Column(
         children: [
@@ -93,6 +94,7 @@ final class const _Bubble(
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
     return Align(
       alignment: fromUser ? .centerRight : .centerLeft,
       child: Card(
@@ -139,6 +141,7 @@ final class const _ApprovalCard(
     final session = TandemSessionScope.of(context);
     // The session ignores both while a method of the turn runs.
     final canDecide = !session.isRunning;
+
     return Card(
       child: Padding(
         padding: const .all(8),
@@ -202,6 +205,7 @@ final class const _InputRow(
       TandemSession(isRunning: true) => ('Stop', session.stop),
       _ => ('Send', _sendText),
     };
+
     return Padding(
       padding: const .all(8),
       child: Row(

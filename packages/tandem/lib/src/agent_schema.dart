@@ -171,6 +171,7 @@ final class ToolArgs(
     ToolCallRefused wrongType() => ToolCallRefused(
       '$path: expected ${_type<T>()}, got ${jsonEncode(value)}',
     );
+
     // JSON does not tell 15 from 15.0. Past 2^53 - 1 a whole double may not be
     // the number the agent wrote, and on the web `T()` would take it as an int.
     return switch (value) {
@@ -212,6 +213,7 @@ final class ToolArgs(
         int.parse(match[group] ?? '0'),
     ];
     final real = DateTime.utc(year, month, day, hour, minute, second);
+
     return real.month == month &&
             real.day == day &&
             real.hour == hour &&

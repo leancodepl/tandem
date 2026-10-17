@@ -524,6 +524,7 @@ List<FlutterErrorDetails> _collectReports() {
 
 List<Map<String, Object?>> _messages(Map<String, Object?> request) {
   final {'messages': messages as List<Object?>} = request;
+
   return messages.cast();
 }
 

@@ -16,6 +16,7 @@ final _endpoint = Uri.parse('http://localhost:8000/agent');
 /// Serves the fixture [name] in pieces that cut its lines and characters.
 http.StreamedResponse _fixture(String name) {
   final bytes = File('test/protocol/$name').readAsBytesSync();
+
   return http.StreamedResponse(
     Stream.fromIterable([
       for (var i = 0; i < bytes.length; i += _fixtureChunkSize)
@@ -29,6 +30,7 @@ Stream<Map<String, Object?>> _run(String name) {
   final client = MockClient.streaming(
     (request, bodyStream) async => _fixture(name),
   );
+
   return HttpAgentConnection(_endpoint, client: client).run(const {});
 }
 

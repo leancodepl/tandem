@@ -23,11 +23,13 @@ class const AgentGenerator() extends Generator {
       for (final annotated in library.annotatedWith(_tandemAgent))
         await _mixin(annotated.element, buildStep),
     ];
+
     return mixins.isEmpty ? null : mixins.join('\n\n');
   }
 
   static GetterElement? _capabilitiesGetter(ClassElement type) {
     final capabilities = type.getGetter('agentCapabilities');
+
     return switch (capabilities?.returnType) {
       InterfaceType(isDartCoreList: true, typeArguments: [final item])
           when _capability.isExactlyType(item) =>
@@ -65,11 +67,12 @@ class const AgentGenerator() extends Generator {
     getter.accept(items);
     final sees = [for (final item in items.sees) _view(item, name)];
     final methods = {for (final item in items.calls) _method(item, name)};
+
     return '''
 mixin _\$$name implements AgentSurface {
   @override
   AgentSchema get agentSchema {
-    ${sees.isEmpty && methods.isEmpty ? '' : 'final surface = this as $name;'}
+    ${sees.isEmpty && methods.isEmpty ? '' : 'final surface = this as $name;\n'}
     return AgentSchema(
       sees: ${_list(sees)},
       calls: ${_list(methods.map(_tool))},
@@ -105,6 +108,7 @@ mixin _\$$name implements AgentSurface {
     }
     final name = getter.displayName;
     final write = AgentTypes(getter).write(getter.returnType, name, name);
+
     return 'AgentView.of(() => surface.$name, '
         '${dartJsonLiteral(_snakeCase(name))}, '
         '${dartJsonLiteral(_doc(getter))}, ($name) => $write,),';
@@ -130,6 +134,7 @@ mixin _\$$name implements AgentSurface {
     final parameters = method.formalParameters;
     final schema = types.object(parameters, '');
     final call = 'surface.$name(${types.arguments(parameters, 'args')})';
+
     return '''
 AgentTool(
   surface.$name,
@@ -158,9 +163,10 @@ AgentTool(
       'result',
       'the result of ${method.displayName}',
     );
+
     return write == 'result'
         ? '(args) => $call'
-        : '(args) $async{ final result = $wait$call; return $write; }';
+        : '(args) $async{ final result = $wait$call;\n\nreturn $write; }';
   }
 
   static String _list(Iterable<String> items) =>

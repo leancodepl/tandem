@@ -10,6 +10,7 @@ mixin _$OrderCubit implements AgentSurface {
   @override
   AgentSchema get agentSchema {
     final surface = this as OrderCubit;
+
     return AgentSchema(
       sees: [
         AgentView.of(
@@ -38,6 +39,7 @@ mixin _$OrderCubit implements AgentSurface {
           },
           invoke: (args) async {
             final result = await surface.searchCatalog(args.read('query'));
+
             return [
               for (final item in result)
                 {
