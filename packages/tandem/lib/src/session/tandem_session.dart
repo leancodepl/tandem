@@ -116,7 +116,7 @@ final class TandemSession({
   /// pending, or while [isRunning] (an approved method runs).
   void reject(ApprovalRequest request) {
     if (_pendingApprovalCall(request) case final call?) {
-      _decide(call, .rejected, ToolAnswer.rejected);
+      _decide(call, .rejected);
       _startNextRun();
     }
   }
@@ -132,7 +132,7 @@ final class TandemSession({
   void _start([String? text]) {
     for (final call in _calls) {
       if (call.pending) {
-        _decide(call, .cancelled, ToolAnswer.cancelled);
+        _decide(call, .cancelled);
       }
     }
     _history.addAll([
@@ -304,13 +304,18 @@ final class TandemSession({
         .firstOrNull;
   }
 
-  void _decide(ToolCall call, ApprovalStatus status, [ToolAnswer? answer]) {
+  void _decide(ToolCall call, ApprovalStatus status) {
     if (call.request case final request?) {
       final decided = request.withStatus(status);
       _items[_items.indexOf(request)] = decided;
       call
         ..request = decided
-        ..answer = answer;
+        ..answer = switch (status) {
+          .rejected => ToolAnswer.rejected,
+          .cancelled => ToolAnswer.cancelled,
+          .invalidated => ToolAnswer.invalidated,
+          .pending || .approved => null,
+        };
     }
   }
 
@@ -318,7 +323,7 @@ final class TandemSession({
     final pending = _calls.where((call) => call.pending).toList();
     if (pending.isNotEmpty) {
       for (final call in pending) {
-        _decide(call, .invalidated, ToolAnswer.invalidated);
+        _decide(call, .invalidated);
       }
       notifyListeners();
     }
