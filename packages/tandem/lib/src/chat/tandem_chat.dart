@@ -93,7 +93,7 @@ final class const _Bubble(
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final colors = context.colorScheme;
 
     return Align(
       alignment: fromUser ? .centerRight : .centerLeft,
@@ -105,8 +105,7 @@ final class const _Bubble(
             crossAxisAlignment: .start,
             children: [
               Text(text),
-              if (stopped)
-                Text('Stopped', style: Theme.of(context).textTheme.bodySmall),
+              if (stopped) Text('Stopped', style: context.textTheme.bodySmall),
             ],
           ),
         ),
@@ -126,7 +125,7 @@ final class const _Notice(final ChatNoticeKind kind) extends StatelessWidget {
         .connectionLost => 'Connection lost. Starting a new conversation.',
       },
       textAlign: .center,
-      style: Theme.of(context).textTheme.bodySmall,
+      style: context.textTheme.bodySmall,
     ),
   );
 }
@@ -224,4 +223,10 @@ final class const _InputRow(
       ),
     );
   }
+}
+
+extension on BuildContext {
+  TextTheme get textTheme => Theme.of(this).textTheme;
+
+  ColorScheme get colorScheme => Theme.of(this).colorScheme;
 }

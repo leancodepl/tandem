@@ -171,7 +171,7 @@ final class TandemSession({
     }
     _history.addAll([
       for (final call in _calls) toolAnswer(call.id, call.answer ?? _cancelled),
-      if (text != null) userMessage(newId(), text),
+      if (text case final message?) userMessage(newId(), message),
     ]);
     _calls = [];
     try {
