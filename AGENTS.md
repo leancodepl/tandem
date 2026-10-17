@@ -36,7 +36,7 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 - The code explains itself. Write a comment only for a why the code cannot show (a protocol quirk, an upstream bug, an invariant), in one short line, with a link when there is one. Doc comments go on public API and say more than the name and type. The same holds for the Python agent: docstrings only where they add something, type hints, ruff clean.
 - Few tests. One focused test per behaviour or fixed defect, in the existing test file when there is one. No test that restates the implementation.
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
-- Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`TANDEM_FAKE_LLM=1`).
+- Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`).
 - When the API changes, change `README.md`, `packages/tandem_bloc/README.md` (an identical copy) and `packages/tandem_bloc/skills/tandem-bloc-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
 - Commit messages are `task: <what>`, with no `Co-Authored-By` or other attribution.
 - Never read, print or create a `.env` file. No API keys in the repo.
