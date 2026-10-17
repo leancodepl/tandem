@@ -41,8 +41,10 @@ final class const OrderForm({super.key}) extends StatelessWidget {
                 ],
               ),
             ),
-          if (order.lines.isNotEmpty) _Lines(order.lines, editable: editable),
-          if (order.lines.isNotEmpty) _Total(order.total),
+          if (order.lines.isNotEmpty) ...[
+            _Lines(order.lines, editable: editable),
+            _Total(order.total),
+          ],
         ],
       ),
     );
