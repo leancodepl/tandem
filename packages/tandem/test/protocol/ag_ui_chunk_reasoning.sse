@@ -1,0 +1,18 @@
+: Written by hand from the AG-UI specification, not recorded: a reasoning message that a sender opens closes its message, and one that continues by its id closes nothing, so a chunk without an id continues the parent's message while it is open, then the only message left open.
+data: {"type":"RUN_STARTED","threadId":"thread-C","runId":"run-C1"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"p1","delta":"Checking."}
+
+data: {"type":"REASONING_MESSAGE_CHUNK","messageId":"r1","subagentRunId":"s1","delta":"Plan"}
+
+data: {"type":"REASONING_MESSAGE_CHUNK","messageId":"r1","delta":" more"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":" Done."}
+
+data: {"type":"REASONING_MESSAGE_CHUNK","messageId":"r2","delta":"Next"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m1","subagentRunId":"s2","delta":"Re"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":"sult"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-C","runId":"run-C1"}

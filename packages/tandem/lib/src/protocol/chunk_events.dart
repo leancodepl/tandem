@@ -2,12 +2,16 @@
 /// session reads a run the same way whichever form the agent uses.
 ///
 /// `TEXT_MESSAGE_CHUNK` becomes `TEXT_MESSAGE_CONTENT`. `TOOL_CALL_CHUNK`
-/// becomes `TOOL_CALL_START`, when it opens a call, and `TOOL_CALL_ARGS`. As in
-/// AG-UI, a chunk with an id no open stream has opens a new message or call,
-/// and a chunk without an id continues the open one of its sender: the
-/// subagent its `subagentRunId` names, or the parent when it has none.
-/// Subagents can interleave their chunks, so each sender has its own open
-/// stream, a message or a call, and opening one closes the one it had.
+/// becomes `TOOL_CALL_START`, when it opens a call, and `TOOL_CALL_ARGS`.
+/// `REASONING_MESSAGE_CHUNK` passes through, as the session shows no
+/// reasoning. As in AG-UI, a chunk with an id no open stream has opens a new
+/// message, call or reasoning message, and a chunk without an id continues the
+/// open one of its sender: the subagent its `subagentRunId` names, or the
+/// parent when it has none. Subagents can interleave their chunks, so each
+/// sender has its own open stream, and opening one closes the one it had. The
+/// other text, call, state, step, reasoning and custom events of the sender
+/// close it too, `SUBAGENT_FINISHED` and `SUBAGENT_ERROR` close the one of
+/// their subagent, and a run event or `MESSAGES_SNAPSHOT` closes them all.
 ///
 /// A chunk with neither id nor `subagentRunId` continues the parent's open
 /// message or call, else the only one open in any subagent. When several
@@ -17,32 +21,66 @@
 /// belongs to nothing, or opens a call without its name, is dropped. Every
 /// other event passes through.
 final class ChunkExpander() {
-  /// Starts a run with no message or call open. Each run needs its own
-  /// expander, which remembers the open message or call of each sender.
+  /// Starts a run with no stream open. Each run needs its own expander,
+  /// which remembers the open stream of each sender.
   this;
 
-  // The id of the open message or call of each sender, which is its
-  // `subagentRunId`, or null for the parent. A sender is in one map at most.
-  final _messageIds = <String?, String>{};
-  final _toolCallIds = <String?, String>{};
+  // The open stream of each sender, which is its `subagentRunId`, or null for
+  // the parent.
+  final _streams = <String?, ({_Kind kind, String id})>{};
 
   /// The events that [event] stands for.
-  Iterable<Map<String, Object?>> call(Map<String, Object?> event) =>
-      switch (event) {
-        {'type': 'TEXT_MESSAGE_CHUNK'} => _text(event),
-        {'type': 'TOOL_CALL_CHUNK'} => _toolCall(event),
-        _ => [event],
-      };
+  Iterable<Map<String, Object?>> call(Map<String, Object?> event) {
+    switch (event['type']) {
+      case 'TEXT_MESSAGE_CHUNK':
+        return _text(event);
+      case 'TOOL_CALL_CHUNK':
+        return _toolCall(event);
+      case 'REASONING_MESSAGE_CHUNK':
+        if (event['messageId'] case final String messageId
+            when !_isOpen(.reasoning, messageId)) {
+          _streams[_senderOf(event)] = (kind: .reasoning, id: messageId);
+        }
+      case 'TEXT_MESSAGE_START' ||
+          'TEXT_MESSAGE_CONTENT' ||
+          'TEXT_MESSAGE_END' ||
+          'TOOL_CALL_START' ||
+          'TOOL_CALL_ARGS' ||
+          'TOOL_CALL_END' ||
+          'TOOL_CALL_RESULT' ||
+          'STATE_SNAPSHOT' ||
+          'STATE_DELTA' ||
+          'STEP_STARTED' ||
+          'STEP_FINISHED' ||
+          'REASONING_START' ||
+          'REASONING_MESSAGE_START' ||
+          'REASONING_MESSAGE_CONTENT' ||
+          'REASONING_MESSAGE_END' ||
+          'REASONING_END' ||
+          'CUSTOM':
+        _streams.remove(_senderOf(event));
+      case 'SUBAGENT_FINISHED' || 'SUBAGENT_ERROR':
+        // Without a subagent the event is malformed, and closes nothing.
+        if (event['subagentRunId'] case final String sender) {
+          _streams.remove(sender);
+        }
+      case 'RUN_STARTED' ||
+          'RUN_FINISHED' ||
+          'RUN_ERROR' ||
+          'MESSAGES_SNAPSHOT':
+        _streams.clear();
+    }
+    return [event];
+  }
 
   Iterable<Map<String, Object?>> _text(Map<String, Object?> chunk) sync* {
     final sender = _senderOf(chunk);
-    switch (_candidates(chunk['messageId'], _messageIds, sender)) {
+    switch (_candidates(.text, chunk['messageId'], sender)) {
       case []:
         return;
       case [final messageId]:
-        if (!_messageIds.containsValue(messageId)) {
-          _messageIds[sender] = messageId;
-          _toolCallIds.remove(sender);
+        if (!_isOpen(.text, messageId)) {
+          _streams[sender] = (kind: .text, id: messageId);
         }
         if (chunk['delta'] case final String delta) {
           yield {
@@ -58,14 +96,13 @@ final class ChunkExpander() {
 
   Iterable<Map<String, Object?>> _toolCall(Map<String, Object?> chunk) sync* {
     final sender = _senderOf(chunk);
-    switch (_candidates(chunk['toolCallId'], _toolCallIds, sender)) {
+    switch (_candidates(.toolCall, chunk['toolCallId'], sender)) {
       case []:
         return;
       case [final toolCallId]:
-        if (!_toolCallIds.containsValue(toolCallId)) {
+        if (!_isOpen(.toolCall, toolCallId)) {
           if (chunk['toolCallName'] case final String name) {
-            _toolCallIds[sender] = toolCallId;
-            _messageIds.remove(sender);
+            _streams[sender] = (kind: .toolCall, id: toolCallId);
             yield {
               'type': 'TOOL_CALL_START',
               'toolCallId': toolCallId,
@@ -86,32 +123,43 @@ final class ChunkExpander() {
         throw _ambiguous(chunk);
     }
   }
+
+  /// Whether a sender has the stream of [kind] with [id] open.
+  bool _isOpen(_Kind kind, String id) =>
+      _streams.containsValue((kind: kind, id: id));
+
+  /// The ids a chunk of [kind] can belong to: its own [id] when it is a
+  /// string, else the id of the stream of [kind] its [sender] has open, else,
+  /// for the parent only, the id of every one a subagent has open.
+  List<String> _candidates(_Kind kind, Object? id, String? sender) {
+    if (id is String) {
+      return [id];
+    }
+    if (_streams[sender] case final open? when open.kind == kind) {
+      return [open.id];
+    }
+    return [
+      if (sender == null)
+        for (final open in _streams.values)
+          if (open.kind == kind) open.id,
+    ];
+  }
 }
 
-/// The `subagentRunId` of [chunk] when it is a string, else null for the
+/// What a stream that a sender has open carries.
+enum _Kind() {
+  text,
+  toolCall,
+  reasoning,
+}
+
+/// The `subagentRunId` of [event] when it is a string, else null for the
 /// parent.
-String? _senderOf(Map<String, Object?> chunk) =>
-    switch (chunk['subagentRunId']) {
+String? _senderOf(Map<String, Object?> event) =>
+    switch (event['subagentRunId']) {
       final String sender => sender,
       _ => null,
     };
-
-/// The ids a chunk can belong to: its own [id] when it is a string, else the
-/// open id of its [sender], else, for the parent only, the open id of every
-/// subagent.
-List<String> _candidates(
-  Object? id,
-  Map<String?, String> openIds,
-  String? sender,
-) {
-  if (id is String) {
-    return [id];
-  }
-  if (openIds[sender] case final open?) {
-    return [open];
-  }
-  return sender == null ? [...openIds.values] : [];
-}
 
 /// The error that refuses a [chunk] that could join several streams.
 FormatException _ambiguous(Map<String, Object?> chunk) => FormatException(

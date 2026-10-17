@@ -1,0 +1,20 @@
+: Written by hand from the AG-UI specification, not recorded: the result of the parent's call closes it, a state event of the parent leaves a subagent's call open, and MESSAGES_SNAPSHOT closes every call, so the chunks that follow, tagged only when they open a call, continue the only call left open.
+data: {"type":"RUN_STARTED","threadId":"thread-C","runId":"run-C1"}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"pc","toolCallName":"search","delta":"{}"}
+
+data: {"type":"TOOL_CALL_RESULT","messageId":"r1","toolCallId":"pc","content":"[]"}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"c1","toolCallName":"add","subagentRunId":"s1","delta":"{\"item\":"}
+
+data: {"type":"STATE_DELTA","delta":[]}
+
+data: {"type":"TOOL_CALL_CHUNK","delta":"\"milk\"}"}
+
+data: {"type":"MESSAGES_SNAPSHOT","messages":[]}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"c2","toolCallName":"add","subagentRunId":"s2","delta":"{\"item\":"}
+
+data: {"type":"TOOL_CALL_CHUNK","delta":"\"eggs\"}"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-C","runId":"run-C1"}

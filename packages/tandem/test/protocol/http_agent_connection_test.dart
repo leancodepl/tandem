@@ -195,6 +195,34 @@ void main() {
     expect(events.last, isA<RunFinished>());
   });
 
+  test('a subagent that finishes or fails closes its message, so a chunk '
+      'without an id continues the only message left open', () async {
+    final events = await _agentEvents('ag_ui_chunk_subagent_end.sse');
+
+    expect(_texts(events), {'m1': 'Found.', 'm2': 'Failed.', 'm3': 'Result'});
+    expect(events.last, isA<RunFinished>());
+  });
+
+  test('an event of a sender closes its call and MESSAGES_SNAPSHOT closes '
+      'every call, so chunks continue the only call left open', () async {
+    final events = await _agentEvents('ag_ui_chunk_closing_events.sse');
+
+    expect(_arguments(events), {
+      'pc': '{}',
+      'c1': '{"item":"milk"}',
+      'c2': '{"item":"eggs"}',
+    });
+    expect(events.last, isA<RunFinished>());
+  });
+
+  test('a reasoning message that a sender opens closes its message, and one '
+      'that goes on by its id closes nothing', () async {
+    final events = await _agentEvents('ag_ui_chunk_reasoning.sse');
+
+    expect(_texts(events), {'p1': 'Checking. Done.', 'm1': 'Result'});
+    expect(events.last, isA<RunFinished>());
+  });
+
   test('an ambiguous chunk fails the stream, as malformed JSON does', () async {
     await expectLater(
       _run('ag_ui_chunk_ambiguous.sse'),

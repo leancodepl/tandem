@@ -1,0 +1,26 @@
+: Written by hand from the AG-UI specification, not recorded: subagents that run one after another and tag only the chunk that opens their message. SUBAGENT_FINISHED or SUBAGENT_ERROR closes the message of its subagent, so a chunk without an id continues the only message left open.
+data: {"type":"RUN_STARTED","threadId":"thread-C","runId":"run-C1"}
+
+data: {"type":"SUBAGENT_STARTED","subagentRunId":"s1","name":"finder"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m1","subagentRunId":"s1","delta":"Fou"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":"nd."}
+
+data: {"type":"SUBAGENT_FINISHED","subagentRunId":"s1"}
+
+data: {"type":"SUBAGENT_STARTED","subagentRunId":"s2","name":"checker"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m2","subagentRunId":"s2","delta":"Fail"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":"ed."}
+
+data: {"type":"SUBAGENT_ERROR","subagentRunId":"s2","message":"Quota exceeded"}
+
+data: {"type":"SUBAGENT_STARTED","subagentRunId":"s3","name":"writer"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m3","subagentRunId":"s3","delta":"Re"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":"sult"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-C","runId":"run-C1"}
