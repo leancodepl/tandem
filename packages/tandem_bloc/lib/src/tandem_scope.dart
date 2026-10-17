@@ -4,9 +4,10 @@ import 'package:tandem/tandem.dart';
 
 const _notStreamable =
     'TandemScope<C> needs C to be a Cubit or Bloc, provided above it.';
+const _noEndpoint = 'A TandemScope has an agent or a connection.';
 
 /// Makes the screen below it agent-aware: one [TandemSession] of the [C]
-/// provided above it, for as long as the scope lives.
+/// provided above it.
 ///
 /// Put it under the `BlocProvider` of [C], with the [TandemChat] below it:
 ///
@@ -26,8 +27,15 @@ const _notStreamable =
 /// ```
 ///
 /// When what the agent sees (`.sees`) changes, the approvals still pending
-/// are invalidated. The session is created once, so the conversation is one
-/// AG-UI thread, and it is disposed before the `BlocProvider` closes [C].
+/// are invalidated.
+///
+/// The conversation is one AG-UI thread, and an ordinary rebuild keeps it.
+/// A new session, with a new thread, replaces the old one when the provider
+/// above gives another [C], when `agent` is another [Uri] (compared with
+/// `==`), or when `connected` gets another connection (compared with
+/// `identical`: keep it in a field, not in `build`). A new [onAgentCall]
+/// takes effect at once. A scope that leaves the tree disposes its session
+/// before the `BlocProvider` closes [C].
 final class TandemScope<C extends AgentSurface> extends StatefulWidget {
   /// A scope that talks to the AG-UI endpoint `agent`. [onAgentCall] hears
   /// every call of a listed method that ran.
@@ -62,21 +70,33 @@ final class TandemScope<C extends AgentSurface> extends StatefulWidget {
 
 final class _TandemScopeState<C extends AgentSurface>()
     extends State<TandemScope<C>> {
-  late final TandemSession _session;
+  late C _cubit;
+  late TandemSession _session;
 
   @override
   void initState() {
     super.initState();
+    _cubit = context.read<C>();
+    _session = _open();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     final cubit = context.read<C>();
-    _session = TandemSession(
-      surface: cubit,
-      changes: switch (cubit) {
-        StateStreamable<Object?>(:final stream) => stream,
-        _ => throw FlutterError(_notStreamable),
-      },
-      connection: widget._connection ?? HttpAgentConnection(widget._agent!),
-      onAgentCall: widget.onAgentCall,
-    );
+    if (!identical(cubit, _cubit)) {
+      _cubit = cubit;
+      _reopen();
+    }
+  }
+
+  @override
+  void didUpdateWidget(TandemScope<C> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget._agent != oldWidget._agent ||
+        !identical(widget._connection, oldWidget._connection)) {
+      _reopen();
+    }
   }
 
   @override
@@ -86,6 +106,30 @@ final class _TandemScopeState<C extends AgentSurface>()
   }
 
   @override
-  Widget build(BuildContext context) =>
-      TandemSessionScope(session: _session, child: widget.child);
+  Widget build(BuildContext context) {
+    // Calls didChangeDependencies when the provider gives another cubit, but
+    // not for the states of this one, as watching it would.
+    context.select<C, C>((cubit) => cubit);
+    return TandemSessionScope(session: _session, child: widget.child);
+  }
+
+  void _reopen() {
+    _session.dispose();
+    _session = _open();
+  }
+
+  TandemSession _open() => TandemSession(
+    surface: _cubit,
+    changes: switch (_cubit) {
+      StateStreamable<Object?>(:final stream) => stream,
+      _ => throw FlutterError(_notStreamable),
+    },
+    connection: switch ((widget._connection, widget._agent)) {
+      (final connection?, _) => connection,
+      (_, final agent?) => HttpAgentConnection(agent),
+      _ => throw StateError(_noEndpoint),
+    },
+    onAgentCall: (tool, arguments, result) =>
+        widget.onAgentCall?.call(tool, arguments, result),
+  );
 }
