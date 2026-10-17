@@ -87,7 +87,7 @@ BlocProvider(
 
 `TandemScope` goes below the `BlocProvider` of the Cubit, and `TandemChat` below the scope. `TandemChat` fills its parent, so give it the size you want. `onAgentCall: (context, call) { ... }` hears every listed method that ran (`call.tool`, `call.arguments`, `call.result`). Its context is below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
 
-Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement.
+Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) in the Tandem repository is a working Google ADK backend to copy from.
 
 **Done when** the app shows the chat next to the screen. Step 5 checks the rest without a backend.
 
