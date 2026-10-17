@@ -4,29 +4,28 @@
 /// `TEXT_MESSAGE_CHUNK` becomes `TEXT_MESSAGE_CONTENT`. `TOOL_CALL_CHUNK`
 /// becomes `TOOL_CALL_START`, when it opens a call, and `TOOL_CALL_ARGS`.
 /// `REASONING_MESSAGE_CHUNK` passes through, as the session shows no
-/// reasoning. As in AG-UI, a chunk with an id no open stream has opens a new
-/// message, call or reasoning message, and a chunk without an id continues the
-/// open one of its sender: the subagent its `subagentRunId` names, or the
-/// parent when it has none. Subagents can interleave their chunks, so each
-/// sender has its own open stream, and opening one closes the one it had. The
-/// other text, call, state, step, reasoning and custom events of the sender
-/// close it too, `SUBAGENT_FINISHED` and `SUBAGENT_ERROR` close the one of
-/// their subagent, and a run event or `MESSAGES_SNAPSHOT` closes them all.
+/// reasoning, and so does every other event.
+///
+/// As in AG-UI, a chunk with an id no open stream has opens a new message,
+/// call or reasoning message, and a chunk without an id continues the open
+/// one of its sender: the subagent its `subagentRunId` names, or the parent.
+/// Subagents can interleave their chunks, so each sender has its own open
+/// stream, and opening one closes the one it had. The sender's other text,
+/// call, state, step, reasoning and custom events close it too.
+/// `SUBAGENT_FINISHED` and `SUBAGENT_ERROR` close the one of their subagent,
+/// and a run event or `MESSAGES_SNAPSHOT` closes them all.
 ///
 /// A chunk with neither id nor `subagentRunId` continues the parent's open
 /// message or call, else the only one open in any subagent. When several
-/// subagents have one open and the parent has none, it could join any of
-/// them: it is refused with a [FormatException], like malformed JSON, so the
-/// stream of the run fails and the run counts as broken. A chunk that
-/// belongs to nothing, or opens a call without its name, is dropped. Every
-/// other event passes through.
+/// subagents have one open and the parent has none, it is refused with a
+/// [FormatException], like malformed JSON, so the run counts as broken. A
+/// chunk that belongs to nothing, or opens a call without a name, is dropped.
 final class ChunkExpander() {
-  /// Starts a run with no stream open. Each run needs its own expander,
-  /// which remembers the open stream of each sender.
+  /// An expander for one run. Each run needs its own, as it remembers the
+  /// open streams.
   this;
 
-  // The open stream of each sender, which is its `subagentRunId`, or null for
-  // the parent.
+  // Keyed by sender: its `subagentRunId`, or null for the parent.
   final _streams = <String?, ({_Kind kind, String id})>{};
 
   /// The events that [event] stands for.
@@ -124,13 +123,9 @@ final class ChunkExpander() {
     }
   }
 
-  /// Whether a sender has the stream of [kind] with [id] open.
   bool _isOpen(_Kind kind, String id) =>
       _streams.containsValue((kind: kind, id: id));
 
-  /// The ids a chunk of [kind] can belong to: its own [id] when it is a
-  /// string, else the id of the stream of [kind] its [sender] has open, else,
-  /// for the parent only, the id of every one a subagent has open.
   List<String> _candidates(_Kind kind, Object? id, String? sender) {
     if (id is String) {
       return [id];
@@ -146,22 +141,18 @@ final class ChunkExpander() {
   }
 }
 
-/// What a stream that a sender has open carries.
 enum _Kind() {
   text,
   toolCall,
   reasoning,
 }
 
-/// The `subagentRunId` of [event] when it is a string, else null for the
-/// parent.
 String? _senderOf(Map<String, Object?> event) =>
     switch (event['subagentRunId']) {
       final String sender => sender,
       _ => null,
     };
 
-/// The error that refuses a [chunk] that could join several streams.
 FormatException _ambiguous(Map<String, Object?> chunk) => FormatException(
   '${chunk['type']} without an id could continue the stream of several '
   'subagents',

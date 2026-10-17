@@ -1,10 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:tandem/src/session.dart';
 
-const _missingScope =
-    'No TandemScope found above this context. TandemChat needs the screen to '
-    'be wrapped in a TandemScope.';
-
 /// Gives the widgets below it the [TandemSession] of their screen, and
 /// rebuilds the ones that read it when it changes.
 ///
@@ -27,6 +23,9 @@ final class const TandemSessionScope({
     if (scope?.notifier case final session?) {
       return session;
     }
-    throw FlutterError(_missingScope);
+    throw FlutterError(
+      'No TandemScope found above this context. TandemChat needs the screen to '
+      'be wrapped in a TandemScope.',
+    );
   }
 }

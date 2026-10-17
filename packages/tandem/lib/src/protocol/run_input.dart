@@ -1,15 +1,5 @@
 import 'package:tandem/src/agent_list.dart';
 
-/// The id of the assistant message that carries a tool call is this prefix
-/// plus the call id, never the bare call id: ag-ui-adk marks every message id
-/// it has seen as processed, so a message with the bare call id would make it
-/// swallow the answer that comes later.
-const assistantToolCallPrefix = 'asst-';
-
-/// The id of the message that answers a tool call is this prefix plus the
-/// call id.
-const toolAnswerPrefix = 'tool-';
-
 /// The body of one AG-UI run: the whole conversation of the thread as
 /// [messages], plus what [listing] shares with the agent.
 Map<String, Object?> runInput({
@@ -47,7 +37,9 @@ Map<String, Object?> assistantToolCall(
   String name,
   String arguments,
 ) => {
-  'id': '$assistantToolCallPrefix$toolCallId',
+  // Never the bare call id: ag-ui-adk marks every message id it has seen as
+  // processed, and would swallow the answer that comes later.
+  'id': 'asst-$toolCallId',
   'role': 'assistant',
   'toolCalls': [
     {
@@ -60,7 +52,7 @@ Map<String, Object?> assistantToolCall(
 
 /// The answer to the call [toolCallId], with [content] as a JSON string.
 Map<String, Object?> toolAnswer(String toolCallId, String content) => {
-  'id': '$toolAnswerPrefix$toolCallId',
+  'id': 'tool-$toolCallId',
   'role': 'tool',
   'toolCallId': toolCallId,
   'content': content,

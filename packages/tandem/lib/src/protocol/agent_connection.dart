@@ -6,19 +6,13 @@ import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/chunk_events.dart';
 import 'package:tandem/src/protocol/sse.dart';
 
-const _headers = {
-  'Accept': 'text/event-stream',
-  'Content-Type': 'application/json',
-};
-const _statusOk = 200;
-
 // ADK sends a `: ping` comment every 15 s. parseSse drops it, so the timeout
 // watches the raw bytes: 60 s without any, or without the response headers,
 // means the connection is dead.
 const _idleTimeout = Duration(seconds: 60);
 
 // Without `onTimeout`, `timeout` only adds the error and keeps the dead
-// connection open: this one ends the stream, which cancels the connection.
+// connection open. Ending the stream cancels it.
 void _endWithTimeout(EventSink<List<int>> sink) {
   sink
     ..addError(TimeoutException('No bytes from the agent', _idleTimeout))
@@ -39,25 +33,26 @@ void _endAfterRun(
 
 /// The link to the agent: one AG-UI run per call.
 abstract interface class AgentConnection() {
-  /// For the classes that implement a connection.
+  /// Implement this interface for another transport or a fake agent.
   this;
 
   /// Posts [input], the body of one AG-UI run, and streams the events of the
-  /// run as decoded JSON. A chunk event, `TEXT_MESSAGE_CHUNK` or
-  /// `TOOL_CALL_CHUNK`, comes as the content, start and args events it
-  /// abbreviates, each sender, parent or subagent, continuing its own open
-  /// message or call. A chunk without an id that several subagents could own
-  /// fails the stream with a [FormatException], like malformed JSON.
+  /// run as decoded JSON.
+  ///
+  /// `TEXT_MESSAGE_CHUNK` and `TOOL_CALL_CHUNK` come as the content, start
+  /// and args events they abbreviate, each sender, parent or subagent,
+  /// continuing its own open message or call. A chunk without an id that
+  /// several subagents could own fails the stream with a [FormatException].
   ///
   /// The stream ends right after `RUN_FINISHED` or `RUN_ERROR`, and the
   /// connection closes with it. A stream that ends earlier, or fails, means
-  /// the run broke. Cancelling the subscription aborts the request, even when
-  /// it still waits for the response headers, and its future completes once
-  /// the connection is cleaned up. The session cancels only when it is
-  /// disposed, or when the stream fails: that run is broken, and the next
-  /// message starts a new thread. Stopping a run must not cancel it, because
-  /// ADK keeps running and the thread stays consistent only if its events are
-  /// read to the end.
+  /// the run broke. Cancelling the subscription aborts the request, even
+  /// while it waits for the response headers, and its future completes once
+  /// the connection is cleaned up.
+  ///
+  /// The session cancels only when it is disposed or the stream fails.
+  /// Stopping a run does not cancel it: ADK keeps running, and the thread
+  /// stays consistent only if the run's events are read to the end.
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
 }
 
@@ -85,7 +80,6 @@ final class HttpAgentConnection(final Uri endpoint, {final http.Client? client})
       },
       onCancel: () {
         abortTrigger.complete();
-        // The caller's `cancel()` waits for the connection to clean up.
         return subscription.cancel();
       },
     );
@@ -100,11 +94,14 @@ final class HttpAgentConnection(final Uri endpoint, {final http.Client? client})
     try {
       final request =
           http.AbortableRequest('POST', endpoint, abortTrigger: abortTrigger)
-            ..headers.addAll(_headers)
+            ..headers.addAll({
+              'Accept': 'text/event-stream',
+              'Content-Type': 'application/json',
+            })
             // Bytes, not `body`, which would add a charset to the content type.
             ..bodyBytes = utf8.encode(jsonEncode(input));
       final response = await httpClient.send(request).timeout(_idleTimeout);
-      if (response.statusCode != _statusOk) {
+      if (response.statusCode != 200) {
         throw AgentHttpException(
           response.statusCode,
           await response.stream.bytesToString().timeout(_idleTimeout),

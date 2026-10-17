@@ -79,6 +79,4 @@ final class const IgnoredEvent() extends AgentEvent {
   this;
 }
 
-/// [value] when it is a string: an optional field of the wrong type is left
-/// out instead of failing the event.
 String? _string(Object? value) => value is String ? value : null;

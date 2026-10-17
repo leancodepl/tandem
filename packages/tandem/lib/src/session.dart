@@ -12,7 +12,7 @@ import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 
-// Tool answers. The status goes in `content`: ag-ui-adk ignores a tool
+// Tool answers carry their status in `content`: ag-ui-adk ignores a tool
 // message's `error`, and the model reads an empty content as success.
 const _cancelled = '{"status":"cancelled"}';
 const _invalidated = '{"status":"invalidated"}';
@@ -22,18 +22,8 @@ String _refused(String reason) =>
     jsonEncode({'status': 'refused', 'reason': reason});
 String _failed(Object err) => jsonEncode({'status': 'failed', 'error': '$err'});
 
-// The arguments of a call that has no `TOOL_CALL_ARGS`.
-const _noArguments = '{}';
-
-// Why a call that needs approval gets no card.
-const _argumentsNotAnObject = 'The arguments must be a JSON object.';
-
-// The library named in the errors the session reports.
-const _library = 'tandem';
-
-/// Reports an error the session caught, so that it reaches the logs.
 void _report(Object err, StackTrace st) => FlutterError.reportError(
-  FlutterErrorDetails(exception: err, stack: st, library: _library),
+  FlutterErrorDetails(exception: err, stack: st, library: 'tandem'),
 );
 
 /// A call of a listed method that returned.
@@ -58,22 +48,23 @@ typedef AgentCallListener = void Function(AgentCall call);
 /// The chat of the user and the agent about one screen.
 ///
 /// Every run reads the screen's agent list again. When a run finishes, the
-/// calls of listed methods run, and the next run, which starts at once,
-/// takes their answers to the agent. A call that needs approval shows as an
-/// [ApprovalRequest] instead, and the next run waits for the user. Any
-/// change `changes` reports once the card shows invalidates it for good. One
-/// run is open at a time: a message sent meanwhile shows at once and goes
-/// with the next run, after the answers. A run that breaks off moves the
-/// chat to a new AG-UI thread.
+/// calls of listed methods run, and the next run takes their answers to the
+/// agent at once. A call that needs approval shows as an [ApprovalRequest]
+/// instead, and the next run waits for the user. Any change `changes`
+/// reports after the card shows invalidates it for good.
+///
+/// One run is open at a time: a message sent meanwhile shows at once and
+/// goes with the next run, after the answers. A run that breaks off moves
+/// the chat to a new AG-UI thread.
 final class TandemSession({
   required final AgentSurface _surface,
   required Stream<Object?> changes,
   required final AgentConnection _connection,
   final AgentCallListener? _onAgentCall,
 }) extends ChangeNotifier {
-  /// A chat about `surface`, whose state changes `changes` reports, over
-  /// `connection`. `onAgentCall` hears every call of a listed method that
-  /// ran.
+  /// A chat about `surface` over `connection`. `changes` reports the changes
+  /// of what the agent sees, and `onAgentCall` hears every call of a listed
+  /// method that returned.
   this {
     _stateChangesSubscription = changes.listen(
       (_) => _invalidatePendingApprovals(),
@@ -120,9 +111,9 @@ final class TandemSession({
     notifyListeners();
   }
 
-  /// Stops the open run. It is still read to its end, because ADK goes on
-  /// anyway and the thread stays consistent only that way, but its later
-  /// text is hidden, none of its remaining calls runs, and no run follows it.
+  /// Stops the open run: its later text is hidden, none of its remaining
+  /// calls runs, and no run follows it. The run is still read to its end,
+  /// because ADK goes on anyway and only that keeps the thread consistent.
   /// Does nothing when no run is open.
   void stop() {
     final run = _run;
@@ -175,10 +166,6 @@ final class TandemSession({
     super.dispose();
   }
 
-  /// Opens a run that answers the calls of the last run and then says
-  /// [text], if any. A card still pending is cancelled. When the app's agent
-  /// list or the connection throws, the run fails before it goes out, and
-  /// its messages go with the next run.
   void _start([String? text]) {
     for (final call in _calls) {
       if (call.pending) {
@@ -211,6 +198,7 @@ final class TandemSession({
             cancelOnError: true,
           );
     } catch (err, st) {
+      // The run never went out, so its messages go with the next one.
       _report(err, st);
       _items.add(const ChatNotice(.runFailed));
       _completeOperation();
@@ -225,7 +213,8 @@ final class TandemSession({
       case RunFailed(:final code, :final message):
         run.ended = true;
         _report(AgentRunException(code, message), .current);
-        // ADK never saw the calls of this run answered: they are dropped.
+        // ADK never saw this run's calls answered, so they stay out of the
+        // history.
         _history.addAll(run.assistantMessages);
         _items.add(const ChatNotice(.runFailed));
         _completeOperation();
@@ -246,11 +235,6 @@ final class TandemSession({
     }
   }
 
-  /// Keeps what [run] said and called, runs its calls in order, shows a card
-  /// for each call that needs approval, and starts the next run. A call that
-  /// needs approval but whose arguments are not a JSON object is refused
-  /// instead. When the app's agent list throws, the run fails, the calls left
-  /// get no card, and the next message takes the answers.
   Future<void> _finish(_Run run) async {
     _calls = [...run.calls.values];
     _history.addAll([
@@ -260,7 +244,6 @@ final class TandemSession({
     ]);
     try {
       for (final call in _calls) {
-        // Stop can come while an earlier call runs.
         if (_stopping) {
           break;
         }
@@ -270,7 +253,7 @@ final class TandemSession({
             return; // Disposed meanwhile.
           }
         } else if (!call.hasObjectArguments) {
-          call.answer = _refused(_argumentsNotAnObject);
+          call.answer = _refused('The arguments must be a JSON object.');
         }
       }
       final callsAwaitingApproval = [
@@ -279,13 +262,12 @@ final class TandemSession({
       ];
       if (!_stopping && callsAwaitingApproval.isNotEmpty) {
         _cardContext = _context();
-        // The changes of the calls above arrive before the cards show, so
-        // they invalidate nothing.
+        // Lets the changes of the calls above arrive before the cards show,
+        // so they invalidate nothing.
         await Future<void>.delayed(.zero);
         if (_run != run) {
           return; // Disposed meanwhile.
         }
-        // Stop can come meanwhile too.
         if (!_stopping) {
           for (final call in callsAwaitingApproval) {
             final request = ApprovalRequest(
@@ -308,9 +290,8 @@ final class TandemSession({
     _completeOperation(followUp: _canFollowUp);
   }
 
-  /// Runs the approved [call] like the calls at the end of a run, under a
-  /// run of its own: a message sent meanwhile waits, Stop holds back the
-  /// follow-up run, and dispose drops the answer.
+  /// Runs [call] under a run of its own, so that a message sent meanwhile
+  /// waits, Stop holds back the follow-up run and dispose drops the answer.
   Future<void> _runApproved(_Call call) async {
     final run = _run = _Run(AgentListing.of(_surface));
     notifyListeners();
@@ -320,10 +301,6 @@ final class TandemSession({
     }
   }
 
-  /// Calls the method behind [call] and returns the answer for the agent.
-  /// Never throws. An [ArgumentError] the method throws is the agent's bad
-  /// input, refused like a [ToolCallRefused]; a [RangeError] is a bug, so it
-  /// is reported. The listener hears the call only while [run] is open.
   Future<String> _execute(_Run run, _Call call) async {
     final Map<String, Object?> args;
     final Object? result;
@@ -336,6 +313,7 @@ final class TandemSession({
       switch (err) {
         case ToolCallRefused(:final message):
           return _refused(message);
+        // The agent's bad input. A RangeError is a bug, so it is reported.
         case ArgumentError() when err is! RangeError:
           return _refused('$err');
         case _:
@@ -355,7 +333,6 @@ final class TandemSession({
     return answer;
   }
 
-  /// The call of [request] while its card is pending and nothing runs.
   _Call? _pendingApprovalCall(ApprovalRequest request) {
     if (isRunning) {
       return null;
@@ -365,8 +342,6 @@ final class TandemSession({
         .firstOrNull;
   }
 
-  /// Shows the pending card of [call] as [status], with [answer] for the
-  /// agent.
   void _decide(_Call call, ApprovalStatus status, [String? answer]) {
     final request = switch (call.request) {
       final request? when request.status == .pending => request,
@@ -379,7 +354,6 @@ final class TandemSession({
       ..answer = answer;
   }
 
-  /// Invalidates the pending cards for good.
   void _invalidatePendingApprovals() {
     final pending = _calls.where((call) => call.pending).toList();
     if (pending.isNotEmpty) {
@@ -390,31 +364,24 @@ final class TandemSession({
     }
   }
 
-  /// What the agent sees now, as JSON.
   String _context() => jsonEncode(AgentListing.of(_surface).context);
 
-  /// Whether every call of the last turn has an answer and Stop was not
-  /// pressed, so the run that takes the answers can start.
   bool get _canFollowUp =>
       _calls.isNotEmpty &&
       !_stopping &&
       _calls.every((call) => call.answer != null);
 
-  /// [run] broke off without `RUN_FINISHED` or `RUN_ERROR`. What ADK kept of
-  /// it is unknown, so the chat goes on in a new thread with no history.
   void _handleConnectionLost(_Run run) {
     if (run.ended) {
       return;
     }
     _items.add(const ChatNotice(.connectionLost));
+    // What ADK kept of the run is unknown, so the chat moves to a new thread.
     _threadId = newId();
     _history.clear();
     _completeOperation();
   }
 
-  /// Ends the open run, or the approved call, and starts the next run: the
-  /// first queued message after the answers of the last turn, or, when no
-  /// message waits and [followUp], a run with just the answers.
   void _completeOperation({bool followUp = false}) {
     _run = null;
     _stopping = false;
@@ -427,29 +394,17 @@ final class TandemSession({
   }
 }
 
-/// One run, assembled from its events: the text the user saw, and the calls
-/// of the tools [listing] lists. Calls of other tools run on the server.
 final class _Run(final AgentListing listing) {
-  /// The text shown so far, per `messageId`.
   final messageText = <String, String>{};
-
-  /// Where each message of [messageText] is in the chat, per `messageId`.
   final textItemIndices = <String, int>{};
-
-  /// The calls of listed tools, per `toolCallId`.
   final calls = <String, _Call>{};
-
-  /// Whether `RUN_FINISHED` or `RUN_ERROR` came.
   bool ended = false;
 
-  /// [messageText] as assistant messages of the history.
   List<Map<String, Object?>> get assistantMessages => [
     for (final MapEntry(:key, :value) in messageText.entries)
       assistantText(key, value),
   ];
 
-  /// Reads [event], with its text only while [showText]. Returns the message
-  /// whose text grew, with all its text so far.
   ({String messageId, String text})? read(
     AgentEvent event, {
     required bool showText,
@@ -459,6 +414,7 @@ final class _Run(final AgentListing listing) {
         final text = (messageText[messageId] ?? '') + delta;
         messageText[messageId] = text;
         return (messageId: messageId, text: text);
+      // A call of a tool the listing does not list runs on the server.
       case ToolCallStarted(:final toolCallId, :final name)
           when listing.lists(name):
         calls[toolCallId] = _Call(toolCallId, name);
@@ -470,27 +426,17 @@ final class _Run(final AgentListing listing) {
   }
 }
 
-/// A call of a listed tool.
 final class _Call(final String id, final String tool) {
-  /// The JSON arguments, joined from `TOOL_CALL_ARGS`.
   String arguments = '';
-
-  /// The answer for the agent, once there is one.
   String? answer;
-
-  /// The approval card of the call, as the chat shows it now, if it has one.
   ApprovalRequest? request;
 
-  /// Whether the call has a card that waits for the user.
   bool get pending => request?.status == .pending;
-
-  /// Whether the user approved the call's card.
   bool get approved => request?.status == .approved;
 
-  /// [arguments], or an empty object when the agent sent none.
-  String get argumentsJson => arguments.isEmpty ? _noArguments : arguments;
+  // ag-ui-adk sends no `TOOL_CALL_ARGS` for a call without arguments.
+  String get argumentsJson => arguments.isEmpty ? '{}' : arguments;
 
-  /// Whether [argumentsJson] is a JSON object, as a method's arguments are.
   bool get hasObjectArguments {
     try {
       return jsonDecode(argumentsJson) is Map<String, Object?>;
