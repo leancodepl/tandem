@@ -7,16 +7,9 @@ import 'package:tandem/tandem.dart';
 
 import 'support/shop.dart';
 
-/// What `onAgentCall` heard.
-typedef _AgentCall = ({
-  String tool,
-  Map<String, Object?> arguments,
-  Object? result,
-});
-
 void main() {
   late Shop shop;
-  late List<_AgentCall> agentCalls;
+  late List<AgentCall> agentCalls;
 
   setUp(() {
     shop = Shop();
@@ -33,13 +26,7 @@ void main() {
       surface: shop,
       changes: shop.changes,
       connection: connection,
-      onAgentCall:
-          onAgentCall ??
-          (tool, arguments, result) => agentCalls.add((
-            tool: tool,
-            arguments: arguments,
-            result: result,
-          )),
+      onAgentCall: onAgentCall ?? agentCalls.add,
     );
     addTearDown(session.dispose);
     return session;
@@ -95,7 +82,7 @@ void main() {
       jsonEncode(agent.requests[1]),
       isNot(anyOf(contains('call-1'), contains('find_customer'))),
     );
-    final [(:tool, :arguments, :result)] = agentCalls;
+    final [AgentCall(:tool, :arguments, :result)] = agentCalls;
     expect((tool, result), ('add', null));
     expect(arguments, {'item': 'milk'});
     expect(_shown(session.items), [
@@ -203,7 +190,7 @@ void main() {
     final reported = _collectReports();
     final session = open(
       agent,
-      onAgentCall: (_, _, _) => throw StateError('highlight'),
+      onAgentCall: (_) => throw StateError('highlight'),
     )..send('add milk');
     await pumpEventQueue();
 
@@ -274,7 +261,7 @@ void main() {
       'tool-call-1 null',
     ]);
     expect(_card(session).status, ApprovalStatus.approved);
-    final [(:tool, :arguments, :result)] = agentCalls;
+    final [AgentCall(:tool, :arguments, :result)] = agentCalls;
     expect((tool, result), ('clear', null));
     expect(arguments, isEmpty);
   });

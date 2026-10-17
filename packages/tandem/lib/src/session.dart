@@ -36,14 +36,24 @@ void _report(Object err, StackTrace st) => FlutterError.reportError(
   FlutterErrorDetails(exception: err, stack: st, library: _library),
 );
 
-/// Called after the agent called a listed method and it returned: [tool] is
-/// the method's snake_case name and [result] its result as JSON. Not called
-/// for a call that was refused or threw, nor once the session is disposed.
-typedef AgentCallListener = void Function(
-  String tool,
-  Map<String, Object?> arguments,
-  Object? result,
-);
+/// A call of a listed method that returned.
+final class const AgentCall({
+  /// The method's name in snake_case.
+  required final String tool,
+
+  /// The arguments the agent sent.
+  required final Map<String, Object?> arguments,
+
+  /// What the method returned, as JSON.
+  required final Object? result,
+}) {
+  /// The agent called [tool] with [arguments], and it returned [result].
+  this;
+}
+
+/// Hears every [AgentCall] once its method returned. Not called for a call
+/// that was refused or threw, nor once the session is disposed.
+typedef AgentCallListener = void Function(AgentCall call);
 
 /// The chat of the user and the agent about one screen.
 ///
@@ -335,7 +345,9 @@ final class TandemSession({
     }
     if (_run == run) {
       try {
-        _onAgentCall?.call(call.tool, args, result);
+        _onAgentCall?.call(
+          AgentCall(tool: call.tool, arguments: args, result: result),
+        );
       } catch (err, st) {
         _report(err, st);
       }

@@ -61,8 +61,9 @@ final class TandemScope<C extends AgentSurface> extends StatefulWidget {
   /// The screen.
   final Widget child;
 
-  /// Called after every call of a listed method that ran.
-  final AgentCallListener? onAgentCall;
+  /// Called after every call of a listed method that ran, with a context
+  /// below the `BlocProvider` of [C], so it can read the cubit.
+  final void Function(BuildContext context, AgentCall call)? onAgentCall;
 
   @override
   State<TandemScope<C>> createState() => _TandemScopeState();
@@ -129,7 +130,6 @@ final class _TandemScopeState<C extends AgentSurface>()
       (_, final agent?) => HttpAgentConnection(agent),
       _ => throw StateError(_noEndpoint),
     },
-    onAgentCall: (tool, arguments, result) =>
-        widget.onAgentCall?.call(tool, arguments, result),
+    onAgentCall: (call) => widget.onAgentCall?.call(context, call),
   );
 }

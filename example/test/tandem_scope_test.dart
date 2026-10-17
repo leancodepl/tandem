@@ -7,7 +7,7 @@ import 'package:tandem_bloc/tandem_bloc.dart';
 Widget _screen(
   ShoppingListCubit cubit,
   AgentConnection agent, {
-  AgentCallListener? onAgentCall,
+  void Function(BuildContext context, AgentCall call)? onAgentCall,
 }) => MaterialApp(
   home: BlocProvider.value(
     value: cubit,
@@ -29,7 +29,7 @@ void main() {
   testWidgets('the agent adds an item through the same method as the app', (
     tester,
   ) async {
-    final calls = <List<Object?>>[];
+    final calls = <(AgentCall, ShoppingListCubit)>[];
     final agent = ScriptedAgent([
       (_) => const [
         AgentStep.callTool('add', {'item': 'milk'}),
@@ -42,8 +42,8 @@ void main() {
           create: (context) => ShoppingListCubit(),
           child: TandemScope<ShoppingListCubit>.connected(
             connection: agent,
-            onAgentCall: (tool, arguments, result) =>
-                calls.add([tool, arguments, result]),
+            onAgentCall: (context, call) =>
+                calls.add((call, context.read<ShoppingListCubit>())),
             child: const Row(
               children: [
                 Expanded(child: SizedBox()),
@@ -64,13 +64,10 @@ void main() {
         .read<ShoppingListCubit>();
     expect(cubit.items, ['milk']);
     expect(find.text('Added milk.'), findsOneWidget);
-    expect(calls, [
-      [
-        'add',
-        {'item': 'milk'},
-        null,
-      ],
-    ]);
+    // The listener's context is below the provider: it reads the cubit.
+    final [(AgentCall(:tool, :arguments, :result), heardBy)] = calls;
+    expect((tool, result, heardBy), ('add', null, cubit));
+    expect(arguments, {'item': 'milk'});
     expect(agent.requests[0]['context'], [
       {
         'description': 'items: What is on the shopping list now.',
@@ -113,19 +110,11 @@ void main() {
     ]);
     final heard = <String>[];
     await tester.pumpWidget(
-      _screen(
-        cubit,
-        agent,
-        onAgentCall: (tool, arguments, result) => heard.add('first'),
-      ),
+      _screen(cubit, agent, onAgentCall: (context, _) => heard.add('first')),
     );
     await _send(tester, 'milk please');
     await tester.pumpWidget(
-      _screen(
-        cubit,
-        agent,
-        onAgentCall: (tool, arguments, result) => heard.add('second'),
-      ),
+      _screen(cubit, agent, onAgentCall: (context, _) => heard.add('second')),
     );
     await _send(tester, 'and bread');
 
