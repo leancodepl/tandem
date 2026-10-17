@@ -91,13 +91,15 @@ jobs:
 
       # pana drops the workspace and overrides and resolves tandem_bloc against
       # pub.dev. Until the lowest tandem it accepts is on pub.dev, its score only
-      # says tandem is missing, so the score step waits for that tandem.
+      # says tandem is missing, so the score step waits for that tandem. Only a
+      # 404 skips it, and the request retries, so one failed answer from
+      # pub.dev does not decide it.
       - name: Check whether the tandem of tandem_bloc is on pub.dev
         id: tandem-on-pub
         run: |
           constraint="$(yq '.dependencies.tandem' packages/tandem_bloc/pubspec.yaml)"
           lower_bound="${constraint#^}"
-          status="$(curl -sS -o /dev/null -w '%{http_code}' "https://pub.dev/api/packages/tandem/versions/$lower_bound" || true)"
+          status="$(curl -sS --retry 3 --retry-all-errors --max-time 30 -o /dev/null -w '%{http_code}' "https://pub.dev/api/packages/tandem/versions/$lower_bound" || true)"
           if [ "$status" = 404 ]; then
             echo "published=false" >> "$GITHUB_OUTPUT"
             echo "::notice title=pana (tandem_bloc)::Not scored, tandem $lower_bound is not on pub.dev yet"
