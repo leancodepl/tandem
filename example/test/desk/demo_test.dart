@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:example/desk/order_desk_cubit.dart';
-import 'package:example/desk/ui/desk_theme.dart';
-import 'package:example/desk/ui/highlights.dart';
 import 'package:example/desk/ui/order_desk_screen.dart';
 import 'package:example/desk/ui/order_form.dart';
 import 'package:flutter/material.dart';
@@ -185,49 +183,6 @@ void main() {
     expect(find.text('Approve'), findsNothing);
   });
 
-  testWidgets('what the agent changed gets the callout, and it fades', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      ScriptedAgent([
-        (_) => _fillOrder,
-        (_) => const [AgentStep.say('Done.')],
-        (_) => const [
-          AgentStep.callTool('set_quantity', {'sku': _monitor, 'quantity': 20}),
-        ],
-        (_) => const [AgentStep.say('Done.')],
-      ]),
-    );
-    final customer = find.text(_customer);
-    final cables = find.text(_cablesName);
-    final monitor = find.text(_monitorName);
-    final delivery = find.text(_address);
-
-    await _type(tester, 'Order');
-
-    for (final area in [customer, cables, monitor, delivery]) {
-      expect(_calloutOf(tester, area), greaterThan(0.5));
-    }
-
-    await tester.pump(highlightFade);
-
-    for (final area in [customer, cables, monitor, delivery]) {
-      expect(_calloutOf(tester, area), 0);
-    }
-
-    // A change made by the user gets no callout.
-    await tester.tap(_plusOf(_monitor));
-    await tester.pump();
-    expect(_calloutOf(tester, monitor), 0);
-
-    await _type(tester, 'Make it 20');
-    expect(_calloutOf(tester, monitor), greaterThan(0.5));
-    expect(_calloutOf(tester, cables), 0);
-    expect(_calloutOf(tester, customer), 0);
-    expect(_calloutOf(tester, delivery), 0);
-  });
-
   testWidgets('the filled order fits an iPad held upright', (tester) async {
     await _pumpScreen(
       tester,
@@ -285,17 +240,9 @@ Future<void> _pumpScreen(
   );
 }
 
-/// Sends [text] and plays the agent's answer, but stops before the callouts
-/// fade.
-Future<void> _type(WidgetTester tester, String text) async {
+Future<void> _send(WidgetTester tester, String text) async {
   await tester.enterText(find.byType(TextField), text);
   await tester.tap(find.text('Send'));
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 100));
-}
-
-Future<void> _send(WidgetTester tester, String text) async {
-  await _type(tester, text);
   await tester.pumpAndSettle();
 }
 
@@ -314,13 +261,3 @@ final _enabledButton = find.byWidgetPredicate(
 
 Finder _inChat(String text) =>
     find.descendant(of: find.byType(TandemChat), matching: find.text(text));
-
-/// The callout of the area that holds [inside]: 1 just changed, 0 none.
-double _calloutOf(WidgetTester tester, Finder inside) {
-  final area = find.ancestor(of: inside, matching: find.byType(Highlighted));
-  final box = find.descendant(of: area, matching: find.byType(DecoratedBox));
-  return switch (tester.widget<DecoratedBox>(box.first).decoration) {
-    BoxDecoration(:final Color color) => color.a / calloutWash.a,
-    _ => 0,
-  };
-}

@@ -1,7 +1,6 @@
 import 'package:example/desk/customers.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
-import 'package:example/desk/ui/highlights.dart';
 import 'package:example/desk/ui/order_form.dart';
 import 'package:example/desk/ui/order_summary.dart';
 import 'package:flutter/material.dart';
@@ -15,50 +14,31 @@ import 'package:tandem_bloc/tandem_bloc.dart';
 final class const OrderDeskScreen({
   super.key,
   final AgentConnection? connection,
-}) extends StatefulWidget {
-  @override
-  State<OrderDeskScreen> createState() => _OrderDeskScreenState();
-}
-
-final class _OrderDeskScreenState() extends State<OrderDeskScreen> {
-  final _highlights = Highlights();
-
-  @override
-  void dispose() {
-    _highlights.dispose();
-    super.dispose();
-  }
-
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final screen = HighlightScope(
-      highlights: _highlights,
-      child: Scaffold(
-        body: SafeArea(
-          child: Row(
-            crossAxisAlignment: .stretch,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    Padding(
-                      padding: .fromLTRB(16, 16, 16, 0),
-                      child: _Header(),
-                    ),
-                    Expanded(child: OrderForm()),
-                  ],
-                ),
+    final screen = Scaffold(
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: .stretch,
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: .stretch,
+                children: [
+                  Padding(padding: .fromLTRB(16, 16, 16, 0), child: _Header()),
+                  Expanded(child: OrderForm()),
+                ],
               ),
-              const VerticalDivider(width: 1),
-              SizedBox(
-                width: 360,
-                child: TandemChat(
-                  approvalBuilder: (context, request) => const OrderSummary(),
-                ),
+            ),
+            const VerticalDivider(width: 1),
+            SizedBox(
+              width: 360,
+              child: TandemChat(
+                approvalBuilder: (context, request) => const OrderSummary(),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -68,15 +48,13 @@ final class _OrderDeskScreenState() extends State<OrderDeskScreen> {
         customers: .demo(),
         orders: Orders(),
       ),
-      child: switch (widget.connection) {
+      child: switch (connection) {
         final connection? => TandemScope<OrderDeskCubit>.connected(
           connection: connection,
-          onAgentCall: (context, call) => _highlights.onAgentCall(call),
           child: screen,
         ),
         null => TandemScope<OrderDeskCubit>(
           agent: Uri.parse('http://localhost:8000/agent'),
-          onAgentCall: (context, call) => _highlights.onAgentCall(call),
           child: screen,
         ),
       },

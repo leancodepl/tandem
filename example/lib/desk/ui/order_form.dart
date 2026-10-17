@@ -3,7 +3,6 @@ import 'package:example/desk/dates.dart';
 import 'package:example/desk/desk_order.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/ui/desk_theme.dart';
-import 'package:example/desk/ui/highlights.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -93,7 +92,6 @@ final class const _CustomerCard(final Customer customer)
   @override
   Widget build(BuildContext context) => _Section(
     title: 'Customer',
-    area: customerArea,
     children: [
       Text(customer.name, style: Theme.of(context).textTheme.titleMedium),
       _Detail('Contact', customer.contact),
@@ -109,7 +107,6 @@ final class const _DeliveryCard(
   @override
   Widget build(BuildContext context) => _Section(
     title: 'Delivery',
-    area: deliveryArea,
     children: [
       Text(delivery.address, style: Theme.of(context).textTheme.titleMedium),
       OutlinedButton.icon(
@@ -135,24 +132,19 @@ final class const _DeliveryCard(
 
 final class const _Section({
   required final String title,
-  required final String area,
   required final List<Widget> children,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
-    clipBehavior: .antiAlias,
-    child: Highlighted(
-      area: area,
-      child: Padding(
-        padding: const .all(16),
-        child: Column(
-          spacing: 4,
-          crossAxisAlignment: .start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.labelMedium),
-            ...children,
-          ],
-        ),
+    child: Padding(
+      padding: const .all(16),
+      child: Column(
+        spacing: 4,
+        crossAxisAlignment: .start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.labelMedium),
+          ...children,
+        ],
       ),
     ),
   );
@@ -184,7 +176,6 @@ final class const _Lines(
   Widget build(BuildContext context) {
     final label = Theme.of(context).textTheme.labelMedium;
     return Card(
-      clipBehavior: .antiAlias,
       child: Column(
         children: [
           Padding(
@@ -211,45 +202,42 @@ final class const _LineRow({
   required final bool editable,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Highlighted(
-    area: lineArea(line.sku),
-    child: Padding(
-      padding: const .all(16),
-      child: _Columns(
-        product: Column(
-          crossAxisAlignment: .start,
+  Widget build(BuildContext context) => Padding(
+    padding: const .all(16),
+    child: _Columns(
+      product: Column(
+        crossAxisAlignment: .start,
+        children: [
+          Text(line.name),
+          Text(line.sku, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+      quantity: FittedBox(
+        fit: .scaleDown,
+        child: Row(
+          mainAxisSize: .min,
           children: [
-            Text(line.name),
-            Text(line.sku, style: Theme.of(context).textTheme.bodySmall),
+            IconButton(
+              icon: const Icon(Icons.remove),
+              tooltip: 'One less',
+              onPressed: editable
+                  ? () => _setQuantity(context, line.quantity - 1)
+                  : null,
+            ),
+            Text('${line.quantity}'),
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'One more',
+              onPressed: editable
+                  ? () => _setQuantity(context, line.quantity + 1)
+                  : null,
+            ),
           ],
         ),
-        quantity: FittedBox(
-          fit: .scaleDown,
-          child: Row(
-            mainAxisSize: .min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.remove),
-                tooltip: 'One less',
-                onPressed: editable
-                    ? () => _setQuantity(context, line.quantity - 1)
-                    : null,
-              ),
-              Text('${line.quantity}'),
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'One more',
-                onPressed: editable
-                    ? () => _setQuantity(context, line.quantity + 1)
-                    : null,
-              ),
-            ],
-          ),
-        ),
-        unitPrice: Text(line.unitPrice, textAlign: .end),
-        discount: Text(line.discount ?? '–', textAlign: .end),
-        total: Text(line.lineTotal, textAlign: .end),
       ),
+      unitPrice: Text(line.unitPrice, textAlign: .end),
+      discount: Text(line.discount ?? '–', textAlign: .end),
+      total: Text(line.lineTotal, textAlign: .end),
     ),
   );
 

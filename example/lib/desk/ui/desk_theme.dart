@@ -11,10 +11,6 @@ const _yellow = Color(0xFFF0FD06);
 
 const success = Color(0xFF80C340);
 
-/// The border of the brand callout, which marks what the agent changed.
-const calloutBorder = Color.fromRGBO(240, 253, 6, .5);
-const calloutWash = Color.fromRGBO(240, 253, 6, .06);
-
 /// Cards have rounded corners; blocks, such as buttons, are sharp.
 const cardCorners = BorderRadius.all(.circular(4));
 
