@@ -282,6 +282,11 @@ void main() {
       '2026-02-30',
       '2026-10-23T10:20:99',
       '2026-10-23T102099',
+      '2026-10-23T10:20+02:60',
+      '2026-10-23T10:20+0299',
+      '2026-10-23T10:20+24:00',
+      '2026-10-23T10:20-2400',
+      '2026-10-23T10:20+24',
     ]) {
       await expectLater(
         listing.call('book', {
@@ -303,6 +308,18 @@ void main() {
         ToolArgs({'day': day}).read<DateTime>('day'),
         DateTime.utc(2026, 10, 23, 8, 20, 59, 500),
       );
+    }
+  });
+
+  test('a zone offset reads from -23:59 to +23:59 in every form', () {
+    final instants = {
+      '2026-10-23T10:20+23:59': DateTime.utc(2026, 10, 22, 10, 21),
+      '2026-10-23T10:20-2359': DateTime.utc(2026, 10, 24, 10, 19),
+      '2026-10-23T10:20+00': DateTime.utc(2026, 10, 23, 10, 20),
+      '2026-10-23T10:20-02': DateTime.utc(2026, 10, 23, 12, 20),
+    };
+    for (final MapEntry(key: day, value: instant) in instants.entries) {
+      expect(ToolArgs({'day': day}).read<DateTime>('day'), instant);
     }
   });
 

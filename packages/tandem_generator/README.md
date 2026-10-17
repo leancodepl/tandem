@@ -12,7 +12,7 @@ Parameters of the listed methods become the JSON Schema the agent fills in. Resu
 | --- | --- | --- |
 | `String`, `bool` | string, boolean | |
 | `int`, `double`, `num` | integer, number | `15.0` is read as `15`. An `int` refuses `1.5` and doubles of 2^53 or more in size. |
-| `DateTime` | ISO 8601 string | `2026-10-23`, optionally with a time such as `T10:20`, `T10:20:59.5Z` or `T10:20+02:00`. A space may stand for the `T`, a comma for the decimal point, and the zone may be `+02`, `+0200` or `+02:00`. Other forms, and a day or time that does not exist, such as `2026-02-30`, are refused. |
+| `DateTime` | ISO 8601 string | `2026-10-23`, optionally with a time such as `T10:20`, `T10:20:59.5Z` or `T10:20+02:00`. A space may stand for the `T`, a comma for the decimal point, and the zone may be `+02`, `+0200` or `+02:00`, from `-23:59` to `+23:59`. Other forms, and a day or time that does not exist, such as `2026-02-30`, are refused. |
 | enum | the value's name | |
 | extension type over `String`, `int`, `double`, `num` or `bool` | that value | Built as `Code(value)`: the unnamed constructor must be public and take only the value, as a positional parameter of the type it wraps, without `?`. A factory there checks the agent's values too. |
 | `List<T>` | array | In a parameter, `T` is neither nullable nor a list, and the list has no `?` and no default. |

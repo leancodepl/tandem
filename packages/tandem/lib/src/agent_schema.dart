@@ -202,11 +202,12 @@ final class ToolArgs(
   static const _maxExactInteger = 9007199254740991;
 
   /// The ISO 8601 dates Tandem reads: a day, then optionally a time to the
-  /// minute or second, a fraction of a second and a time zone.
+  /// minute or second, a fraction of a second and a time zone, Z or an
+  /// offset of at most 23:59.
   static final _isoDate = RegExp(
     r'^(\d{4})-(\d{2})-(\d{2})'
     r'(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?'
-    r'(?:[zZ]|[+-]\d{2}(?::?\d{2})?)?)?$',
+    r'(?:[zZ]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$',
   );
 
   /// [text] as a date, or null when it is not all in the form [_isoDate]
