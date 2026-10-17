@@ -31,11 +31,11 @@ void _endAfterRun(
   }
 }
 
-/// The link to the agent: one AG-UI run per call.
-abstract interface class AgentConnection() {
-  /// Implement this interface for another transport or a fake agent.
-  this;
-
+/// The link to the agent: one AG-UI run per call. Implement it for another
+/// transport or a fake agent.
+// The experimental lint asks for a primary constructor on an interface too.
+// ignore: use_primary_constructors
+abstract interface class AgentConnection {
   /// Posts [input], the body of one AG-UI run, and streams the events of the
   /// run as decoded JSON.
   ///
