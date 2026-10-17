@@ -9,6 +9,7 @@ dependencies = [
     "ag-ui-adk==0.9.0",
     "fastapi",
     "google-adk>=2.12,<2.13",
+    "pydantic-settings",
     "python-dotenv",
     "uvicorn",
 ]

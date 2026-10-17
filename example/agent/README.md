@@ -32,10 +32,10 @@ memory, so a restart forgets every thread.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PORT` | `8000` | The port on `127.0.0.1`. |
 | `TANDEM_FAKE_LLM` | | `1` swaps in the scripted model. |
 | `TANDEM_MODEL` | `gemini-3.8-flash` | Any Gemini model name. |
 | `TANDEM_TODAY` | `2026-10-16` | The demo's today, so "by Friday" is 2026-10-23. |
+| `TANDEM_PORT` | `8000` | The port on `127.0.0.1`. |
 | `GOOGLE_API_KEY` | | The Gemini API key, also read from `.env`. |
 
 ## The script

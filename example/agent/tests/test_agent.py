@@ -1,11 +1,11 @@
 from datetime import date
 from types import SimpleNamespace
 
-import pytest
 from google.genai import types
 
 from order_agent.agent import build_app
 from order_agent.instruction import build_instruction
+from order_agent.settings import Settings
 from order_agent.streaming import WholeTurnGemini
 
 ORDER = {
@@ -29,15 +29,8 @@ def test_the_instruction_has_today_and_the_screen_of_this_run() -> None:
     assert "- order:" not in instruction(context(None))
 
 
-@pytest.fixture
-def gemini_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("TANDEM_FAKE_LLM", raising=False)
-    monkeypatch.delenv("TANDEM_MODEL", raising=False)
-
-
-@pytest.mark.usefixtures("gemini_env")
-def test_gemini_retries_the_busy_free_tier(monkeypatch: pytest.MonkeyPatch) -> None:
-    app = build_app()
+def test_gemini_retries_the_busy_free_tier() -> None:
+    app = build_app(Settings(fake_llm=False, model="gemini-3.8-flash"))
     model = app.root_agent.canonical_model
 
     assert isinstance(model, WholeTurnGemini)
@@ -48,6 +41,3 @@ def test_gemini_retries_the_busy_free_tier(monkeypatch: pytest.MonkeyPatch) -> N
     assert app.resumability_config.is_resumable
     tools = [getattr(tool, "__name__", type(tool).__name__) for tool in app.root_agent.tools]
     assert tools == ["find_customer", "get_order_history", "AGUIToolset"]
-
-    monkeypatch.setenv("TANDEM_MODEL", "gemini-3.1-pro-preview")
-    assert build_app().root_agent.canonical_model.model == "gemini-3.1-pro-preview"
