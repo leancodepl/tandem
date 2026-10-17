@@ -39,7 +39,7 @@ final class const _WaitFor(final Future<void> signal) extends AgentStep;
 final class const _Fail(final String message) extends AgentStep;
 
 /// An [AgentConnection] that plays a script in the event shapes of
-/// ag-ui-adk, for tests and demos without a model.
+/// ag-ui-adk, for tests without a model.
 ///
 /// The n-th run plays `turns[n]`; a run beyond the script ends with a
 /// `RUN_ERROR`. Events arrive one at a time, asynchronously, so
