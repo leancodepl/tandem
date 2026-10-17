@@ -40,7 +40,8 @@ memory, so a restart forgets every thread.
 
 ## The script
 
-What the scripted model plays, from the e-mail in [example/README.md](../README.md).
+What the scripted model ([src/order_agent/scripted](src/order_agent/scripted)) plays, from the
+e-mail in [example/README.md](../README.md).
 
 | # | You | The agent | The screen |
 |---|---|---|---|
