@@ -25,7 +25,7 @@ fvm dart format --set-exit-if-changed .
 (cd example/agent && uv sync --locked && uv run ruff check && uv run ruff format --check && uv run pytest)
 ```
 
-CI runs the same, plus a dry run of `pub publish` and a pana score for each package. `publish.yml` runs by hand only.
+CI runs the same, plus a dry run of `pub publish` and a pana score for each package.
 
 ## Rules
 

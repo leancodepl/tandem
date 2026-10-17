@@ -84,4 +84,4 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 - A loop guard, if a real model loops.
 - l10n: the UI strings are hard-coded in English.
 - `additionalProperties: false` in the schemas, once Gemini accepts it.
-- Publishing: `publish.yml` runs by hand only, because it publishes the repo root, which is not a package. Each of the three packages needs its own release, `tandem` first.
+- Publishing to pub.dev: each of the three packages needs its own release, `tandem` first.
