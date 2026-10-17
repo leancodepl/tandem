@@ -8,7 +8,7 @@ from google.adk.models import BaseLlm
 from google.genai import types
 
 from order_agent.instruction import build_instruction
-from order_agent.scripted_llm import ScriptedOrderLlm
+from order_agent.scripted.llm import ScriptedOrderLlm
 from order_agent.streaming import WholeTurnGemini
 from order_agent.tools import find_customer, get_order_history
 
