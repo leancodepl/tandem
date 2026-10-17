@@ -40,8 +40,13 @@ final class Shop() implements AgentSurface {
     _changes.add([...items]);
   }
 
+  /// What [clear] waits for before it empties the list, as if it asked a
+  /// server first.
+  Future<void> serverReply = Future.value();
+
   /// Empties the list.
-  void clear() {
+  Future<void> clear() async {
+    await serverReply;
     items.clear();
     _changes.add([...items]);
   }
@@ -94,8 +99,8 @@ final class Shop() implements AgentSurface {
         name: 'clear',
         description: 'Empties the list.',
         parameters: {'type': 'object', 'properties': {}},
-        invoke: (args) {
-          clear();
+        invoke: (args) async {
+          await clear();
           return null;
         },
       ),

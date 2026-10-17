@@ -288,8 +288,8 @@ void main() {
     final card = _card(session);
 
     shop
-      ..clear()
-      ..add('x');
+      ..add('y')
+      ..removeAt(1);
     await pumpEventQueue();
     expect(_card(session).status, ApprovalStatus.invalidated);
     session.approve(card);
@@ -305,6 +305,37 @@ void main() {
       'tool-call-1 {"status":"invalidated"}',
       'user: ok',
     ]);
+  });
+
+  test('a session disposed while an approved method runs sends, hears and '
+      'reports nothing more', () async {
+    final serverReply = Completer<void>();
+    shop
+      ..add('x')
+      ..serverReply = serverReply.future;
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('clear')],
+    ]);
+    final reported = _collectReports();
+    // Not open(), which would dispose it again at the end.
+    final session = TandemSession(
+      surface: shop,
+      changes: shop.changes,
+      connection: agent,
+      onAgentCall: agentCalls.add,
+    )..send('clear it');
+    await pumpEventQueue();
+
+    session.approve(_card(session));
+    await pumpEventQueue();
+    session.dispose();
+    serverReply.complete();
+    await pumpEventQueue();
+
+    expect(shop.items, isEmpty);
+    expect(agent.requests, hasLength(1));
+    expect(agentCalls, isEmpty);
+    expect(reported, isEmpty);
   });
 
   test('a message while a card is open cancels it first', () async {

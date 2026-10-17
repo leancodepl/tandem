@@ -101,6 +101,15 @@ void main() {
     expect(cubit.draft.lines.map((line) => line.quantity), [3]);
   });
 
+  test('an order placed while the screen closes throws nothing', () async {
+    cubit.setQuantity('VM-27Q', 2);
+
+    final placing = cubit.placeOrder();
+    await cubit.close();
+
+    await expectLater(placing, completion('ORD-1'));
+  });
+
   test(
     'every call checks the list as it is now, not as the run began',
     () async {
