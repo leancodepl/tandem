@@ -142,6 +142,10 @@ await tester.pumpWidget(
 
 Experimental. The API can change before 1.0. Not supported yet: AG-UI interrupts, Riverpod.
 
+## AI
+
+Tandem is written with AI assistance and reviewed by hand, except the AG-UI protocol layer ([`packages/tandem/lib/src/protocol`](https://github.com/leancodepl/tandem/tree/main/packages/tandem/lib/src/protocol)) and [`tandem_generator`](https://pub.dev/packages/tandem_generator), which have not had a full human review yet.
+
 ## 🛠️ Maintained by LeanCode
 
 <div align="center">

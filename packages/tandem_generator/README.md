@@ -41,3 +41,7 @@ void tagOrder(List<String> tags) => setTags(tags.toSet());
 ```
 
 In the same way, `.sees` can take a getter that returns a plain class made for the agent.
+
+## AI
+
+This package is written with AI assistance and has not had a full human review yet.
