@@ -53,16 +53,15 @@ class const AgentGenerator() extends Generator {
           'to $name, listing what the agent may see and call.',
           element: type,
         ));
-    final getter = await buildStep.resolver.astNodeFor(
-      capabilities.firstFragment,
-      resolve: true,
-    );
-    if (getter == null) {
-      throw InvalidGenerationSource(
-        'Tandem cannot find the source of $name.agentCapabilities.',
-        element: capabilities,
-      );
-    }
+    final getter =
+        await buildStep.resolver.astNodeFor(
+          capabilities.firstFragment,
+          resolve: true,
+        ) ??
+        (throw InvalidGenerationSource(
+          'Tandem cannot find the source of $name.agentCapabilities.',
+          element: capabilities,
+        ));
     final items = _Items();
     getter.accept(items);
     final sees = [for (final item in items.sees) _view(item, name)];

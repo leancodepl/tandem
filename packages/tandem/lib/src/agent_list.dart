@@ -123,11 +123,13 @@ final class AgentListing._(
     Map<String, Object?> arguments, {
     bool approved = false,
   }) async {
-    final target = _tools[tool];
-    final capability = _currentCapabilityFor(tool);
-    if (target == null || capability == null) {
-      throw ToolCallRefused('The agent cannot call $tool now.');
-    }
+    final (target, capability) = switch ((
+      _tools[tool],
+      _currentCapabilityFor(tool),
+    )) {
+      (final target?, final capability?) => (target, capability),
+      _ => throw ToolCallRefused('The agent cannot call $tool now.'),
+    };
     if (capability.needsApproval && !approved) {
       throw ToolCallRefused('$tool runs only after the user approves it.');
     }

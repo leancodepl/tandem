@@ -192,15 +192,16 @@ final class AgentTypes(final ExecutableElement _element) {
     if (type case InterfaceType(:final ClassElement element, typeArguments: [])
         when element.isPublic && !element.library.isInSdk) {
       final name = element.displayName;
-      final constructor = element.unnamedConstructor;
-      if (constructor == null ||
-          !constructor.isPublic ||
-          element.isAbstract && !constructor.isFactory) {
-        throw _error(
+      final constructor = switch (element.unnamedConstructor) {
+        final constructor?
+            when constructor.isPublic &&
+                (!element.isAbstract || constructor.isFactory) =>
+          constructor,
+        _ => throw _error(
           '$path: Tandem builds $name with its unnamed constructor, and it '
           'has no public one',
-        );
-      }
+        ),
+      };
       final parameters = constructor.formalParameters;
       if (parameters.isEmpty) {
         throw _error(
