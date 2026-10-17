@@ -15,11 +15,6 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Tandem demo agent")
     agent = ADKAgent.from_app(build_app(), use_in_memory_services=True)
     add_adk_fastapi_endpoint(app, agent, path="/agent")
-
-    @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok"}
-
     return app
 
 

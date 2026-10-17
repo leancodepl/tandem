@@ -25,8 +25,8 @@ it:
 uv run order-agent
 ```
 
-The server listens on `127.0.0.1:8000`: `POST /agent` is the AG-UI endpoint, and `GET /health`
-returns `{"status": "ok"}`. Sessions live in memory, so a restart forgets every thread.
+The server listens on `127.0.0.1:8000`, with the AG-UI endpoint at `POST /agent`. Sessions live in
+memory, so a restart forgets every thread.
 
 ## Configuration
 
