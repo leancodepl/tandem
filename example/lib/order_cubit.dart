@@ -36,8 +36,8 @@ class OrderCubit({required final Catalog catalog, required final Orders orders})
   Future<OrderId> placeOrder() async {
     final submitted = draft;
     final id = await orders.place(submitted);
-    // The screen may have closed meanwhile. An edit made meanwhile is not in
-    // the placed order, so it must stay.
+    // The screen may have closed while the order was placed. An edit made
+    // meanwhile is not in the placed order, so it must stay.
     if (!isClosed && identical(draft, submitted)) {
       emit(.new(draft: .empty));
     }

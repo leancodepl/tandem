@@ -10,6 +10,10 @@ final class Shop() implements AgentSurface {
   /// What is on the shopping list now.
   final items = <String>[];
 
+  /// What [clear] waits for before it empties the list, as if it asked a
+  /// server first.
+  Future<void> serverReply = Future.value();
+
   /// Emits after every change of [items].
   Stream<Object?> get changes => _changes.stream;
 
@@ -39,10 +43,6 @@ final class Shop() implements AgentSurface {
     items.removeAt(index);
     _changes.add([...items]);
   }
-
-  /// What [clear] waits for before it empties the list, as if it asked a
-  /// server first.
-  Future<void> serverReply = Future.value();
 
   /// Empties the list.
   Future<void> clear() async {

@@ -136,8 +136,7 @@ void main() {
   });
 
   test(
-    'bad arguments are refused, other errors are reported and go back to the '
-    'agent or into the chat; the next message works',
+    'an ArgumentError is refused, others are reported; the next message works',
     () async {
       final agent = ScriptedAgent([
         (_) => const [
