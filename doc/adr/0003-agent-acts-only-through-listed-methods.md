@@ -2,7 +2,7 @@
 
 ## Context
 
-[leancodepl/tandem#1](https://github.com/leancodepl/tandem/pull/1) gave the agent a shared state it could write. Tandem diffed and patched it, and told the user's edits from its own writes by content. That was half of the code and the source of its worst bugs. An agent that writes state also skips the validation the screen's buttons run.
+An agent that writes a shared state makes Tandem diff and patch it, and tell the user's edits from the agent's writes by content. That is a lot of code and a source of subtle bugs. Such an agent also skips the validation the screen's buttons run.
 
 ## Decision
 

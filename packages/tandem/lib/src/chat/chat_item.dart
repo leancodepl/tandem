@@ -49,7 +49,7 @@ enum ApprovalStatus() {
   /// The user rejected it.
   rejected,
 
-  /// What the agent sees changed after it showed, so it can no longer be
+  /// The screen emitted a state after it showed, so it can no longer be
   /// approved.
   invalidated,
 

@@ -1,5 +1,5 @@
 # The generator is outside the workspace (see ../../pubspec.yaml), so it takes
 # the lint rules directly. Including ../../analysis_options.yaml would make it a
 # second plugin host, and then `dart analyze` at the root runs the plugin rules
-# only here and no longer in the workspace packages.
+# only here and not in the workspace packages.
 include: package:leancode_lint/analysis_options_package.yaml
