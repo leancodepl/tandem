@@ -120,3 +120,41 @@ jobs:
         with:
           path: packages/tandem_generator
         continue-on-error: true
+
+  agent:
+    name: Test and lint the example agent
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: example/agent
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The uv that wrote uv.lock, so that a new uv release does not change
+      # what `uv sync --locked` does.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: '0.12.23'
+          python-version: '3.14'
+          working-directory: example/agent
+
+      - name: Download Python dependencies
+        run: uv sync --locked
+
+      - name: Run ruff
+        run: uv run ruff check
+
+      - name: Check Python formatting
+        run: uv run ruff format --check
+
+      # The tests play the demo with the scripted model: no API key, no network.
+      - name: Test the agent
+        run: uv run pytest

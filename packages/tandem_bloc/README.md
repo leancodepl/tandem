@@ -100,6 +100,8 @@ Any AG-UI endpoint works. What the backend has to do:
 - Accept `tools` on every run. Tandem always sends it, an empty list when no method is listed.
 - On the web, allow your origin with CORS on the server. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement.
 
+The [example](https://github.com/leancodepl/tandem/tree/main/example) is an order desk app with a Google ADK agent in Python. Its README says how to run both.
+
 ## Testing
 
 `ScriptedAgent` plays a fixed script instead of a model, so widget tests run without network. `TandemScope.connected` takes it in place of the endpoint:
