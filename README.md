@@ -1,5 +1,7 @@
 # tandem
 
+<img src="https://raw.githubusercontent.com/leancodepl/tandem/refs/heads/main/doc/imgs/logo.png" alt="A robot and Dash riding a tandem bike" width="400">
+
 [![tandem pub.dev badge][pub-badge]][pub-badge-link]
 [![Test status][test-badge]][test-badge-link]
 [![License: Apache 2.0][license-badge]][license-badge-link]
