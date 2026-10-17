@@ -1,9 +1,9 @@
 """A chat with the agent the way Tandem's session keeps it.
 
-The same thread id for every run and a new run id each time. The history holds
-what the user typed, what the agent said and the calls of the app's tools, with
-the app's answers as tool messages before the next user message. The calls of
-the server's own tools are not in it. `tools` and `context` come with every run.
+One thread id for all runs and a new run id for each. The history holds what the user typed, what
+the agent said and the calls of the app's tools, with the app's answers as tool messages before
+the next user message. It leaves out the calls of the server's own tools. Every run brings `tools`
+and `context`.
 """
 
 import json
@@ -74,8 +74,6 @@ class Call:
 
 @dataclass
 class Run:
-    """The events of one run."""
-
     events: list[dict]
 
     @property
@@ -88,7 +86,6 @@ class Run:
 
     @property
     def calls(self) -> list[Call]:
-        """Every tool call of the run, in order."""
         calls: dict[str, Call] = {}
         for event in self.events:
             match event["type"]:
@@ -100,15 +97,12 @@ class Run:
 
     @property
     def app_calls(self) -> list[Call]:
-        """The calls the app has to run: the ones the server did not answer."""
         answered = {e["toolCallId"] for e in self.events if e["type"] == "TOOL_CALL_RESULT"}
         return [call for call in self.calls if call.id not in answered]
 
 
 @dataclass
 class Thread:
-    """One chat, on a screen that shows `order`."""
-
     agent_url: str
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     history: list[dict] = field(default_factory=list)
@@ -121,9 +115,9 @@ class Thread:
         *,
         placed: bool = False,
     ) -> Run:
-        """Takes the app's `answers` by call id, then `text`, to the agent.
+        """Sends the app's `answers` by call id, then `text`.
 
-        `placed` says the desk shows `order` as placed.
+        With `placed`, the desk shows `order` as placed and read-only.
         """
         self.history += [
             {"id": f"tool-{call_id}", "role": "tool", "toolCallId": call_id, "content": content}
@@ -131,8 +125,7 @@ class Thread:
         ]
         if text is not None:
             self.history.append({"id": f"user-{uuid.uuid4()}", "role": "user", "content": text})
-        # As the order desk lists them: a placed order is read-only, and placing
-        # needs lines, a customer and a delivery.
+        # As the order desk lists them.
         tools = [SEARCH_CATALOG]
         if not placed:
             tools += [SET_CUSTOMER, SET_QUANTITY, SET_DELIVERY]

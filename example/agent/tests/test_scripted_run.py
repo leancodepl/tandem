@@ -1,5 +1,3 @@
-"""The script of the demo, played by the scripted model over HTTP."""
-
 import json
 
 import pytest
@@ -45,7 +43,6 @@ TIER = "You changed the monitors to 15, which unlocks Acme's 15+ tier (17 % off 
 
 
 def screen(monitors: int, total: str) -> dict:
-    """The order of the e-mail, with `monitors` monitors, as the app shares it."""
     return {
         "customer": ACME,
         "lines": [
@@ -58,7 +55,6 @@ def screen(monitors: int, total: str) -> dict:
 
 
 def answers(run: Run) -> dict[str, str]:
-    """What the app answers to the calls of `run`."""
     return {
         call.id: json.dumps(FOUND[call.args["query"]] if call.name == "search_catalog" else None)
         for call in run.app_calls
@@ -71,7 +67,6 @@ def calls(run: Run) -> list[tuple[str, dict]]:
 
 @pytest.fixture
 def asked_to_place(agent_url: str) -> Thread:
-    """A chat that played the script up to the question "Shall I place it?"."""
     thread = Thread(agent_url)
     first = thread.run(EMPTY, EMAIL)
     second = thread.run({**EMPTY, "customer": ACME}, answers=answers(first))
@@ -165,7 +160,6 @@ def test_the_agent_accepts_a_rejection(asked_to_place: Thread) -> None:
 
 
 def test_the_agent_reports_an_order_it_did_not_fill(agent_url: str) -> None:
-    # A desk filled by hand: this chat never set a delivery.
     thread = Thread(agent_url)
     placing = thread.run(screen(12, "14 349.44 PLN"), "place it")
 

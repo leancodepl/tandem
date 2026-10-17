@@ -1,9 +1,8 @@
-"""A whole model turn, streamed so that ag-ui-adk sees every call of it.
+"""Streams a whole model turn so that ag-ui-adk sees all its calls.
 
-ag-ui-adk takes a call that repeats the name of a call in an earlier chunk for a replay of it
-and drops it. Gemini streams parallel calls in separate chunks, so of two `set_quantity` calls
-of one turn only the first reached the app. Here the text comes word by word and all the calls
-in one chunk.
+ag-ui-adk takes a call whose name repeats a call of an earlier chunk for a replay and drops it.
+Gemini streams parallel calls in separate chunks, so of two `set_quantity` calls only the first
+would reach the app. Here the text comes word by word and all the calls in one chunk.
 """
 
 import asyncio
@@ -14,23 +13,21 @@ from google.adk.models import Gemini, LlmRequest, LlmResponse
 from google.adk.utils.streaming_utils import StreamingResponseAggregator
 from google.genai import types
 
-# What a streaming model takes between two chunks of text.
-_CHUNK_DELAY_SECONDS = 0.03
-
 
 async def stream_turn(parts: list[types.Part]) -> AsyncGenerator[LlmResponse, None]:
-    """`parts` the way the streaming path of ADK's Gemini yields them, which ag-ui-adk uses."""
+    """Yields `parts` the way ADK's streaming Gemini does, which is the path ag-ui-adk uses."""
     aggregator = StreamingResponseAggregator()
     for chunk in _chunks(parts):
         async for response in aggregator.process_response(chunk):
             yield response
-        await asyncio.sleep(_CHUNK_DELAY_SECONDS)
+        # The pace of a streaming model.
+        await asyncio.sleep(0.03)
     if (final := aggregator.close()) is not None:
         yield final
 
 
 class WholeTurnGemini(Gemini):
-    """Gemini that answers a streaming request with the whole turn, through `stream_turn`."""
+    """Gemini that asks for the whole turn and streams it through `stream_turn`."""
 
     async def generate_content_async(
         self, llm_request: LlmRequest, stream: bool = False
@@ -45,7 +42,6 @@ class WholeTurnGemini(Gemini):
 
 
 def _chunks(parts: list[types.Part]) -> list[types.GenerateContentResponse]:
-    """The text of `parts` word by word, then all their calls at once."""
     pieces = [
         [types.Part(text=word)]
         for part in parts

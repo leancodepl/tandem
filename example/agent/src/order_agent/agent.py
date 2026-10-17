@@ -1,5 +1,3 @@
-"""The order agent and the ADK app around it."""
-
 import os
 from datetime import date
 
@@ -15,7 +13,7 @@ from order_agent.streaming import WholeTurnGemini
 from order_agent.tools import find_customer, get_order_history
 
 DEFAULT_MODEL = "gemini-3.8-flash"
-# Pinned, so that "by Friday" in the demo e-mail is always 2026-10-23, as in the script.
+# Pinned so that "by Friday" in the demo e-mail is always 2026-10-23, as in the script.
 DEFAULT_TODAY = "2026-10-16"
 
 # The free tier answers 503 "high demand" and 429 in bursts.
@@ -25,12 +23,10 @@ _RETRY = types.HttpRetryOptions(
 
 
 def today_from_env() -> date:
-    """The demo's today, `TANDEM_TODAY`, so that "by Friday" is always the same date."""
     return date.fromisoformat(os.environ.get("TANDEM_TODAY", DEFAULT_TODAY))
 
 
 def model_from_env(today: date) -> BaseLlm:
-    """The scripted model with `TANDEM_FAKE_LLM=1`, otherwise Gemini as `TANDEM_MODEL`."""
     if os.environ.get("TANDEM_FAKE_LLM") == "1":
         return ScriptedOrderLlm(today=today)
     return WholeTurnGemini(
@@ -39,7 +35,6 @@ def model_from_env(today: date) -> BaseLlm:
 
 
 def build_app() -> App:
-    """The app from the environment; resumable, as ag-ui-adk needs for the app's tools."""
     today = today_from_env()
     agent = LlmAgent(
         name="order_agent",
@@ -51,5 +46,6 @@ def build_app() -> App:
     return App(
         name="tandem_demo",
         root_agent=agent,
+        # ag-ui-adk needs a resumable app for the app's tools.
         resumability_config=ResumabilityConfig(is_resumable=True),
     )

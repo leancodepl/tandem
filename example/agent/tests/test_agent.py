@@ -15,7 +15,6 @@ ORDER = {
 
 
 def context(entries: list[dict] | None) -> SimpleNamespace:
-    """The part of ADK's context the instruction reads: the run config of the run."""
     metadata = {"ag_ui_context": entries} if entries else None
     return SimpleNamespace(run_config=SimpleNamespace(custom_metadata=metadata))
 

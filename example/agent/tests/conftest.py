@@ -10,7 +10,6 @@ from order_agent.server import create_app
 
 @pytest.fixture
 def agent_url(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
-    """The agent with the scripted model, which needs no network and no key, on a free port."""
     monkeypatch.setenv("TANDEM_FAKE_LLM", "1")
     monkeypatch.setenv("TANDEM_TODAY", "2026-10-16")
     server = uvicorn.Server(

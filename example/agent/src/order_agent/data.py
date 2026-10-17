@@ -1,7 +1,4 @@
-"""The agent's side of the demo data: customers and their past orders.
-
-The catalog and the price lists live in the app.
-"""
+"""Customers and their past orders. The catalog and the price lists live in the app."""
 
 CUSTOMERS = [
     {
