@@ -148,11 +148,13 @@ void main() {
   });
 
   test(
-    'errors go back to the agent or into the chat; the next message works',
+    'bad arguments are refused, other errors are reported and go back to the '
+    'agent or into the chat; the next message works',
     () async {
       final agent = ScriptedAgent([
         (_) => const [
           AgentStep.callTool('add', {'item': ''}),
+          AgentStep.callTool('remove_at', {'index': 0}),
         ],
         (_) => const [AgentStep.fail('boom')],
         (_) => const [AgentStep.say('Hi')],
@@ -161,13 +163,19 @@ void main() {
       final session = open(agent)..send('a');
       await pumpEventQueue();
 
-      final {'content': answer as String} = _messages(agent.requests[1]).last;
-      expect(jsonDecode(answer), {
+      final messages = _messages(agent.requests[1]);
+      final [..., {'content': refused as String}, _] = messages;
+      final [..., {'content': failed as String}] = messages;
+      expect(jsonDecode(refused), {
+        'status': 'refused',
+        'reason': contains('item'),
+      });
+      expect(jsonDecode(failed), {
         'status': 'failed',
-        'error': contains('item'),
+        'error': contains('RangeError'),
       });
       expect(reported.map((details) => details.exception), [
-        isArgumentError,
+        isRangeError,
         isA<AgentRunException>().having(
           (err) => err.message,
           'message',

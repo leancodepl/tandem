@@ -60,8 +60,8 @@ The `content` of the tool message. The constants are in `session.dart`.
 | Situation | Content |
 |---|---|
 | executed | `jsonEncode(result)`, `null` for `void` |
-| refused: not listed now, needs approval, bad arguments | `{"status":"refused","reason":<message>}` |
-| the method threw | `{"status":"failed","error":<toString>}` |
+| refused: not listed now, needs approval, bad arguments, or the method threw an `ArgumentError` other than a `RangeError` | `{"status":"refused","reason":<message>}` |
+| the method threw anything else | `{"status":"failed","error":<toString>}` |
 | Reject | `{"status":"rejected_by_user"}` |
 | not executed, or the user wrote instead of deciding | `{"status":"cancelled"}` |
 | invalidated | `{"status":"invalidated"}` |

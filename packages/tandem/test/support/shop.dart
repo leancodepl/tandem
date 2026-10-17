@@ -20,6 +20,7 @@ final class Shop() implements AgentSurface {
   List<AgentCapability> get agentCapabilities => [
     .sees(items),
     .calls(add),
+    .calls(removeAt),
     if (items.isNotEmpty) .callsWithApproval(clear),
   ];
 
@@ -29,6 +30,13 @@ final class Shop() implements AgentSurface {
       throw ArgumentError.value(item, 'item', 'must not be empty');
     }
     items.add(item);
+    _changes.add([...items]);
+  }
+
+  /// Removes the item at [index].
+  void removeAt(int index) {
+    // Unchecked, so a bad index throws a RangeError, as a bug would.
+    items.removeAt(index);
     _changes.add([...items]);
   }
 
@@ -62,6 +70,22 @@ final class Shop() implements AgentSurface {
         },
         invoke: (args) {
           add(args.read('item'));
+          return null;
+        },
+      ),
+      AgentTool(
+        removeAt,
+        name: 'remove_at',
+        description: 'Removes the item at [index].',
+        parameters: {
+          'type': 'object',
+          'properties': {
+            'index': {'type': 'integer'},
+          },
+          'required': ['index'],
+        },
+        invoke: (args) {
+          removeAt(args.read('index'));
           return null;
         },
       ),

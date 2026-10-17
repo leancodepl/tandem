@@ -311,7 +311,9 @@ final class TandemSession({
   }
 
   /// Calls the method behind [call] and returns the answer for the agent.
-  /// Never throws. The listener hears the call only while [run] is open.
+  /// Never throws. An [ArgumentError] the method throws is the agent's bad
+  /// input, refused like a [ToolCallRefused]; a [RangeError] is a bug, so it
+  /// is reported. The listener hears the call only while [run] is open.
   Future<String> _execute(_Run run, _Call call) async {
     final Map<String, Object?> args;
     final Object? result;
@@ -320,11 +322,16 @@ final class TandemSession({
       args = jsonDecode(call.argumentsJson) as Map<String, Object?>;
       result = await run.listing.call(call.tool, args, approved: call.approved);
       answer = jsonEncode(result);
-    } on ToolCallRefused catch (err) {
-      return _refused(err.message);
     } catch (err, st) {
-      _report(err, st);
-      return _failed(err);
+      switch (err) {
+        case ToolCallRefused(:final message):
+          return _refused(message);
+        case ArgumentError() when err is! RangeError:
+          return _refused('$err');
+        case _:
+          _report(err, st);
+          return _failed(err);
+      }
     }
     if (_run == run) {
       try {
