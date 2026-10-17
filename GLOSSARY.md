@@ -29,7 +29,7 @@ The agent's call of a `.callsWithApproval` method, shown as a card with its argu
 _Avoid_: confirmation, interrupt
 
 **Invalidated**:
-The state of an approval request when what the agent sees changed after the card showed. It can no longer be approved.
+The state of an approval request when the screen emitted a new state after the card showed. It can no longer be approved.
 _Avoid_: stale, expired, outdated
 
 **Stop**:

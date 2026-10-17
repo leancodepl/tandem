@@ -25,13 +25,12 @@ import 'package:tandem/tandem.dart';
 /// Every state that [C] emits once an approval card shows invalidates the
 /// card for good, even a state that changes nothing the agent sees (`.sees`).
 ///
-/// The conversation is one AG-UI thread, and an ordinary rebuild keeps it.
-/// A new session, with a new thread, replaces the old one when the provider
-/// above gives another [C], when `agent` is another [Uri] (compared with
-/// `==`), or when `connected` gets another connection (compared with
-/// `identical`: keep it in a field, not in `build`). A new [onAgentCall]
-/// takes effect at once. A scope that leaves the tree disposes its session
-/// before the `BlocProvider` closes [C].
+/// An ordinary rebuild keeps the session. A new session replaces the old one
+/// when the provider above gives another [C], when `agent` is another [Uri]
+/// (compared with `==`), or when `connected` gets another connection
+/// (compared with `identical`: keep it in a field, not in `build`). A new
+/// [onAgentCall] takes effect at once. A scope that leaves the tree disposes
+/// its session before the `BlocProvider` closes [C].
 final class TandemScope<C extends AgentSurface> extends StatefulWidget {
   /// A scope that talks to the AG-UI endpoint `agent`.
   const new({
