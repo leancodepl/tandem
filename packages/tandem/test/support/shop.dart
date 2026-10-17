@@ -7,17 +7,14 @@ import 'package:tandem/tandem.dart';
 final class Shop() implements AgentSurface {
   final _changes = StreamController<Object?>.broadcast();
 
-  /// What is on the shopping list now.
   final items = <String>[];
 
-  /// What [clear] waits for before it empties the list, as if it asked a
-  /// server first.
+  /// [clear] waits for this first, as a call to a server would.
   Future<void> serverReply = Future.value();
 
-  /// Emits after every change of [items].
   Stream<Object?> get changes => _changes.stream;
 
-  /// Closes [changes]. Dispose the session that listens to it first.
+  /// Dispose the session that listens to [changes] first.
   Future<void> close() => _changes.close();
 
   @override
@@ -28,7 +25,6 @@ final class Shop() implements AgentSurface {
     if (items.isNotEmpty) .callsWithApproval(clear),
   ];
 
-  /// Adds [item] to the list.
   void add(String item) {
     if (item.isEmpty) {
       throw ArgumentError.value(item, 'item', 'must not be empty');
@@ -37,14 +33,12 @@ final class Shop() implements AgentSurface {
     _changes.add([...items]);
   }
 
-  /// Removes the item at [index].
   void removeAt(int index) {
     // Unchecked, so a bad index throws a RangeError, as a bug would.
     items.removeAt(index);
     _changes.add([...items]);
   }
 
-  /// Empties the list.
   Future<void> clear() async {
     await serverReply;
     items.clear();

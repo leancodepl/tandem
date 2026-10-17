@@ -16,7 +16,7 @@ void main() {
 
   setUp(() {
     shop = Shop();
-    // Tear-downs run last first: the session goes before the shop.
+    // Tear-downs run in reverse, so the session is disposed before the shop.
     addTearDown(shop.close);
     agentCalls = [];
   });
@@ -35,8 +35,6 @@ void main() {
     return session;
   }
 
-  /// A session whose agent asked to clear the list `['x']`. Its next run
-  /// says `Cleared.`.
   Future<(TandemSession, ScriptedAgent)> askToClear() async {
     shop.add('x');
     final agent = ScriptedAgent([
@@ -249,8 +247,7 @@ void main() {
   test('an ambiguous chunk breaks the run: the response is cancelled, the '
       'error reported, and the next message starts a new thread', () async {
     var responseCancelled = false;
-    // Two subagents have a message open when a chunk names neither, and the
-    // server's run goes on.
+    // The server keeps the response open, so only the session can end it.
     final response =
         StreamController<List<int>>(onCancel: () => responseCancelled = true)
           ..add(
@@ -501,12 +498,9 @@ void main() {
   });
 }
 
-/// The only approval card of [session], as the chat shows it now.
 ApprovalRequest _card(TandemSession session) =>
     session.items.whereType<ApprovalRequest>().single;
 
-/// A connection whose first run is [_first], raw events such as a stream
-/// that ends after `RUN_STARTED`. Later runs play [_agent].
 final class _RawFirstRun(
   final Stream<Map<String, Object?>> _first,
   final ScriptedAgent _agent,
@@ -520,7 +514,6 @@ final class _RawFirstRun(
   }
 }
 
-/// Collects the errors reported to Flutter until the test ends.
 List<FlutterErrorDetails> _collectReports() {
   final reported = <FlutterErrorDetails>[];
   final onError = FlutterError.onError;
@@ -534,9 +527,6 @@ List<Map<String, Object?>> _messages(Map<String, Object?> request) {
   return messages.cast();
 }
 
-/// The messages of [request], one line each: `user: go` for a text,
-/// `asst-call-1 add {"item":"x"}` for a call, `tool-call-1 null` for its
-/// answer.
 List<String> _lines(Map<String, Object?> request) => [
   for (final message in _messages(request))
     switch (message) {
@@ -554,7 +544,6 @@ List<String> _lines(Map<String, Object?> request) => [
     },
 ];
 
-/// [items] as values that compare by value.
 List<Object> _shown(List<ChatItem> items) => [
   for (final item in items)
     switch (item) {

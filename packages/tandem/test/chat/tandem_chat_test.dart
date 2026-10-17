@@ -47,7 +47,7 @@ void main() {
     expect(find.text('Approve'), findsOneWidget);
     expect(find.text('Reject'), findsOneWidget);
 
-    // The card of the next call takes the place of this one in the list.
+    // The next card lands at this index, so it needs a state of its own.
     await tester.tap(find.text('Reject'));
     await tester.pumpAndSettle();
 
@@ -55,8 +55,6 @@ void main() {
   });
 }
 
-/// Shows a chat whose agent plays [turns] on a new session about the list
-/// `['x']`, sends `clear`, and returns the shop once the first run is done.
 Future<Shop> _sendClear(
   WidgetTester tester,
   List<AgentTurn> turns, {

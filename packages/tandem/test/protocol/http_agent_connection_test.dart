@@ -10,12 +10,10 @@ import 'package:tandem/src/protocol/events.dart';
 
 const _fixtureChunkSize = 7;
 const _pastIdleTimeout = Duration(seconds: 61);
-const _settleRounds = 2;
 
 final _endpoint = Uri.parse('http://localhost:8000/agent');
 
-/// The response whose body is the file [name] of the fixtures, in pieces that
-/// cut its lines and characters.
+/// Serves the fixture [name] in pieces that cut its lines and characters.
 http.StreamedResponse _fixture(String name) {
   final bytes = File('test/protocol/$name').readAsBytesSync();
   return http.StreamedResponse(
@@ -27,7 +25,6 @@ http.StreamedResponse _fixture(String name) {
   );
 }
 
-/// The run of the fixture [name], as the connection streams it.
 Stream<Map<String, Object?>> _run(String name) {
   final client = MockClient.streaming(
     (request, bodyStream) async => _fixture(name),
@@ -35,12 +32,10 @@ Stream<Map<String, Object?>> _run(String name) {
   return HttpAgentConnection(_endpoint, client: client).run(const {});
 }
 
-/// The events of the fixture [name], as the session reads them.
 Future<List<AgentEvent>> _agentEvents(String name) async => [
   for (final json in await _run(name).toList()) AgentEvent.fromJson(json),
 ];
 
-/// The text of each message in [events], by its id.
 Map<String, String> _texts(List<AgentEvent> events) {
   final texts = <String, String>{};
   for (final event in events) {
@@ -51,7 +46,6 @@ Map<String, String> _texts(List<AgentEvent> events) {
   return texts;
 }
 
-/// The arguments of each call in [events], by its id.
 Map<String, String> _arguments(List<AgentEvent> events) {
   final arguments = <String, String>{};
   for (final event in events) {
@@ -66,17 +60,14 @@ Map<String, String> _arguments(List<AgentEvent> events) {
   return arguments;
 }
 
-/// Lets a stream that ended finish. Its end waits for the cleanup of its
-/// source, which needs microtasks of the root zone, and the fake clock of the
-/// test does not run those.
+/// Ending a stream needs root-zone microtasks, which the fake clock skips.
 Future<void> _settle(WidgetTester tester) async {
-  for (var round = 0; round < _settleRounds; round++) {
+  for (var round = 0; round < 2; round++) {
     await tester.runAsync(pumpEventQueue);
     await tester.pump();
   }
 }
 
-/// A client that remembers whether it was closed.
 final class _SpyClient(super.handler) extends MockClient {
   this : super.streaming();
 
@@ -249,7 +240,6 @@ void main() {
   test('a run ends at RUN_FINISHED while the server keeps the connection '
       'open', () async {
     var sourceCancelled = false;
-    // One more event follows RUN_FINISHED in the same bytes.
     final source =
         StreamController<List<int>>(onCancel: () => sourceCancelled = true)
           ..add(
@@ -280,7 +270,6 @@ void main() {
   test('a run ends at RUN_ERROR while the server keeps the connection '
       'open', () async {
     var sourceCancelled = false;
-    // One more event follows RUN_ERROR in the same bytes.
     final source =
         StreamController<List<int>>(onCancel: () => sourceCancelled = true)
           ..add(
@@ -323,11 +312,10 @@ void main() {
 
     final cancelling = subscription.cancel().then((_) => cancelled = true);
     await pumpEventQueue();
-    final cancelledBeforeCleanup = cancelled;
+    expect(cancelled, isFalse);
+
     cleanup.complete();
     await cancelling;
-
-    expect(cancelledBeforeCleanup, isFalse);
     expect(cancelled, isTrue);
   });
 
@@ -336,8 +324,7 @@ void main() {
   ) async {
     var aborted = false;
     final client = _SpyClient((request, bodyStream) async {
-      // A MockClient never aborts by itself: the handler has to. A request
-      // that cannot be aborted waits for ever.
+      // MockClient never aborts on its own: the handler waits for the trigger.
       await switch (request) {
         http.Abortable(:final abortTrigger?) => abortTrigger,
         _ => Completer<void>().future,
