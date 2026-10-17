@@ -1,4 +1,7 @@
+import 'package:example/desk/catalog.dart';
 import 'package:example/desk/customers.dart';
+import 'package:example/desk/data/customers.dart';
+import 'package:example/desk/data/products.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
 import 'package:example/desk/ui/desk_theme.dart';
@@ -18,8 +21,11 @@ final class const OrderDeskScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider(
-    create: (context) =>
-        OrderDeskCubit(catalog: .demo(), customers: .demo(), orders: Orders()),
+    create: (context) => OrderDeskCubit(
+      catalog: Catalog(products),
+      customers: Customers(customers),
+      orders: Orders(),
+    ),
     child: switch (connection) {
       final connection? => TandemScope<OrderDeskCubit>.connected(
         connection: connection,

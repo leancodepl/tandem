@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:example/desk/catalog.dart';
 import 'package:example/desk/customers.dart';
+import 'package:example/desk/data/customers.dart';
+import 'package:example/desk/data/products.dart';
 import 'package:example/desk/desk_order.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
@@ -20,8 +22,8 @@ void main() {
   setUp(() {
     orders = Orders();
     cubit = OrderDeskCubit(
-      catalog: Catalog.demo(),
-      customers: Customers.demo(),
+      catalog: Catalog(products),
+      customers: Customers(customers),
       orders: orders,
     );
   });
@@ -170,8 +172,8 @@ void main() {
   test('what is changed while the order is placed is not part of it', () async {
     final gate = Completer<void>();
     final slowCubit = OrderDeskCubit(
-      catalog: .demo(),
-      customers: .demo(),
+      catalog: Catalog(products),
+      customers: Customers(customers),
       orders: _SlowOrders(gate.future),
     )..setQuantity(_monitor, 2);
     addTearDown(slowCubit.close);

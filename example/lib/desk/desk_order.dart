@@ -1,7 +1,7 @@
 import 'package:example/desk/catalog.dart';
 import 'package:example/desk/customers.dart';
+import 'package:example/desk/data/price_lists.dart';
 import 'package:example/desk/money.dart';
-import 'package:example/desk/price_list.dart';
 
 /// The order as the user sees it, with every price worked out.
 class const DeskOrder({

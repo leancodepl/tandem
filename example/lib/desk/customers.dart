@@ -8,28 +8,6 @@ class const Customer({
 });
 
 class Customers(final List<Customer> all) {
-  new demo()
-    : this(const [
-        .new(
-          id: 'acme',
-          name: 'Acme Office Supply Sp. z o.o.',
-          contact: 'Marta Nowak',
-          priceList: 'Acme 2026',
-        ),
-        .new(
-          id: 'northline',
-          name: 'Northline Logistics S.A.',
-          contact: 'Piotr Zieliński',
-          priceList: 'Standard',
-        ),
-        .new(
-          id: 'kowalscy',
-          name: 'Kowalscy i Wspólnicy Sp. j.',
-          contact: 'Ewa Kowalska',
-          priceList: 'Standard',
-        ),
-      ]);
-
   /// The customer with [id]; throws an [ArgumentError] for none.
   Customer byId(String id) => all.firstWhere(
     (customer) => customer.id == id,
