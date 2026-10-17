@@ -206,42 +206,46 @@ final class TandemSession({
         assistantToolCall(call.id, call.tool, call.argumentsJson),
     ]);
     try {
-      for (final call in _calls) {
-        if (run.stopped) {
-          break;
-        }
-        if (!call.hasObjectArguments) {
-          call.answer = .refused('The arguments must be a JSON object.');
-        } else if (!run.listing.needsApproval(call.tool)) {
-          call.answer = await _execute(run, call);
-          if (_run != run) {
-            return; // Disposed meanwhile.
-          }
-        }
-      }
-      final awaitingApproval = [
-        for (final call in _calls)
-          if (call.answer == null) call,
-      ];
-      if (awaitingApproval.isNotEmpty && !run.stopped) {
-        _contextWhenCardsShowed = _context();
-        // Lets the changes of the calls above arrive before the cards show,
-        // so they invalidate nothing.
-        await Future<void>.delayed(.zero);
-        if (_run != run) {
-          return; // Disposed meanwhile.
-        }
-        if (!run.stopped) {
-          for (final call in awaitingApproval) {
-            _items.add(call.ask(run.listing.description(call.tool)));
-          }
-        }
-      }
+      await _answerCalls(run);
+      await _showCards(run);
     } catch (err, st) {
       _runFailed(err, st);
       return;
     }
-    _startNextRun();
+    if (_run == run) {
+      _startNextRun();
+    }
+  }
+
+  Future<void> _answerCalls(Run run) async {
+    for (final call in _calls) {
+      if (run.stopped || _run != run) {
+        return;
+      }
+      if (!call.hasObjectArguments) {
+        call.answer = .refused('The arguments must be a JSON object.');
+      } else if (!run.listing.needsApproval(call.tool)) {
+        call.answer = await _execute(run, call);
+      }
+    }
+  }
+
+  Future<void> _showCards(Run run) async {
+    final awaitingApproval = _calls
+        .where((call) => call.answer == null)
+        .toList();
+    if (awaitingApproval.isEmpty || run.stopped || _run != run) {
+      return;
+    }
+    _contextWhenCardsShowed = _context();
+    // Lets the changes of the calls that ran arrive before the cards show, so
+    // they invalidate nothing.
+    await Future<void>.delayed(.zero);
+    if (_run == run && !run.stopped) {
+      for (final call in awaitingApproval) {
+        _items.add(call.ask(run.listing.description(call.tool)));
+      }
+    }
   }
 
   // Its own run: a new message waits, Stop and dispose skip the follow-up.
