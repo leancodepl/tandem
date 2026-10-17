@@ -176,8 +176,6 @@ final class const TandemAgent();
 sealed class AgentCapability {
   factory AgentCapability.sees(Object? value) => throw UnimplementedError();
   factory AgentCapability.calls(Function method) => throw UnimplementedError();
-  factory AgentCapability.callsWithApproval(Function method) =>
-      throw UnimplementedError();
 }
 ''',
     'app|lib/screen.dart': "import 'package:tandem/tandem.dart';\n\n$source",
