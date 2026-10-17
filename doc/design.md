@@ -6,9 +6,9 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, the AG-UI connection, the session, `TandemChat`, `ScriptedAgent` | flutter, http |
+| `tandem` | the agent list, the AG-UI connection, the session, `TandemChat`, `ScriptedAgent` | flutter, http, uuid |
 | `tandem_bloc` | `TandemScope<C>`: takes the cubit from the context, invalidates approvals on its `stream`, passes `onAgentCall`; exports `tandem` | tandem, flutter_bloc |
-| `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, source_gen |
+| `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` does not depend on bloc. Riverpod support would be a separate `tandem_riverpod` with its own `TandemScope`.
 
