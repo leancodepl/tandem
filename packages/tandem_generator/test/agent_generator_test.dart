@@ -164,11 +164,9 @@ class NoteCubit() {
   });
 }
 
-/// The errors of building [source].
 Future<List<String>> _buildErrors(String source) async =>
     (await _build(source)).errors.toList();
 
-/// Builds [source], a library that imports `tandem`.
 Future<TestBuilderResult> _build(String source) => testBuilder(
   tandemBuilder(BuilderOptions.empty),
   {

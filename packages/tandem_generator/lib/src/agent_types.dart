@@ -4,7 +4,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:source_gen/source_gen.dart';
 
-/// How the types around one method or getter of an agent list map to JSON.
+/// How the types of one getter or method of an agent list map to JSON.
 ///
 /// The agent sends and sees `String`, `int`, `double`, `num`, `bool`,
 /// `DateTime` as ISO 8601, enums by name, extension types over the first five,
@@ -12,26 +12,23 @@ import 'package:source_gen/source_gen.dart';
 /// so its unnamed constructor must be public and take only the value, as a
 /// positional parameter of the non-null type it wraps. A plain class is a
 /// non-generic class outside the SDK whose public unnamed constructor takes
-/// only parameters named like its getters, all of them named but at most one.
+/// only parameters named like its getters, all named except at most one.
 /// Tandem builds it with that constructor and writes it as an object of those
 /// getters, so it needs neither `fromJson` nor `toJson`.
 ///
-/// The generated code names only core types: it builds classes and extension
-/// types with `.new` and enum values with `.name`, so it compiles without
-/// imports of the libraries that declare them.
-final class AgentTypes(
-  /// The method or getter, where build errors point.
-  final ExecutableElement _element,
-) {
-  /// The types around [_element].
+/// The generated code names only core types. It builds classes, extension
+/// types and enum values with dot shorthands, so it compiles without imports
+/// of the libraries that declare them.
+final class AgentTypes(final ExecutableElement _element) {
+  /// The types of [_element], a getter or method of an agent list. Build
+  /// errors point at it.
   this;
 
-  /// The plain classes being written now, to catch one that contains itself.
   final _visitingClasses = <ClassElement>{};
 
   /// The JSON Schema of an object with a property for each of [parameters],
-  /// which the agent sends at [prefix] and the parameter's name. [owner] is
-  /// the class whose constructor takes them, or null for a method.
+  /// which the agent sends at [prefix] plus the parameter's name. [owner] is
+  /// the class whose constructor takes them, null for a method.
   Map<String, Object?> object(
     List<FormalParameterElement> parameters,
     String prefix, {
@@ -53,8 +50,7 @@ final class AgentTypes(
       }
       properties[name] = {
         ...schema(type, '$prefix$name'),
-        // OpenAPI's form, which Gemini reads: ag-ui-adk 0.9.0 fails on the
-        // JSON Schema form, a list of types.
+        // OpenAPI's form, as ag-ui-adk 0.9.0 fails on a list of types.
         if (nullable) 'nullable': true,
         'description': ?_doc(parameter, owner),
       };
@@ -174,8 +170,6 @@ final class AgentTypes(
     };
   }
 
-  /// The constructor arguments of [type], a plain class, read from the
-  /// `ToolArgs` expression [args].
   String _build(DartType type, String args) => _plain(
     type,
     'send',
@@ -184,8 +178,6 @@ final class AgentTypes(
         arguments([for (final field in fields) field.parameter], args),
   );
 
-  /// Runs [body] with the constructor parameters of [type], which must be a
-  /// plain class, and the getters that read them back.
   T _plain<T>(
     DartType type,
     String verb,
@@ -247,10 +239,8 @@ final class AgentTypes(
     throw _cannot(verb, type, path);
   }
 
-  /// Throws unless the unnamed constructor of [extension], at [path], is
-  /// public and takes only one positional parameter of the non-null type it
-  /// wraps: the type the schema names, so every value the agent may send
-  /// reaches it, and null does not.
+  /// The value parameter has the type the schema names, so every value the
+  /// agent may send fits it and null does not.
   void _checkValueConstructor(ExtensionTypeElement extension, String path) {
     final value = _element.library.typeSystem.promoteToNonNull(
       extension.typeErasure,
@@ -275,7 +265,6 @@ final class AgentTypes(
     }
   }
 
-  /// The default value of [parameter] as code, or null for none or `null`.
   String? _default(FormalParameterElement parameter) {
     final origin = _origin(parameter);
     if (!origin.hasDefaultValue) {
@@ -309,8 +298,8 @@ final class AgentTypes(
     );
   }
 
-  /// The parameter that holds the default value of [parameter]: a
-  /// redirecting factory, as freezed writes, keeps it on its target.
+  /// A redirecting factory, as freezed writes, keeps the default value on its
+  /// target.
   static FormalParameterElement _origin(FormalParameterElement parameter) {
     if (parameter.enclosingElement case ConstructorElement(
       redirectedConstructor: final target?,
@@ -324,8 +313,6 @@ final class AgentTypes(
     return parameter;
   }
 
-  /// The doc comment of the getter of [owner] behind [parameter], or of the
-  /// parameter itself.
   static String? _doc(FormalParameterElement parameter, InterfaceType? owner) =>
       documentationOf(
         owner?.lookUpGetter(parameter.displayName, owner.element.library),
@@ -358,7 +345,6 @@ final class AgentTypes(
   static bool _isExtension(DartType type) =>
       type is InterfaceType && type.element is ExtensionTypeElement;
 
-  /// The core type behind the extension type [type], `?` included, as code.
   static String _erasure(DartType type) =>
       type.extensionTypeErasure.getDisplayString();
 
@@ -389,8 +375,6 @@ final class AgentTypes(
       InvalidGenerationSource('$message.', element: _element);
 }
 
-/// A constructor parameter of a plain class and the getter that reads it
-/// back.
 typedef _Field = ({FormalParameterElement parameter, GetterElement getter});
 
 /// The doc comment of [element] without the slashes, or null for none. The
@@ -415,10 +399,8 @@ String dartJsonLiteral(Object? value) =>
     jsonEncode(value)
         .replaceAllMapped(_jsonString, (match) => _dartString(match[1] ?? ''));
 
-/// A string in JSON text, with its escaped contents in group 1.
 final _jsonString = RegExp(r'"((?:[^"\\]|\\.)*)"');
 
-/// [escaped], the contents of a JSON string, as a Dart string literal.
 String _dartString(String escaped) {
   final contents = escaped.replaceAll(r'$', r'\$');
   return contents.contains("'") && !contents.contains(r'\"')

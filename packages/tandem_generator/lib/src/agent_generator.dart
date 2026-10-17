@@ -7,15 +7,14 @@ import 'package:source_gen/source_gen.dart';
 import 'package:tandem_generator/src/agent_types.dart';
 
 /// Writes the `_$Name` mixin of every class with `@TandemAgent()`, from its
-/// `List<AgentCapability> get agentCapabilities`.
+/// `agentCapabilities` getter.
 ///
 /// At runtime the agent list holds only values and tear-offs. The mixin adds
-/// what only the source has: the names and doc comments of the getters in
-/// `.sees` and how to write their values as JSON, and for every method in
-/// `.calls` or `.callsWithApproval` its name, doc comment, the JSON Schema of
-/// its parameters, and a typed call that writes the result as JSON.
+/// what only the source has: the names and doc comments of the listed getters
+/// and methods, the JSON Schema of each method's parameters, and the code that
+/// reads the arguments and writes values and results as JSON.
 class const AgentGenerator() extends Generator {
-  /// The generator of `tandemBuilder`.
+  /// Used by `tandemBuilder`.
   this;
 
   @override
@@ -80,9 +79,6 @@ mixin _\$$name implements AgentSurface {
   }
 
   static String _view(Expression item, String type) {
-    // In `get agentCapabilities => [.sees(item)]`, item is in the argument
-    // list of an invocation, which is an item of the list after =>, not of one
-    // inside it.
     final isAgentListItem = switch (item.parent) {
       ArgumentList(
         parent: AstNode(parent: ListLiteral(parent: ExpressionFunctionBody())),
@@ -144,8 +140,6 @@ AgentTool(
 ),''';
   }
 
-  /// The `invoke` of an `AgentTool`: makes [call] and writes its result as
-  /// JSON, `null` for `void`.
   static String _invoke(AgentTypes types, MethodElement method, String call) {
     final (result, wait) = switch (method.returnType) {
       InterfaceType(isDartAsyncFuture: true, typeArguments: [final value]) ||
@@ -172,8 +166,6 @@ AgentTool(
   static String _list(Iterable<String> items) =>
       items.isEmpty ? 'const []' : '[${items.join()}]';
 
-  /// The doc comment of [element] without the slashes. Throws when there is
-  /// none: it is all the agent knows about the getter or method.
   static String _doc(Element element) {
     if (documentationOf(element) case final doc?) {
       return doc;
@@ -204,8 +196,8 @@ const _capability = TypeChecker.typeNamedLiterally(
   inPackage: 'tandem',
 );
 
-/// The arguments of `.sees`, `.calls` and `.callsWithApproval` in an agent
-/// list, in source order, however the items are written.
+/// The arguments of `.sees`, `.calls` and `.callsWithApproval`, in source
+/// order: the agent list pairs the `.sees` values with their views by place.
 class _Items() extends RecursiveAstVisitor<void> {
   final sees = <Expression>[];
   final calls = <Expression>[];
