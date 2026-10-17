@@ -26,8 +26,8 @@ const _noEndpoint = 'A TandemScope has an agent or a connection.';
 /// )
 /// ```
 ///
-/// When what the agent sees (`.sees`) changes, the approvals still pending
-/// are invalidated.
+/// Every state that [C] emits once an approval card shows invalidates the
+/// card for good, also a state that changes nothing the agent sees (`.sees`).
 ///
 /// The conversation is one AG-UI thread, and an ordinary rebuild keeps it.
 /// A new session, with a new thread, replaces the old one when the provider

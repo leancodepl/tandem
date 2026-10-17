@@ -365,14 +365,18 @@ final class TandemSession({
         .firstOrNull;
   }
 
-  /// Shows the card of [call] as [status], with [answer] for the agent.
+  /// Shows the pending card of [call] as [status], with [answer] for the
+  /// agent.
   void _decide(_Call call, ApprovalStatus status, [String? answer]) {
-    if (call.request case final request?) {
-      final updatedRequest = request.withStatus(status);
-      _items[_items.indexOf(request)] = updatedRequest;
-      call.request = updatedRequest;
-    }
-    call.answer = answer;
+    final request = switch (call.request) {
+      final request? when request.status == .pending => request,
+      _ => throw StateError('The call of ${call.tool} has no pending card.'),
+    };
+    final updatedRequest = request.withStatus(status);
+    _items[_items.indexOf(request)] = updatedRequest;
+    call
+      ..request = updatedRequest
+      ..answer = answer;
   }
 
   /// Invalidates the pending cards for good.
