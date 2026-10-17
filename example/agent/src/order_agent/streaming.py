@@ -7,7 +7,7 @@ would reach the app. Here the text comes word by word and all the calls in one c
 
 import asyncio
 import re
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
 
 from google.adk.models import Gemini, LlmRequest, LlmResponse
 from google.adk.utils.streaming_utils import StreamingResponseAggregator
@@ -17,7 +17,8 @@ from google.genai import types
 async def stream_turn(parts: list[types.Part]) -> AsyncGenerator[LlmResponse, None]:
     """Yields `parts` the way ADK's streaming Gemini does, which is the path ag-ui-adk uses."""
     aggregator = StreamingResponseAggregator()
-    for chunk in _chunks(parts):
+    for candidate in _candidates(parts):
+        chunk = types.GenerateContentResponse(candidates=[candidate])
         async for response in aggregator.process_response(chunk):
             yield response
         # The pace of a streaming model.
@@ -41,22 +42,10 @@ class WholeTurnGemini(Gemini):
                 yield chunk
 
 
-def _chunks(parts: list[types.Part]) -> list[types.GenerateContentResponse]:
-    pieces = [
-        [types.Part(text=word)]
-        for part in parts
-        if part.text
-        for word in re.findall(r"\S+\s*", part.text)
-    ]
+def _candidates(parts: list[types.Part]) -> Iterator[types.Candidate]:
+    for part in parts:
+        for word in re.findall(r"\S+\s*", part.text or ""):
+            yield types.Candidate(content=types.ModelContent(parts=[types.Part(text=word)]))
     if calls := [part for part in parts if part.function_call]:
-        pieces.append(calls)
-    if not pieces:
-        pieces.append([types.Part(text="")])
-    chunks = [
-        types.GenerateContentResponse(
-            candidates=[types.Candidate(content=types.Content(role="model", parts=piece))]
-        )
-        for piece in pieces
-    ]
-    chunks[-1].candidates[0].finish_reason = types.FinishReason.STOP
-    return chunks
+        yield types.Candidate(content=types.ModelContent(parts=calls))
+    yield types.Candidate(finish_reason=types.FinishReason.STOP)

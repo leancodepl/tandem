@@ -5,7 +5,7 @@ import pytest
 from google.adk.models import Gemini, LlmRequest, LlmResponse
 from google.genai import types
 
-from order_agent.streaming import WholeTurnGemini
+from order_agent.streaming import WholeTurnGemini, stream_turn
 
 TURN = [
     types.Part(text="Filling the order."),
@@ -71,3 +71,11 @@ def test_the_text_streams_word_by_word(whole_turn: list[bool]) -> None:
 
 def test_an_unstreamed_request_gets_the_turn_as_is(whole_turn: list[bool]) -> None:
     assert [calls(r) for r in responses(stream=False)] == [["A", "B", "set_delivery"]]
+
+
+def test_an_empty_turn_ends_without_an_error() -> None:
+    async def collect() -> list[LlmResponse]:
+        return [r async for r in stream_turn([])]
+
+    ends = [(r.partial, r.content, r.error_code) for r in asyncio.run(collect())]
+    assert ends == [(True, None, None), (False, None, None)]
