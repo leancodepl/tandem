@@ -13,7 +13,6 @@ const _pastIdleTimeout = Duration(seconds: 61);
 
 final _endpoint = Uri.parse('http://localhost:8000/agent');
 
-/// Serves the fixture [name] in pieces that cut its lines and characters.
 http.StreamedResponse _fixture(String name) {
   final bytes = File('test/protocol/$name').readAsBytesSync();
 
@@ -62,7 +61,7 @@ Map<String, String> _arguments(List<AgentEvent> events) {
   return arguments;
 }
 
-/// Ending a stream needs root-zone microtasks, which the fake clock skips.
+// Ending a stream needs root-zone microtasks, which the fake clock skips.
 Future<void> _settle(WidgetTester tester) async {
   for (var round = 0; round < 2; round++) {
     await tester.runAsync(pumpEventQueue);

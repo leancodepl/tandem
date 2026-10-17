@@ -2,20 +2,16 @@ import 'dart:async';
 
 import 'package:tandem/tandem.dart';
 
-/// A shopping list with a hand-written agent schema, shaped like the code
-/// `tandem_generator` writes.
 final class Shop() implements AgentSurface {
   final _changes = StreamController<Object?>.broadcast();
 
   /// What is on the shopping list now.
   final items = <String>[];
 
-  /// [clear] waits for this first, as a call to a server would.
   Future<void> serverReply = Future.value();
 
   Stream<Object?> get changes => _changes.stream;
 
-  /// Dispose the session that listens to [changes] first.
   Future<void> close() => _changes.close();
 
   @override
