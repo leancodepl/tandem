@@ -13,6 +13,7 @@ abstract interface class AgentSurface {
   /// What the agent may see and call now. Tandem reads it again before every
   /// turn, so it can depend on the state.
   List<AgentCapability> get agentCapabilities;
+
   AgentSchema get agentSchema;
 }
 
