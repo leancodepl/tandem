@@ -56,7 +56,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    }
    ```
 
-   The agent gets exactly what is on the list. It reads the doc comments, and parameter types become the schema. The list is read again before every turn, so it can depend on the state or on who the user is.
+   The agent gets exactly what is on the list. It reads the doc comments, and the parameter types become the schema. The list is read again before every turn, so it can depend on the state or on who the user is.
 
 3. Generate the code:
 
@@ -64,7 +64,9 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    dart run build_runner build
    ```
 
-   Every class with `@TandemAgent()` gets its `_$Name` mixin, here `_$OrderCubit`. `.sees` must stand directly in the list after `get agentCapabilities =>`, not inside an `if` or a spread, or the build fails. In CI, run `dart run build_runner build && git diff --exit-code`: an outdated `.g.dart` is not always caught at runtime, for example two parameters of the same type that swapped places.
+   Every class with `@TandemAgent()` gets a `_$Name` mixin, here `_$OrderCubit`. Each `.sees` must stand directly in the list after `get agentCapabilities =>`, not inside an `if`, a `for`, a `?:` or a spread, or the build fails.
+
+   In CI, run `dart run build_runner build && git diff --exit-code`. An outdated `.g.dart` is not always caught at runtime, for example when two parameters of the same type swap places.
 
 4. Wrap the screen:
 
@@ -90,17 +92,19 @@ The agent changes the screen through the same methods as your buttons, so the sa
 
 ## Approvals
 
-A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees at the moment it asks. If that changes later, even back to what it was, the card is invalidated for good and the agent has to ask again.
+A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees when it asks. If that changes, even back to what it was, the card is invalidated for good and the agent has to ask again.
 
 Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing more from it.
 
 ## The agent
 
-Any AG-UI endpoint works. What the backend has to do:
+Any AG-UI endpoint works. The backend has to:
 
 - Put the AG-UI `context` into the model's prompt. ag-ui-adk does not, so its agent needs an instruction provider that adds it.
 - Accept `tools` on every run. Tandem always sends it, an empty list when no method is listed.
-- On the web, allow your origin with CORS on the server. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement.
+- On the web, allow the app's origin with CORS.
+
+A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent.
 
 The [example](https://github.com/leancodepl/tandem/tree/main/example) is an order desk app with a Google ADK agent in Python. Its README says how to run both.
 

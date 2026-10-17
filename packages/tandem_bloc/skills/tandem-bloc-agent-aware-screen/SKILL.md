@@ -14,7 +14,7 @@ flutter pub add tandem_bloc
 flutter pub add dev:build_runner dev:tandem_generator
 ```
 
-Needs Dart 3.13 and Flutter 3.47.
+Needs Dart 3.13 (Flutter 3.47) or newer.
 
 **Done when** `flutter pub get` succeeds.
 
@@ -47,16 +47,16 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 }
 ```
 
-- `.sees(getter)`: a getter of this class, only what the user sees on the screen.
+- `.sees(getter)`: a getter of this class. List only what the user sees on the screen.
 - `.calls(method)`: a method of this class that a button already calls, so the same validation runs for both.
-- `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or sends something. It runs only after the user taps Approve.
+- `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or that sends something. It runs only after the user taps Approve.
 - The list is read again before every turn and every call, so an `if` can hide a method.
-- Every listed getter and method needs a doc comment, written for the agent: it is all the agent knows about it. The agent calls a method by its name in snake_case, here `set_quantity`.
-- Types of parameters, results and getters: `String`, `bool`, `int`, `double`, `num`, `DateTime`, enums, extension types over a scalar, `List<T>` and plain classes. Maps, sets, records and generic classes fail the build: list a thin method that takes supported types instead. [The rules](https://github.com/leancodepl/tandem/blob/main/packages/tandem_generator/README.md#supported-types).
-- Reject the agent's bad input with an `ArgumentError` (not a `RangeError`: it is an `ArgumentError`, but Tandem treats it as a bug, so `RangeError.range` does not work here): the agent gets its message and tries again. Any other exception is a bug, reported and answered as failed.
+- Every listed getter and method needs a doc comment written for the agent: it is all the agent knows about it. The agent calls a method by its name in snake_case, here `set_quantity`.
+- Types of parameters, results and getters: `String`, `bool`, `int`, `double`, `num`, `DateTime`, enums, extension types over a scalar, `List<T>` and plain classes. Maps, sets, records and generic classes fail the build: list a thin method that takes supported types instead. See [the rules](https://github.com/leancodepl/tandem/blob/main/packages/tandem_generator/README.md#supported-types).
+- Reject the agent's bad input with an `ArgumentError`: the agent gets its message and tries again. A `RangeError` is an `ArgumentError` too, but Tandem treats it as a bug, so do not use `RangeError.range` for this. Any other exception is a bug: Tandem reports it and tells the agent the call failed.
 - After an `await`, check `isClosed` before `emit`: the screen may have closed meanwhile.
 
-**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, and every `.sees` stands directly in the list, not inside an `if`, a `for` or a spread.
+**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, and every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread.
 
 ## 3. Generate the code
 
@@ -64,7 +64,7 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 dart run build_runner build
 ```
 
-Run it again after every change to the list, to a listed method's signature or to its doc comment. In CI run `dart run build_runner build && git diff --exit-code`: an outdated `.g.dart` is not always caught at runtime, for example two parameters of the same type that swapped places.
+Run it again after every change to the list, to a listed method's signature or to its doc comment. In CI, run `dart run build_runner build && git diff --exit-code`. An outdated `.g.dart` is not always caught at runtime, for example when two parameters of the same type swap places.
 
 **Done when** `order_cubit.g.dart` exists and `dart analyze --fatal-infos` is clean. A failed build names what to fix and where.
 
@@ -85,9 +85,9 @@ BlocProvider(
 )
 ```
 
-`TandemScope` goes below the `BlocProvider` of the Cubit, `TandemChat` below the scope. `TandemChat` fills its parent, so give it the size you want. `onAgentCall: (context, call) { ... }` hears every listed method that ran (`call.tool`, `call.arguments`, `call.result`). Its context is below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
+`TandemScope` goes below the `BlocProvider` of the Cubit, and `TandemChat` below the scope. `TandemChat` fills its parent, so give it the size you want. `onAgentCall: (context, call) { ... }` hears every listed method that ran (`call.tool`, `call.arguments`, `call.result`). Its context is below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
 
-The endpoint is any AG-UI endpoint. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement.
+Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement.
 
 **Done when** the app shows the chat next to the screen. Step 5 checks the rest without a backend.
 
@@ -125,13 +125,13 @@ testWidgets('the agent sets a quantity', (tester) async {
 });
 ```
 
-Every turn of the script is one run: the first calls the tool, the second comes after Tandem sent the answer. `agent.requests` holds every body sent, so a test can check what the agent saw in `context`. To approve a call, tap `Approve` in the chat. To check only what the Cubit gives the agent, `AgentListing.of(cubit)` has `context`, `tools` and `call(name, arguments)`.
+Every turn of the script is one run: the first calls the tool, the second comes after Tandem sent the answer. `agent.requests` holds every body sent, so a test can check what the agent saw in `context`. To approve a call, tap `Approve` in the chat. To check only what the Cubit gives the agent, use `AgentListing.of(cubit)`, with its `context`, `tools` and `call(name, arguments)`.
 
 **Done when** the test passes and shows the state the method changed.
 
 ## Mistakes
 
-- `.sees` inside an `if`, a `for` or a spread. The build fails. Keep it listed and let the getter return an empty value.
+- `.sees` inside an `if`, a `for`, a `?:` or a spread. The build fails. Keep it listed and let the getter return an empty value.
 - A change to the list or a signature without running build_runner again. It shows as a `StateError` that says to run it.
 - `TandemScope` above the `BlocProvider`, or `TandemChat` with no `TandemScope` above it.
 - `TandemChat` in a `Row` without a width.

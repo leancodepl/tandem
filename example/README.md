@@ -3,8 +3,8 @@
 An order desk for an iPad: an agent fills in a B2B order from a pasted e-mail, together with the
 user, and places it once the user approves. The app is `lib/main.dart` and `lib/desk/`, with
 `OrderDeskCubit` as the screen's cubit. Its agent is [`agent/`](agent), a Google ADK agent in
-Python. `lib/order_cubit.dart` is the example of the package README, and `lib/shopping_list.dart`
-serves the tests.
+Python. `lib/order_cubit.dart` is the example of the package README, and the tests use
+`lib/shopping_list.dart`.
 
 ## Run the agent
 
@@ -22,8 +22,9 @@ uv run order-agent
 ```
 
 The agent listens on `127.0.0.1:8000`. Gemini's turns go through
-[`streaming.py`](agent/src/order_agent/streaming.py), which streams each turn whole: ag-ui-adk drops
-a second parallel call of the same tool when Gemini streams the calls in separate chunks.
+[`streaming.py`](agent/src/order_agent/streaming.py), which streams all calls of a turn in one
+chunk: ag-ui-adk drops a second parallel call of the same tool when the calls come in separate
+chunks.
 
 ## Run the app
 

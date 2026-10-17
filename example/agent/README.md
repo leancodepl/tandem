@@ -1,11 +1,11 @@
 # Order agent
 
 The Google ADK agent of the Tandem demo app: it fills in a B2B order from an e-mail, together with
-the user, over AG-UI ([ag-ui-adk](https://pypi.org/project/ag-ui-adk/)). Running it with the app:
-[example/README.md](../README.md).
+the user, over AG-UI ([ag-ui-adk](https://pypi.org/project/ag-ui-adk/)). To run it with the app,
+see [example/README.md](../README.md).
 
 Its own tools are `find_customer` and `get_order_history`. The order on the screen reaches the
-model as the AG-UI `context` of each run, and the app's tools as the `tools` of each run, so the
+model as the AG-UI `context` of each run, and the app's methods as the run's `tools`, so the
 agent changes the order only through the app.
 
 Needs [uv](https://docs.astral.sh/uv/). Run the commands below in `example/agent`.
@@ -25,8 +25,8 @@ it:
 uv run order-agent
 ```
 
-The server listens on `127.0.0.1:8000`: `POST /agent` is the AG-UI endpoint, `GET /health` returns
-`{"status": "ok"}`. Sessions live in memory, so a restart starts every thread anew.
+The server listens on `127.0.0.1:8000`: `POST /agent` is the AG-UI endpoint, and `GET /health`
+returns `{"status": "ok"}`. Sessions live in memory, so a restart forgets every thread.
 
 ## Configuration
 
@@ -62,5 +62,6 @@ uv run ruff check
 uv run ruff format --check
 ```
 
-The tests play the script over HTTP with the scripted model, as a client that talks to the agent
-the way Tandem's session does ([tests/tandem_thread.py](tests/tandem_thread.py)). CI runs all three.
+The tests play the script over HTTP with the scripted model, through a client that talks to the
+agent the way Tandem's session does ([tests/tandem_thread.py](tests/tandem_thread.py)). CI runs all
+three.
