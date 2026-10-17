@@ -135,7 +135,7 @@ class CartCubit() {
 '''),
           [
             contains(
-              'coupon: Tandem builds Coupon as Coupon(value), so its unnamed constructor must be public and take only the value: one positional String.',
+              'coupon: Tandem builds Coupon as Coupon(value), so its unnamed constructor must be public and take only the value: one positional, non-null String.',
             ),
           ],
         );

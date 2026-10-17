@@ -269,8 +269,8 @@ final class AgentTypes(
       final name = extension.displayName;
       throw _error(
         '$path: Tandem builds $name as $name(value), so its unnamed '
-        'constructor must be public and take only the value: one positional '
-        '${value.getDisplayString()}',
+        'constructor must be public and take only the value: one positional, '
+        'non-null ${value.getDisplayString()}',
       );
     }
   }
