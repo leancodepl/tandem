@@ -277,22 +277,52 @@ void main() {
       }),
       message('lines[0].quantity: expected int, got 1e+30'),
     );
-    await expectLater(
-      listing.call('book', {
-        'lines': <Object?>[],
-        'delivery': {..._delivery, 'day': '2026-02-30'},
-      }),
-      message('delivery.day: expected an ISO 8601 date, got "2026-02-30"'),
-    );
-    await expectLater(
-      listing.call('book', {
-        'lines': <Object?>[],
-        'delivery': {..._delivery, 'day': '2026-10-23T10:20:99'},
-      }),
-      message(
-        'delivery.day: expected an ISO 8601 date, got "2026-10-23T10:20:99"',
-      ),
-    );
+    for (final day in [
+      '2026-02-30',
+      '2026-10-23T10:20:99',
+      '2026-10-23T102099',
+    ]) {
+      await expectLater(
+        listing.call('book', {
+          'lines': <Object?>[],
+          'delivery': {..._delivery, 'day': day},
+        }),
+        message('delivery.day: expected an ISO 8601 date, got "$day"'),
+      );
+    }
     expect(dispatch.booked, isEmpty);
+  });
+
+  test('a date keeps its time zone and fraction of a second', () {
+    for (final day in [
+      '2026-10-23T10:20:59.5+02:00',
+      '2026-10-23 08:20:59,500Z',
+    ]) {
+      expect(
+        ToolArgs({'day': day}).read<DateTime>('day'),
+        DateTime.utc(2026, 10, 23, 8, 20, 59, 500),
+      );
+    }
+  });
+
+  test('an int refuses a whole double past 2^53 - 1, not an exact int', () {
+    T read<T>(String json) => ToolArgs({'n': jsonDecode(json)}).read<T>('n');
+
+    expect(read<int>('9007199254740991.0'), 9007199254740991);
+    expect('${read<int>('9007199254740993')}', '9007199254740993');
+    expect(read<double>('1e30'), 1e30);
+    expect(read<num?>('1e30'), 1e30);
+    for (final readInt in [read<int>, read<int?>]) {
+      expect(
+        () => readInt('9007199254740993.0'),
+        throwsA(
+          isA<ToolCallRefused>().having(
+            (error) => error.message,
+            'message',
+            'n: expected int, got 9007199254740992.0',
+          ),
+        ),
+      );
+    }
   });
 }

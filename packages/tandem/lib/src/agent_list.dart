@@ -97,8 +97,12 @@ final class AgentListing._(
   /// Whether [tool] was listed when this listing was read.
   bool lists(String tool) => _tools.containsKey(tool);
 
-  /// The doc comment of [tool], empty for a tool this listing does not list.
-  String description(String tool) => _tools[tool]?.description ?? '';
+  /// The doc comment of [tool]. Throws a [StateError] for a tool this listing
+  /// does not list: callers ask only about listed ones.
+  String description(String tool) => switch (_tools[tool]) {
+    final listed? => listed.description,
+    null => throw StateError('This listing does not list $tool.'),
+  };
 
   /// Whether a call of [tool] waits for the user's approval, by the agent
   /// list as it is now.

@@ -173,13 +173,17 @@ final class ToolArgs(
         '$path: expected one of ${names.join(', ')}, got ${jsonEncode(value)}',
       );
     }
-    // JSON does not tell 15 from 15.0, and models send either.
+    ToolCallRefused wrongType() => ToolCallRefused(
+      '$path: expected ${_type<T>()}, got ${jsonEncode(value)}',
+    );
+    // JSON does not tell 15 from 15.0, and models send either. On the web
+    // every number is a double and `T()` takes a whole one as an int, so an
+    // int refuses one beyond _maxExactInteger first.
     return switch (value) {
+      double() when 0 is T && 0.5 is! T && value.abs() > _maxExactInteger =>
+        throw wrongType(),
       T() => value,
-      double()
-          when value == value.truncateToDouble() &&
-              value.abs() <= _maxExactInteger &&
-              0 is T =>
+      double() when value == value.truncateToDouble() && 0 is T =>
         value.toInt() as T,
       int() when 0.5 is T => value.toDouble() as T,
       String() when DateTime(0) is T => switch (_date(value)) {
@@ -188,9 +192,7 @@ final class ToolArgs(
           '$path: expected an ISO 8601 date, got ${jsonEncode(value)}',
         ),
       },
-      _ => throw ToolCallRefused(
-        '$path: expected ${_type<T>()}, got ${jsonEncode(value)}',
-      ),
+      _ => throw wrongType(),
     };
   }
 
@@ -199,13 +201,17 @@ final class ToolArgs(
   /// `toInt` clamps one that does not fit an `int`.
   static const _maxExactInteger = 9007199254740991;
 
+  /// The ISO 8601 dates Tandem reads: a day, then optionally a time to the
+  /// minute or second, a fraction of a second and a time zone.
   static final _isoDate = RegExp(
-    r'^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?',
+    r'^(\d{4})-(\d{2})-(\d{2})'
+    r'(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?'
+    r'(?:[zZ]|[+-]\d{2}(?::?\d{2})?)?)?$',
   );
 
-  /// [text] as a date, or null when it is not ISO 8601 or names a day or
-  /// time that does not exist, such as 2026-02-30, which `DateTime.parse`
-  /// would roll over into March.
+  /// [text] as a date, or null when it is not all in the form [_isoDate]
+  /// reads, or names a day or time that does not exist, such as 2026-02-30,
+  /// which `DateTime.parse` would roll over into March.
   static DateTime? _date(String text) {
     final match = _isoDate.firstMatch(text);
     final date = DateTime.tryParse(text);
