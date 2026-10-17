@@ -1,5 +1,4 @@
 import 'package:example/desk/dates.dart';
-import 'package:example/desk/desk_order.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,9 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 final class const OrderSummary({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final order = context.select<OrderDeskCubit, DeskOrder>(
-      (cubit) => cubit.order,
-    );
+    final order = context.watch<OrderDeskCubit>().order;
     return Column(
       crossAxisAlignment: .start,
       children: [

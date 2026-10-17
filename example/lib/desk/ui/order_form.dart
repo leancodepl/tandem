@@ -12,15 +12,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 final class const OrderForm({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final order = context.select<OrderDeskCubit, DeskOrder>(
-      (cubit) => cubit.order,
-    );
-    final placed = context.select<OrderDeskCubit, PlacedOrder?>(
-      (cubit) => cubit.placed,
-    );
-    final editable = context.select<OrderDeskCubit, bool>(
-      (cubit) => cubit.canEdit,
-    );
+    final cubit = context.watch<OrderDeskCubit>();
+    final order = cubit.order;
+    final placed = cubit.placed;
+    final editable = cubit.canEdit;
     final customer = order.customer;
     final delivery = order.delivery;
     if (customer == null && order.lines.isEmpty && delivery == null) {
