@@ -5,7 +5,7 @@ Tandem makes an existing Flutter screen agent-aware: an agent and the user work 
 ## Language
 
 **Agent list**:
-The `agent` getter of a cubit: what the agent sees and which of the cubit's methods it may call. It is read again before every run and before every call.
+The `agentCapabilities` getter of a cubit with `@TandemAgent()`: what the agent sees and which of the cubit's methods it may call. It is read again before every run and before every call.
 _Avoid_: shared state, state host
 
 **Capability**:

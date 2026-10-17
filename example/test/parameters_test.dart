@@ -16,11 +16,12 @@ enum Size() {
 
 extension type const Sku(String value);
 
+@TandemAgent()
 class Shelf() with _$Shelf {
   final stocked = <String>[];
 
   @override
-  List<AgentCapability> get agent => [.calls(stock)];
+  List<AgentCapability> get agentCapabilities => [.calls(stock)];
 
   /// Puts [skus] on the shelf.
   void stock(
@@ -32,11 +33,15 @@ class Shelf() with _$Shelf {
   }) => stocked.add('$skus $size $count $fit $note');
 }
 
+@TandemAgent()
 class Dispatch() with _$Dispatch {
   final booked = <String>[];
 
   @override
-  List<AgentCapability> get agent => [.sees(lastBooked), .calls(book)];
+  List<AgentCapability> get agentCapabilities => [
+    .sees(lastBooked),
+    .calls(book),
+  ];
 
   /// The delivery booked last, if any.
   Delivery? lastBooked;

@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
 
-/// One item of a surface's `agent` list: a value the agent sees, or a method
-/// it may call.
+/// One item of a surface's `agentCapabilities`: a value the agent sees, or a
+/// method it may call.
 sealed class const AgentCapability() {
   /// For the two kinds of items below.
   this;
@@ -40,14 +40,14 @@ final class AgentListing._(
   final List<Map<String, Object?>> context,
   final Map<String, AgentTool> _tools,
 ) {
-  /// Reads [surface]'s `agent` list and names its items with the generated
-  /// [AgentSurface.agentSchema].
+  /// Reads [surface]'s [AgentSurface.agentCapabilities] and names its items
+  /// with the generated [AgentSurface.agentSchema].
   ///
   /// Throws a [StateError] when the list and the generated code disagree,
   /// which means the code was not generated again after the list changed.
   factory of(AgentSurface surface) {
     final schema = surface.agentSchema;
-    final capabilities = surface.agent;
+    final capabilities = surface.agentCapabilities;
     final visibleValues = [
       for (final item in capabilities)
         if (item case _Sees(:final value)) value,
@@ -133,7 +133,7 @@ final class AgentListing._(
   /// The item of the agent list as it is now that lists [tool], or null.
   _Calls? _currentCapabilityFor(String tool) {
     final method = _tools[tool]?.method;
-    for (final item in _surface.agent) {
+    for (final item in _surface.agentCapabilities) {
       if (item case final _Calls capability when capability.method == method) {
         return capability;
       }

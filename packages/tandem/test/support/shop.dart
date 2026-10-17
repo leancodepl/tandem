@@ -17,7 +17,7 @@ final class Shop() implements AgentSurface {
   Future<void> close() => _changes.close();
 
   @override
-  List<AgentCapability> get agent => [
+  List<AgentCapability> get agentCapabilities => [
     .sees(items),
     .calls(add),
     if (items.isNotEmpty) .callsWithApproval(clear),

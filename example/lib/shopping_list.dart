@@ -5,13 +5,14 @@ part 'shopping_list.g.dart';
 
 class const ShoppingListState({final List<String> items = const []});
 
+@TandemAgent()
 class ShoppingListCubit()
     extends Cubit<ShoppingListState>
     with _$ShoppingListCubit {
   this : super(const .new());
 
   @override
-  List<AgentCapability> get agent => [
+  List<AgentCapability> get agentCapabilities => [
     .sees(items),
     .calls(add),
     .calls(remove),

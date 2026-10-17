@@ -6,8 +6,8 @@ import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:tandem_generator/src/agent_types.dart';
 
-/// Writes the `_$Name` mixin of every class with a
-/// `List<AgentCapability> get agent`.
+/// Writes the `_$Name` mixin of every class with `@TandemAgent()`, from its
+/// `List<AgentCapability> get agentCapabilities`.
 ///
 /// At runtime the agent list holds only values and tear-offs. The mixin adds
 /// what only the source has: the names and doc comments of the getters in
@@ -21,37 +21,45 @@ class const AgentGenerator() extends Generator {
   @override
   Future<String?> generate(LibraryReader library, BuildStep buildStep) async {
     final mixins = [
-      for (final type in library.classes)
-        if (_agentGetter(type) case final agent?)
-          await _mixin(type, agent, buildStep),
+      for (final annotated in library.annotatedWith(_tandemAgent))
+        await _mixin(annotated.element, buildStep),
     ];
     return mixins.isEmpty ? null : mixins.join('\n\n');
   }
 
-  static GetterElement? _agentGetter(ClassElement type) {
-    final agent = type.getGetter('agent');
-    return switch (agent?.returnType) {
+  static GetterElement? _capabilitiesGetter(ClassElement type) {
+    final capabilities = type.getGetter('agentCapabilities');
+    return switch (capabilities?.returnType) {
       InterfaceType(isDartCoreList: true, typeArguments: [final item])
           when _capability.isExactlyType(item) =>
-        agent,
+        capabilities,
       _ => null,
     };
   }
 
-  static Future<String> _mixin(
-    ClassElement type,
-    GetterElement agent,
-    BuildStep buildStep,
-  ) async {
+  static Future<String> _mixin(Element type, BuildStep buildStep) async {
     final name = type.displayName;
+    if (type is! ClassElement) {
+      throw InvalidGenerationSource(
+        'Put @TandemAgent() on a class: $name is not one.',
+        element: type,
+      );
+    }
+    final capabilities =
+        _capabilitiesGetter(type) ??
+        (throw InvalidGenerationSource(
+          'Add @override List<AgentCapability> get agentCapabilities => [...] '
+          'to $name, listing what the agent may see and call.',
+          element: type,
+        ));
     final getter = await buildStep.resolver.astNodeFor(
-      agent.firstFragment,
+      capabilities.firstFragment,
       resolve: true,
     );
     if (getter == null) {
       throw InvalidGenerationSource(
-        'Tandem cannot find the source of $name.agent.',
-        element: agent,
+        'Tandem cannot find the source of $name.agentCapabilities.',
+        element: capabilities,
       );
     }
     final items = _Items();
@@ -72,8 +80,9 @@ mixin _\$$name implements AgentSurface {
   }
 
   static String _view(Expression item, String type) {
-    // In `get agent => [.sees(item)]`, item is in the argument list of an
-    // invocation, which is an item of the list after =>, not of one inside it.
+    // In `get agentCapabilities => [.sees(item)]`, item is in the argument
+    // list of an invocation, which is an item of the list after =>, not of one
+    // inside it.
     final isAgentListItem = switch (item.parent) {
       ArgumentList(
         parent: AstNode(parent: ListLiteral(parent: ExpressionFunctionBody())),
@@ -84,10 +93,10 @@ mixin _\$$name implements AgentSurface {
     if (!isAgentListItem) {
       throw _error(
         item,
-        '.sees must be an item of the list after get agent =>, not inside '
-        'if, for, ?: or a spread. Tandem tells the values apart by their '
-        'place in the list. Keep it listed and let the getter return null '
-        'when there is nothing to see',
+        '.sees must be an item of the list after get agentCapabilities =>, '
+        'not inside if, for, ?: or a spread. Tandem tells the values apart by '
+        'their place in the list. Keep it listed and let the getter return '
+        'null when there is nothing to see',
       );
     }
     final getter = item is SimpleIdentifier ? item.element : null;
@@ -184,6 +193,11 @@ AgentTool(
   static InvalidGenerationSource _error(AstNode node, String message) =>
       InvalidGenerationSource('$message.', node: node);
 }
+
+const _tandemAgent = TypeChecker.typeNamedLiterally(
+  'TandemAgent',
+  inPackage: 'tandem',
+);
 
 const _capability = TypeChecker.typeNamedLiterally(
   'AgentCapability',

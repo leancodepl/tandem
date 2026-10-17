@@ -4,13 +4,14 @@ import 'package:tandem_bloc/tandem_bloc.dart';
 
 part 'order_cubit.g.dart';
 
+@TandemAgent()
 class OrderCubit({required final Catalog catalog, required final Orders orders})
     extends Cubit<OrderState>
     with _$OrderCubit {
   this : super(.new(draft: .empty));
 
   @override
-  List<AgentCapability> get agent => [
+  List<AgentCapability> get agentCapabilities => [
     .sees(draft),
     .calls(searchCatalog),
     .calls(setQuantity),

@@ -5,17 +5,17 @@ import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/errors.dart';
 
 /// A class with an agent list. The `_$ClassName` mixin that
-/// `tandem_generator` writes implements it; the class itself only overrides
-/// [agent].
+/// `tandem_generator` writes for a class with `@TandemAgent()` implements it;
+/// the class itself only overrides [agentCapabilities].
 // The experimental lint asks for a primary constructor on an interface too.
 // ignore: use_primary_constructors
 abstract interface class AgentSurface {
   /// What the agent may see and call now. Tandem reads it again before every
   /// turn, so it can depend on the state.
-  List<AgentCapability> get agent;
+  List<AgentCapability> get agentCapabilities;
 
-  /// What the generator read from the source of [agent]: names, doc
-  /// comments, parameter schemas, and a typed call of every method.
+  /// What the generator read from the source of [agentCapabilities]: names,
+  /// doc comments, parameter schemas, and a typed call of every method.
   AgentSchema get agentSchema;
 }
 

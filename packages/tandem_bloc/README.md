@@ -26,13 +26,14 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    ```dart
    part 'order_cubit.g.dart';
 
+   @TandemAgent()
    class OrderCubit({required final Catalog catalog, required final Orders orders})
        extends Cubit<OrderState>
        with _$OrderCubit {
      this : super(.new(draft: .empty));
 
      @override
-     List<AgentCapability> get agent => [
+     List<AgentCapability> get agentCapabilities => [
        .sees(draft),
        .calls(searchCatalog),
        .calls(setQuantity),
@@ -61,7 +62,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    dart run build_runner build
    ```
 
-   `.sees` must stand directly in the list after `get agent =>`, not inside an `if` or a spread, or the build fails. In CI, run `dart run build_runner build && git diff --exit-code`: an outdated `.g.dart` is not always caught at runtime, for example two parameters of the same type that swapped places.
+   Every class with `@TandemAgent()` gets its `_$Name` mixin, here `_$OrderCubit`. `.sees` must stand directly in the list after `get agentCapabilities =>`, not inside an `if` or a spread, or the build fails. In CI, run `dart run build_runner build && git diff --exit-code`: an outdated `.g.dart` is not always caught at runtime, for example two parameters of the same type that swapped places.
 
 4. Wrap the screen:
 

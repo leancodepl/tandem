@@ -4,27 +4,65 @@ import 'package:tandem_generator/tandem_generator.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('@TandemAgent() without agentCapabilities fails the build', () async {
+    expect(
+      await _buildErrors('''
+@TandemAgent()
+class OrderCubit() {
+  /// Places the order.
+  void placeOrder() {}
+}
+'''),
+      [
+        contains(
+          'Add @override List<AgentCapability> get agentCapabilities => [...] '
+          'to OrderCubit',
+        ),
+      ],
+    );
+  });
+
+  test('a class without @TandemAgent() gets no code', () async {
+    final result = await _build('''
+class OrderCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(placeOrder)];
+
+  /// Places the order.
+  void placeOrder() {}
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(result.outputs, isEmpty);
+  });
+
   test('.sees inside if fails the build', () async {
     expect(
       await _buildErrors('''
+@TandemAgent()
 class AuditCubit() {
   bool get isAdmin => true;
 
   /// The audit log.
   List<String> get log => [];
 
-  List<AgentCapability> get agent => [if (isAdmin) .sees(log)];
+  List<AgentCapability> get agentCapabilities => [if (isAdmin) .sees(log)];
 }
 '''),
-      [contains('.sees must be an item of the list after get agent =>')],
+      [
+        contains(
+          '.sees must be an item of the list after get agentCapabilities =>',
+        ),
+      ],
     );
   });
 
   test('a method without a doc comment fails the build', () async {
     expect(
       await _buildErrors('''
+@TandemAgent()
 class OrderCubit() {
-  List<AgentCapability> get agent => [.calls(placeOrder)];
+  List<AgentCapability> get agentCapabilities => [.calls(placeOrder)];
 
   void placeOrder() {}
 }
@@ -42,8 +80,9 @@ class Slot {
   final int minutes;
 }
 
+@TandemAgent()
 class DeliveryCubit() {
-  List<AgentCapability> get agent => [.calls(book)];
+  List<AgentCapability> get agentCapabilities => [.calls(book)];
 
   /// Books a delivery slot.
   void book(Slot slot) {}
@@ -60,8 +99,9 @@ class DeliveryCubit() {
   test('a result the agent cannot see fails the build', () async {
     expect(
       await _buildErrors('''
+@TandemAgent()
 class OrderCubit() {
-  List<AgentCapability> get agent => [.calls(placeOrder)];
+  List<AgentCapability> get agentCapabilities => [.calls(placeOrder)];
 
   /// Places the order.
   Future<Object> placeOrder() async => Object();
@@ -80,8 +120,9 @@ extension type Coupon._(String code) {
   Coupon({required String code}) : this._(code);
 }
 
+@TandemAgent()
 class CartCubit() {
-  List<AgentCapability> get agent => [.calls(redeem)];
+  List<AgentCapability> get agentCapabilities => [.calls(redeem)];
 
   /// Redeems [coupon].
   void redeem(Coupon coupon) {}
@@ -98,8 +139,9 @@ class CartCubit() {
 
   test('a default with control characters becomes a valid literal', () async {
     final result = await _build(r'''
+@TandemAgent()
 class NoteCubit() {
-  List<AgentCapability> get agent => [.calls(write)];
+  List<AgentCapability> get agentCapabilities => [.calls(write)];
 
   /// Writes [text] and a line break.
   void write(String text, {String lineBreak = '\r\n'}) {}
@@ -125,6 +167,8 @@ Future<TestBuilderResult> _build(String source) => testBuilder(
   tandemBuilder(BuilderOptions.empty),
   {
     'tandem|lib/tandem.dart': '''
+final class const TandemAgent();
+
 sealed class AgentCapability {
   factory AgentCapability.sees(Object? value) => throw UnimplementedError();
   factory AgentCapability.calls(Function method) => throw UnimplementedError();
