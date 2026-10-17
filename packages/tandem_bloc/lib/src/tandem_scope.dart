@@ -2,10 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tandem/tandem.dart';
 
-const _notStreamable =
-    'TandemScope<C> needs C to be a Cubit or Bloc, provided above it.';
-const _noEndpoint = 'A TandemScope has an agent or a connection.';
-
 /// Makes the screen below it agent-aware: one [TandemSession] of the [C]
 /// provided above it.
 ///
@@ -27,7 +23,7 @@ const _noEndpoint = 'A TandemScope has an agent or a connection.';
 /// ```
 ///
 /// Every state that [C] emits once an approval card shows invalidates the
-/// card for good, also a state that changes nothing the agent sees (`.sees`).
+/// card for good, even a state that changes nothing the agent sees (`.sees`).
 ///
 /// The conversation is one AG-UI thread, and an ordinary rebuild keeps it.
 /// A new session, with a new thread, replaces the old one when the provider
@@ -37,8 +33,7 @@ const _noEndpoint = 'A TandemScope has an agent or a connection.';
 /// takes effect at once. A scope that leaves the tree disposes its session
 /// before the `BlocProvider` closes [C].
 final class TandemScope<C extends AgentSurface> extends StatefulWidget {
-  /// A scope that talks to the AG-UI endpoint `agent`. [onAgentCall] hears
-  /// every call of a listed method that ran.
+  /// A scope that talks to the AG-UI endpoint `agent`.
   const new({
     super.key,
     required Uri this._agent,
@@ -108,8 +103,7 @@ final class _TandemScopeState<C extends AgentSurface>()
 
   @override
   Widget build(BuildContext context) {
-    // Calls didChangeDependencies when the provider gives another cubit, but
-    // not for the states of this one, as watching it would.
+    // Calls didChangeDependencies for another cubit, not for its states.
     context.select<C, C>((cubit) => cubit);
     return TandemSessionScope(session: _session, child: widget.child);
   }
@@ -123,12 +117,14 @@ final class _TandemScopeState<C extends AgentSurface>()
     surface: _cubit,
     changes: switch (_cubit) {
       StateStreamable<Object?>(:final stream) => stream,
-      _ => throw FlutterError(_notStreamable),
+      _ => throw FlutterError(
+        'TandemScope<C> needs C to be a Cubit or Bloc, provided above it.',
+      ),
     },
     connection: switch ((widget._connection, widget._agent)) {
       (final connection?, _) => connection,
       (_, final agent?) => HttpAgentConnection(agent),
-      _ => throw StateError(_noEndpoint),
+      _ => throw StateError('A TandemScope has an agent or a connection.'),
     },
     onAgentCall: (call) => widget.onAgentCall?.call(context, call),
   );
