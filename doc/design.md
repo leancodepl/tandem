@@ -53,7 +53,7 @@ For ag-ui-adk 0.9.0. Its behaviour differs between versions.
 - Order inside one run: assistant text, the `asst-` messages of the turn, all tool answers, the user message last.
 - `context`: one `{description: '<name>: <doc comment>', value: <JSON string>}` per `.sees`.
 - A `TOOL_CALL_START` whose name is not in this run's `tools` is a backend tool. It is ignored, never executed, never echoed.
-- `TEXT_MESSAGE_CHUNK` and `TOOL_CALL_CHUNK` are rewritten while decoding as the content, start and args events they abbreviate, so the session reads one form. As in AG-UI, a new id opens a message or call and no id continues the last one. A chunk that belongs to nothing is dropped.
+- `TEXT_MESSAGE_CHUNK` and `TOOL_CALL_CHUNK` are rewritten while decoding as the content, start and args events they abbreviate, so the session reads one form. As in AG-UI, a new id opens a message or call and no id continues the open one of the chunk's sender: the subagent its `subagentRunId` names, or the parent. A sender has one stream open at a time, so opening a call closes its message, and the other way round. A chunk that belongs to nothing is dropped.
 
 ## Tool answers
 

@@ -5,25 +5,25 @@ const _ambiguousChunkCode = 'AMBIGUOUS_CHUNK';
 ///
 /// `TEXT_MESSAGE_CHUNK` becomes `TEXT_MESSAGE_CONTENT`. `TOOL_CALL_CHUNK`
 /// becomes `TOOL_CALL_START`, when it opens a call, and `TOOL_CALL_ARGS`. As in
-/// AG-UI, a chunk with an id no stream has yet starts a new message or call,
-/// and a chunk without an id continues the last one of its sender: the
+/// AG-UI, a chunk with an id no open stream has opens a new message or call,
+/// and a chunk without an id continues the open one of its sender: the
 /// subagent its `subagentRunId` names, or the parent when it has none.
-/// Subagents can interleave their chunks, so each sender keeps its own last
-/// message and call.
+/// Subagents can interleave their chunks, so each sender has its own open
+/// stream, a message or a call, and opening one closes the one it had.
 ///
-/// A chunk with neither id nor `subagentRunId` continues the parent's last
-/// message or call, else the only one any subagent has. When several
-/// subagents have one and the parent has none, it could join any of them: it
-/// is refused, and the run ends with a `RUN_ERROR` whose code is
+/// A chunk with neither id nor `subagentRunId` continues the parent's open
+/// message or call, else the only one open in any subagent. When several
+/// subagents have one open and the parent has none, it could join any of
+/// them: it is refused, and the run ends with a `RUN_ERROR` whose code is
 /// `AMBIGUOUS_CHUNK`. A chunk that belongs to nothing, or opens a call
 /// without its name, is dropped. Every other event passes through.
 final class ChunkExpander() {
   /// Starts a run with no message or call open. Each run needs its own
-  /// expander, which remembers the last message and call of each sender.
+  /// expander, which remembers the open message or call of each sender.
   this;
 
-  // The last id of each sender, which is its `subagentRunId`, or null for the
-  // parent.
+  // The id of the open message or call of each sender, which is its
+  // `subagentRunId`, or null for the parent. A sender is in one map at most.
   final _messageIds = <String?, String>{};
   final _toolCallIds = <String?, String>{};
 
@@ -43,6 +43,7 @@ final class ChunkExpander() {
       case [final messageId]:
         if (!_messageIds.containsValue(messageId)) {
           _messageIds[sender] = messageId;
+          _toolCallIds.remove(sender);
         }
         if (chunk['delta'] case final String delta) {
           yield {
@@ -65,6 +66,7 @@ final class ChunkExpander() {
         if (!_toolCallIds.containsValue(toolCallId)) {
           if (chunk['toolCallName'] case final String name) {
             _toolCallIds[sender] = toolCallId;
+            _messageIds.remove(sender);
             yield {
               'type': 'TOOL_CALL_START',
               'toolCallId': toolCallId,
@@ -96,20 +98,20 @@ String? _senderOf(Map<String, Object?> chunk) =>
     };
 
 /// The ids a chunk can belong to: its own [id] when it is a string, else the
-/// last id of its [sender], else, for the parent only, the last id of every
+/// open id of its [sender], else, for the parent only, the open id of every
 /// subagent.
 List<String> _candidates(
   Object? id,
-  Map<String?, String> lastIds,
+  Map<String?, String> openIds,
   String? sender,
 ) {
   if (id is String) {
     return [id];
   }
-  if (lastIds[sender] case final last?) {
-    return [last];
+  if (openIds[sender] case final open?) {
+    return [open];
   }
-  return sender == null ? [...lastIds.values] : [];
+  return sender == null ? [...openIds.values] : [];
 }
 
 /// The `RUN_ERROR` that ends a run whose [chunk] could join several streams.

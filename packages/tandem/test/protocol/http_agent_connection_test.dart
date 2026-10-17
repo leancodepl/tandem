@@ -41,6 +41,32 @@ Future<List<AgentEvent>> _agentEvents(String name) async {
   ];
 }
 
+/// The text of each message in [events], by its id.
+Map<String, String> _texts(List<AgentEvent> events) {
+  final texts = <String, String>{};
+  for (final event in events) {
+    if (event case TextDelta(:final messageId, :final delta)) {
+      texts.update(messageId, (text) => '$text$delta', ifAbsent: () => delta);
+    }
+  }
+  return texts;
+}
+
+/// The arguments of each call in [events], by its id.
+Map<String, String> _arguments(List<AgentEvent> events) {
+  final arguments = <String, String>{};
+  for (final event in events) {
+    if (event case ToolCallArgs(:final toolCallId, :final delta)) {
+      arguments.update(
+        toolCallId,
+        (json) => '$json$delta',
+        ifAbsent: () => delta,
+      );
+    }
+  }
+  return arguments;
+}
+
 /// Lets a stream that ended finish. Its end waits for the cleanup of its
 /// source, which needs microtasks of the root zone, and the fake clock of the
 /// test does not run those.
@@ -137,21 +163,37 @@ void main() {
       'call', () async {
     final events = await _agentEvents('ag_ui_chunk_lanes.sse');
 
-    final texts = events.whereType<TextDelta>();
-    final args = events.whereType<ToolCallArgs>();
-    String textOf(String id) =>
-        texts.where((t) => t.messageId == id).map((t) => t.delta).join();
-    String argsOf(String id) =>
-        args.where((a) => a.toolCallId == id).map((a) => a.delta).join();
-    expect([textOf('p1'), textOf('m1'), textOf('m2')], ['XY', 'AC', 'BD']);
+    expect(_texts(events), {'p1': 'XY', 'm1': 'AC', 'm2': 'BD'});
     expect(
       [for (final call in events.whereType<ToolCallStarted>()) call.toolCallId],
       ['c1', 'c2'],
     );
+    expect(_arguments(events), {
+      'c1': '{"item":"milk"}',
+      'c2': '{"item":"eggs"}',
+    });
+  });
+
+  test('a subagent that opens a call closes its message, so a chunk without '
+      'an id continues the only message left open', () async {
+    final events = await _agentEvents('ag_ui_chunk_text_to_call.sse');
+
+    expect(_texts(events), {'m1': 'Looking up.', 'm2': 'Result'});
+    expect(_arguments(events), {'c1': '{}'});
+    expect(events.last, isA<RunFinished>());
+  });
+
+  test('a subagent that opens a message closes its call, so chunks continue '
+      'the only call left open', () async {
+    final events = await _agentEvents('ag_ui_chunk_call_to_text.sse');
+
+    expect(_texts(events), {'m1': 'Found it.'});
     expect(
-      [argsOf('c1'), argsOf('c2')],
-      ['{"item":"milk"}', '{"item":"eggs"}'],
+      [for (final call in events.whereType<ToolCallStarted>()) call.toolCallId],
+      ['c1', 'c2'],
     );
+    expect(_arguments(events), {'c1': '{}', 'c2': '{"item":"milk"}'});
+    expect(events.last, isA<RunFinished>());
   });
 
   test('an ambiguous chunk ends the run with an error', () async {
