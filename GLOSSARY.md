@@ -17,7 +17,7 @@ One conversation between a screen and the agent, from opening the screen to clos
 _Avoid_: thread, conversation
 
 **Run**:
-One turn of the agent: a single request to the agent backend and the events it streams back.
+One turn of the agent: a single request to the agent backend and the events it streams back. A method the user approved runs in a run of its own, which sends no request.
 _Avoid_: request, call
 
 **Tool**:

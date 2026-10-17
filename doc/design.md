@@ -63,7 +63,7 @@ For ag-ui-adk 0.9.0. Its behaviour differs between versions.
 
 ## Tool answers
 
-The `content` of the tool message, built in `session.dart`.
+The `content` of the tool message, built in `session/tool_answer.dart`.
 
 | Situation | Content |
 |---|---|

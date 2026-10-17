@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tandem/src/chat/chat_item.dart';
-import 'package:tandem/src/session.dart';
-import 'package:tandem/src/session_scope.dart';
+import 'package:tandem/src/session/session_scope.dart';
+import 'package:tandem/src/session/tandem_session.dart';
 
 /// Builds what an approval card shows above Tandem's own Approve and Reject.
 typedef ApprovalBuilder = Widget Function(

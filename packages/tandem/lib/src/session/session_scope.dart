@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:tandem/src/session.dart';
+import 'package:tandem/src/session/tandem_session.dart';
 
 /// The `TandemScope` of an adapter package such as `tandem_bloc` builds this;
 /// apps do not use it.

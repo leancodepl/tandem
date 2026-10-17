@@ -8,7 +8,7 @@ import 'package:http/testing.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
-import 'support/shop.dart';
+import '../support/shop.dart';
 
 void main() {
   late Shop shop;
@@ -207,6 +207,21 @@ void main() {
     expect(_shown(session.items).last, ('agent', 'Hi', false));
   });
 
+  test('the pieces of one message grow one item', () async {
+    final connection = _RawFirstRun(
+      Stream.fromIterable([
+        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'Hel'},
+        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'lo'},
+        {'type': 'RUN_FINISHED'},
+      ]),
+      ScriptedAgent([]),
+    );
+    final session = open(connection)..send('a');
+    await pumpEventQueue();
+
+    expect(_shown(session.items), [('user', 'a'), ('agent', 'Hello', false)]);
+  });
+
   test(
     'a broken stream shows connection lost and starts a new thread',
     () async {
@@ -402,6 +417,31 @@ void main() {
     expect(reported, isEmpty);
   });
 
+  test('Stop while an approved method runs holds its answer for the next '
+      'message', () async {
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final (session, agent) = await askToClear();
+
+    session
+      ..approve(_card(session))
+      ..stop();
+    serverReply.complete();
+    await pumpEventQueue();
+
+    expect(shop.items, isEmpty);
+    expect(agent.requests, hasLength(1));
+    expect(_shown(session.items).last, ChatNoticeKind.stopped);
+    session.send('ok');
+    await pumpEventQueue();
+    expect(_lines(agent.requests[1]), [
+      'user: clear it',
+      'asst-call-1 clear {}',
+      'tool-call-1 null',
+      'user: ok',
+    ]);
+  });
+
   test('a message while a card is open cancels it first', () async {
     final (session, agent) = await askToClear();
 
@@ -442,31 +482,37 @@ void main() {
     ]);
   });
 
-  test('a call that needs approval with arguments that are not an object is '
-      'refused without a card', () async {
+  test('a call with arguments that are not an object is refused without a '
+      'card or a report', () async {
     shop.add('x');
     final connection = _RawFirstRun(
       Stream.fromIterable([
+        {'type': 'TOOL_CALL_START', 'toolCallId': 'c1', 'toolCallName': 'add'},
+        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":'},
         {
           'type': 'TOOL_CALL_START',
-          'toolCallId': 'c1',
+          'toolCallId': 'c2',
           'toolCallName': 'clear',
         },
-        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '[]'},
+        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c2', 'delta': '[]'},
         {'type': 'RUN_FINISHED'},
       ]),
       ScriptedAgent([
         (_) => const [AgentStep.say('Sorry.')],
       ]),
     );
+    final reported = _collectReports();
     final session = open(connection)..send('clear it');
     await pumpEventQueue();
 
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(shop.items, ['x']);
-    final {'content': answer as String} = _messages(connection.requests[1])
-        .last;
-    expect(jsonDecode(answer), {'status': 'refused', 'reason': isNotEmpty});
+    expect(reported, isEmpty);
+    final [..., {'content': first as String}, {'content': second as String}] =
+        _messages(connection.requests[1]);
+    for (final answer in [first, second]) {
+      expect(jsonDecode(answer), {'status': 'refused', 'reason': isNotEmpty});
+    }
   });
 
   test('several calls in one turn are answered in one run', () async {
