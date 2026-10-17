@@ -36,9 +36,10 @@ jobs:
         working-directory: packages/tandem_generator
 
       # `flutter analyze` skips analyzer plugins, so the leancode_lint rules run
-      # only under `dart analyze`.
+      # only under `dart analyze`. Infos fail too: leancode_lint keeps the
+      # deprecation lints at info.
       - name: Run analyzer
-        run: dart analyze
+        run: dart analyze --fatal-infos
 
       - name: Check formatting
         run: dart format --set-exit-if-changed .
