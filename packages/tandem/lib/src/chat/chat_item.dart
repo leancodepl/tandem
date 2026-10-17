@@ -1,26 +1,17 @@
 import 'dart:convert';
 
-/// One entry of the chat. Items are immutable: the session replaces an item
-/// to change it.
-sealed class const ChatItem() {
-  /// One of [UserMessage], [AgentMessage], [ChatNotice] or [ApprovalRequest].
-  this;
-}
+/// Immutable: the session replaces an item to change it.
+sealed class const ChatItem();
 
-/// A message the user sent.
-final class const UserMessage(final String text) extends ChatItem {
-  /// The user sent [text].
-  this;
-}
+final class const UserMessage(final String text) extends ChatItem;
 
-/// Text the agent said in one message of a run.
-final class const AgentMessage(final String text, {final bool stopped = false})
-    extends ChatItem {
-  /// The agent said [text]; [stopped] when the user stopped the run after it.
-  this;
-}
+final class const AgentMessage(
+  final String text, {
 
-/// Why a [ChatNotice] is in the chat.
+  /// The user stopped the run after this text.
+  final bool stopped = false,
+}) extends ChatItem;
+
 enum ChatNoticeKind() {
   /// The user stopped a run before the agent said anything.
   stopped,
@@ -33,34 +24,23 @@ enum ChatNoticeKind() {
 }
 
 /// A line from Tandem itself, not from the user or the agent.
-final class const ChatNotice(final ChatNoticeKind kind) extends ChatItem {
-  /// A notice of [kind].
-  this;
-}
+final class const ChatNotice(final ChatNoticeKind kind) extends ChatItem;
 
-/// What became of an [ApprovalRequest].
 enum ApprovalStatus() {
-  /// It waits for the user.
   pending,
-
-  /// The user approved it.
   approved,
-
-  /// The user rejected it.
   rejected,
 
-  /// The screen emitted a state after it showed, so it can no longer be
-  /// approved.
+  /// The screen emitted a state after the card showed, so it can no longer
+  /// be approved.
   invalidated,
 
   /// The user sent a message instead of deciding.
   cancelled,
 }
 
-/// A call of a method listed with `.callsWithApproval`. The method runs only
-/// once the user approves it.
+/// A call of a method listed with `.callsWithApproval`.
 final class const ApprovalRequest({
-  /// The id of the call in the AG-UI thread.
   required final String toolCallId,
 
   /// The method's name in snake_case.
@@ -72,15 +52,11 @@ final class const ApprovalRequest({
   required final String _argumentsJson,
   final ApprovalStatus status = .pending,
 }) extends ChatItem {
-  /// `argumentsJson` is the JSON object the agent sent as the arguments.
-  this;
-
-  /// The arguments the agent sent. They are decoded again on every read, so
-  /// changing the map changes nothing the method gets.
+  /// Decoded again on every read, so changing the map changes nothing the
+  /// method gets.
   Map<String, Object?> get arguments =>
       jsonDecode(_argumentsJson) as Map<String, Object?>;
 
-  /// This request with [status].
   ApprovalRequest withStatus(ApprovalStatus status) => ApprovalRequest(
     toolCallId: toolCallId,
     tool: tool,

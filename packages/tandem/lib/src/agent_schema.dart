@@ -13,9 +13,6 @@ abstract interface class AgentSurface {
   /// What the agent may see and call now. Tandem reads it again before every
   /// turn, so it can depend on the state.
   List<AgentCapability> get agentCapabilities;
-
-  /// What the generator read from the source of [agentCapabilities]: names,
-  /// doc comments, parameter schemas, and a typed call of every method.
   AgentSchema get agentSchema;
 }
 
@@ -27,12 +24,8 @@ final class const AgentSchema({
   /// One item for every method the list mentions in `.calls` or
   /// `.callsWithApproval`, listed now or not.
   required final List<AgentTool> calls,
-}) {
-  /// Called by the generated code.
-  this;
-}
+});
 
-/// A getter the agent sees.
 final class AgentView._(
   /// The getter's name in snake_case.
   final String name,
@@ -67,7 +60,6 @@ final class AgentView._(
   Object? write(Object? value) => _write(value);
 }
 
-/// A method the agent may call.
 final class const AgentTool(
   /// The method itself, to recognize it in the agent list: two tear-offs of
   /// one method of one object are equal.
@@ -85,25 +77,18 @@ final class const AgentTool(
   /// Calls [method] with the agent's JSON arguments and returns its result
   /// as JSON, `null` for `void`.
   required final FutureOr<Object?> Function(ToolArgs args) invoke,
-}) {
-  /// Called by the generated code.
-  this;
-}
+});
 
 /// The JSON arguments of one call, or of one object inside them, read as the
 /// types the method takes. A value of the wrong type throws a
 /// [ToolCallRefused] whose message is meant for the agent.
 final class ToolArgs(
-  /// The arguments as the agent sent them.
   final Map<String, Object?> json, {
 
   /// Where [json] is inside the call, as in `lines[0]`; empty for the call
   /// itself.
   final String path = '',
 }) {
-  /// Tandem builds it from the agent's arguments for [AgentTool.invoke].
-  this;
-
   /// The argument [name] as [T]: a `String`, `int`, `double`, `num`, `bool`
   /// or `DateTime`, one of [oneOf] for an enum, or a nullable one of these.
   T read<T>(String name, {List<T> oneOf = const []}) => switch (json[name]) {
@@ -111,20 +96,17 @@ final class ToolArgs(
     final value => _convert(_at(name), value, oneOf),
   };
 
-  /// The object argument [name], built by [build] from its own arguments.
   T readObject<T>(String name, T Function(ToolArgs object) build) =>
       switch (json[name]) {
         null => _nullOrRefuse(name),
         final value => build(_object(_at(name), value)),
       };
 
-  /// The list argument [name], with every item read as [read] does.
   List<T> readList<T>(String name, {List<T> oneOf = const []}) => [
     for (final (index, item) in _list(name).indexed)
       _convert('${_at(name)}[$index]', item, oneOf),
   ];
 
-  /// The list argument [name], with every item built by [build].
   List<T> readObjects<T>(String name, T Function(ToolArgs object) build) => [
     for (final (index, item) in _list(name).indexed)
       build(_object('${_at(name)}[$index]', item)),

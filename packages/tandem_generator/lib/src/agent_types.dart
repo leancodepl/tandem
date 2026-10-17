@@ -20,10 +20,6 @@ import 'package:source_gen/source_gen.dart';
 /// types and enum values with dot shorthands, so it compiles without imports
 /// of the libraries that declare them.
 final class AgentTypes(final ExecutableElement _element) {
-  /// The types of [_element], a getter or method of an agent list. Build
-  /// errors point at it.
-  this;
-
   final _visitingClasses = <ClassElement>{};
 
   /// The JSON Schema of an object with a property for each of [parameters],
@@ -63,7 +59,6 @@ final class AgentTypes(final ExecutableElement _element) {
     };
   }
 
-  /// The JSON Schema of [type], which the agent sends at [path].
   Map<String, Object?> schema(DartType type, String path) {
     if (_scalarSchema(type) case final scalar?) {
       if (type.element case final ExtensionTypeElement extension) {

@@ -10,19 +10,16 @@ typedef ApprovalBuilder = Widget Function(
 );
 
 /// The chat of the user and the agent: its messages, the cards that ask for
-/// approval, and the field to write in. It fills its parent and has its own
-/// background. Next to the screen, give it a width, as in
-/// `Row(children: [Expanded(child: OrderForm()), SizedBox(width: 360, child:
-/// TandemChat())])`.
+/// approval, and the field to write in. It needs a `TandemScope` above it,
+/// fills its parent and has its own background. Next to the screen, give it
+/// a width, as in `Row(children: [Expanded(child: OrderForm()),
+/// SizedBox(width: 360, child: TandemChat())])`.
 final class const TandemChat({
   super.key,
+
+  /// Without it, a card shows the method's description and arguments.
   final ApprovalBuilder? approvalBuilder,
 }) extends StatefulWidget {
-  /// A chat of the closest `TandemScope`. A card shows what [approvalBuilder]
-  /// builds for its request, or by default the method's description and
-  /// arguments.
-  this;
-
   @override
   State<TandemChat> createState() => _TandemChatState();
 }

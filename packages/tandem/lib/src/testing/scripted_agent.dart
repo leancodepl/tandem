@@ -4,23 +4,12 @@ import 'dart:convert';
 
 import 'package:tandem/src/protocol/agent_connection.dart';
 
-/// What the agent does in one run, given the request of that run.
 typedef AgentTurn = List<AgentStep> Function(Map<String, Object?> request);
 
-/// One thing a [ScriptedAgent] does in a run.
 sealed class const AgentStep() {
-  /// Use [AgentStep.say], [AgentStep.callTool], [AgentStep.waitFor] or
-  /// [AgentStep.fail].
-  this;
-
-  /// Says [text] in one text message.
   const factory say(String text) = _Say;
-
-  /// Calls the tool [name] with [arguments].
   const factory callTool(String name, [Map<String, Object?> arguments]) =
       _CallTool;
-
-  /// Sends nothing until [signal] completes.
   const factory waitFor(Future<void> signal) = _WaitFor;
 
   /// Ends the run with `RUN_ERROR` and [message].
@@ -46,9 +35,6 @@ final class const _Fail(final String message) extends AgentStep;
 /// `await pumpEventQueue()` or `pumpAndSettle` plays a whole run.
 final class ScriptedAgent(final List<AgentTurn> turns)
     implements AgentConnection {
-  /// Plays [turns], one per run.
-  this;
-
   final _requests = <Map<String, Object?>>[];
   var _textMessages = 0;
   var _toolCalls = 0;

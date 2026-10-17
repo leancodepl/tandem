@@ -17,7 +17,6 @@ Map<String, Object?> runInput({
   'forwardedProps': <String, Object?>{},
 };
 
-/// A message the user typed.
 Map<String, Object?> userMessage(String id, String text) => {
   'id': id,
   'role': 'user',
@@ -31,7 +30,6 @@ Map<String, Object?> assistantText(String id, String text) => {
   'content': text,
 };
 
-/// A call of a listed method the agent made, with its JSON [arguments].
 Map<String, Object?> assistantToolCall(
   String toolCallId,
   String name,
@@ -50,7 +48,6 @@ Map<String, Object?> assistantToolCall(
   ],
 };
 
-/// The answer to the call [toolCallId], with [content] as a JSON string.
 Map<String, Object?> toolAnswer(String toolCallId, String content) => {
   'id': 'tool-$toolCallId',
   'role': 'tool',

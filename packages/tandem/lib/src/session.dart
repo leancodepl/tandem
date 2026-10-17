@@ -30,19 +30,14 @@ void _report(Object err, StackTrace st) => FlutterError.reportError(
 final class const AgentCall({
   /// The method's name in snake_case.
   required final String tool,
-
-  /// The arguments the agent sent.
   required final Map<String, Object?> arguments,
 
   /// What the method returned, as JSON.
   required final Object? result,
-}) {
-  /// The agent called [tool] with [arguments], and it returned [result].
-  this;
-}
+});
 
-/// Hears every [AgentCall] once its method returned. Not called for a call
-/// that was refused or threw, nor once the session is disposed.
+/// Not called for a call that was refused or threw, nor once the session is
+/// disposed.
 typedef AgentCallListener = void Function(AgentCall call);
 
 /// The chat of the user and the agent about one screen.
@@ -62,9 +57,6 @@ final class TandemSession({
   required final AgentConnection _connection,
   final AgentCallListener? _onAgentCall,
 }) extends ChangeNotifier {
-  /// A chat about `surface` over `connection`. `changes` reports every state
-  /// change of `surface`, and `onAgentCall` hears every call of a listed
-  /// method that returned.
   this {
     _stateChangesSubscription = changes.listen(
       (_) => _invalidatePendingApprovals(),
@@ -83,7 +75,7 @@ final class TandemSession({
   var _calls = <_Call>[];
   var _contextWhenCardsShowed = '';
 
-  /// The chat, oldest first.
+  /// Oldest first.
   List<ChatItem> get items => UnmodifiableListView(_items);
 
   /// Whether a run is open or a method the agent called is running.
@@ -154,7 +146,6 @@ final class TandemSession({
     }
   }
 
-  /// Closes the connection of the open run. The thread is not used again.
   @override
   void dispose() {
     _run = null;

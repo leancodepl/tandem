@@ -33,7 +33,7 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 - Small files, one concept each. Write the thinnest code that does the job. The code uses Dart 3.13 primary constructors, dot shorthands and switch expressions.
 - Named constants for real values, not for obvious JSON keys. UI strings and spacing go inline at the use site, not in blocks of private constants.
 - No `Widget _buildX()` methods: write a private `StatelessWidget` with a const constructor.
-- The code explains itself. Write a comment only for a why the code cannot show (a protocol quirk, an upstream bug, an invariant), in one short line, with a link when there is one. Doc comments go on public API and say more than the name and type. The same holds for the Python agent: docstrings only where they add something, type hints, ruff clean.
+- The code explains itself. Write a comment only for a why the code cannot show (a protocol quirk, an upstream bug, an invariant), in one short line, with a link when there is one. A doc comment says more than the name and type, or it is not written. The same holds for the Python agent: docstrings only where they add something, type hints, ruff clean.
 - Few tests. One focused test per behaviour or fixed defect, in the existing test file when there is one. No test that restates the implementation.
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
 - Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`).

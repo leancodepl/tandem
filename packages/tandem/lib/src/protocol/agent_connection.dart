@@ -56,13 +56,13 @@ abstract interface class AgentConnection {
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
 }
 
-/// An [AgentConnection] to an AG-UI endpoint over `package:http`.
-final class HttpAgentConnection(final Uri endpoint, {final http.Client? client})
-    implements AgentConnection {
-  /// Posts the runs to [endpoint]. With a [client], the runs use it and never
-  /// close it. Without one, each run opens its own and closes it at the end.
-  this;
+final class HttpAgentConnection(
+  final Uri endpoint, {
 
+  /// Every run uses it and none closes it. Without one, each run opens its
+  /// own and closes it at the end.
+  final http.Client? client,
+}) implements AgentConnection {
   @override
   Stream<Map<String, Object?>> run(Map<String, Object?> input) {
     final abortTrigger = Completer<void>();

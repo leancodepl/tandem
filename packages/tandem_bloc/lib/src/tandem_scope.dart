@@ -52,7 +52,6 @@ final class TandemScope<C extends AgentSurface> extends StatefulWidget {
   final Uri? _agent;
   final AgentConnection? _connection;
 
-  /// The screen, with a [TandemChat] below.
   final Widget child;
 
   /// Called after every call of a listed method that ran, with a context

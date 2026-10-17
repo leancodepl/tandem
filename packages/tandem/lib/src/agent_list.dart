@@ -3,13 +3,7 @@ import 'dart:convert';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
 
-/// One item of a surface's `agentCapabilities`: a value the agent sees, or a
-/// method it may call.
 sealed class const AgentCapability() {
-  /// Use [AgentCapability.sees], [AgentCapability.calls] or
-  /// [AgentCapability.callsWithApproval].
-  this;
-
   /// The agent sees [value] on every turn. Pass a getter of the surface, as
   /// in `.sees(draft)`: its name and doc comment tell the agent what it is.
   factory sees(Object? value) => _Sees(value);
@@ -95,7 +89,6 @@ final class AgentListing._(
       },
   ];
 
-  /// Whether [tool] was listed when this listing was read.
   bool lists(String tool) => _tools.containsKey(tool);
 
   /// The doc comment of [tool], as the agent got it. Throws a [StateError] for

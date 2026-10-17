@@ -14,9 +14,6 @@ import 'package:tandem_generator/src/agent_types.dart';
 /// and methods, the JSON Schema of each method's parameters, and the code that
 /// reads the arguments and writes values and results as JSON.
 class const AgentGenerator() extends Generator {
-  /// Used by `tandemBuilder`.
-  this;
-
   @override
   Future<String?> generate(LibraryReader library, BuildStep buildStep) async {
     final mixins = [

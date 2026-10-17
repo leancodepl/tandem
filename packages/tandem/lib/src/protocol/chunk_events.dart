@@ -20,15 +20,12 @@
 /// subagents have one open and the parent has none, it is refused with a
 /// [FormatException], like malformed JSON, so the run counts as broken. A
 /// chunk that belongs to nothing, or opens a call without a name, is dropped.
+///
+/// Each run needs its own expander, as it remembers the open streams.
 final class ChunkExpander() {
-  /// An expander for one run. Each run needs its own, as it remembers the
-  /// open streams.
-  this;
-
   // Keyed by sender: its `subagentRunId`, or null for the parent.
   final _streams = <String?, ({_Kind kind, String id})>{};
 
-  /// The events that [event] stands for.
   Iterable<Map<String, Object?>> call(Map<String, Object?> event) {
     switch (event['type']) {
       case 'TEXT_MESSAGE_CHUNK':

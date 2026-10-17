@@ -1,9 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:tandem/src/session.dart';
 
-/// Gives the widgets below it the [TandemSession] of their screen, and
-/// rebuilds the ones that read it when it changes.
-///
 /// The `TandemScope` of an adapter package such as `tandem_bloc` builds this;
 /// apps do not use it.
 final class const TandemSessionScope({
@@ -11,12 +8,9 @@ final class const TandemSessionScope({
   required TandemSession session,
   required super.child,
 }) extends InheritedNotifier<TandemSession> {
-  /// Provides [session] to [child].
   this : super(notifier: session);
 
-  /// The session of the closest scope above [context].
-  ///
-  /// Throws a [FlutterError] when there is none.
+  /// Throws a [FlutterError] when no scope is above [context].
   static TandemSession of(BuildContext context) {
     final scope = context
         .dependOnInheritedWidgetOfExactType<TandemSessionScope>();
