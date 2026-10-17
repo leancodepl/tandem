@@ -62,8 +62,8 @@ final class TandemSession({
   required final AgentConnection _connection,
   final AgentCallListener? _onAgentCall,
 }) extends ChangeNotifier {
-  /// A chat about `surface` over `connection`. `changes` reports the changes
-  /// of what the agent sees, and `onAgentCall` hears every call of a listed
+  /// A chat about `surface` over `connection`. `changes` reports every state
+  /// change of `surface`, and `onAgentCall` hears every call of a listed
   /// method that returned.
   this {
     _stateChangesSubscription = changes.listen(
@@ -80,11 +80,8 @@ final class TandemSession({
   _Run? _run;
   var _stopping = false;
 
-  /// The calls of the last finished run, answered first in the next run.
   var _calls = <_Call>[];
-
-  /// What the agent saw, as JSON, when the cards of [_calls] showed.
-  var _cardContext = '';
+  var _contextWhenCardsShowed = '';
 
   /// The chat, oldest first.
   List<ChatItem> get items => UnmodifiableListView(_items);
@@ -138,7 +135,7 @@ final class TandemSession({
   void approve(ApprovalRequest request) {
     if (_pendingApprovalCall(request) case final call?) {
       // `changes` may not report every value the agent sees.
-      if (_context() == _cardContext) {
+      if (_context() == _contextWhenCardsShowed) {
         _decide(call, .approved);
         unawaited(_runApproved(call));
       } else {
@@ -261,7 +258,7 @@ final class TandemSession({
           if (call.answer == null) call,
       ];
       if (!_stopping && callsAwaitingApproval.isNotEmpty) {
-        _cardContext = _context();
+        _contextWhenCardsShowed = _context();
         // Lets the changes of the calls above arrive before the cards show,
         // so they invalidate nothing.
         await Future<void>.delayed(.zero);
