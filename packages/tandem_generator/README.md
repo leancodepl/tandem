@@ -27,7 +27,7 @@ Each type may be nullable. A result may also be `void`, or a `Future` or `Future
 | leaves it out | `1` | `'new'` | `null` |
 | sends `null` | refused | `null` | `null` |
 
-A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, or `null`.
+The schema marks a nullable parameter `"nullable": true`, so the agent knows it may send `null`. A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, or `null`.
 
 A refused call does not run the method. The agent gets a message that names the argument, also for a wrong type or a key the schema does not have.
 

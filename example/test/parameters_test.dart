@@ -71,13 +71,14 @@ void main() {
         'size': {
           'type': 'string',
           'enum': ['s', 'm', 'l'],
+          'nullable': true,
         },
         'count': {'type': 'integer'},
         'fit': {
           'type': 'string',
           'enum': ['s', 'm', 'l'],
         },
-        'note': {'type': 'string'},
+        'note': {'type': 'string', 'nullable': true},
       },
       'required': ['skus'],
     });
@@ -173,6 +174,7 @@ void main() {
               },
               'note': {
                 'type': 'string',
+                'nullable': true,
                 'description': 'Anything the courier should know.',
               },
             },

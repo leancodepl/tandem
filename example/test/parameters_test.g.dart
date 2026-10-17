@@ -27,13 +27,14 @@ mixin _$Shelf implements AgentSurface {
               'size': {
                 'type': 'string',
                 'enum': ['s', 'm', 'l'],
+                'nullable': true,
               },
               'count': {'type': 'integer'},
               'fit': {
                 'type': 'string',
                 'enum': ['s', 'm', 'l'],
               },
-              'note': {'type': 'string'},
+              'note': {'type': 'string', 'nullable': true},
             },
             'required': ['skus'],
           },
@@ -131,6 +132,7 @@ mixin _$Dispatch implements AgentSurface {
                   },
                   'note': {
                     'type': 'string',
+                    'nullable': true,
                     'description': 'Anything the courier should know.',
                   },
                 },

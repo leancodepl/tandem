@@ -42,8 +42,8 @@ final class AgentTypes(
     for (final parameter in parameters) {
       final name = parameter.displayName;
       final type = parameter.type;
-      if (type.nullabilitySuffix == .none &&
-          !_origin(parameter).hasDefaultValue) {
+      final nullable = type.nullabilitySuffix != .none;
+      if (!nullable && !_origin(parameter).hasDefaultValue) {
         required.add(name);
       } else if (_listItemType(type) != null) {
         throw _error(
@@ -53,6 +53,9 @@ final class AgentTypes(
       }
       properties[name] = {
         ...schema(type, '$prefix$name'),
+        // OpenAPI's form, which Gemini reads: ag-ui-adk 0.9.0 fails on the
+        // JSON Schema form, a list of types.
+        if (nullable) 'nullable': true,
         'description': ?_doc(parameter, owner),
       };
     }
