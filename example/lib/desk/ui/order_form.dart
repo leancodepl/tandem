@@ -17,7 +17,7 @@ final class const OrderForm({super.key}) extends StatelessWidget {
     final editable = cubit.canEdit;
     final customer = order.customer;
     final delivery = order.delivery;
-    if (customer == null && order.lines.isEmpty && delivery == null) {
+    if (order.isEmpty) {
       return const Center(
         child: Text('Paste a customer e-mail into the chat to start an order.'),
       );
@@ -29,7 +29,7 @@ final class const OrderForm({super.key}) extends StatelessWidget {
         crossAxisAlignment: .stretch,
         children: [
           if (placed != null) _PlacedBanner(placed),
-          if (customer != null || delivery != null)
+          if (order.hasCustomerOrDelivery)
             // Side by side, so the whole order fits an iPad screen.
             IntrinsicHeight(
               child: Row(

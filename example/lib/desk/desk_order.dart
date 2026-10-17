@@ -9,7 +9,11 @@ class const DeskOrder({
   required final List<DeskLine> lines,
   final DeskDelivery? delivery,
   required final String total,
-});
+}) {
+  bool get isEmpty => customer == null && lines.isEmpty && delivery == null;
+
+  bool get hasCustomerOrDelivery => customer != null || delivery != null;
+}
 
 class const DeskLine({
   required final String sku,
