@@ -131,6 +131,6 @@ void main() {
 
     expect(heard, ['first', 'second']);
     expect(cubit.items, ['milk', 'bread']);
-    expect(find.text('Added milk.'), findsOneWidget); // The chat went on.
+    expect(find.text('Added milk.'), findsOneWidget);
   });
 }

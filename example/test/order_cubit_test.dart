@@ -116,7 +116,6 @@ void main() {
       cubit.setQuantity('VM-27Q', 2);
       final listing = AgentListing.of(cubit);
 
-      // Emptying the draft takes place_order off the list mid-run.
       await listing.call('set_quantity', {'sku': 'VM-27Q', 'quantity': 0});
       await expectLater(
         listing.call('place_order', {}, approved: true),

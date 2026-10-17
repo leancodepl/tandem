@@ -6,8 +6,6 @@ import 'package:example/desk/ui/desk_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// The order as the user sees it. The agent and the user change it through
-/// the same cubit methods, until it is placed.
 final class const OrderForm({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

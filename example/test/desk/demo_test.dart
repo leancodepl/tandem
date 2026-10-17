@@ -127,11 +127,13 @@ void main() {
       expect(cubit.orders.placed.single.total, '16 710.05 PLN');
 
       final requests = agent.requests;
-      // The three calls of the second turn each answered null.
-      final answers = _messagesOf(requests[2]).reversed.take(3);
-      expect(answers.map((message) => message['role']), everyElement('tool'));
+      final secondTurnAnswers = _messagesOf(requests[2]).reversed.take(3);
       expect(
-        answers.map((message) => message['content']),
+        secondTurnAnswers.map((message) => message['role']),
+        everyElement('tool'),
+      );
+      expect(
+        secondTurnAnswers.map((message) => message['content']),
         everyElement('null'),
       );
       expect(
