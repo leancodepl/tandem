@@ -193,15 +193,13 @@ final class ToolArgs(
 
   static const _maxExactInteger = 9007199254740991;
 
-  /// A day, then optionally a time and a zone: Z or an offset up to 23:59.
   static final _isoDate = RegExp(
     r'^(\d{4})-(\d{2})-(\d{2})'
     r'(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?'
     r'(?:[zZ]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$',
   );
 
-  /// Null for a day or time that does not exist, such as 2026-02-30, which
-  /// `DateTime.parse` would roll over into March.
+  // DateTime.parse would roll a day that does not exist into the next month.
   static DateTime? _date(String text) {
     final match = _isoDate.firstMatch(text);
     final date = DateTime.tryParse(text);

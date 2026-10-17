@@ -202,8 +202,7 @@ const _capability = TypeChecker.typeNamedLiterally(
   inPackage: 'tandem',
 );
 
-/// The arguments of `.sees`, `.calls` and `.callsWithApproval`, in source
-/// order: the agent list pairs the `.sees` values with their views by place.
+// In source order: the agent list pairs .sees values with views by place.
 class _Items() extends RecursiveAstVisitor<void> {
   final sees = <Expression>[];
   final calls = <Expression>[];

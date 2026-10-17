@@ -287,8 +287,7 @@ final class TandemSession({
     _completeOperation(followUp: _canFollowUp);
   }
 
-  /// Runs [call] under a run of its own, so that a message sent meanwhile
-  /// waits, Stop holds back the follow-up run and dispose drops the answer.
+  // Its own run: a new message waits, Stop and dispose skip the follow-up.
   Future<void> _runApproved(_Call call) async {
     final run = _run = _Run(AgentListing.of(_surface));
     notifyListeners();

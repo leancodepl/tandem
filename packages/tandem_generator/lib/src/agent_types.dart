@@ -244,8 +244,6 @@ final class AgentTypes(final ExecutableElement _element) {
     throw _cannot(verb, type, path);
   }
 
-  /// The value parameter has the type the schema names, so every value the
-  /// agent may send fits it and null does not.
   void _checkValueConstructor(ExtensionTypeElement extension, String path) {
     final value = _element.library.typeSystem.promoteToNonNull(
       extension.typeErasure,
@@ -303,8 +301,7 @@ final class AgentTypes(final ExecutableElement _element) {
     );
   }
 
-  /// A redirecting factory, as freezed writes, keeps the default value on its
-  /// target.
+  // A redirecting factory, as freezed writes, keeps the default on its target.
   static FormalParameterElement _origin(FormalParameterElement parameter) {
     if (parameter.enclosingElement case ConstructorElement(
       redirectedConstructor: final target?,
