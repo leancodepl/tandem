@@ -1,5 +1,4 @@
 import 'package:example/desk/customers.dart';
-import 'package:example/desk/dates.dart';
 import 'package:example/desk/desk_order.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/ui/desk_theme.dart';
@@ -73,7 +72,9 @@ final class const _PlacedBanner(final PlacedOrder placed)
                 style: context.textTheme.titleMedium,
               ),
               if (placed.order.delivery case final delivery?)
-                Text('Delivery on ${formatDate(delivery.date)}'),
+                Text(
+                  'Delivery on ${MaterialLocalizations.of(context).formatShortDate(delivery.date)}',
+                ),
             ],
           ),
         ],
@@ -107,7 +108,9 @@ final class const _DeliveryCard(
       OutlinedButton.icon(
         onPressed: editable ? () => _pickDate(context) : null,
         icon: const Icon(Icons.calendar_today),
-        label: Text(formatDate(delivery.date)),
+        label: Text(
+          MaterialLocalizations.of(context).formatShortDate(delivery.date),
+        ),
       ),
     ],
   );

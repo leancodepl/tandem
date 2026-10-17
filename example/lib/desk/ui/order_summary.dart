@@ -1,4 +1,3 @@
-import 'package:example/desk/dates.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/ui/desk_theme.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +26,9 @@ final class const OrderSummary({super.key}) extends StatelessWidget {
             ],
           ),
         if (order.delivery case final delivery?)
-          Text('Delivery: ${delivery.address}, ${formatDate(delivery.date)}'),
+          Text(
+            'Delivery: ${delivery.address}, ${MaterialLocalizations.of(context).formatShortDate(delivery.date)}',
+          ),
         if (order.lines.isNotEmpty)
           Row(
             spacing: 8,

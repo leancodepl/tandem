@@ -80,7 +80,7 @@ void main() {
       expect(find.text('1 099.12 PLN'), findsOneWidget);
       expect(find.text('12 %'), findsOneWidget);
       expect(find.text(_address), findsOneWidget);
-      expect(find.text('23 Oct 2026'), findsOneWidget);
+      expect(find.text('Oct 23, 2026'), findsOneWidget);
       expect(find.text('14 349.44 PLN'), findsOneWidget);
       expect(
         find.text(
@@ -104,7 +104,7 @@ void main() {
       expect(_inChat('40 × $_cablesName'), findsOneWidget);
       expect(_inChat('15 × $_monitorName'), findsOneWidget);
       expect(_inChat('15 550.05 PLN'), findsOneWidget);
-      expect(_inChat('Delivery: $_address, 23 Oct 2026'), findsOneWidget);
+      expect(_inChat('Delivery: $_address, Oct 23, 2026'), findsOneWidget);
       expect(_inChat('16 710.05 PLN'), findsOneWidget);
 
       await tester.tap(find.text('Approve'));
@@ -113,7 +113,7 @@ void main() {
       expect(find.text('Order ORD-1042 placed for 23 Oct.'), findsOneWidget);
       expect(find.text('Approved'), findsOneWidget);
       expect(find.text('Placed as ORD-1042'), findsOneWidget);
-      expect(find.text('Delivery on 23 Oct 2026'), findsOneWidget);
+      expect(find.text('Delivery on Oct 23, 2026'), findsOneWidget);
       expect(find.text(_customer), findsOneWidget);
       expect(find.text(_monitorName), findsOneWidget);
       expect(find.text(_empty), findsNothing);
@@ -170,14 +170,14 @@ void main() {
     await _send(tester, 'Order two monitors');
     expect(find.text('Approve'), findsOneWidget);
 
-    await tester.tap(find.text('23 Oct 2026'));
+    await tester.tap(find.text('Oct 23, 2026'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('24'));
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
-    expect(find.text('24 Oct 2026'), findsOneWidget);
-    expect(_inChat('Delivery: $_address, 24 Oct 2026'), findsOneWidget);
+    expect(find.text('Oct 24, 2026'), findsOneWidget);
+    expect(_inChat('Delivery: $_address, Oct 24, 2026'), findsOneWidget);
     expect(
       find.text('The screen changed. Ask the agent again.'),
       findsOneWidget,

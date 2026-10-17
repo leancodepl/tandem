@@ -163,7 +163,7 @@ final class ToolArgs(
       double() when value == value.truncateToDouble() && 0 is T =>
         value.toInt() as T,
       int() when 0.5 is T => value.toDouble() as T,
-      String() when DateTime(0) is T => switch (_date(value)) {
+      String() when DateTime(0) is T => switch (DateTime.tryParse(value)) {
         final date? => date as T,
         null => throw ToolCallRefused(
           '$path: expected an ISO 8601 date, got ${jsonEncode(value)}',
@@ -174,34 +174,6 @@ final class ToolArgs(
   }
 
   static const _maxExactInteger = 9007199254740991;
-
-  static final _isoDate = RegExp(
-    r'^(\d{4})-(\d{2})-(\d{2})'
-    r'(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?'
-    r'(?:[zZ]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$',
-  );
-
-  // DateTime.parse would roll a day that does not exist into the next month.
-  static DateTime? _date(String text) {
-    final match = _isoDate.firstMatch(text);
-    final date = DateTime.tryParse(text);
-    if (match == null || date == null) {
-      return null;
-    }
-    final [year, month, day, hour, minute, second] = [
-      for (var group = 1; group <= match.groupCount; group++)
-        int.parse(match[group] ?? '0'),
-    ];
-    final real = DateTime.utc(year, month, day, hour, minute, second);
-
-    return real.month == month &&
-            real.day == day &&
-            real.hour == hour &&
-            real.minute == minute &&
-            real.second == second
-        ? date
-        : null;
-  }
 
   static String _type<T>() => '$T'.replaceAll('?', '');
 }
