@@ -56,35 +56,32 @@ final class const OrderForm({super.key}) extends StatelessWidget {
 final class const _PlacedBanner(final PlacedOrder placed)
     extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      shape: const RoundedRectangleBorder(
-        borderRadius: cardCorners,
-        side: BorderSide(color: success),
+  Widget build(BuildContext context) => Card(
+    shape: const RoundedRectangleBorder(
+      borderRadius: cardCorners,
+      side: BorderSide(color: success),
+    ),
+    child: Padding(
+      padding: const .all(16),
+      child: Row(
+        spacing: 16,
+        children: [
+          const Icon(Icons.check_circle, color: success),
+          Column(
+            crossAxisAlignment: .start,
+            children: [
+              Text(
+                'Placed as ${placed.id.value}',
+                style: context.textTheme.titleMedium,
+              ),
+              if (placed.order.delivery case final delivery?)
+                Text('Delivery on ${formatDate(delivery.date)}'),
+            ],
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const .all(16),
-        child: Row(
-          spacing: 16,
-          children: [
-            const Icon(Icons.check_circle, color: success),
-            Column(
-              crossAxisAlignment: .start,
-              children: [
-                Text(
-                  'Placed as ${placed.id.value}',
-                  style: theme.textTheme.titleMedium,
-                ),
-                if (placed.order.delivery case final delivery?)
-                  Text('Delivery on ${formatDate(delivery.date)}'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }
 
 final class const _CustomerCard(final Customer customer)
@@ -93,7 +90,7 @@ final class const _CustomerCard(final Customer customer)
   Widget build(BuildContext context) => _Section(
     title: 'Customer',
     children: [
-      Text(customer.name, style: Theme.of(context).textTheme.titleMedium),
+      Text(customer.name, style: context.textTheme.titleMedium),
       _Detail('Contact', customer.contact),
       _Detail('Price list', customer.priceList),
     ],
@@ -108,7 +105,7 @@ final class const _DeliveryCard(
   Widget build(BuildContext context) => _Section(
     title: 'Delivery',
     children: [
-      Text(delivery.address, style: Theme.of(context).textTheme.titleMedium),
+      Text(delivery.address, style: context.textTheme.titleMedium),
       OutlinedButton.icon(
         onPressed: editable ? () => _pickDate(context) : null,
         icon: const Icon(Icons.calendar_today),
@@ -142,7 +139,7 @@ final class const _Section({
         spacing: 4,
         crossAxisAlignment: .start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.labelMedium),
+          Text(title, style: context.textTheme.labelMedium),
           ...children,
         ],
       ),
@@ -158,9 +155,7 @@ final class const _Detail(final String label, final String value)
       children: [
         TextSpan(
           text: '$label  ',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: TextStyle(color: context.colorScheme.onSurfaceVariant),
         ),
         TextSpan(text: value),
       ],
@@ -174,7 +169,7 @@ final class const _Lines(
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final label = Theme.of(context).textTheme.labelMedium;
+    final label = context.textTheme.labelMedium;
     return Card(
       child: Column(
         children: [
@@ -209,7 +204,7 @@ final class const _LineRow({
         crossAxisAlignment: .start,
         children: [
           Text(line.name),
-          Text(line.sku, style: Theme.of(context).textTheme.bodySmall),
+          Text(line.sku, style: context.textTheme.bodySmall),
         ],
       ),
       quantity: FittedBox(
@@ -267,22 +262,19 @@ final class const _Columns({
 
 final class const _Total(final String total) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Row(
-      mainAxisAlignment: .end,
-      crossAxisAlignment: .baseline,
-      textBaseline: .alphabetic,
-      spacing: 16,
-      children: [
-        Text('Total', style: text.titleMedium),
-        Flexible(
-          child: FittedBox(
-            fit: .scaleDown,
-            child: Text(total, style: text.displaySmall),
-          ),
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: .end,
+    crossAxisAlignment: .baseline,
+    textBaseline: .alphabetic,
+    spacing: 16,
+    children: [
+      Text('Total', style: context.textTheme.titleMedium),
+      Flexible(
+        child: FittedBox(
+          fit: .scaleDown,
+          child: Text(total, style: context.textTheme.displaySmall),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }

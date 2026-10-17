@@ -1,5 +1,6 @@
 import 'package:example/desk/dates.dart';
 import 'package:example/desk/order_desk_cubit.dart';
+import 'package:example/desk/ui/desk_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -15,7 +16,7 @@ final class const OrderSummary({super.key}) extends StatelessWidget {
         Text(switch (order.customer) {
           null => 'Place order',
           final customer => 'Place order for ${customer.name}',
-        }, style: Theme.of(context).textTheme.titleSmall),
+        }, style: context.textTheme.titleSmall),
         for (final line in order.lines)
           Row(
             spacing: 8,

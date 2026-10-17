@@ -1,6 +1,7 @@
 import 'package:example/desk/customers.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
+import 'package:example/desk/ui/desk_theme.dart';
 import 'package:example/desk/ui/order_form.dart';
 import 'package:example/desk/ui/order_summary.dart';
 import 'package:flutter/material.dart';
@@ -68,7 +69,6 @@ final class const _Header() extends StatelessWidget {
     final customer = context.select<OrderDeskCubit, Customer?>(
       (cubit) => cubit.order.customer,
     );
-    final theme = Theme.of(context);
     return Text.rich(
       TextSpan(
         text: 'Order desk',
@@ -76,11 +76,11 @@ final class const _Header() extends StatelessWidget {
           if (customer != null)
             TextSpan(
               text: '  ·  ${customer.name}',
-              style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              style: TextStyle(color: context.colorScheme.onSurfaceVariant),
             ),
         ],
       ),
-      style: theme.textTheme.titleLarge,
+      style: context.textTheme.titleLarge,
     );
   }
 }
