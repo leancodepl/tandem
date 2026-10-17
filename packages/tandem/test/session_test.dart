@@ -177,7 +177,12 @@ void main() {
       session.send('b');
       await pumpEventQueue();
       expect(_shown(session.items).last, ('agent', 'Hi', false));
-      expect(_lines(agent.requests[2]).last, 'user: b');
+      // A run that ended with RUN_ERROR keeps its thread and history.
+      expect(agent.requests[2]['threadId'], agent.requests[0]['threadId']);
+      expect(_lines(agent.requests[2]), [
+        ..._lines(agent.requests[1]),
+        'user: b',
+      ]);
     },
   );
 

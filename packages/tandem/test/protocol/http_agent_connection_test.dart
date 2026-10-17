@@ -233,6 +233,17 @@ void main() {
         emitsError(isFormatException),
       ]),
     );
+    await expectLater(
+      _run('ag_ui_chunk_ambiguous_call.sse'),
+      emitsInOrder([
+        {'type': 'RUN_STARTED', 'threadId': 'thread-C', 'runId': 'run-C1'},
+        {'type': 'TOOL_CALL_START', 'toolCallId': 'c1', 'toolCallName': 'add'},
+        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":'},
+        {'type': 'TOOL_CALL_START', 'toolCallId': 'c2', 'toolCallName': 'add'},
+        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c2', 'delta': '{"item":'},
+        emitsError(isFormatException),
+      ]),
+    );
   });
 
   test('a run ends at RUN_FINISHED while the server keeps the connection '
@@ -264,6 +275,35 @@ void main() {
     );
     expect(sourceCancelled, isTrue);
     expect(client.closed, isTrue);
+  });
+
+  test('a run ends at RUN_ERROR while the server keeps the connection '
+      'open', () async {
+    var sourceCancelled = false;
+    // One more event follows RUN_ERROR in the same bytes.
+    final source =
+        StreamController<List<int>>(onCancel: () => sourceCancelled = true)
+          ..add(
+            utf8.encode(
+              'data: {"type":"RUN_STARTED"}\n\n'
+              'data: {"type":"RUN_ERROR","message":"Quota exceeded"}\n\n'
+              'data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m1","delta":"A"}'
+              '\n\n',
+            ),
+          );
+    final client = MockClient.streaming(
+      (request, bodyStream) async => http.StreamedResponse(source.stream, 200),
+    );
+
+    await expectLater(
+      HttpAgentConnection(_endpoint, client: client).run(const {}),
+      emitsInOrder([
+        {'type': 'RUN_STARTED'},
+        {'type': 'RUN_ERROR', 'message': 'Quota exceeded'},
+        emitsDone,
+      ]),
+    );
+    expect(sourceCancelled, isTrue);
   });
 
   test('cancelling a run waits for the connection to clean up', () async {

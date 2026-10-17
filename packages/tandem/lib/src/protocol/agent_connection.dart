@@ -53,9 +53,11 @@ abstract interface class AgentConnection() {
   /// connection closes with it. A stream that ends earlier, or fails, means
   /// the run broke. Cancelling the subscription aborts the request, even when
   /// it still waits for the response headers, and its future completes once
-  /// the connection is cleaned up: do it only when the screen goes away.
-  /// Stopping a run must not cancel it, because ADK keeps running and the
-  /// thread stays consistent only if its events are read to the end.
+  /// the connection is cleaned up. The session cancels only when it is
+  /// disposed, or when the stream fails: that run is broken, and the next
+  /// message starts a new thread. Stopping a run must not cancel it, because
+  /// ADK keeps running and the thread stays consistent only if its events are
+  /// read to the end.
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
 }
 
