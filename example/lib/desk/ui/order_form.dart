@@ -13,10 +13,7 @@ final class const OrderForm({super.key}) extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.watch<OrderDeskCubit>();
     final order = cubit.order;
-    final placed = cubit.placed;
     final editable = cubit.canEdit;
-    final customer = order.customer;
-    final delivery = order.delivery;
     if (order.isEmpty) {
       return const Center(
         child: Text('Paste a customer e-mail into the chat to start an order.'),
@@ -28,7 +25,7 @@ final class const OrderForm({super.key}) extends StatelessWidget {
         spacing: 16,
         crossAxisAlignment: .stretch,
         children: [
-          if (placed != null) _PlacedBanner(placed),
+          if (cubit.placed case final placed?) _PlacedBanner(placed),
           if (order.hasCustomerOrDelivery)
             // Side by side, so the whole order fits an iPad screen.
             IntrinsicHeight(
@@ -36,9 +33,9 @@ final class const OrderForm({super.key}) extends StatelessWidget {
                 spacing: 16,
                 crossAxisAlignment: .stretch,
                 children: [
-                  if (customer != null)
+                  if (order.customer case final customer?)
                     Expanded(child: _CustomerCard(customer)),
-                  if (delivery != null)
+                  if (order.delivery case final delivery?)
                     Expanded(
                       child: _DeliveryCard(delivery, editable: editable),
                     ),
@@ -115,13 +112,13 @@ final class const _DeliveryCard(
   );
 
   Future<void> _pickDate(BuildContext context) async {
-    final date = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
       initialDate: delivery.date,
       firstDate: delivery.date.subtract(const Duration(days: 365)),
       lastDate: delivery.date.add(const Duration(days: 365)),
     );
-    if (date != null && context.mounted) {
+    if (picked case final date? when context.mounted) {
       context.read<OrderDeskCubit>().setDelivery(delivery.address, date);
     }
   }

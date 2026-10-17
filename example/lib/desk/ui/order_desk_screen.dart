@@ -72,9 +72,9 @@ final class const _Header() extends StatelessWidget {
       TextSpan(
         text: 'Order desk',
         children: [
-          if (customer != null)
+          if (customer case Customer(:final name))
             TextSpan(
-              text: '  ·  ${customer.name}',
+              text: '  ·  $name',
               style: TextStyle(color: context.colorScheme.onSurfaceVariant),
             ),
         ],
