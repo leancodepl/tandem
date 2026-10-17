@@ -45,13 +45,15 @@ abstract interface class AgentConnection() {
   /// Posts [input], the body of one AG-UI run, and streams the events of the
   /// run as decoded JSON. A chunk event, `TEXT_MESSAGE_CHUNK` or
   /// `TOOL_CALL_CHUNK`, comes as the content, start and args events it
-  /// abbreviates.
+  /// abbreviates, each sender, parent or subagent, continuing its own message
+  /// and call. A chunk without an id that several subagents could own ends
+  /// the run with a `RUN_ERROR` of code `AMBIGUOUS_CHUNK`.
   ///
   /// The stream ends right after `RUN_FINISHED` or `RUN_ERROR`, and the
   /// connection closes with it. A stream that ends earlier, or fails, means
   /// the run broke. Cancelling the subscription aborts the request, even when
-  /// it still waits for the response headers: do it only when the screen goes
-  /// away.
+  /// it still waits for the response headers, and its future completes once
+  /// the connection is cleaned up: do it only when the screen goes away.
   /// Stopping a run must not cancel it, because ADK keeps running and the
   /// thread stays consistent only if its events are read to the end.
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
@@ -81,7 +83,8 @@ final class HttpAgentConnection(final Uri endpoint, {final http.Client? client})
       },
       onCancel: () {
         abortTrigger.complete();
-        unawaited(subscription.cancel());
+        // The caller's `cancel()` waits for the connection to clean up.
+        return subscription.cancel();
       },
     );
     return controller.stream;

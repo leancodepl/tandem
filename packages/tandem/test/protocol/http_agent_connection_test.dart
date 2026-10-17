@@ -10,6 +10,7 @@ import 'package:tandem/src/protocol/events.dart';
 
 const _fixtureChunkSize = 7;
 const _pastIdleTimeout = Duration(seconds: 61);
+const _settleRounds = 2;
 
 final _endpoint = Uri.parse('http://localhost:8000/agent');
 
@@ -24,6 +25,30 @@ http.StreamedResponse _fixture(String name) {
     ]),
     200,
   );
+}
+
+/// The events of the fixture [name], as the session reads them.
+Future<List<AgentEvent>> _agentEvents(String name) async {
+  final client = MockClient.streaming(
+    (request, bodyStream) async => _fixture(name),
+  );
+  return [
+    for (final json in await HttpAgentConnection(
+      _endpoint,
+      client: client,
+    ).run(const {}).toList())
+      AgentEvent.fromJson(json),
+  ];
+}
+
+/// Lets a stream that ended finish. Its end waits for the cleanup of its
+/// source, which needs microtasks of the root zone, and the fake clock of the
+/// test does not run those.
+Future<void> _settle(WidgetTester tester) async {
+  for (var round = 0; round < _settleRounds; round++) {
+    await tester.runAsync(pumpEventQueue);
+    await tester.pump();
+  }
 }
 
 /// A client that remembers whether it was closed.
@@ -96,17 +121,7 @@ void main() {
   });
 
   test('decodes the chunk events of the AG-UI specification', () async {
-    final client = MockClient.streaming(
-      (request, bodyStream) async => _fixture('ag_ui_chunk_events.sse'),
-    );
-
-    final events = [
-      for (final json in await HttpAgentConnection(
-        _endpoint,
-        client: client,
-      ).run(const {}).toList())
-        AgentEvent.fromJson(json),
-    ];
+    final events = await _agentEvents('ag_ui_chunk_events.sse');
 
     final texts = events.whereType<TextDelta>();
     final started = events.whereType<ToolCallStarted>().single;
@@ -116,6 +131,38 @@ void main() {
     expect(started.name, 'add');
     expect(args.map((arg) => arg.delta).join(), '{"item":"milk"}');
     expect(args.map((arg) => arg.toolCallId).toSet(), {started.toolCallId});
+  });
+
+  test('chunks of a parent and two subagents continue their own message and '
+      'call', () async {
+    final events = await _agentEvents('ag_ui_chunk_lanes.sse');
+
+    final texts = events.whereType<TextDelta>();
+    final args = events.whereType<ToolCallArgs>();
+    String textOf(String id) =>
+        texts.where((t) => t.messageId == id).map((t) => t.delta).join();
+    String argsOf(String id) =>
+        args.where((a) => a.toolCallId == id).map((a) => a.delta).join();
+    expect([textOf('p1'), textOf('m1'), textOf('m2')], ['XY', 'AC', 'BD']);
+    expect(
+      [for (final call in events.whereType<ToolCallStarted>()) call.toolCallId],
+      ['c1', 'c2'],
+    );
+    expect(
+      [argsOf('c1'), argsOf('c2')],
+      ['{"item":"milk"}', '{"item":"eggs"}'],
+    );
+  });
+
+  test('an ambiguous chunk ends the run with an error', () async {
+    final events = await _agentEvents('ag_ui_chunk_ambiguous.sse');
+
+    expect(events.whereType<TextDelta>().map((text) => text.delta), ['A', 'B']);
+    expect(events.whereType<RunFinished>(), isEmpty);
+    expect(
+      events.last,
+      isA<RunFailed>().having((e) => e.code, 'code', 'AMBIGUOUS_CHUNK'),
+    );
   });
 
   test('a run ends at RUN_FINISHED while the server keeps the connection '
@@ -147,6 +194,31 @@ void main() {
     );
     expect(sourceCancelled, isTrue);
     expect(client.closed, isTrue);
+  });
+
+  test('cancelling a run waits for the connection to clean up', () async {
+    final cleanup = Completer<void>();
+    final source = StreamController<List<int>>(onCancel: () => cleanup.future)
+      ..add(utf8.encode('data: {"type":"RUN_STARTED"}\n\n'));
+    final client = MockClient.streaming(
+      (request, bodyStream) async => http.StreamedResponse(source.stream, 200),
+    );
+    final started = Completer<void>();
+    final subscription = HttpAgentConnection(
+      _endpoint,
+      client: client,
+    ).run(const {}).listen((event) => started.complete());
+    await started.future;
+    var cancelled = false;
+
+    final cancelling = subscription.cancel().then((_) => cancelled = true);
+    await pumpEventQueue();
+    final cancelledBeforeCleanup = cancelled;
+    cleanup.complete();
+    await cancelling;
+
+    expect(cancelledBeforeCleanup, isFalse);
+    expect(cancelled, isTrue);
   });
 
   testWidgets('cancelling while the headers are pending aborts the request', (
@@ -198,9 +270,7 @@ void main() {
         .run(const {})
         .listen(events.add, onError: errors.add, onDone: () => done = true);
     await tester.pump(_pastIdleTimeout);
-    // The end of a cancelled stream waits for a root-zone microtask.
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-    await tester.pump();
+    await _settle(tester);
 
     expect(events, [
       {'type': 'RUN_STARTED'},
@@ -223,6 +293,7 @@ void main() {
         .run(const {})
         .listen(null, onError: errors.add, onDone: () => done = true);
     await tester.pump(_pastIdleTimeout);
+    await _settle(tester);
 
     expect(errors, [isA<TimeoutException>()]);
     expect(done, isTrue);
