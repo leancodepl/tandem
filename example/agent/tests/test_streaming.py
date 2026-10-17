@@ -13,6 +13,11 @@ TURN = [
     types.Part(function_call=types.FunctionCall(name="set_quantity", args={"sku": "B"})),
     types.Part(function_call=types.FunctionCall(name="set_delivery", args={"date": "2026-10-23"})),
 ]
+CALLS = [
+    ("set_quantity", {"sku": "A"}),
+    ("set_quantity", {"sku": "B"}),
+    ("set_delivery", {"date": "2026-10-23"}),
+]
 
 
 @pytest.fixture
@@ -38,39 +43,31 @@ def responses(stream: bool) -> list[LlmResponse]:
     return asyncio.run(collect())
 
 
-def calls(response: LlmResponse) -> list[str]:
+def pieces(response: LlmResponse) -> list[object]:
     parts = response.content.parts if response.content else None
     return [
-        p.function_call.args["sku"]
-        if p.function_call.name == "set_quantity"
-        else p.function_call.name
-        for p in parts or []
-        if p.function_call
+        (call.name, call.args) if (call := part.function_call) else part.text
+        for part in parts or []
     ]
 
 
-def test_a_streamed_turn_brings_parallel_calls_in_one_chunk(whole_turn: list[bool]) -> None:
-    streamed = responses(stream=True)
+def test_a_streamed_turn_brings_the_words_one_by_one_and_all_calls_in_one_chunk(
+    whole_turn: list[bool],
+) -> None:
+    streamed = [(r.partial, pieces(r)) for r in responses(stream=True) if r.content]
 
-    partial = [calls(r) for r in streamed if r.partial and calls(r)]
-    assert partial == [["A", "B", "set_delivery"]]
-    assert calls(streamed[-1]) == ["A", "B", "set_delivery"]
-    assert not streamed[-1].partial
+    assert streamed == [
+        (True, ["Filling "]),
+        (True, ["the "]),
+        (True, ["order."]),
+        (True, CALLS),
+        (False, ["Filling the order.", *CALLS]),
+    ]
     assert whole_turn == [False]
 
 
-def test_the_text_streams_word_by_word(whole_turn: list[bool]) -> None:
-    texts = [
-        r.content.parts[0].text
-        for r in responses(stream=True)
-        if r.partial and r.content and r.content.parts[0].text
-    ]
-
-    assert texts == ["Filling ", "the ", "order."]
-
-
 def test_an_unstreamed_request_gets_the_turn_as_is(whole_turn: list[bool]) -> None:
-    assert [calls(r) for r in responses(stream=False)] == [["A", "B", "set_delivery"]]
+    assert [pieces(r) for r in responses(stream=False)] == [["Filling the order.", *CALLS]]
 
 
 def test_an_empty_turn_ends_without_an_error() -> None:
