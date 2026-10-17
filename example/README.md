@@ -40,8 +40,3 @@ Mac. Paste this e-mail into the chat:
 > Hi, could you send us 40 HDMI cables (2 m) and 12 of the 27-inch monitors like last time? Delivery to Magazynowa 5, Poznań by Friday please. Thanks, Marta, Acme Office Supply
 
 The rest of the script is in [agent/README.md](agent/README.md).
-`integration_test/demo_recording_test.dart` plays it against the running agent:
-
-```sh
-fvm flutter test integration_test/demo_recording_test.dart -d <iPad simulator>
-```
