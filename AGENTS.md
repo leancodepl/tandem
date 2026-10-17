@@ -33,7 +33,7 @@ CI runs the same, plus a dry run of `pub publish` for each package. `publish.yml
 - Few tests. One focused test per behaviour or fixed defect, in the existing test file when there is one. No test that restates the implementation.
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
 - Nothing talks to a real model. Tests use `ScriptedAgent`.
-- When the API changes, change `README.md`, `packages/tandem_bloc/README.md` (the same file, keep them identical) and `packages/tandem_bloc/skills/tandem-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
+- When the API changes, change `README.md`, `packages/tandem_bloc/README.md` (the same file, keep them identical) and `packages/tandem_bloc/skills/tandem-bloc-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
 - Commit messages are `task: <what>`, with no `Co-Authored-By` or other attribution.
 - Never read, print or create a `.env` file. No API keys in the repo.
 - Docs and comments: short sentences, no em dashes.

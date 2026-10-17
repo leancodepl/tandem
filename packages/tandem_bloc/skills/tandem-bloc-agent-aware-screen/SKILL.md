@@ -1,5 +1,5 @@
 ---
-name: tandem-agent-aware-screen
+name: tandem-bloc-agent-aware-screen
 description: Make a Flutter screen agent-aware with Tandem (tandem_bloc), so an AI agent sees what the screen shows, calls the Cubit's methods, and anything that matters waits for the user's approval. Use when asked to add an AI agent, assistant or copilot to a Flutter screen, or when the code uses TandemScope, TandemChat, @TandemAgent or agentCapabilities.
 ---
 

@@ -18,7 +18,7 @@ The repo root is a workspace, not a package. `tandem_generator` is not a member:
 
 The root README and `packages/tandem_bloc/README.md` are the same file.
 
-`tandem_bloc` also ships an Agent Skill, `skills/tandem-agent-aware-screen`, that apps install with `dart run skills@ get`. It follows the API: change one, change the other.
+`tandem_bloc` also ships an Agent Skill, `skills/tandem-bloc-agent-aware-screen`, that apps install with `dart run skills@ get`. It follows the API: change one, change the other.
 
 ## Session rules
 
