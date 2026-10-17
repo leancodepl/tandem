@@ -10,7 +10,9 @@ part 'main.g.dart';
 class const ShoppingListState({final List<String> items = const []});
 
 @TandemAgent()
-class ShoppingListCubit() extends Cubit<ShoppingListState> with _$ShoppingListCubit {
+class ShoppingListCubit()
+    extends Cubit<ShoppingListState>
+    with _$ShoppingListCubit {
   this : super(const .new());
 
   @override
@@ -34,30 +36,38 @@ class ShoppingListCubit() extends Cubit<ShoppingListState> with _$ShoppingListCu
   void clear() => emit(const .new());
 }
 
-void main() => runApp(
-  MaterialApp(
-    home: BlocProvider(
-      create: (_) => ShoppingListCubit(),
-      child: TandemScope<ShoppingListCubit>(
-        agent: Uri.parse('http://localhost:8000/agent'),
-        child: Scaffold(
-          body: Row(
-            children: [
-              Expanded(
-                child: BlocBuilder<ShoppingListCubit, ShoppingListState>(
-                  builder: (context, state) => ListView(
-                    children: [for (final item in state.items) ListTile(title: Text(item))],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 360, child: TandemChat()),
-            ],
-          ),
-        ),
-      ),
+void main() => runApp(const MaterialApp(home: ShoppingListScreen()));
+
+final class const ShoppingListScreen({super.key}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => ShoppingListCubit(),
+    child: TandemScope<ShoppingListCubit>(
+      agent: Uri.parse('http://localhost:8000/agent'),
+      child: const _ShoppingListView(),
     ),
-  ),
-);
+  );
+}
+
+final class const _ShoppingListView() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final items = context.watch<ShoppingListCubit>().items;
+
+    return Scaffold(
+      body: Row(
+        children: [
+          Expanded(
+            child: ListView(
+              children: [for (final item in items) ListTile(title: Text(item))],
+            ),
+          ),
+          const SizedBox(width: 360, child: TandemChat()),
+        ],
+      ),
+    );
+  }
+}
 ```
 
 Run `dart run build_runner build` to generate `main.g.dart`, then start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
