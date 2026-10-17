@@ -3,8 +3,7 @@
 An order desk for an iPad: an agent fills in a B2B order from a pasted e-mail, together with the
 user, and places it once the user approves. The app is `lib/main.dart` and `lib/desk/`, with
 `OrderDeskCubit` as the screen's cubit. Its agent is [`agent/`](agent), a Google ADK agent in
-Python. `lib/order_cubit.dart` is the example of the package README, and the tests use
-`lib/shopping_list.dart`.
+Python. `lib/order_cubit.dart` is the example of the package README.
 
 ## Run the agent
 
