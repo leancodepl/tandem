@@ -1,0 +1,9 @@
+builders:
+  tandem:
+    import: package:tandem_generator/tandem_generator.dart
+    builder_factories: [tandemBuilder]
+    build_extensions: {.dart: [.tandem.g.part]}
+    auto_apply: dependents
+    build_to: cache
+    required_inputs: [.freezed.dart]
+    applies_builders: [source_gen:combining_builder]

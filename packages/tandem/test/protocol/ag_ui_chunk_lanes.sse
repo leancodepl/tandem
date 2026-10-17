@@ -1,0 +1,24 @@
+: Written by hand from the AG-UI specification, not recorded: chunk events of a parent and two subagents that interleave.
+data: {"type":"RUN_STARTED","threadId":"thread-C","runId":"run-C1"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"p1","delta":"X"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m1","subagentRunId":"s1","delta":"A"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m2","subagentRunId":"s2","delta":"B"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","subagentRunId":"s1","delta":"C"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","subagentRunId":"s2","delta":"D"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":"Y"}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"c1","toolCallName":"add","subagentRunId":"s1","delta":"{\"item\":"}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"c2","toolCallName":"remove","subagentRunId":"s2","delta":"{\"item\":"}
+
+data: {"type":"TOOL_CALL_CHUNK","subagentRunId":"s1","delta":"\"milk\"}"}
+
+data: {"type":"TOOL_CALL_CHUNK","subagentRunId":"s2","delta":"\"eggs\"}"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-C","runId":"run-C1"}

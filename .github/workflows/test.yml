@@ -3,7 +3,6 @@ name: test
 on:
   push:
     branches: [main]
-    tags-ignore: ['v*']
   pull_request:
 
 jobs:
@@ -29,22 +28,132 @@ jobs:
       - name: Download pub dependencies
         run: flutter pub get
 
+      # packages/tandem_generator is not a workspace member (see doc/design.md),
+      # so the pub get above does not cover it.
+      - name: Download pub dependencies of tandem_generator
+        run: dart pub get
+        working-directory: packages/tandem_generator
+
       # `flutter analyze` skips analyzer plugins, so the leancode_lint rules run
-      # only under `dart analyze`.
+      # only under `dart analyze`. Infos fail too: leancode_lint keeps the
+      # deprecation lints at info.
       - name: Run analyzer
-        run: dart analyze
+        run: dart analyze --fatal-infos
 
       - name: Check formatting
         run: dart format --set-exit-if-changed .
 
-      - name: Run tests
+      - name: Test tandem
         run: flutter test
+        working-directory: packages/tandem
 
-      - name: Dry run pub publish
+      - name: Test tandem_generator
+        run: dart test
+        working-directory: packages/tandem_generator
+
+      # An outdated .g.dart is not always caught at runtime, so the generated
+      # code of the example must be what the generator writes now.
+      - name: Generate the example code
+        run: dart run build_runner build
+        working-directory: example
+
+      - name: Check the generated code is up to date
+        run: git diff --exit-code
+
+      - name: Test example
+        run: flutter test
+        working-directory: example
+
+      - name: Dry run pub publish of tandem
         uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
         with:
+          path: packages/tandem
           dry-run: true
 
-      - name: Score package with pana
+      - name: Dry run pub publish of tandem_bloc
+        uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
+        with:
+          path: packages/tandem_bloc
+          dry-run: true
+
+      - name: Dry run pub publish of tandem_generator
+        uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
+        with:
+          path: packages/tandem_generator
+          dry-run: true
+
+      - name: Score tandem with pana
         uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
+        with:
+          path: packages/tandem
         continue-on-error: true
+
+      # pana drops the workspace and overrides and resolves tandem_bloc against
+      # pub.dev. Until the lowest tandem it accepts is on pub.dev, its score only
+      # says tandem is missing, so the score step waits for that tandem. Only a
+      # 404 skips it, and the request retries, so one failed answer from
+      # pub.dev does not decide it.
+      - name: Check whether the tandem of tandem_bloc is on pub.dev
+        id: tandem-on-pub
+        run: |
+          constraint="$(yq '.dependencies.tandem' packages/tandem_bloc/pubspec.yaml)"
+          lower_bound="${constraint#^}"
+          status="$(curl -sS --retry 3 --retry-all-errors --max-time 30 -o /dev/null -w '%{http_code}' "https://pub.dev/api/packages/tandem/versions/$lower_bound" || true)"
+          if [ "$status" = 404 ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=pana (tandem_bloc)::Not scored, tandem $lower_bound is not on pub.dev yet"
+            echo "## pana score for tandem_bloc: not scored, tandem $lower_bound is not on pub.dev yet" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Score tandem_bloc with pana
+        if: steps.tandem-on-pub.outputs.published == 'true'
+        uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
+        with:
+          path: packages/tandem_bloc
+        continue-on-error: true
+
+      - name: Score tandem_generator with pana
+        uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
+        with:
+          path: packages/tandem_generator
+        continue-on-error: true
+
+  agent:
+    name: Test and lint the example agent
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: example/agent
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The uv that wrote uv.lock, so that a new uv release does not change
+      # what `uv sync --locked` does.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: '0.12.23'
+          python-version: '3.14'
+          working-directory: example/agent
+
+      - name: Download Python dependencies
+        run: uv sync --locked
+
+      - name: Run ruff
+        run: uv run ruff check
+
+      - name: Check Python formatting
+        run: uv run ruff format --check
+
+      # The tests play the demo with the scripted model: no API key, no network.
+      - name: Test the agent
+        run: uv run pytest

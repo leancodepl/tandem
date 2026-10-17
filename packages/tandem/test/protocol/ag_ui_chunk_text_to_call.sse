@@ -1,0 +1,12 @@
+: Written by hand from the AG-UI specification, not recorded: a subagent opens a call, which closes its message, and a chunk without an id continues the only message left open.
+data: {"type":"RUN_STARTED","threadId":"thread-C","runId":"run-C1"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m1","subagentRunId":"s1","delta":"Looking up."}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"c1","toolCallName":"lookup","subagentRunId":"s1","delta":"{}"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m2","subagentRunId":"s2","delta":"Re"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":"sult"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-C","runId":"run-C1"}

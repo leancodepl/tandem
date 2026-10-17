@@ -9,3 +9,13 @@ updates:
     schedule:
       interval: weekly
     versioning-strategy: widen
+  # Not a workspace member, so the entry above does not see it.
+  - package-ecosystem: pub
+    directory: /packages/tandem_generator
+    groups:
+      all_dependencies:
+        patterns:
+          - "*"
+    schedule:
+      interval: weekly
+    versioning-strategy: widen

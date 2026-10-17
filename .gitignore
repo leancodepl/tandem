@@ -1,14 +1,8 @@
 # Miscellaneous
-*.class
 *.log
-*.pyc
 *.swp
 .DS_Store
-.atom/
-.buildlog/
 .history
-.svn/
-migrate_working_dir/
 
 # IntelliJ related
 *.iml
@@ -16,19 +10,21 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
 # FVM Version Cache
 .fvm/
 
 # Flutter/Dart/Pub related
-# Libraries should not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
-/pubspec.lock
+# Libraries do not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
+# The workspace root is not published, so its lock is committed.
+**/pubspec.lock
+!/pubspec.lock
 **/doc/api/
 .dart_tool/
 .flutter-plugins-dependencies
-/build/
-/coverage/
+build/
+coverage/
+
+# Secrets and Python (example agent)
+.env
+.venv/
+__pycache__/

@@ -1,0 +1,10 @@
+: Written by hand from the AG-UI specification, not recorded: an id-less chunk that two subagents could own.
+data: {"type":"RUN_STARTED","threadId":"thread-C","runId":"run-C1"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m1","subagentRunId":"s1","delta":"A"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","messageId":"m2","subagentRunId":"s2","delta":"B"}
+
+data: {"type":"TEXT_MESSAGE_CHUNK","delta":"C"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-C","runId":"run-C1"}

@@ -1,0 +1,21 @@
+name: tandem
+description: Makes an existing Flutter screen agent-aware over AG-UI. The agent sees what the screen shares and acts through listed methods; important actions wait for approval.
+version: 0.1.0
+repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem
+issue_tracker: https://github.com/leancodepl/tandem/issues
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  uuid: ^4.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

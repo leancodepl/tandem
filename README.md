@@ -1,18 +1,150 @@
 # tandem
 
+<img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/logo.png" alt="A robot and Dash riding a tandem bike" width="400">
+
 [![tandem pub.dev badge][pub-badge]][pub-badge-link]
 [![Test status][test-badge]][test-badge-link]
 [![License: Apache 2.0][license-badge]][license-badge-link]
 [![style: leancode_lint][leancode-lint-badge]][leancode-lint-badge-link]
 [![Pub Points][pub-points-badge]][pub-points-badge-link]
 
-TODO: Describe what tandem does.
+Let an AI agent work on an existing Flutter screen together with the user. The agent sees what you let it see, calls the same methods your buttons call, and anything that matters waits for the user's approval.
 
-## Installation
+Tandem speaks [AG-UI](https://docs.ag-ui.com), so the agent can run on any AG-UI backend.
 
-```sh
-flutter pub add tandem
+## Quick start
+
+Requires Dart 3.13 (Flutter 3.47) or newer.
+
+1. Add the packages:
+
+   ```sh
+   flutter pub add tandem_bloc
+   flutter pub add dev:build_runner dev:tandem_generator
+   ```
+
+2. List what the agent may see and call:
+
+   ```dart
+   part 'order_cubit.g.dart';
+
+   @TandemAgent()
+   class OrderCubit({required final Catalog catalog, required final Orders orders})
+       extends Cubit<OrderState>
+       with _$OrderCubit {
+     this : super(.new(draft: .empty));
+
+     @override
+     List<AgentCapability> get agentCapabilities => [
+       .sees(draft),
+       .calls(searchCatalog),
+       .calls(setQuantity),
+       if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
+     ];
+
+     /// The order as the user sees it on the screen.
+     OrderDraft get draft => state.draft;
+
+     /// Finds products by name or description.
+     Future<List<Product>> searchCatalog(String query) => catalog.search(query);
+
+     /// Sets how many pieces of [sku] the order has.
+     void setQuantity(String sku, int quantity) { ... }
+
+     /// Places the order exactly as it is on the screen.
+     Future<OrderId> placeOrder() async { ... }
+   }
+   ```
+
+   The agent gets exactly what is on the list. It reads the doc comments, and the parameter types become the schema. The list is read again before every turn, so it can depend on the state or on who the user is.
+
+3. Generate the code:
+
+   ```sh
+   dart run build_runner build
+   ```
+
+   Every class with `@TandemAgent()` gets a `_$Name` mixin, here `_$OrderCubit`. Each `.sees` must stand directly in the list after `get agentCapabilities =>`, not inside an `if`, a `for`, a `?:` or a spread, or the build fails.
+
+   In CI, run `dart run build_runner build && git diff --exit-code`. An outdated `.g.dart` is not always caught at runtime, for example when two parameters of the same type swap places.
+
+4. Wrap the screen:
+
+   ```dart
+   BlocProvider(
+     create: (_) => OrderCubit(catalog: catalog, orders: orders),
+     child: TandemScope<OrderCubit>(
+       agent: Uri.parse('http://localhost:8000/agent'),
+       child: const Row(
+         children: [
+           Expanded(child: OrderForm()),
+           SizedBox(width: 360, child: TandemChat()),
+         ],
+       ),
+     ),
+   )
+   ```
+
+The agent changes the screen through the same methods as your buttons, so the same validation runs for both. When the user edits something, the agent sees it on its next turn.
+
+> [!TIP]
+> Setting this up with a coding agent? `dart run skills@ get` installs Tandem's skill from your dependencies, and the agent follows these steps.
+
+## Approvals
+
+A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees when it asks. If that changes, even back to what it was, the card is invalidated for good and the agent has to ask again.
+
+Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing more from it.
+
+## The agent
+
+Any AG-UI endpoint works. The backend has to:
+
+- Put the AG-UI `context` into the model's prompt. ag-ui-adk does not, so its agent needs an instruction provider that adds it.
+- Accept `tools` on every run. Tandem always sends it, an empty list when no method is listed.
+- On the web, allow the app's origin with CORS.
+
+A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent.
+
+The [example](https://github.com/leancodepl/tandem/tree/main/example) is an order desk app with a Google ADK agent in Python. Its README says how to run both.
+
+## Testing
+
+`ScriptedAgent` plays a fixed script instead of a model, so widget tests run without network. `TandemScope.connected` takes it in place of the endpoint:
+
+```dart
+import 'package:tandem_bloc/testing.dart';
+
+final agent = ScriptedAgent([
+  (_) => [AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 15})],
+  (_) => [AgentStep.say('Done.')],
+]);
+
+await tester.pumpWidget(
+  MaterialApp(
+    home: BlocProvider(
+      create: (_) => OrderCubit(catalog: catalog, orders: orders),
+      child: TandemScope<OrderCubit>.connected(
+        connection: agent,
+        child: const Row(
+          children: [
+            Expanded(child: OrderForm()),
+            SizedBox(width: 360, child: TandemChat()),
+          ],
+        ),
+      ),
+    ),
+  ),
+);
 ```
+
+## Status
+
+Experimental. The API can change before 1.0. Not supported yet: AG-UI interrupts, Riverpod.
+
+## AI
+
+Tandem is written with AI assistance and reviewed by hand, except the AG-UI protocol layer ([`packages/tandem/lib/src/protocol`](https://github.com/leancodepl/tandem/tree/main/packages/tandem/lib/src/protocol)) and [`tandem_generator`](https://pub.dev/packages/tandem_generator), which have not had a full human review yet.
 
 ## 🛠️ Maintained by LeanCode
 

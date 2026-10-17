@@ -1,0 +1,10 @@
+: Written by hand from the AG-UI specification, not recorded: an id-less call chunk that two subagents could own.
+data: {"type":"RUN_STARTED","threadId":"thread-C","runId":"run-C1"}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"c1","toolCallName":"add","subagentRunId":"s1","delta":"{\"item\":"}
+
+data: {"type":"TOOL_CALL_CHUNK","toolCallId":"c2","toolCallName":"add","subagentRunId":"s2","delta":"{\"item\":"}
+
+data: {"type":"TOOL_CALL_CHUNK","delta":"\"x\"}"}
+
+data: {"type":"RUN_FINISHED","threadId":"thread-C","runId":"run-C1"}
