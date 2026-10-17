@@ -9,7 +9,8 @@ typedef AgentTurn = List<AgentStep> Function(Map<String, Object?> request);
 
 /// One thing a [ScriptedAgent] does in a run.
 sealed class const AgentStep() {
-  /// For the kinds of steps below.
+  /// Use [AgentStep.say], [AgentStep.callTool], [AgentStep.waitFor] or
+  /// [AgentStep.fail].
   this;
 
   /// Says [text] in one text message.

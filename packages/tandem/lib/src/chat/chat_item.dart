@@ -3,7 +3,7 @@ import 'dart:convert';
 /// One entry of the chat. Items are immutable: the session replaces an item
 /// to change it.
 sealed class const ChatItem() {
-  /// For the kinds of items below.
+  /// One of [UserMessage], [AgentMessage], [ChatNotice] or [ApprovalRequest].
   this;
 }
 

@@ -6,7 +6,8 @@ import 'package:tandem/src/errors.dart';
 /// One item of a surface's `agentCapabilities`: a value the agent sees, or a
 /// method it may call.
 sealed class const AgentCapability() {
-  /// For the two kinds of items below.
+  /// Use [AgentCapability.sees], [AgentCapability.calls] or
+  /// [AgentCapability.callsWithApproval].
   this;
 
   /// The agent sees [value] on every turn. Pass a getter of the surface, as

@@ -1,6 +1,6 @@
 /// One event of an AG-UI run, reduced to what the session reads.
 sealed class const AgentEvent() {
-  /// For the kinds of events below.
+  /// Read with [AgentEvent.fromJson].
   this;
 
   /// Reads one decoded event of the stream. Never throws: an event of any
