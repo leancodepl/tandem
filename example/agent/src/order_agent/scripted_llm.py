@@ -41,7 +41,9 @@ class _Turn:
         self.contents = request.contents
         self.tools = request.tools_dict
         instruction = request.config.system_instruction
-        self.instruction = instruction if isinstance(instruction, str) else ""
+        if not isinstance(instruction, str):
+            raise TypeError("The system instruction is not a string.")
+        self.instruction = instruction
 
     def decide(self) -> list[types.Part]:
         last = self.contents[-1]
@@ -135,7 +137,9 @@ class _Turn:
 
     def _order(self) -> dict:
         found = re.search(r"^- order: .*?: (\{.*\})$", self.instruction, re.MULTILINE)
-        return json.loads(found[1]) if found else {"lines": []}
+        if found is None:
+            raise ValueError("The screen has no order.")
+        return json.loads(found[1])
 
     def _answers(self, tool: str) -> list[dict]:
         return [
