@@ -101,7 +101,7 @@ final class ToolArgs(
   /// itself.
   final String path = '',
 }) {
-  /// The arguments in [json].
+  /// Tandem builds it from the agent's arguments for [AgentTool.invoke].
   this;
 
   /// The argument [name] as [T]: a `String`, `int`, `double`, `num`, `bool`
