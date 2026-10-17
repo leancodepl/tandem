@@ -49,7 +49,7 @@ void main() => runApp(
                   ),
                 ),
               ),
-              const TandemChat(),
+              const SizedBox(width: 360, child: TandemChat()),
             ],
           ),
         ),

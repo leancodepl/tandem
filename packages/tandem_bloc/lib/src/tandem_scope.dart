@@ -15,7 +15,12 @@ const _notStreamable =
 ///   create: (context) => OrderCubit(catalog: catalog, orders: orders),
 ///   child: TandemScope<OrderCubit>(
 ///     agent: Uri.parse('https://example.com/agent'),
-///     child: Row(children: [OrderForm(), TandemChat()]),
+///     child: Row(
+///       children: [
+///         Expanded(child: OrderForm()),
+///         SizedBox(width: 360, child: TandemChat()),
+///       ],
+///     ),
 ///   ),
 /// )
 /// ```
