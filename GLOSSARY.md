@@ -6,7 +6,7 @@ Tandem makes an existing Flutter screen agent-aware: an agent and the user work 
 
 **Agent list**:
 The `agentCapabilities` getter of a cubit with `@TandemAgent()`: what the agent sees and which of the cubit's methods it may call. It is read again before every run and before every call.
-_Avoid_: shared state, state host
+_Avoid_: shared state
 
 **Capability**:
 One item of the agent list: `.sees`, `.calls` or `.callsWithApproval`.
@@ -22,7 +22,7 @@ _Avoid_: request, call
 
 **Tool**:
 A method of the cubit that the agent may call, listed with `.calls` or `.callsWithApproval`. It runs in the app, and `onAgentCall` reports it afterwards.
-_Avoid_: client tool, action, command, agent marks
+_Avoid_: client tool, action, command
 
 **Approval request**:
 The agent's call of a `.callsWithApproval` method, shown as a card with its arguments frozen. The method runs only after the user approves it.
