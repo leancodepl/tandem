@@ -1,8 +1,3 @@
-/// The percent off [sku] for a customer on [priceList] whose order has
-/// [quantities] pieces by sku.
-///
-/// On the Acme list monitors are 12 % off, and 17 % with 15 or more monitors
-/// of any model in the order.
 int discountPercent(
   String? priceList,
   String sku,

@@ -27,7 +27,6 @@ final class const OrderForm({super.key}) extends StatelessWidget {
         children: [
           if (cubit.placed case final placed?) _PlacedBanner(placed),
           if (order.hasCustomerOrDelivery)
-            // Side by side, so the whole order fits an iPad screen.
             IntrinsicHeight(
               child: Row(
                 spacing: 16,
@@ -246,7 +245,6 @@ final class const _Columns({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
-    // A price like 15 550.05 PLN must fit its column.
     children: [
       Expanded(flex: 7, child: product),
       Expanded(flex: 4, child: quantity),

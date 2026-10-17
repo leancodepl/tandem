@@ -11,11 +11,8 @@ const _yellow = Color(0xFFF0FD06);
 
 const success = Color(0xFF80C340);
 
-/// Cards have rounded corners; blocks, such as buttons, are sharp.
 const cardCorners = BorderRadius.all(.circular(4));
 
-/// The LeanCode dark look: yellow only for emphasis, such as the approve
-/// button.
 final deskTheme = ThemeData(
   colorScheme: const .dark(
     primary: _yellow,
@@ -29,7 +26,6 @@ final deskTheme = ThemeData(
     outline: _hairline,
     outlineVariant: _hairline,
   ),
-  // System fonts: the LeanCode fonts' license forbids sharing them in a repo.
   textTheme: const TextTheme(
     displaySmall: TextStyle(fontWeight: .w700),
     titleLarge: TextStyle(fontWeight: .w700),

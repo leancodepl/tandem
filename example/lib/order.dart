@@ -3,7 +3,6 @@ class OrderState({required final OrderDraft draft});
 class const OrderDraft({required final List<OrderLine> lines}) {
   static const empty = OrderDraft(lines: []);
 
-  /// The draft with [quantity] pieces of [sku]; none removes the line.
   OrderDraft withQuantity(String sku, int quantity) => .new(
     lines: [
       for (final line in lines)

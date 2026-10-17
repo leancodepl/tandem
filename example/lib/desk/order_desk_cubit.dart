@@ -49,11 +49,11 @@ class OrderDeskCubit({
 
   /// Sets how many pieces of [sku] the order has; 0 removes the line.
   void setQuantity(String sku, int quantity) {
-    catalog.bySku(sku); // throws for an unknown sku
+    final product = catalog.bySku(sku);
     if (quantity < 0) {
       throw ArgumentError.value(quantity, 'quantity', 'must not be negative');
     }
-    final quantities = {...state.quantities, sku: quantity}
+    final quantities = {...state.quantities, product.sku: quantity}
       ..removeWhere((_, pieces) => pieces == 0);
     emit(state.copyWith(quantities: quantities));
   }

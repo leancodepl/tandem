@@ -58,7 +58,6 @@ void main() {
     expect(lineOf(_monitor).discount, '17 %');
     expect(cubit.order.total, '16 710.05 PLN');
 
-    // The tier counts the monitors of every model together.
     cubit
       ..setQuantity(_monitor, 10)
       ..setQuantity(_otherMonitor, 5);
