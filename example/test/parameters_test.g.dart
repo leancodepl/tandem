@@ -9,15 +9,15 @@ part of 'parameters_test.dart';
 mixin _$Shelf implements AgentSurface {
   @override
   AgentSchema get agentSchema {
-    final cubit = this as Shelf;
+    final surface = this as Shelf;
     return AgentSchema(
       sees: const [],
       calls: [
         AgentTool(
-          cubit.stock,
+          surface.stock,
           name: 'stock',
           description: 'Puts [skus] on the shelf.',
-          parameters: {
+          parameters: const {
             'type': 'object',
             'properties': {
               'skus': {
@@ -38,12 +38,14 @@ mixin _$Shelf implements AgentSurface {
             'required': ['skus'],
           },
           invoke: (args) {
-            cubit.stock(
-              args.readList('skus'),
+            surface.stock(
+              [for (final item in args.readList<String>('skus')) .new(item)],
               args.read('size', oneOf: [.s, .m, .l]),
-              count: args.read('count') ?? 1,
-              fit: args.read('fit', oneOf: [.s, .m, .l]) ?? .m,
-              note: args.read('note'),
+              count: args.json.containsKey('count') ? args.read('count') : 1,
+              fit: args.json.containsKey('fit')
+                  ? args.read('fit', oneOf: [.s, .m, .l])
+                  : .m,
+              note: args.json.containsKey('note') ? args.read('note') : 'new',
             );
             return null;
           },
@@ -56,11 +58,11 @@ mixin _$Shelf implements AgentSurface {
 mixin _$Dispatch implements AgentSurface {
   @override
   AgentSchema get agentSchema {
-    final cubit = this as Dispatch;
+    final surface = this as Dispatch;
     return AgentSchema(
       sees: [
         AgentView.of(
-          () => cubit.lastBooked,
+          () => surface.lastBooked,
           'last_booked',
           'The delivery booked last, if any.',
           (lastBooked) => switch (lastBooked) {
@@ -79,11 +81,11 @@ mixin _$Dispatch implements AgentSurface {
       ],
       calls: [
         AgentTool(
-          cubit.book,
+          surface.book,
           name: 'book',
           description:
               'Books a courier for [lines] and returns the delivery as booked.',
-          parameters: {
+          parameters: const {
             'type': 'object',
             'properties': {
               'lines': {
@@ -138,7 +140,7 @@ mixin _$Dispatch implements AgentSurface {
             'required': ['lines', 'delivery'],
           },
           invoke: (args) async {
-            final result = await cubit.book(
+            final result = await surface.book(
               args.readObjects(
                 'lines',
                 (item) => .new(
@@ -157,9 +159,9 @@ mixin _$Dispatch implements AgentSurface {
                     ),
                   ),
                   day: delivery.read('day'),
-                  slot:
-                      delivery.read('slot', oneOf: [.morning, .afternoon]) ??
-                      .morning,
+                  slot: delivery.json.containsKey('slot')
+                      ? delivery.read('slot', oneOf: [.morning, .afternoon])
+                      : .morning,
                   note: delivery.read('note'),
                 ),
               ),

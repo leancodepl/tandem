@@ -14,6 +14,8 @@ enum Size() {
   l,
 }
 
+extension type const Sku(String value);
+
 class Shelf() with _$Shelf {
   final stocked = <String>[];
 
@@ -22,11 +24,11 @@ class Shelf() with _$Shelf {
 
   /// Puts [skus] on the shelf.
   void stock(
-    List<String> skus,
+    List<Sku> skus,
     Size? size, {
     int count = 1,
     Size fit = .m,
-    String? note,
+    String? note = 'new',
   }) => stocked.add('$skus $size $count $fit $note');
 }
 
@@ -55,7 +57,7 @@ const _delivery = {
 };
 
 void main() {
-  test('lists, enums, nullable and default parameters', () async {
+  test('lists, enums, extension types, nullable and defaults', () async {
     final shelf = Shelf();
     final listing = AgentListing.of(shelf);
 
@@ -84,7 +86,28 @@ void main() {
       'skus': ['A', 'B'],
       'fit': 'l',
     });
-    expect(shelf.stocked, ['[A, B] null 1 Size.l null']);
+    await listing.call('stock', {
+      'skus': ['C'],
+      'note': null,
+    });
+    expect(shelf.stocked, [
+      '[A, B] null 1 Size.l new',
+      '[C] null 1 Size.m null',
+    ]);
+
+    await expectLater(
+      listing.call('stock', {
+        'skus': ['A'],
+        'count': null,
+      }),
+      throwsA(
+        isA<ToolCallRefused>().having(
+          (error) => error.message,
+          'message',
+          'count: missing, expected int',
+        ),
+      ),
+    );
 
     await expectLater(
       listing.call('stock', {
@@ -229,10 +252,28 @@ void main() {
     );
     await expectLater(
       listing.call('book', {
+        'lines': [
+          {'sku': 'VM-27Q', 'quantity': 1e30},
+        ],
+        'delivery': _delivery,
+      }),
+      message('lines[0].quantity: expected int, got 1e+30'),
+    );
+    await expectLater(
+      listing.call('book', {
         'lines': <Object?>[],
         'delivery': {..._delivery, 'day': '2026-02-30'},
       }),
       message('delivery.day: expected an ISO 8601 date, got "2026-02-30"'),
+    );
+    await expectLater(
+      listing.call('book', {
+        'lines': <Object?>[],
+        'delivery': {..._delivery, 'day': '2026-10-23T10:20:99'},
+      }),
+      message(
+        'delivery.day: expected an ISO 8601 date, got "2026-10-23T10:20:99"',
+      ),
     );
     expect(dispatch.booked, isEmpty);
   });

@@ -167,7 +167,10 @@ final class ToolArgs(
     // JSON does not tell 15 from 15.0, and models send either.
     return switch (value) {
       T() => value,
-      double() when value == value.truncateToDouble() && 0 is T =>
+      double()
+          when value == value.truncateToDouble() &&
+              value.abs() <= _maxExactInteger &&
+              0 is T =>
         value.toInt() as T,
       int() when 0.5 is T => value.toDouble() as T,
       String() when DateTime(0) is T => switch (_date(value)) {
@@ -182,8 +185,13 @@ final class ToolArgs(
     };
   }
 
+  /// 2^53 - 1. Up to it a double holds every integer exactly. Beyond it a
+  /// whole double may already differ from the number the agent wrote, and
+  /// `toInt` clamps one that does not fit an `int`.
+  static const _maxExactInteger = 9007199254740991;
+
   static final _isoDate = RegExp(
-    r'^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?',
+    r'^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?',
   );
 
   /// [text] as a date, or null when it is not ISO 8601 or names a day or
@@ -195,15 +203,16 @@ final class ToolArgs(
     if (match == null || date == null) {
       return null;
     }
-    final [year, month, day, hour, minute] = [
+    final [year, month, day, hour, minute, second] = [
       for (var group = 1; group <= match.groupCount; group++)
         int.parse(match[group] ?? '0'),
     ];
-    final real = DateTime.utc(year, month, day, hour, minute);
+    final real = DateTime.utc(year, month, day, hour, minute, second);
     return real.month == month &&
             real.day == day &&
             real.hour == hour &&
-            real.minute == minute
+            real.minute == minute &&
+            real.second == second
         ? date
         : null;
   }

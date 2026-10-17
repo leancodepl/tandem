@@ -43,20 +43,26 @@ class const AgentGenerator() extends Generator {
     GetterElement agent,
     BuildStep buildStep,
   ) async {
-    final items = _Items();
+    final name = type.displayName;
     final getter = await buildStep.resolver.astNodeFor(
       agent.firstFragment,
       resolve: true,
     );
-    getter!.accept(items);
-    final name = type.name!;
+    if (getter == null) {
+      throw InvalidGenerationSource(
+        'Tandem cannot find the source of $name.agent.',
+        element: agent,
+      );
+    }
+    final items = _Items();
+    getter.accept(items);
     final sees = [for (final item in items.sees) _view(item, name)];
     final methods = {for (final item in items.calls) _method(item, name)};
     return '''
 mixin _\$$name implements AgentSurface {
   @override
   AgentSchema get agentSchema {
-    ${sees.isEmpty && methods.isEmpty ? '' : 'final cubit = this as $name;'}
+    ${sees.isEmpty && methods.isEmpty ? '' : 'final surface = this as $name;'}
     return AgentSchema(
       sees: ${_list(sees)},
       calls: ${_list(methods.map(_tool))},
@@ -66,9 +72,16 @@ mixin _\$$name implements AgentSurface {
   }
 
   static String _view(Expression item, String type) {
-    // The list after `get agent =>`, not one inside it.
-    final list = item.parent!.parent!.parent;
-    if (list is! ListLiteral || list.parent is! ExpressionFunctionBody) {
+    // In `get agent => [.sees(item)]`, item is in the argument list of an
+    // invocation, which is an item of the list after =>, not of one inside it.
+    final isAgentListItem = switch (item.parent) {
+      ArgumentList(
+        parent: AstNode(parent: ListLiteral(parent: ExpressionFunctionBody())),
+      ) =>
+        true,
+      _ => false,
+    };
+    if (!isAgentListItem) {
       throw _error(
         item,
         '.sees must be an item of the list after get agent =>, not inside '
@@ -85,10 +98,11 @@ mixin _\$$name implements AgentSurface {
         'gets its name and doc comment',
       );
     }
-    final name = getter.name!;
+    final name = getter.displayName;
     final write = AgentTypes(getter).write(getter.returnType, name, name);
-    return 'AgentView.of(() => cubit.$name, ${literal(_snakeCase(name))}, '
-        '${literal(_doc(getter))}, ($name) => $write,),';
+    return 'AgentView.of(() => surface.$name, '
+        '${dartJsonLiteral(_snakeCase(name))}, '
+        '${dartJsonLiteral(_doc(getter))}, ($name) => $write,),';
   }
 
   static MethodElement _method(Expression item, String type) {
@@ -106,17 +120,17 @@ mixin _\$$name implements AgentSurface {
   }
 
   static String _tool(MethodElement method) {
-    final name = method.name!;
+    final name = method.displayName;
     final types = AgentTypes(method);
     final parameters = method.formalParameters;
     final schema = types.object(parameters, '');
-    final call = 'cubit.$name(${types.arguments(parameters, 'args')})';
+    final call = 'surface.$name(${types.arguments(parameters, 'args')})';
     return '''
 AgentTool(
-  cubit.$name,
-  name: ${literal(_snakeCase(name))},
-  description: ${literal(_doc(method))},
-  parameters: ${literal(schema)},
+  surface.$name,
+  name: ${dartJsonLiteral(_snakeCase(name))},
+  description: ${dartJsonLiteral(_doc(method))},
+  parameters: const ${dartJsonLiteral(schema)},
   invoke: ${_invoke(types, method, call)},
 ),''';
   }
@@ -136,7 +150,11 @@ AgentTool(
     if (result is VoidType) {
       return '(args) $async{ $wait$call; return null; }';
     }
-    final write = types.write(result, 'result', 'the result of ${method.name}');
+    final write = types.write(
+      result,
+      'result',
+      'the result of ${method.displayName}',
+    );
     return write == 'result'
         ? '(args) => $call'
         : '(args) $async{ final result = $wait$call; return $write; }';
@@ -148,19 +166,14 @@ AgentTool(
   /// The doc comment of [element] without the slashes. Throws when there is
   /// none: it is all the agent knows about the getter or method.
   static String _doc(Element element) {
-    final comment = switch (element) {
-      GetterElement(isOriginVariable: true, :final variable) =>
-        variable.documentationComment,
-      _ => element.documentationComment,
-    };
-    if (comment == null) {
-      throw InvalidGenerationSource(
-        'Add a doc comment to ${element.displayName}: the agent reads it to '
-        'know what it is.',
-        element: element,
-      );
+    if (documentationOf(element) case final doc?) {
+      return doc;
     }
-    return docText(comment)!;
+    throw InvalidGenerationSource(
+      'Add a doc comment to ${element.displayName}: the agent reads it to '
+      'know what it is.',
+      element: element,
+    );
   }
 
   static String _snakeCase(String name) => name

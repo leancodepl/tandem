@@ -70,14 +70,61 @@ class OrderCubit() {
       [contains('The agent cannot see Object at the result of placeOrder')],
     );
   });
+
+  test(
+    'an extension type with a named constructor parameter fails the build',
+    () async {
+      expect(
+        await _buildErrors('''
+extension type Coupon._(String code) {
+  Coupon({required String code}) : this._(code);
 }
 
-/// The errors of building [source], a library that imports `tandem`.
-Future<List<String>> _buildErrors(String source) async {
-  final result = await testBuilder(
-    tandemBuilder(BuilderOptions.empty),
-    {
-      'tandem|lib/tandem.dart': '''
+class CartCubit() {
+  List<AgentCapability> get agent => [.calls(redeem)];
+
+  /// Redeems [coupon].
+  void redeem(Coupon coupon) {}
+}
+'''),
+        [
+          contains(
+            'coupon: Tandem builds Coupon as Coupon(value), so its unnamed constructor must be public and take the value as its only parameter, a positional one',
+          ),
+        ],
+      );
+    },
+  );
+
+  test('a default with control characters becomes a valid literal', () async {
+    final result = await _build(r'''
+class NoteCubit() {
+  List<AgentCapability> get agent => [.calls(write)];
+
+  /// Writes [text] and a line break.
+  void write(String text, {String lineBreak = '\r\n'}) {}
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      contains(r": '\r\n'"),
+    );
+  });
+}
+
+/// The errors of building [source].
+Future<List<String>> _buildErrors(String source) async =>
+    (await _build(source)).errors.toList();
+
+/// Builds [source], a library that imports `tandem`.
+Future<TestBuilderResult> _build(String source) => testBuilder(
+  tandemBuilder(BuilderOptions.empty),
+  {
+    'tandem|lib/tandem.dart': '''
 sealed class AgentCapability {
   factory AgentCapability.sees(Object? value) => throw UnimplementedError();
   factory AgentCapability.calls(Function method) => throw UnimplementedError();
@@ -85,10 +132,9 @@ sealed class AgentCapability {
       throw UnimplementedError();
 }
 ''',
-      'app|lib/screen.dart': "import 'package:tandem/tandem.dart';\n\n$source",
-    },
-    rootPackage: 'app',
-    generateFor: {'app|lib/screen.dart'},
-  );
-  return result.errors.toList();
-}
+    'app|lib/screen.dart': "import 'package:tandem/tandem.dart';\n\n$source",
+  },
+  rootPackage: 'app',
+  generateFor: {'app|lib/screen.dart'},
+  flattenOutput: true,
+);

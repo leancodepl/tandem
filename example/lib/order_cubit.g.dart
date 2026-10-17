@@ -9,11 +9,11 @@ part of 'order_cubit.dart';
 mixin _$OrderCubit implements AgentSurface {
   @override
   AgentSchema get agentSchema {
-    final cubit = this as OrderCubit;
+    final surface = this as OrderCubit;
     return AgentSchema(
       sees: [
         AgentView.of(
-          () => cubit.draft,
+          () => surface.draft,
           'draft',
           'The order as the user sees it on the screen.',
           (draft) => {
@@ -26,10 +26,10 @@ mixin _$OrderCubit implements AgentSurface {
       ],
       calls: [
         AgentTool(
-          cubit.searchCatalog,
+          surface.searchCatalog,
           name: 'search_catalog',
           description: 'Finds products by name or description.',
-          parameters: {
+          parameters: const {
             'type': 'object',
             'properties': {
               'query': {'type': 'string'},
@@ -37,7 +37,7 @@ mixin _$OrderCubit implements AgentSurface {
             'required': ['query'],
           },
           invoke: (args) async {
-            final result = await cubit.searchCatalog(args.read('query'));
+            final result = await surface.searchCatalog(args.read('query'));
             return [
               for (final item in result)
                 {
@@ -49,10 +49,10 @@ mixin _$OrderCubit implements AgentSurface {
           },
         ),
         AgentTool(
-          cubit.setQuantity,
+          surface.setQuantity,
           name: 'set_quantity',
           description: 'Sets how many pieces of [sku] the order has.',
-          parameters: {
+          parameters: const {
             'type': 'object',
             'properties': {
               'sku': {'type': 'string'},
@@ -61,16 +61,16 @@ mixin _$OrderCubit implements AgentSurface {
             'required': ['sku', 'quantity'],
           },
           invoke: (args) {
-            cubit.setQuantity(args.read('sku'), args.read('quantity'));
+            surface.setQuantity(args.read('sku'), args.read('quantity'));
             return null;
           },
         ),
         AgentTool(
-          cubit.placeOrder,
+          surface.placeOrder,
           name: 'place_order',
           description: 'Places the order exactly as it is on the screen.',
-          parameters: {'type': 'object', 'properties': {}},
-          invoke: (args) => cubit.placeOrder(),
+          parameters: const {'type': 'object', 'properties': {}},
+          invoke: (args) => surface.placeOrder(),
         ),
       ],
     );

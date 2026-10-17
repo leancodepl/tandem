@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:source_gen/source_gen.dart';
@@ -6,7 +8,9 @@ import 'package:source_gen/source_gen.dart';
 ///
 /// The agent sends and sees `String`, `int`, `double`, `num`, `bool`,
 /// `DateTime` as ISO 8601, enums by name, extension types over the first five,
-/// lists, and plain classes. A plain class is a non-generic class outside the
+/// lists, and plain classes. Tandem builds an extension type as `Code(value)`,
+/// so its unnamed constructor must be public and take only the value, as a
+/// positional parameter. A plain class is a non-generic class outside the
 /// SDK whose public unnamed constructor takes only parameters named like its
 /// getters, all of them named but at most one. Tandem builds it with that
 /// constructor and writes it as an object of those getters, so it needs
@@ -17,12 +21,13 @@ import 'package:source_gen/source_gen.dart';
 /// imports of the libraries that declare them.
 final class AgentTypes(
   /// The method or getter, where build errors point.
-  final Element _element,
+  final ExecutableElement _element,
 ) {
   /// The types around [_element].
   this;
 
-  final _open = <ClassElement>{};
+  /// The plain classes being written now, to catch one that contains itself.
+  final _visitingClasses = <ClassElement>{};
 
   /// The JSON Schema of an object with a property for each of [parameters],
   /// which the agent sends at [prefix] and the parameter's name. [owner] is
@@ -35,12 +40,12 @@ final class AgentTypes(
     final properties = <String, Object?>{};
     final required = <String>[];
     for (final parameter in parameters) {
-      final name = parameter.name!;
+      final name = parameter.displayName;
       final type = parameter.type;
       if (type.nullabilitySuffix == .none &&
           !_origin(parameter).hasDefaultValue) {
         required.add(name);
-      } else if (_item(type) != null) {
+      } else if (_listItemType(type) != null) {
         throw _error(
           '$prefix$name is a list, so the agent must send it: drop the ? and '
           'the default value',
@@ -53,7 +58,7 @@ final class AgentTypes(
     }
     return {
       'type': 'object',
-      'description': ?docText(owner?.element.documentationComment),
+      'description': ?documentationOf(owner?.element),
       'properties': properties,
       if (required.isNotEmpty) 'required': required,
     };
@@ -61,17 +66,20 @@ final class AgentTypes(
 
   /// The JSON Schema of [type], which the agent sends at [path].
   Map<String, Object?> schema(DartType type, String path) {
-    if (_scalar(type) case final scalar?) {
-      if (_isExtension(type) && !_hasPublicConstructor(type)) {
+    if (_scalarSchema(type) case final scalar?) {
+      if (type case InterfaceType(element: final ExtensionTypeElement extension)
+          when !_takesValue(extension.unnamedConstructor)) {
+        final name = extension.displayName;
         throw _error(
-          '$path: Tandem builds ${type.getDisplayString()} with its unnamed '
-          'constructor, and it has no public one',
+          '$path: Tandem builds $name as $name(value), so its unnamed '
+          'constructor must be public and take the value as its only '
+          'parameter, a positional one',
         );
       }
       return scalar;
     }
-    if (_item(type) case final item?) {
-      if (item.nullabilitySuffix != .none || _item(item) != null) {
+    if (_listItemType(type) case final item?) {
+      if (item.nullabilitySuffix != .none || _listItemType(item) != null) {
         throw _error(
           '$path: the agent sends lists of items that are neither null nor '
           'lists',
@@ -96,7 +104,7 @@ final class AgentTypes(
   String arguments(List<FormalParameterElement> parameters, String args) => [
     for (final parameter in parameters)
       if (parameter.isNamed)
-        '${parameter.name}: ${_read(parameter, args)}'
+        '${parameter.displayName}: ${_read(parameter, args)}'
       else
         _read(parameter, args),
   ].join(', ');
@@ -105,7 +113,7 @@ final class AgentTypes(
   /// at [path], as JSON.
   String write(DartType type, String value, String path) {
     final nullable = type.nullabilitySuffix != .none;
-    if (_scalar(type) != null) {
+    if (_scalarSchema(type) != null) {
       final dot = nullable ? '?.' : '.';
       return switch (type) {
         _ when _isDateTime(type) => '$value${dot}toIso8601String()',
@@ -115,13 +123,13 @@ final class AgentTypes(
     }
     if (nullable) {
       final name = value.split('.').last;
-      final nonNull = _element.library!.typeSystem.promoteToNonNull(type);
+      final nonNull = _element.library.typeSystem.promoteToNonNull(type);
       final written = write(nonNull, name, path);
       return written == name
           ? value
           : 'switch ($value) { null => null, final $name => $written }';
     }
-    if (_item(type) case final item?) {
+    if (_listItemType(type) case final item?) {
       final written = write(item, 'item', '$path[]');
       return written == 'item'
           ? value
@@ -129,13 +137,13 @@ final class AgentTypes(
     }
     return _plain(type, 'see', path, (_, fields) {
       String entry(_Field field) {
-        final name = field.parameter.name!;
+        final name = field.parameter.displayName;
         final written = write(
           field.getter.returnType,
           '$value.$name',
           '$path.$name',
         );
-        return '${literal(name)}: $written';
+        return '${dartJsonLiteral(name)}: $written';
       }
 
       return '{${fields.map(entry).join(', ')}}';
@@ -143,35 +151,41 @@ final class AgentTypes(
   }
 
   String _read(FormalParameterElement parameter, String args) {
-    final name = parameter.name!;
-    final key = literal(name);
+    final name = parameter.displayName;
+    final key = dartJsonLiteral(name);
     final type = parameter.type;
-    final code = switch (_item(type)) {
+    final code = switch (_listItemType(type)) {
       final item? when _isExtension(item) =>
         '[for (final item in $args.readList<${_erasure(item)}>($key)) '
             '.new(item)]',
-      final item? when _scalar(item) == null =>
+      final item? when _scalarSchema(item) == null =>
         '$args.readObjects($key, (item) => .new(${_build(item, 'item')}))',
       final item? => '$args.readList($key${_oneOf(item)})',
       null when _isExtension(type) && type.nullabilitySuffix == .none =>
         '.new($args.read($key))',
       null when _isExtension(type) =>
-        'switch ($args.read<${_erasure(type)}?>($key)) '
+        'switch ($args.read<${_erasure(type)}>($key)) '
             '{ null => null, final $name => .new($name) }',
-      null when _scalar(type) == null =>
+      null when _scalarSchema(type) == null =>
         '$args.readObject($key, ($name) => .new(${_build(type, name)}))',
       null => '$args.read($key${_oneOf(type)})',
     };
+    // An explicit null is a value: the default is only for a missing key.
     return switch (_default(parameter)) {
-      final fallback? => '$code ?? $fallback',
+      final fallback? => '$args.json.containsKey($key) ? $code : $fallback',
       null => code,
     };
   }
 
-  String _build(DartType type, String args) {
-    final element = (type as InterfaceType).element as ClassElement;
-    return arguments(element.unnamedConstructor!.formalParameters, args);
-  }
+  /// The constructor arguments of [type], a plain class, read from the
+  /// `ToolArgs` expression [args].
+  String _build(DartType type, String args) => _plain(
+    type,
+    'send',
+    args,
+    (_, fields) =>
+        arguments([for (final field in fields) field.parameter], args),
+  );
 
   /// Runs [body] with the constructor parameters of [type], which must be a
   /// plain class, and the getters that read them back.
@@ -183,7 +197,7 @@ final class AgentTypes(
   ) {
     if (type case InterfaceType(:final ClassElement element, typeArguments: [])
         when element.isPublic && !element.library.isInSdk) {
-      final name = element.name;
+      final name = element.displayName;
       final constructor = element.unnamedConstructor;
       if (constructor == null ||
           !constructor.isPublic ||
@@ -211,7 +225,7 @@ final class AgentTypes(
           (
             parameter: parameter,
             getter: switch (type.lookUpGetter(
-              parameter.name!,
+              parameter.displayName,
               element.library,
             )) {
               final getter? when !getter.isStatic && parameter.isPublic =>
@@ -219,18 +233,18 @@ final class AgentTypes(
               _ => throw _error(
                 '$path: Tandem writes $name through the getters named like '
                 'its constructor parameters, and it has no getter '
-                '${parameter.name}',
+                '${parameter.displayName}',
               ),
             },
           ),
       ];
-      if (!_open.add(element)) {
+      if (!_visitingClasses.add(element)) {
         throw _error('$path: $name contains itself');
       }
       try {
         return body(type, fields);
       } finally {
-        _open.remove(element);
+        _visitingClasses.remove(element);
       }
     }
     throw _cannot(verb, type, path);
@@ -254,7 +268,7 @@ final class AgentTypes(
         return '$number';
       }
       if (value.toStringValue() case final text?) {
-        return literal(text);
+        return dartJsonLiteral(text);
       }
       if (value.type case InterfaceType(
         element: EnumElement(:final constants),
@@ -266,7 +280,7 @@ final class AgentTypes(
     }
     throw _error(
       'Tandem copies only literals, enum values and null as default values. '
-      'Make ${parameter.name} required or nullable instead',
+      'Make ${parameter.displayName} required or nullable instead',
     );
   }
 
@@ -287,17 +301,13 @@ final class AgentTypes(
 
   /// The doc comment of the getter of [owner] behind [parameter], or of the
   /// parameter itself.
-  static String? _doc(FormalParameterElement parameter, InterfaceType? owner) {
-    final getter = owner?.lookUpGetter(parameter.name!, owner.element.library);
-    final comment = switch (getter) {
-      GetterElement(isOriginVariable: true, :final variable) =>
-        variable.documentationComment,
-      _ => getter?.documentationComment,
-    };
-    return docText(comment) ?? docText(parameter.documentationComment);
-  }
+  static String? _doc(FormalParameterElement parameter, InterfaceType? owner) =>
+      documentationOf(
+        owner?.lookUpGetter(parameter.displayName, owner.element.library),
+      ) ??
+      documentationOf(parameter);
 
-  static Map<String, Object?>? _scalar(DartType type) => switch (type) {
+  static Map<String, Object?>? _scalarSchema(DartType type) => switch (type) {
     _ when type.isDartCoreString => {'type': 'string'},
     _ when type.isDartCoreInt => {'type': 'integer'},
     _ when type.isDartCoreDouble || type.isDartCoreNum => {'type': 'number'},
@@ -314,7 +324,7 @@ final class AgentTypes(
               erasure.isDartCoreDouble ||
               erasure.isDartCoreNum ||
               erasure.isDartCoreBool =>
-        _scalar(erasure),
+        _scalarSchema(erasure),
       _ => null,
     },
     _ => null,
@@ -323,19 +333,28 @@ final class AgentTypes(
   static bool _isExtension(DartType type) =>
       type is InterfaceType && type.element is ExtensionTypeElement;
 
-  static bool _hasPublicConstructor(DartType type) =>
-      (type as InterfaceType).element.unnamedConstructor?.isPublic ?? false;
+  /// Whether [constructor] is public and takes one positional parameter and
+  /// nothing else, so that Tandem can pass it an extension type's value.
+  static bool _takesValue(ConstructorElement? constructor) =>
+      switch (constructor) {
+        ConstructorElement(
+          isPublic: true,
+          formalParameters: [FormalParameterElement(isPositional: true)],
+        ) =>
+          true,
+        _ => false,
+      };
 
-  /// The core type behind the extension type [type], as code.
+  /// The core type behind the extension type [type], `?` included, as code.
   static String _erasure(DartType type) =>
-      (type as InterfaceType).extensionTypeErasure.element!.name!;
+      type.extensionTypeErasure.getDisplayString();
 
   static bool _isDateTime(DartType type) =>
       type is InterfaceType &&
       type.element.name == 'DateTime' &&
       type.element.library.isDartCore;
 
-  static DartType? _item(DartType type) => switch (type) {
+  static DartType? _listItemType(DartType type) => switch (type) {
     InterfaceType(isDartCoreList: true, typeArguments: [final item]) => item,
     _ => null,
   };
@@ -361,29 +380,35 @@ final class AgentTypes(
 /// back.
 typedef _Field = ({FormalParameterElement parameter, GetterElement getter});
 
-/// [comment] without the slashes, or null for none.
-String? docText(String? comment) => comment
-    ?.split('\n')
-    .map((line) => line.replaceFirst(RegExp(r'^\s*/// ?'), ''))
-    .join('\n')
-    .trim();
+/// The doc comment of [element] without the slashes, or null for none. The
+/// getter of a field has the field's comment.
+String? documentationOf(Element? element) {
+  final comment = switch (element) {
+    GetterElement(isOriginVariable: true, :final variable) =>
+      variable.documentationComment,
+    _ => element?.documentationComment,
+  };
+  return comment
+      ?.split('\n')
+      .map((line) => line.replaceFirst(RegExp(r'^\s*/// ?'), ''))
+      .join('\n')
+      .trim();
+}
 
-/// [value], a string or a JSON structure of strings, as Dart code.
-String literal(Object? value) => switch (value) {
-  String() => _string(value),
-  List<Object?>() => '[${value.map(literal).join(', ')}]',
-  Map<String, Object?>() =>
-    '{${[for (final MapEntry(:key, :value) in value.entries) '${literal(key)}: ${literal(value)}'].join(', ')}}',
-  _ => '$value',
-};
+/// [value], a JSON value, as Dart code. `jsonEncode` escapes the strings,
+/// which then take the quotes the lints ask for: single, or double when that
+/// saves escaping a `'`.
+String dartJsonLiteral(Object? value) =>
+    jsonEncode(value)
+        .replaceAllMapped(_jsonString, (match) => _dartString(match[1] ?? ''));
 
-/// [text] as a Dart string literal, in double quotes when that saves escapes.
-String _string(String text) {
-  final quote = text.contains("'") && !text.contains('"') ? '"' : "'";
-  final escaped = text
-      .replaceAll(r'\', r'\\')
-      .replaceAll(quote, '\\$quote')
-      .replaceAll(r'$', r'\$')
-      .replaceAll('\n', r'\n');
-  return '$quote$escaped$quote';
+/// A string in JSON text, with its escaped contents in group 1.
+final _jsonString = RegExp(r'"((?:[^"\\]|\\.)*)"');
+
+/// [escaped], the contents of a JSON string, as a Dart string literal.
+String _dartString(String escaped) {
+  final contents = escaped.replaceAll(r'$', r'\$');
+  return contents.contains("'") && !contents.contains(r'\"')
+      ? '"$contents"'
+      : "'${contents.replaceAll(r'\"', '"').replaceAll("'", r"\'")}'";
 }

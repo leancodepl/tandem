@@ -9,11 +9,11 @@ part of 'shopping_list.dart';
 mixin _$ShoppingListCubit implements AgentSurface {
   @override
   AgentSchema get agentSchema {
-    final cubit = this as ShoppingListCubit;
+    final surface = this as ShoppingListCubit;
     return AgentSchema(
       sees: [
         AgentView.of(
-          () => cubit.items,
+          () => surface.items,
           'items',
           'What is on the shopping list now.',
           (items) => items,
@@ -21,10 +21,10 @@ mixin _$ShoppingListCubit implements AgentSurface {
       ],
       calls: [
         AgentTool(
-          cubit.add,
+          surface.add,
           name: 'add',
           description: 'Adds [item] to the list.',
-          parameters: {
+          parameters: const {
             'type': 'object',
             'properties': {
               'item': {'type': 'string'},
@@ -32,15 +32,15 @@ mixin _$ShoppingListCubit implements AgentSurface {
             'required': ['item'],
           },
           invoke: (args) {
-            cubit.add(args.read('item'));
+            surface.add(args.read('item'));
             return null;
           },
         ),
         AgentTool(
-          cubit.remove,
+          surface.remove,
           name: 'remove',
           description: 'Removes [item] from the list.',
-          parameters: {
+          parameters: const {
             'type': 'object',
             'properties': {
               'item': {'type': 'string'},
@@ -48,17 +48,17 @@ mixin _$ShoppingListCubit implements AgentSurface {
             'required': ['item'],
           },
           invoke: (args) {
-            cubit.remove(args.read('item'));
+            surface.remove(args.read('item'));
             return null;
           },
         ),
         AgentTool(
-          cubit.clear,
+          surface.clear,
           name: 'clear',
           description: 'Empties the list.',
-          parameters: {'type': 'object', 'properties': {}},
+          parameters: const {'type': 'object', 'properties': {}},
           invoke: (args) {
-            cubit.clear();
+            surface.clear();
             return null;
           },
         ),

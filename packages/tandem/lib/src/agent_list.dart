@@ -3,17 +3,17 @@ import 'dart:convert';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
 
-/// One item of a cubit's `agent` list: a value the agent sees, or a method
+/// One item of a surface's `agent` list: a value the agent sees, or a method
 /// it may call.
 sealed class const AgentCapability() {
   /// For the two kinds of items below.
   this;
 
-  /// The agent sees [value] on every turn. Pass a getter of the cubit, as in
-  /// `.sees(draft)`: its name and doc comment tell the agent what it is.
+  /// The agent sees [value] on every turn. Pass a getter of the surface, as
+  /// in `.sees(draft)`: its name and doc comment tell the agent what it is.
   factory sees(Object? value) => _Sees(value);
 
-  /// The agent may call [method], a method of the cubit, as in
+  /// The agent may call [method], a method of the surface, as in
   /// `.calls(setQuantity)`. Its name, doc comment and parameters tell the
   /// agent what it does and what to send.
   factory calls(Function method) => _Calls(method, needsApproval: false);
@@ -47,19 +47,19 @@ final class AgentListing._(
   /// which means the code was not generated again after the list changed.
   factory of(AgentSurface surface) {
     final schema = surface.agentSchema;
-    final listed = surface.agent;
-    final seen = [
-      for (final item in listed)
+    final capabilities = surface.agent;
+    final visibleValues = [
+      for (final item in capabilities)
         if (item case _Sees(:final value)) value,
     ];
-    if (seen.length != schema.sees.length) {
+    if (visibleValues.length != schema.sees.length) {
       throw StateError(
-        'The agent list has ${seen.length} .sees, the generated code '
+        'The agent list has ${visibleValues.length} .sees, the generated code '
         '${schema.sees.length}. Run build_runner again.',
       );
     }
     final tools = <String, AgentTool>{};
-    for (final item in listed) {
+    for (final item in capabilities) {
       if (item case _Calls(:final method)) {
         final tool = schema.calls.firstWhere(
           (tool) => tool.method == method,
@@ -78,7 +78,7 @@ final class AgentListing._(
       for (final (index, view) in schema.sees.indexed)
         {
           'description': '${view.name}: ${view.description}',
-          'value': jsonEncode(view.write(seen[index])),
+          'value': jsonEncode(view.write(visibleValues[index])),
         },
     ], tools);
   }
@@ -97,12 +97,13 @@ final class AgentListing._(
   /// Whether [tool] was listed when this listing was read.
   bool lists(String tool) => _tools.containsKey(tool);
 
-  /// The doc comment of [tool], one of the tools this listing [lists].
-  String description(String tool) => _tools[tool]!.description;
+  /// The doc comment of [tool], empty for a tool this listing does not list.
+  String description(String tool) => _tools[tool]?.description ?? '';
 
   /// Whether a call of [tool] waits for the user's approval, by the agent
   /// list as it is now.
-  bool needsApproval(String tool) => _now(tool)?.needsApproval ?? false;
+  bool needsApproval(String tool) =>
+      _currentCapabilityFor(tool)?.needsApproval ?? false;
 
   /// Calls the method behind [tool] with the agent's JSON [arguments] and
   /// returns its result as JSON.
@@ -117,24 +118,24 @@ final class AgentListing._(
     Map<String, Object?> arguments, {
     bool approved = false,
   }) async {
-    final listed = _now(tool);
-    if (listed == null) {
+    final target = _tools[tool];
+    final capability = _currentCapabilityFor(tool);
+    if (target == null || capability == null) {
       throw ToolCallRefused('The agent cannot call $tool now.');
     }
-    if (listed.needsApproval && !approved) {
+    if (capability.needsApproval && !approved) {
       throw ToolCallRefused('$tool runs only after the user approves it.');
     }
-    final target = _tools[tool]!;
     _rejectUnknown(arguments, target.parameters, '');
     return await target.invoke(ToolArgs(arguments));
   }
 
   /// The item of the agent list as it is now that lists [tool], or null.
-  _Calls? _now(String tool) {
+  _Calls? _currentCapabilityFor(String tool) {
     final method = _tools[tool]?.method;
     for (final item in _surface.agent) {
-      if (item case final _Calls listed when listed.method == method) {
-        return listed;
+      if (item case final _Calls capability when capability.method == method) {
+        return capability;
       }
     }
     return null;
