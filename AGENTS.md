@@ -20,7 +20,7 @@ fvm dart analyze --fatal-infos                      # not flutter analyze: it sk
 fvm dart format --set-exit-if-changed .
 (cd packages/tandem && fvm flutter test)
 (cd packages/tandem_generator && fvm dart test)
-(cd example && fvm dart run build_runner build)     # then git diff --exit-code -- '*.g.dart': the .g.dart files are committed
+(cd example && fvm dart run build_runner build)     # then git diff --exit-code: the generated code is committed
 (cd example && fvm flutter test)
 (cd example/agent && uv sync --locked && uv run ruff check && uv run ruff format --check && uv run pytest)
 ```
