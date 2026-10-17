@@ -2,8 +2,6 @@ name: example
 description: Example Flutter app that makes a bloc-based screen agent-aware with Tandem.
 version: 0.1.0
 publish_to: none
-repository: https://github.com/leancodepl/tandem/tree/main/example
-issue_tracker: https://github.com/leancodepl/tandem/issues
 
 resolution: workspace
 
