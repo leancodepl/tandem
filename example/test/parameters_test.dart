@@ -116,6 +116,17 @@ void main() {
     );
 
     await expectLater(
+      listing.call('stock', {'skus': null}),
+      throwsA(
+        isA<ToolCallRefused>().having(
+          (error) => error.message,
+          'message',
+          'skus: expected a list, got null',
+        ),
+      ),
+    );
+
+    await expectLater(
       listing.call('stock', {
         'skus': ['A'],
         'size': 'xl',

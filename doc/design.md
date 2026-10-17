@@ -66,7 +66,7 @@ The `content` of the tool message. The constants are in `session.dart`.
 | not executed, or the user wrote instead of deciding | `{"status":"cancelled"}` |
 | invalidated | `{"status":"invalidated"}` |
 
-A bare `rejected` is out: Gemini read it as a refusal of the system. `rejected_by_user` is provisional: it is not yet checked against a real model.
+`rejected_by_user` was chosen because a plain `rejected` made Gemini answer as if the system refused the call.
 
 ## Deferred
 
