@@ -1,5 +1,5 @@
 name: tandem_bloc
-description: Connects Tandem to bloc. A TandemScope makes the screen below it agent-aware and drops pending approvals when what the agent sees in the Cubit changes.
+description: Connects Tandem to bloc. A TandemScope makes the screen below it agent-aware and invalidates pending approvals whenever the Cubit emits a state.
 version: 0.1.0
 repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem_bloc
 issue_tracker: https://github.com/leancodepl/tandem/issues
