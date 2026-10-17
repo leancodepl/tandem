@@ -342,7 +342,7 @@ void main() {
 
     unawaited(subscription.cancel().then((_) => cancelled = true));
     // The end of a cancelled stream waits for a root-zone microtask.
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.runAsync(() => Future<void>.delayed(.zero));
     await tester.pump();
 
     expect(cancelled, isTrue);

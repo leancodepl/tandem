@@ -195,7 +195,7 @@ void main() {
     final reported = _collectReports();
     final session = open(
       agent,
-      onAgentCall: (_) => throw StateError('highlight'),
+      onAgentCall: (_) => throw StateError('listener failed'),
     )..send('add milk');
     await pumpEventQueue();
 
