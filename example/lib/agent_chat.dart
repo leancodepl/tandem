@@ -135,8 +135,7 @@ final class const _ApprovalCard(
   @override
   Widget build(BuildContext context) {
     final session = TandemSessionScope.of(context);
-    // The session ignores both while a method of the turn runs.
-    final canDecide = !session.isRunning;
+    final canDecide = session.status is AwaitingApproval;
 
     return Card(
       child: Padding(
@@ -196,11 +195,11 @@ final class const _InputRow(
 
   @override
   Widget build(BuildContext context) {
-    final (String label, VoidCallback? onPressed) = switch (session) {
-      TandemSession(isStopping: true) => ('Stopping…', null),
-      TandemSession(canStop: true) => ('Stop', session.stop),
-      TandemSession(isRunning: true) => ('Stop', null),
-      _ => ('Send', _sendText),
+    final (String label, VoidCallback? onPressed) = switch (session.status) {
+      Idle() || AwaitingApproval() => ('Send', _sendText),
+      Thinking() || Calling(approved: false) => ('Stop', session.stop),
+      Calling(approved: true) => ('Stop', null),
+      Stopping() => ('Stopping…', null),
     };
 
     return Padding(

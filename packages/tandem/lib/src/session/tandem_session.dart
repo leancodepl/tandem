@@ -13,6 +13,7 @@ import 'package:tandem/src/session/agent_call.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/run_method.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
+import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/turn.dart';
@@ -55,17 +56,14 @@ final class TandemSession({
   /// Oldest first.
   List<ChatItem> get items => UnmodifiableListView(_items);
 
-  /// Whether a run is open or a method the agent called is running.
-  bool get isRunning => _run != null;
-
-  /// Whether the user stopped the open run, which is read to its end.
-  bool get isStopping => _run?.stopped ?? false;
-
-  /// Whether [stop] would stop the open run. A method the user approved
-  /// cannot be stopped: it runs to its end.
-  bool get canStop => switch (_run) {
-    Run(stopped: false, runsApprovedMethod: false) => true,
-    _ => false,
+  SessionStatus get status => switch (_run) {
+    Run(stopped: true) => const Stopping(),
+    Run(:final calling?) => calling,
+    Run() => const Thinking(),
+    null => switch (_turn.awaited) {
+      final request? => AwaitingApproval(request),
+      null => const Idle(),
+    },
   };
 
   /// Sends [text], trimmed; does nothing when it is empty. The message shows
@@ -76,7 +74,7 @@ final class TandemSession({
       return;
     }
     _items.add(UserMessage(message));
-    if (isRunning) {
+    if (_run != null) {
       _queuedMessages.add(message);
     } else {
       _start(message);
@@ -87,10 +85,11 @@ final class TandemSession({
   /// Stops the open run: its later text is hidden, none of its remaining
   /// calls runs, and no run follows it. The run is still read to its end,
   /// because ADK goes on anyway and only that keeps the thread consistent.
-  /// Does nothing unless [canStop].
+  /// Does nothing unless [status] is [Thinking] or [Calling] a method the
+  /// user did not approve.
   void stop() {
     final run = _run;
-    if (run == null || !canStop) {
+    if (run == null || run.stopped || (run.calling?.approved ?? false)) {
       return;
     }
     run.stopped = true;
@@ -105,9 +104,9 @@ final class TandemSession({
   /// Calls the method of [request] and, once every call of its turn has an
   /// answer, takes the answers to the agent. When what the agent sees changed
   /// since it asked, invalidates the request instead. Does nothing unless
-  /// [request] is pending, or while [isRunning] (an approved method runs).
+  /// [status] is [AwaitingApproval] and [request] is pending.
   void approve(ApprovalRequest request) {
-    if (isRunning) {
+    if (_run != null) {
       return;
     }
     // `changes` may not report every value the agent sees.
@@ -119,10 +118,10 @@ final class TandemSession({
   }
 
   /// Tells the agent the user rejected [request], at once when every other
-  /// call of its turn has an answer. Does nothing unless [request] is
-  /// pending, or while [isRunning] (an approved method runs).
+  /// call of its turn has an answer. Does nothing unless [status] is
+  /// [AwaitingApproval] and [request] is pending.
   void reject(ApprovalRequest request) {
-    if (isRunning) {
+    if (_run != null) {
       return;
     }
     if (_turn.reject(request) case final call?) {
@@ -217,7 +216,10 @@ final class TandemSession({
       if (!call.hasObjectArguments) {
         call.answer = .refused('The arguments must be a JSON object.');
       } else if (!run.listing.needsApproval(call.tool)) {
+        run.calling = Calling(call.tool, approved: false);
+        notifyListeners();
         call.answer = await _execute(run, call);
+        run.calling = null;
       }
     }
   }
@@ -233,7 +235,8 @@ final class TandemSession({
 
   // Its own run: a new message waits, dispose skips the follow-up.
   Future<void> _runApproved(ToolCall call) async {
-    final run = _run = Run(AgentListing.of(_surface), runsApprovedMethod: true);
+    final run = _run = Run(AgentListing.of(_surface))
+      ..calling = Calling(call.tool, approved: true);
     notifyListeners();
     call.answer = await _execute(run, call);
     if (_run == run) {
@@ -309,7 +312,7 @@ final class TandemSession({
   /// Starts the run of the next queued message or, unless the user stopped,
   /// a run with only the answers once every call has one.
   void _startNextRun() {
-    final answersOnly = !isStopping && _turn.answered;
+    final answersOnly = status is! Stopping && _turn.answered;
     _run = null;
     if (_queuedMessages.isNotEmpty) {
       _start(_queuedMessages.removeAt(0));

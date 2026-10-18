@@ -45,6 +45,18 @@ void main() {
     return (session, agent);
   }
 
+  Future<(TandemSession, ScriptedAgent, Completer<void>)> askToRefresh() async {
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('refresh')],
+      (_) => const [AgentStep.say('Up to date.')],
+    ]);
+    final session = open(agent)..send('refresh');
+    await pumpEventQueue();
+    return (session, agent, serverReply);
+  }
+
   test('a call runs at once and its result goes in the next run', () async {
     final agent = ScriptedAgent([
       (_) => const [
@@ -91,6 +103,46 @@ void main() {
     ]);
   });
 
+  test('a run is Thinking until it ends, then Idle', () async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Hi')],
+    ]);
+    final session = open(agent)..send('hi');
+    await pumpEventQueue();
+    expect(session.status, isA<Thinking>());
+
+    gate.complete();
+    await pumpEventQueue();
+    expect(session.status, isA<Idle>());
+  });
+
+  test('a call without approval is Calling while it runs, then Idle', () async {
+    final (session, _, serverReply) = await askToRefresh();
+    expect(
+      session.status,
+      isA<Calling>()
+          .having((status) => status.tool, 'tool', 'refresh')
+          .having((status) => status.approved, 'approved', isFalse),
+    );
+
+    serverReply.complete();
+    await pumpEventQueue();
+    expect(session.status, isA<Idle>());
+  });
+
+  test('Stop during a call without approval stops the run', () async {
+    final (session, agent, serverReply) = await askToRefresh();
+
+    session.stop();
+    expect(session.status, isA<Stopping>());
+    serverReply.complete();
+    await pumpEventQueue();
+
+    expect(agent.requests, hasLength(1));
+    expect(session.status, isA<Idle>());
+  });
+
   test('Stop hides the rest of the run, runs nothing from it, and the next '
       'message waits', () async {
     final gate = Completer<void>();
@@ -111,7 +163,7 @@ void main() {
     ]);
 
     session.stop();
-    expect(session.isStopping, isTrue);
+    expect(session.status, isA<Stopping>());
     session.send('next');
     expect(agent.requests, hasLength(1));
     gate.complete();
@@ -360,6 +412,19 @@ void main() {
     expect(_card(session).status, ApprovalStatus.rejected);
   });
 
+  test('a pending card is AwaitingApproval', () async {
+    final (session, _) = await askToClear();
+
+    expect(
+      session.status,
+      isA<AwaitingApproval>().having(
+        (status) => status.request,
+        'request',
+        _card(session),
+      ),
+    );
+  });
+
   test('a change to .sees invalidates the card for good, also when undone '
       'later; the answer goes with the next message', () async {
     final (session, agent) = await askToClear();
@@ -506,10 +571,15 @@ void main() {
     shop.serverReply = serverReply.future;
     final (session, agent) = await askToClear();
 
-    session.approve(_card(session));
-    expect(session.canStop, isFalse);
-    session.stop();
-    expect(session.isStopping, isFalse);
+    session
+      ..approve(_card(session))
+      ..stop();
+    expect(
+      session.status,
+      isA<Calling>()
+          .having((status) => status.tool, 'tool', 'clear')
+          .having((status) => status.approved, 'approved', isTrue),
+    );
     serverReply.complete();
     await pumpEventQueue();
 
