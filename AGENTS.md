@@ -1,6 +1,6 @@
 # Tandem
 
-Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what a Cubit lists and acts only through the methods it lists. Design: [doc/design.md](doc/design.md). Words: [GLOSSARY.md](GLOSSARY.md). Decisions: [doc/adr](doc/adr).
+Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what a Cubit lists and acts only through the methods it lists. Design: [doc/design.md](doc/design.md). Words: [GLOSSARY.md](GLOSSARY.md). Decisions: [doc/adr](doc/adr). Proposals: [doc/rfc](doc/rfc).
 
 ## Layout
 
