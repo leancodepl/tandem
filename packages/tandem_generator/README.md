@@ -2,7 +2,7 @@
 
 Generates the code behind the `agentCapabilities` of a class marked `@TandemAgent()`: what the agent sees and which methods it may call. Run it with `dart run build_runner build`.
 
-Apps depend on [`tandem_bloc`](https://pub.dev/packages/tandem_bloc) and add this package as a dev dependency. See the [main README](https://github.com/leancodepl/tandem#readme) for how to use it.
+Apps depend on [`tandem`](https://pub.dev/packages/tandem) and add this package as a dev dependency. See the [main README](https://github.com/leancodepl/tandem#readme) for how to use it.
 
 ## Supported types
 

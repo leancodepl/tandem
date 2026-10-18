@@ -1,3 +1,3 @@
-Apps depend on `tandem_bloc`, so the example is there.
+Apps depend on `tandem`, so the example is there.
 
-See the [example of tandem_bloc](https://pub.dev/packages/tandem_bloc/example).
+See the [example of tandem](https://pub.dev/packages/tandem/example).

@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
+import 'package:tandem/tandem.dart';
 
 part 'shopping_list.g.dart';
 

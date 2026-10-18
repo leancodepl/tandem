@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:example/order.dart' show OrderLine;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
-import 'package:tandem_bloc/testing.dart';
+import 'package:tandem/tandem.dart';
+import 'package:tandem/testing.dart';
 
 // Only Delivery: the generated code must build its Address without the name.
 import 'delivery.dart' show Delivery;

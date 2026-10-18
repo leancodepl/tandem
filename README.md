@@ -17,7 +17,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 1. Add the packages:
 
    ```sh
-   flutter pub add tandem_bloc
+   flutter pub add tandem
    flutter pub add dev:build_runner dev:tandem_generator
    ```
 
@@ -74,7 +74,8 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    ```dart
    BlocProvider(
      create: (_) => OrderCubit(catalog: catalog, orders: orders),
-     child: TandemScope<OrderCubit>(
+     child: TandemScope(
+       surface: (context) => context.read<OrderCubit>(),
        agent: Uri.parse('http://localhost:8000/agent'),
        child: const Row(
          children: [
@@ -85,6 +86,8 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
      ),
    )
    ```
+
+   The scope reads the Cubit with `surface` when it opens its session, and keeps that session until it leaves the tree or gets another `agent`.
 
 5. Build the chat. Tandem has no chat widget, so the chat has your app's texts, language and look. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes:
 
@@ -136,7 +139,7 @@ The [example](https://github.com/leancodepl/tandem/tree/main/example) is an orde
 `ScriptedAgent` plays a fixed script instead of a model, so widget tests run without network. `TandemScope.connected` takes it in place of the endpoint:
 
 ```dart
-import 'package:tandem_bloc/testing.dart';
+import 'package:tandem/testing.dart';
 
 final agent = ScriptedAgent([
   (_) => [AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 15})],
@@ -147,7 +150,8 @@ await tester.pumpWidget(
   MaterialApp(
     home: BlocProvider(
       create: (_) => OrderCubit(catalog: catalog, orders: orders),
-      child: TandemScope<OrderCubit>.connected(
+      child: TandemScope.connected(
+        surface: (context) => context.read<OrderCubit>(),
         connection: agent,
         child: const Row(
           children: [

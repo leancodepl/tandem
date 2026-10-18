@@ -9,7 +9,6 @@ environment:
 # lock and the example depends on it by path.
 workspace:
   - packages/tandem
-  - packages/tandem_bloc
   - example
 
 dev_dependencies:

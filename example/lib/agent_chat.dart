@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
+import 'package:tandem/tandem.dart';
 
 /// Builds what an approval card shows above Approve and Reject.
 typedef ApprovalBuilder = Widget Function(
