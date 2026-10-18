@@ -12,23 +12,25 @@ import '../support/shop.dart';
 
 void main() {
   late Shop shop;
-  late List<AgentCall> agentCalls;
+  late List<TandemEvent> events;
 
   setUp(() {
     shop = Shop();
     // Tear-downs run in reverse, so the session is disposed before the shop.
     addTearDown(shop.close);
-    agentCalls = [];
+    events = [];
   });
+
+  List<AgentCall> agentCalls() => [...events.whereType<AgentCall>()];
 
   TandemSession open(
     AgentConnection connection, {
-    AgentCallListener? onAgentCall,
+    void Function(TandemEvent event)? onEvent,
   }) {
     final session = TandemSession(
       surface: shop,
       connection: connection,
-      onAgentCall: onAgentCall ?? agentCalls.add,
+      onEvent: onEvent ?? events.add,
     );
     addTearDown(session.dispose);
     return session;
@@ -94,7 +96,7 @@ void main() {
       jsonEncode(agent.requests[1]),
       isNot(anyOf(contains('call-1'), contains('find_customer'))),
     );
-    final [AgentCall(:tool, :arguments, :result)] = agentCalls;
+    final [AgentCall(:tool, :arguments, :result)] = agentCalls();
     expect((tool, result), ('add', null));
     expect(arguments, {'item': 'milk'});
     expect(_shown(session.items), [
@@ -176,6 +178,7 @@ void main() {
       ('user', 'next'),
       ('agent', 'Hi', false),
     ]);
+    expect(events, [isA<RunStopped>()]);
     expect(_lines(agent.requests[1]), [
       'user: go',
       'assistant: Working',
@@ -220,7 +223,7 @@ void main() {
           'boom',
         ),
       ]);
-      expect(agentCalls, isEmpty);
+      expect(events, [isA<RunFailed>()]);
       expect(_shown(session.items), [('user', 'a'), ChatNoticeKind.runFailed]);
 
       session.send('b');
@@ -235,7 +238,35 @@ void main() {
     },
   );
 
-  test('a throwing onAgentCall is reported; the next message works', () async {
+  test('onEvent can send at once after a failed run', () async {
+    _collectReports();
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Back.')],
+    ]);
+    shop.listThrows = true;
+    late final TandemSession session;
+    session = open(
+      agent,
+      onEvent: (event) {
+        if (event is RunFailed) {
+          shop.listThrows = false;
+          session.send('again');
+        }
+      },
+    );
+
+    session.send('hi');
+    await pumpEventQueue();
+    expect(session.status, isA<Thinking>());
+
+    gate.complete();
+    await pumpEventQueue();
+    expect(agent.requests, hasLength(1));
+    expect(session.status, isA<Idle>());
+  });
+
+  test('a throwing onEvent is reported; the next message works', () async {
     final agent = ScriptedAgent([
       (_) => const [
         AgentStep.callTool('add', {'item': 'milk'}),
@@ -246,7 +277,7 @@ void main() {
     final reported = _collectReports();
     final session = open(
       agent,
-      onAgentCall: (_) => throw StateError('listener failed'),
+      onEvent: (_) => throw StateError('listener failed'),
     )..send('add milk');
     await pumpEventQueue();
 
@@ -288,6 +319,7 @@ void main() {
         ('user', 'a'),
         ChatNoticeKind.connectionLost,
       ]);
+      expect(events, [isA<ConnectionLost>()]);
 
       session.send('b');
       await pumpEventQueue();
@@ -392,7 +424,7 @@ void main() {
       'tool-call-1 null',
     ]);
     expect(_card(session).status, ApprovalStatus.approved);
-    final [AgentCall(:tool, :arguments, :result)] = agentCalls;
+    final [AgentCall(:tool, :arguments, :result)] = agentCalls();
     expect((tool, result), ('clear', null));
     expect(arguments, isEmpty);
   });
@@ -555,7 +587,7 @@ void main() {
     final session = TandemSession(
       surface: shop,
       connection: agent,
-      onAgentCall: agentCalls.add,
+      onEvent: events.add,
     )..send('clear it');
     await pumpEventQueue();
 
@@ -567,7 +599,7 @@ void main() {
 
     expect(shop.items, isEmpty);
     expect(agent.requests, hasLength(1));
-    expect(agentCalls, isEmpty);
+    expect(events, isEmpty);
     expect(reported, isEmpty);
   });
 
@@ -586,6 +618,7 @@ void main() {
           .having((status) => status.tool, 'tool', 'clear')
           .having((status) => status.approved, 'approved', isTrue),
     );
+    expect(events.whereType<RunStopped>(), isEmpty);
     serverReply.complete();
     await pumpEventQueue();
 

@@ -114,7 +114,7 @@ BlocProvider(
 )
 ```
 
-`TandemScope` goes below the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `surface` reads the Cubit when the scope opens its session. `onAgentCall: (context, call) { ... }` hears every listed method that ran (`call.tool`, `call.arguments`, `call.result`). Both get the scope's context, below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
+`TandemScope` goes below the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `surface` reads the Cubit when the scope opens its session. `onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result`), `RunStopped`, `RunFailed` and `ConnectionLost`. `surface` and `onEvent` get the scope's context, below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
 
 `approvals` says how the user approves a call of a `.callsWithApproval` method:
 

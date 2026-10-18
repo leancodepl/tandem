@@ -9,11 +9,11 @@ import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/session/ag_ui_thread.dart';
-import 'package:tandem/src/session/agent_call.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/run_method.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/session_status.dart';
+import 'package:tandem/src/session/tandem_event.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/turn.dart';
@@ -33,7 +33,7 @@ import 'package:tandem/src/session/turn.dart';
 final class TandemSession({
   required final AgentSurface _surface,
   required final AgentConnection _connection,
-  final AgentCallListener? _onAgentCall,
+  final void Function(TandemEvent event)? _onEvent,
 
   /// Gets each approval request when it shows, once the session waits for
   /// it, so it can decide at once.
@@ -112,6 +112,7 @@ final class TandemSession({
       _items.add(const ChatNotice(.stopped));
     }
     notifyListeners();
+    _emit(const RunStopped());
   }
 
   /// Calls the method of [request]. Once it returned, the next request of
@@ -200,7 +201,7 @@ final class TandemSession({
       case RunFinished():
         run.ended = true;
         unawaited(_finish(run));
-      case RunFailed(:final code, :final message):
+      case RunError(:final code, :final message):
         run.ended = true;
         _thread.addFailedRun(run);
         _runFailed(AgentRunException(code, message), .current);
@@ -297,14 +298,14 @@ final class TandemSession({
       report: _report,
     );
     if (returned case final agentCall? when _run == run) {
-      _tellAgentCall(agentCall);
+      _emit(agentCall);
     }
     return answer;
   }
 
-  void _tellAgentCall(AgentCall call) {
+  void _emit(TandemEvent event) {
     try {
-      _onAgentCall?.call(call);
+      _onEvent?.call(event);
     } catch (err, st) {
       _report(err, st);
     }
@@ -351,6 +352,7 @@ final class TandemSession({
     _report(err, st);
     _items.add(const ChatNotice(.runFailed));
     _startNextRun();
+    _emit(const RunFailed());
   }
 
   void _connectionLost(Run run) {
@@ -360,6 +362,7 @@ final class TandemSession({
     _items.add(const ChatNotice(.connectionLost));
     _thread.startOver();
     _startNextRun();
+    _emit(const ConnectionLost());
   }
 
   /// Starts the run of the next queued message or, unless the user stopped,

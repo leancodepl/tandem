@@ -18,11 +18,12 @@ export 'src/errors.dart'
         ToolCallRefused;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
-export 'src/session/agent_call.dart' show AgentCall, AgentCallListener;
 export 'src/session/approvals.dart' show ApprovalCallback, TandemApprovals;
 export 'src/session/session_scope.dart' show TandemSessionScope;
 export 'src/session/session_status.dart'
     show AwaitingApproval, Calling, Idle, SessionStatus, Stopping, Thinking;
+export 'src/session/tandem_event.dart'
+    show AgentCall, ConnectionLost, RunFailed, RunStopped, TandemEvent;
 export 'src/session/tandem_scope.dart' show TandemScope;
 export 'src/session/tandem_session.dart' show TandemSession;
 export 'src/tandem_agent.dart' show TandemAgent;

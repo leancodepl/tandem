@@ -164,6 +164,20 @@ When the agent asks for several approvals in one turn, Tandem asks for them one 
 
 `approve` and `reject` either decide or throw. The same decision twice does nothing, so a double tap is harmless. A decision that cannot happen, such as approving an invalidated request, throws an `ApprovalNotPending`. `session.isPending(request)` tells whether a request still waits. Stop finishes reading the agent's turn but runs nothing more from it. An approved method runs to its end, so Stop is unavailable until it returns.
 
+## Events
+
+`onEvent` on the scope hears what happens in the session, as a sealed `TandemEvent`: `AgentCall` after a listed method returned, with its `tool`, `arguments` and `result`, then `RunStopped`, `RunFailed` and `ConnectionLost`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`. It gets the scope's context, below the `BlocProvider`, and the session:
+
+```dart
+onEvent: (context, event, session) {
+  if (event case AgentCall(tool: 'place_order', :final result)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Placed order $result')),
+    );
+  }
+},
+```
+
 ## The agent
 
 Any AG-UI endpoint works. The backend has to:
