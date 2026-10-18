@@ -1,0 +1,57 @@
+name: pana
+
+on:
+  push:
+    branches: [main]
+    paths: [packages/**, .github/workflows/pana.yml]
+  pull_request:
+    paths: [packages/**, .github/workflows/pana.yml]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pana:
+    name: Score ${{ matrix.package }}
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      statuses: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [tandem, tandem_bloc, tandem_generator]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # pana drops the workspace and overrides and resolves tandem_bloc against
+      # pub.dev. Until the lowest tandem it accepts is on pub.dev, its score only
+      # says tandem is missing, so the score step waits for that tandem. Only a
+      # 404 skips it, and the request retries, so one failed answer from
+      # pub.dev does not decide it.
+      - name: Check whether the tandem of tandem_bloc is on pub.dev
+        id: tandem-on-pub
+        if: matrix.package == 'tandem_bloc'
+        run: |
+          constraint="$(yq '.dependencies.tandem' packages/tandem_bloc/pubspec.yaml)"
+          lower_bound="${constraint#^}"
+          status="$(curl -sS --retry 3 --retry-all-errors --max-time 30 -o /dev/null -w '%{http_code}' "https://pub.dev/api/packages/tandem/versions/$lower_bound" || true)"
+          if [ "$status" = 404 ]; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=pana (tandem_bloc)::Not scored, tandem $lower_bound is not on pub.dev yet"
+            echo "## pana score for tandem_bloc: not scored, tandem $lower_bound is not on pub.dev yet" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Score ${{ matrix.package }} with pana
+        if: steps.tandem-on-pub.outputs.published != 'false'
+        uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
+        with:
+          path: packages/${{ matrix.package }}

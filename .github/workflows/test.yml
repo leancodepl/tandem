@@ -5,15 +5,63 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  test:
-    name: Test and analyze
+  changes:
+    name: Detect changes
 
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
-      statuses: write
+
+    outputs:
+      dart: ${{ steps.changes.outputs.dart }}
+      agent: ${{ steps.changes.outputs.agent }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Package docs count as Dart, because the dry run of pub publish reads
+      # them.
+      - name: Detect changes
+        id: changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          changed="$(git diff --name-only "$BASE...$HEAD")"
+          dart=false
+          agent=false
+          while IFS= read -r file; do
+            case "$file" in
+              packages/*) dart=true ;;
+              example/agent/*) agent=true ;;
+              .github/workflows/test.yml) dart=true; agent=true ;;
+              .github/* | doc/* | *.md | .commitlintrc.yml) ;;
+              *) dart=true ;;
+            esac
+          done <<< "$changed"
+          echo "dart=$dart" >> "$GITHUB_OUTPUT"
+          echo "agent=$agent" >> "$GITHUB_OUTPUT"
+          echo "Dart: $dart, agent: $agent"
+
+  analyze:
+    name: Analyze
+
+    needs: changes
+    if: needs.changes.outputs.dart == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -43,6 +91,34 @@ jobs:
       - name: Check formatting
         run: dart format --set-exit-if-changed .
 
+  test:
+    name: Test
+
+    needs: changes
+    if: needs.changes.outputs.dart == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.x
+          cache: true
+
+      - name: Download pub dependencies
+        run: flutter pub get
+
+      - name: Download pub dependencies of tandem_generator
+        run: dart pub get
+        working-directory: packages/tandem_generator
+
       - name: Test tandem
         run: flutter test
         working-directory: packages/tandem
@@ -50,6 +126,34 @@ jobs:
       - name: Test tandem_generator
         run: dart test
         working-directory: packages/tandem_generator
+
+      - name: Test example
+        run: flutter test
+        working-directory: example
+
+  codegen:
+    name: Check the generated code
+
+    needs: changes
+    if: needs.changes.outputs.dart == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.x
+          cache: true
+
+      - name: Download pub dependencies
+        run: flutter pub get
 
       # An outdated .g.dart is not always caught at runtime, so the generated
       # code of the example must be what the generator writes now.
@@ -60,9 +164,26 @@ jobs:
       - name: Check the generated code is up to date
         run: git diff --exit-code
 
-      - name: Test example
-        run: flutter test
-        working-directory: example
+  publish:
+    name: Dry run pub publish
+
+    needs: changes
+    if: needs.changes.outputs.dart == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.x
+          cache: true
 
       - name: Dry run pub publish of tandem
         uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
@@ -82,46 +203,27 @@ jobs:
           path: packages/tandem_generator
           dry-run: true
 
-      - name: Score tandem with pana
-        uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
-        with:
-          path: packages/tandem
-        continue-on-error: true
+  # The ruleset requires this check. A job skipped by its `if` counts as passed.
+  result:
+    name: Test and analyze
 
-      # pana drops the workspace and overrides and resolves tandem_bloc against
-      # pub.dev. Until the lowest tandem it accepts is on pub.dev, its score only
-      # says tandem is missing, so the score step waits for that tandem. Only a
-      # 404 skips it, and the request retries, so one failed answer from
-      # pub.dev does not decide it.
-      - name: Check whether the tandem of tandem_bloc is on pub.dev
-        id: tandem-on-pub
-        run: |
-          constraint="$(yq '.dependencies.tandem' packages/tandem_bloc/pubspec.yaml)"
-          lower_bound="${constraint#^}"
-          status="$(curl -sS --retry 3 --retry-all-errors --max-time 30 -o /dev/null -w '%{http_code}' "https://pub.dev/api/packages/tandem/versions/$lower_bound" || true)"
-          if [ "$status" = 404 ]; then
-            echo "published=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=pana (tandem_bloc)::Not scored, tandem $lower_bound is not on pub.dev yet"
-            echo "## pana score for tandem_bloc: not scored, tandem $lower_bound is not on pub.dev yet" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "published=true" >> "$GITHUB_OUTPUT"
-          fi
+    needs: [changes, analyze, test, codegen, publish]
+    if: ${{ !cancelled() }}
 
-      - name: Score tandem_bloc with pana
-        if: steps.tandem-on-pub.outputs.published == 'true'
-        uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
-        with:
-          path: packages/tandem_bloc
-        continue-on-error: true
+    runs-on: ubuntu-latest
 
-      - name: Score tandem_generator with pana
-        uses: leancodepl/mobile-tools/.github/actions/pana-score@e9f138c252f8e2254c88273367958fcc6bb39cad # pana-score-v1.3
-        with:
-          path: packages/tandem_generator
-        continue-on-error: true
+    permissions: {}
+
+    steps:
+      - name: Check the results of the jobs
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
 
   agent:
     name: Test and lint the example agent
+
+    needs: changes
+    if: needs.changes.outputs.agent == 'true'
 
     runs-on: ubuntu-latest
 
