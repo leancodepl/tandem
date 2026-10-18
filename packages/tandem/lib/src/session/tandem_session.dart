@@ -60,6 +60,13 @@ final class TandemSession({
   /// Whether the user stopped the open run, which is read to its end.
   bool get isStopping => _run?.stopped ?? false;
 
+  /// Whether [stop] would stop the open run. A method the user approved
+  /// cannot be stopped: it runs to its end.
+  bool get canStop => switch (_run) {
+    Run(stopped: false, runsApprovedMethod: false) => true,
+    _ => false,
+  };
+
   /// Sends [text], trimmed; does nothing when it is empty. The message shows
   /// at once, and its run starts when no other run is open.
   void send(String text) {
@@ -79,20 +86,19 @@ final class TandemSession({
   /// Stops the open run: its later text is hidden, none of its remaining
   /// calls runs, and no run follows it. The run is still read to its end,
   /// because ADK goes on anyway and only that keeps the thread consistent.
-  /// Does nothing when no run is open.
+  /// Does nothing unless [canStop].
   void stop() {
-    if (_run case final run? when !run.stopped) {
-      run.stopped = true;
-      if (run.texts.values.lastOrNull case final last?) {
-        _items[_items.lastIndexOf(last)] = AgentMessage(
-          last.text,
-          stopped: true,
-        );
-      } else {
-        _items.add(const ChatNotice(.stopped));
-      }
-      notifyListeners();
+    final run = _run;
+    if (run == null || !canStop) {
+      return;
     }
+    run.stopped = true;
+    if (run.texts.values.lastOrNull case final last?) {
+      _items[_items.lastIndexOf(last)] = AgentMessage(last.text, stopped: true);
+    } else {
+      _items.add(const ChatNotice(.stopped));
+    }
+    notifyListeners();
   }
 
   /// Calls the method of [request] and, once every call of its turn has an
@@ -248,9 +254,9 @@ final class TandemSession({
     }
   }
 
-  // Its own run: a new message waits, Stop and dispose skip the follow-up.
+  // Its own run: a new message waits, dispose skips the follow-up.
   Future<void> _runApproved(ToolCall call) async {
-    final run = _run = Run(AgentListing.of(_surface));
+    final run = _run = Run(AgentListing.of(_surface), runsApprovedMethod: true);
     notifyListeners();
     call.answer = await _execute(run, call);
     if (_run == run) {

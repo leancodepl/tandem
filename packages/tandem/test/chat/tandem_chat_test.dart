@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
@@ -52,6 +54,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('call-2'), findsOneWidget);
+  });
+
+  testWidgets('Stop is disabled while an approved method runs', (tester) async {
+    final shop = await _sendClear(tester, [
+      (_) => const [AgentStep.callTool('clear')],
+    ]);
+    shop.serverReply = Completer<void>().future;
+
+    await tester.tap(find.text('Approve'));
+    await tester.pumpAndSettle();
+
+    final stop = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Stop'),
+    );
+    expect(stop.onPressed, isNull);
   });
 }
 
