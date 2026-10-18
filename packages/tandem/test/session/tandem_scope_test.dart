@@ -23,6 +23,7 @@ void main() {
   Widget scope(String agent) => TandemScope(
     surface: readShop,
     agent: Uri.parse(agent),
+    approvals: const .fromState(),
     child: const SizedBox(),
   );
 
@@ -55,6 +56,7 @@ void main() {
     Widget connected(AgentConnection connection) => TandemScope.connected(
       surface: readShop,
       connection: connection,
+      approvals: const .fromState(),
       child: const SizedBox(),
     );
     await tester.pumpWidget(connected(ScriptedAgent(const [])));
@@ -79,6 +81,7 @@ void main() {
       surface: readShop,
       connection: agent,
       onAgentCall: (context, _) => heard.add((name, context.widget)),
+      approvals: const .fromState(),
       child: const SizedBox(),
     );
     await tester.pumpWidget(listening('first'));
@@ -91,6 +94,61 @@ void main() {
     expect(name, 'second');
     expect(widget, isA<TandemScope>());
     expect(shops.single.items, ['milk']);
+  });
+
+  testWidgets('the approval callback gets each request in turn, with the '
+      'scope context', (tester) async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Shared twice.')],
+    ]);
+    final asked = <(String, Widget)>[];
+    await tester.pumpWidget(
+      TandemScope.connected(
+        surface: readShop,
+        connection: agent,
+        approvals: .callback((context, request, session) async {
+          asked.add((request.toolCallId, context.widget));
+          session.approve(request);
+        }),
+        child: const SizedBox(),
+      ),
+    );
+
+    sessionOf(tester).send('share it twice');
+    await tester.pumpAndSettle();
+
+    final [(first, scope), (second, _)] = asked;
+    expect([first, second], ['call-1', 'call-2']);
+    expect(scope, isA<TandemScope>());
+    expect(agent.requests, hasLength(2));
+  });
+
+  testWidgets('a scope that takes no approvals refuses the call and reports '
+      'it', (tester) async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('I cannot share it here.')],
+    ]);
+    await tester.pumpWidget(
+      TandemScope.connected(
+        surface: readShop,
+        connection: agent,
+        approvals: const .none(),
+        child: const SizedBox(),
+      ),
+    );
+
+    sessionOf(tester).send('share it');
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isStateError);
+    expect(sessionOf(tester).items.whereType<ApprovalRequest>(), isEmpty);
+    final {'messages': messages as List<Object?>} = agent.requests[1];
+    expect(
+      messages.last,
+      containsPair('content', contains('"status":"refused"')),
+    );
   });
 
   testWidgets('a scope disposes its session before the surface closes', (
@@ -128,6 +186,7 @@ final class _OwnerState() extends State<_Owner> {
   Widget build(BuildContext context) => TandemScope.connected(
     surface: (context) => _shop,
     connection: _agent,
+    approvals: const .fromState(),
     child: const SizedBox(),
   );
 }

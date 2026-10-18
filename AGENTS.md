@@ -36,7 +36,7 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 - Few tests. One focused test per behaviour or fixed defect, in the existing test file when there is one. No test that restates the implementation.
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
 - Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`).
-- When the API changes, change `README.md`, `packages/tandem/README.md` (an identical copy) and `packages/tandem/skills/tandem-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
+- When the API changes, change `README.md`, `packages/tandem/README.md` (an identical copy), `packages/tandem/example/example.md` and `packages/tandem/skills/tandem-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
 - Never read, print or create a `.env` file. No API keys in the repo.
 - Docs and comments: short sentences, plain words, no em dashes. Say what is true, not how it came to be.
 

@@ -73,6 +73,13 @@ final class Turn(final List<ToolCall> calls) {
   /// deciding, and returns them.
   List<ToolCall> cancelWaiting() => _decideWaiting(.cancelled);
 
+  /// Refuses every call that waits, for a screen that takes no approvals,
+  /// and returns them.
+  List<ToolCall> refuseWaiting(String reason) => [
+    for (final call in calls.where(_waits).toList())
+      call..answer = .refused(reason),
+  ];
+
   ToolCall? _decide(ApprovalRequest request, ApprovalStatus decision) {
     if (request.status == decision) {
       return null;

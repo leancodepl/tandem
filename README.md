@@ -77,6 +77,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
      child: TandemScope(
        surface: (context) => context.read<OrderCubit>(),
        agent: Uri.parse('http://localhost:8000/agent'),
+       approvals: const .fromState(),
        child: const Row(
          children: [
            Expanded(child: OrderForm()),
@@ -87,7 +88,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    )
    ```
 
-   The scope reads the Cubit with `surface` when it opens its session, and keeps that session until it leaves the tree or gets another `agent`.
+   The scope reads the Cubit with `surface` when it opens its session, and keeps that session until it leaves the tree or gets another `agent`. `approvals` says how the user approves a call: here the chat draws the requests. See [Approvals](#approvals) for a dialog.
 
 5. Build the chat. Tandem has no chat widget, so the chat has your app's texts, language and look. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes:
 
@@ -118,7 +119,46 @@ The agent changes the screen through the same methods as your buttons, so the sa
 
 ## Approvals
 
-A method listed with `.callsWithApproval` runs only after the user approves it in the chat, which calls `session.approve`. The approval covers what the agent sees when it asks, so list everything the method depends on with `.sees`. Tandem compares `.sees` with what the agent saw when its turn ends, on every event of `changes` and on Approve. When they differ, the card is invalidated for good, or does not show at all, and the agent has to ask again. A change undone before Tandem checks, such as A, B, A in one go, leaves the card pending, and so does a change outside `.sees`, such as a selected tab or a loading flag.
+A method listed with `.callsWithApproval` runs only after the user approves it, which calls `session.approve`. The approval covers what the agent sees when it asks, so list everything the method depends on with `.sees`. Tandem compares `.sees` with what the agent saw when its turn ends, on every event of `changes` and on Approve. When they differ, the card is invalidated for good, or does not show at all, and the agent has to ask again. A change undone before Tandem checks, such as A, B, A in one go, leaves the card pending, and so does a change outside `.sees`, such as a selected tab or a loading flag.
+
+`approvals:` on the scope says how the screen asks:
+
+- `.fromState()`: the UI draws the requests itself, from `session.items` like the chat above, or from the status `AwaitingApproval(request)`.
+- `.callback((context, request, session) async { ... })`: Tandem calls it for each request when it shows, for a dialog, a bottom sheet or anything imperative. `context` is the scope's, and the callback decides with `session.approve` or `session.reject`. A request it leaves undecided stays pending until the user's next message cancels it.
+- `.none()`: the screen never asks. A call that needs approval is refused to the agent and reported in debug.
+
+A dialog to copy, where `approvalTitle` stands for your app's text for `request.tool`:
+
+```dart
+approvals: .callback((context, request, session) async {
+  final labels = MaterialLocalizations.of(context);
+  final approved = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(approvalTitle(context, request)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(labels.cancelButtonLabel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(labels.okButtonLabel),
+        ),
+      ],
+    ),
+  );
+  try {
+    if (approved ?? false) {
+      session.approve(request);
+    } else {
+      session.reject(request);
+    }
+  } on ApprovalNotPending {
+    // Invalidated or cancelled while the dialog showed.
+  }
+}),
+```
 
 When the agent asks for several approvals in one turn, Tandem asks for them one at a time, in order: the next one shows once the previous one is decided and its method returned. Each keeps what the agent saw when it asked, so an approved method that changes `.sees` invalidates the rest. Reject tells the agent the user said no and cancels the rest, so the agent plans again. Sending a message while a card is open cancels the card.
 
@@ -155,6 +195,7 @@ await tester.pumpWidget(
       child: TandemScope.connected(
         surface: (context) => context.read<OrderCubit>(),
         connection: agent,
+        approvals: const .fromState(),
         child: const Row(
           children: [
             Expanded(child: OrderForm()),

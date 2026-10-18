@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/session/agent_call.dart';
+import 'package:tandem/src/session/approvals.dart';
 import 'package:tandem/src/session/session_scope.dart';
 import 'package:tandem/src/session/tandem_session.dart';
 
@@ -18,6 +19,7 @@ import 'package:tandem/src/session/tandem_session.dart';
 ///   child: TandemScope(
 ///     surface: (context) => context.read<OrderCubit>(),
 ///     agent: Uri.parse('https://example.com/agent'),
+///     approvals: const .fromState(),
 ///     child: const Row(
 ///       children: [
 ///         Expanded(child: OrderForm()),
@@ -31,15 +33,16 @@ import 'package:tandem/src/session/tandem_session.dart';
 /// An ordinary rebuild keeps the session. A new session replaces the old one
 /// when `agent` is another [Uri] (compared with `==`), or when `connected`
 /// gets another connection (compared with `identical`: keep it in a field,
-/// not in `build`). A new [onAgentCall] takes effect at once. A scope that
-/// leaves the tree disposes its session before an ancestor that owns the
-/// surface closes it.
+/// not in `build`). A new [onAgentCall] or [approvals] takes effect at once.
+/// A scope that leaves the tree disposes its session before an ancestor that
+/// owns the surface closes it.
 final class TandemScope extends StatefulWidget {
   /// A scope that talks to the AG-UI endpoint `agent`.
   const new({
     super.key,
     required this.surface,
     required Uri this._agent,
+    required this.approvals,
     required this.child,
     this.onAgentCall,
   }) : _connection = null;
@@ -50,6 +53,7 @@ final class TandemScope extends StatefulWidget {
     super.key,
     required this.surface,
     required AgentConnection this._connection,
+    required this.approvals,
     required this.child,
     this.onAgentCall,
   }) : _agent = null;
@@ -62,6 +66,10 @@ final class TandemScope extends StatefulWidget {
 
   final Uri? _agent;
   final AgentConnection? _connection;
+
+  /// How the screen asks the user to approve a call of a method listed
+  /// with `.callsWithApproval`.
+  final TandemApprovals approvals;
 
   final Widget child;
 
@@ -102,13 +110,22 @@ final class _TandemScopeState() extends State<TandemScope> {
   Widget build(BuildContext context) =>
       TandemSessionScope(session: _session, child: widget.child);
 
-  TandemSession _open() => TandemSession(
-    surface: widget.surface(context),
-    connection: switch ((widget._connection, widget._agent)) {
-      (final connection?, _) => connection,
-      (_, final agent?) => HttpAgentConnection(agent),
-      _ => throw StateError('A TandemScope has an agent or a connection.'),
-    },
-    onAgentCall: (call) => widget.onAgentCall?.call(context, call),
-  );
+  TandemSession _open() {
+    late final TandemSession session;
+    return session = TandemSession(
+      surface: widget.surface(context),
+      connection: switch ((widget._connection, widget._agent)) {
+        (final connection?, _) => connection,
+        (_, final agent?) => HttpAgentConnection(agent),
+        _ => throw StateError('A TandemScope has an agent or a connection.'),
+      },
+      onAgentCall: (call) => widget.onAgentCall?.call(context, call),
+      onApprovalRequest: (request) async {
+        if (widget.approvals case ApprovalsByCallback(:final callback)) {
+          await callback(context, request, session);
+        }
+      },
+      asksForApproval: () => widget.approvals is! NoApprovals,
+    );
+  }
 }

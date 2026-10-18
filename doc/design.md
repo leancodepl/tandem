@@ -32,6 +32,7 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 - Several calls in one turn: those without approval run first. Those with approval show one at a time, in order: the next once the previous one is decided and, when approved, its method returned. An approved method that changes `.sees` invalidates the rest, and Reject cancels the rest, so the agent plans again. A request that never showed gets only its answer. One run carries all the answers, and it starts when every call of the turn has one. A message queued meanwhile goes in the same run, after the answers. A run with only the answers starts only when nothing is queued.
 - `approve` and `reject` decide the request that shows. The same decision again does nothing. Any other throws `ApprovalNotPending`: approving a request that was rejected, cancelled or invalidated, or whose `.sees` changed, which invalidates it, and rejecting one that was approved, cancelled or invalidated.
 - A `changes` event that invalidates the request that shows starts no run: `invalidated` goes with the user's next message.
+- `approvals:` on `TandemScope`: `.callback` gets each request when it shows, once the session waits for it, with the scope's context. A request it leaves undecided stays pending until the user's next message cancels it. `.fromState()` leaves the requests to the UI. `.none()` refuses every call that needs approval and reports it in debug, so the agent does not wait for nothing.
 - **Stop does not cancel the run.** Cancelling does not stop ADK: the model keeps generating, the answer lands in the server's session, and a run sent right after mixes up the history. Stop hides the rest of the text and drains the run: it reads the stream to `RUN_FINISHED` or `RUN_ERROR`.
 - After Stop, the text already shown stays, marked `stopped`, and only that text goes back in the history. None of its remaining calls runs. Until the run ends the status is `Stopping` and a new message waits.
 - An approved method runs to its end, as `Calling` with `approved`, and Stop does nothing until it returns. Tandem cannot interrupt the app's code, and a request the method already sent stays sent.
@@ -40,7 +41,7 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 - A run is never sent twice: the server would answer with an empty `RUN_STARTED`/`RUN_FINISHED` pair.
 - A run that breaks without a final event adds a `connectionLost` notice, and the next message starts a new thread with fresh history.
 - No response headers or no bytes for 60 s counts as a broken run. ADK pings every 15 s, but the parser drops comments, so the timeout watches the raw bytes.
-- `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when `agent` is another `Uri` (`==`) or `connected` gets another connection (`identical`). The old session is disposed first. Each new session calls `surface` again with the scope's context. Another object from the provider under the same scope opens no session. A scope that leaves the tree disposes its session before the owner of the state object, such as a `BlocProvider`, closes it. A new `onAgentCall` takes effect at once.
+- `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when `agent` is another `Uri` (`==`) or `connected` gets another connection (`identical`). The old session is disposed first. Each new session calls `surface` again with the scope's context. Another object from the provider under the same scope opens no session. A scope that leaves the tree disposes its session before the owner of the state object, such as a `BlocProvider`, closes it. A new `onAgentCall` or `approvals` takes effect at once.
 - `threadId` lives as long as its session and never comes back after it is gone: an orphaned ADK run would mix up the history.
 - A run error shows in the chat, and the next message works as usual. Its code and message, like every error the session catches, go to `FlutterError.reportError`, never to the chat.
 
@@ -70,7 +71,7 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 | Situation | Content |
 |---|---|
 | executed | `jsonEncode(result)`, `null` for `void` |
-| refused: not listed at call time, needs approval, bad arguments, or the method threw an `ArgumentError` other than a `RangeError` | `{"status":"refused","reason":<message>}` |
+| refused: not listed at call time, needs approval, the screen takes no approvals, bad arguments, or the method threw an `ArgumentError` other than a `RangeError` | `{"status":"refused","reason":<message>}` |
 | the method threw anything else | `{"status":"failed","error":<toString>}` |
 | Reject | `{"status":"rejected_by_user"}` |
 | not executed, or the user wrote instead of deciding | `{"status":"cancelled"}` |
