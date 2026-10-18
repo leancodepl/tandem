@@ -39,7 +39,7 @@ The goal: what an app builds on Tandem is limited by its developer, not by Tande
 ### Events and status
 
 13. **`onEvent: (context, event, session)` on the scope**, with a public sealed `TandemEvent`. It covers what is today a `ChatNotice` or `onAgentCall`: the run failed, the connection was lost, the run was stopped, the agent called a method. `onAgentCall` goes away. A `session.events` stream with the same types can come later without breaking apps.
-14. **One status instead of flags.** `session.status` is sealed: `Idle`, `Thinking`, `Calling(tool)`, `AwaitingApproval(request)`, `Stopping`. It replaces `isRunning`, `isStopping` and `canStop`. Whether Stop is available follows from the status: a method the user approved runs to its end.
+14. **One status instead of flags.** `session.status` is sealed: `Idle`, `Thinking`, `Calling(tool, approved:)`, `AwaitingApproval(request)`, `Stopping`. It replaces `isRunning`, `isStopping` and `canStop`. Whether Stop is available follows from the status: it is while `Thinking` or `Calling(approved: false)`, and a method the user approved runs to its end.
 15. **"The app asked" versus "the user wrote" shows only in logs** for now.
 
 ## Lessons from the prototypes

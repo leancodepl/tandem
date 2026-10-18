@@ -37,6 +37,7 @@ final class Shop() implements AgentSurface {
       .sees(items),
       .calls(add),
       .calls(removeAt),
+      .calls(refresh),
       if (items.isNotEmpty) .callsWithApproval(clear),
     ];
   }
@@ -62,6 +63,11 @@ final class Shop() implements AgentSurface {
     await serverReply;
     items.clear();
     _changed();
+  }
+
+  /// Reloads the list from the server.
+  Future<void> refresh() async {
+    await serverReply;
   }
 
   void showTab(int index) {
@@ -114,6 +120,16 @@ final class Shop() implements AgentSurface {
         },
         invoke: (args) {
           removeAt(args.read('index'));
+          return null;
+        },
+      ),
+      AgentTool(
+        refresh,
+        name: 'refresh',
+        description: 'Reloads the list from the server.',
+        parameters: {'type': 'object', 'properties': {}},
+        invoke: (args) async {
+          await refresh();
           return null;
         },
       ),

@@ -1,17 +1,18 @@
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/protocol/run_input.dart';
+import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
 
 /// What the session keeps of its open run.
-final class Run(
-  final AgentListing listing, {
-  final bool runsApprovedMethod = false,
-}) {
+final class Run(final AgentListing listing) {
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
   final calls = <String, ToolCall>{};
   bool stopped = false;
+
+  /// The listed method that runs now.
+  Calling? calling;
 
   /// Set by `RUN_FINISHED` and `RUN_ERROR`, so the end of the stream that
   /// follows does not count as a lost connection.

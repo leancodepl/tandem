@@ -14,6 +14,10 @@ final class Turn(final List<ToolCall> calls) {
   /// approval ran. Null until the turn asks.
   SeesSnapshot? get seen => _seen;
 
+  /// The request that waits for the user, the oldest when several do.
+  ApprovalRequest? get awaited =>
+      calls.where((call) => call.pending).firstOrNull?.request;
+
   /// Whether a call waits for the user.
   bool get waitsForUser => _seen != null && calls.any(_waits);
 

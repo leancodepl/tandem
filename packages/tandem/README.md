@@ -107,7 +107,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    );
    ```
 
-   `ChatItem` is sealed, so the compiler checks that the switch covers every kind. The field calls `session.send(text)`. While `session.isRunning`, its button is Stop, which calls `session.stop()` only while `session.canStop`. `session.isStopping` stays true until the stopped run ends. A card whose `status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)` and do nothing while `session.isRunning`. The card's `description` is the method's doc comment, written for the agent, so a localized card picks its own text by `request.tool`.
+   `ChatItem` is sealed, so the compiler checks that the switch covers every kind. The field calls `session.send(text)`. Its button switches on `session.status`, also sealed: Send while `Idle` or `AwaitingApproval`, Stop while `Thinking` or `Calling` a method the user did not approve, and disabled while an approved method runs to its end or a stopped run is `Stopping`. A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)` and do nothing unless `session.status` is `AwaitingApproval`. The card's `description` is the method's doc comment, written for the agent, so a localized card picks its own text by `request.tool`.
 
    [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example does all of this in one file, ready to copy.
 
