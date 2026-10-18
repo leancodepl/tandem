@@ -25,7 +25,7 @@ fvm dart format --set-exit-if-changed .
 (cd example/agent && uv sync --locked && uv run ruff check && uv run ruff format --check && uv run pytest)
 ```
 
-CI runs the same, plus a dry run of `pub publish` and a pana score for each package.
+CI runs the same, plus a dry run of `pub publish` and a pana score for each package. On a PR it also runs commitlint on the commits and the title, and checks the sections of the description.
 
 ## Rules
 
@@ -43,8 +43,8 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 
 ## Commits and pull requests
 
-- Commits follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Types: `feat`, `fix`, `refactor`, `test`, `docs`, `build`, `ci`, `chore`. The scope is a package or `example`, and only when the change stays in it: `fix(tandem): keep Stop unavailable while an approved method runs`.
-- The subject is lowercase imperative, at most 72 characters. A body only for a why the diff cannot show, in a few lines.
+- Commits follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/), with the types, scopes and length in [.commitlintrc.yml](.commitlintrc.yml). The scope is there only when the change stays in one package or `example`: `fix(tandem): keep Stop unavailable while an approved method runs`.
+- The subject is lowercase imperative. A body only for a why the diff cannot show, in a few lines.
 - A change to the public API of a package that breaks apps gets `!` and a `BREAKING CHANGE:` footer that says what an app changes.
 - One commit per logical change that builds and passes the tests on its own, such as a refactor and then the fix that needs it. Its test, docs and generated code go in the same commit. Most PRs need one to three.
 - Review fixes go into the commit they fix: `git commit --fixup`, then `git rebase --autosquash`.
