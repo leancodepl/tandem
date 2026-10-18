@@ -1,3 +1,15 @@
+import 'package:tandem/src/chat/chat_item.dart';
+
+/// Thrown by `approve` and `reject` for a request that no longer waits for
+/// the user: one that was invalidated, cancelled or decided the other way.
+/// [request] has its current status.
+final class const ApprovalNotPending(final ApprovalRequest request)
+    implements Exception {
+  @override
+  String toString() =>
+      'ApprovalNotPending: ${request.tool} is ${request.status.name}.';
+}
+
 /// A call of a listed method that did not run, because the agent called a
 /// method that is not listed now or waits for approval, or sent arguments
 /// that do not fit. [message] is written for the agent.

@@ -17,8 +17,8 @@ extension type const ToolAnswer._(String json) implements String {
   /// Not a bare `rejected`: Gemini reads that as the system refusing the call.
   static const rejected = ToolAnswer._('{"status":"rejected_by_user"}');
 
-  /// The call did not run: its run was stopped or failed, or the user wrote
-  /// instead of deciding.
+  /// The call did not run: its run was stopped or failed, the user wrote
+  /// instead of deciding, or an earlier request of its turn was rejected.
   static const cancelled = ToolAnswer._('{"status":"cancelled"}');
   static const invalidated = ToolAnswer._('{"status":"invalidated"}');
 }

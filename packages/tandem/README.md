@@ -107,7 +107,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    );
    ```
 
-   `ChatItem` is sealed, so the compiler checks that the switch covers every kind. The field calls `session.send(text)`. Its button switches on `session.status`, also sealed: Send while `Idle` or `AwaitingApproval`, Stop while `Thinking` or `Calling` a method the user did not approve, and disabled while an approved method runs to its end or a stopped run is `Stopping`. A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)` and do nothing unless `session.status` is `AwaitingApproval`. The card's `description` is the method's doc comment, written for the agent, so a localized card picks its own text by `request.tool`.
+   `ChatItem` is sealed, so the compiler checks that the switch covers every kind. The field calls `session.send(text)`. Its button switches on `session.status`, also sealed: Send while `Idle` or `AwaitingApproval`, Stop while `Thinking` or `Calling` a method the user did not approve, and disabled while an approved method runs to its end or a stopped run is `Stopping`. A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. The card's `description` is the method's doc comment, written for the agent, so a localized card picks its own text by `request.tool`.
 
    [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example does all of this in one file, ready to copy.
 
@@ -120,7 +120,9 @@ The agent changes the screen through the same methods as your buttons, so the sa
 
 A method listed with `.callsWithApproval` runs only after the user approves it in the chat, which calls `session.approve`. The approval covers what the agent sees when it asks, so list everything the method depends on with `.sees`. Tandem compares `.sees` with what the agent saw when its turn ends, on every event of `changes` and on Approve. When they differ, the card is invalidated for good, or does not show at all, and the agent has to ask again. A change undone before Tandem checks, such as A, B, A in one go, leaves the card pending, and so does a change outside `.sees`, such as a selected tab or a loading flag.
 
-Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing more from it. An approved method runs to its end, so Stop is unavailable until it returns.
+When the agent asks for several approvals in one turn, Tandem asks for them one at a time, in order: the next one shows once the previous one is decided and its method returned. Each keeps what the agent saw when it asked, so an approved method that changes `.sees` invalidates the rest. Reject tells the agent the user said no and cancels the rest, so the agent plans again. Sending a message while a card is open cancels the card.
+
+`approve` and `reject` either decide or throw. The same decision twice does nothing, so a double tap is harmless. A decision that cannot happen, such as approving an invalidated request, throws an `ApprovalNotPending`. `session.isPending(request)` tells whether a request still waits. Stop finishes reading the agent's turn but runs nothing more from it. An approved method runs to its end, so Stop is unavailable until it returns.
 
 ## The agent
 

@@ -88,7 +88,7 @@ final class const AgentChat() extends StatelessWidget {
 
 - `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes.
 - Show every item of `session.items`, oldest first, with a `switch` over `ChatItem`: `UserMessage` and `AgentMessage` by their `text`, an `AgentMessage` with `stopped` marked as stopped, a `ChatNotice` by its `kind`, an `ApprovalRequest` as a card.
-- A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. Enable both only while `session.status` is `AwaitingApproval`. Every other `request.status` gets a line: `approved`, `rejected`, `invalidated` (what the agent sees changed, so the user asks the agent again) and `cancelled`.
+- A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. Both throw an `ApprovalNotPending` when the request changed as the user tapped, such as when what the agent sees changed: catch it, the card then shows the new `request.status`. Every other `request.status` gets a line: `approved`, `rejected`, `invalidated` (what the agent sees changed, so the user asks the agent again) and `cancelled`.
 - `request.description` and `request.arguments` are written for the agent. Show the user what the method will do in the app's words, chosen by `request.tool`.
 - The field calls `session.send(text)`. Its button switches on the sealed `session.status`: Send for `Idle()` and `AwaitingApproval()`, Stop that calls `session.stop()` for `Thinking()` and `Calling(approved: false)`, a disabled Stop for `Calling(approved: true)` (an approved method runs to its end) and a disabled "Stopping" for `Stopping()`.
 - [`example/lib/agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the Tandem repository does all of this in one file. Copy its structure, not its texts.
@@ -163,7 +163,6 @@ Every turn of the script is one run: the first calls the tool, the second comes 
 - `.sees` inside an `if`, a `for`, a `?:` or a spread. The build fails. Keep it listed and let the getter return an empty value.
 - A change to the list or a signature without running build_runner again. It shows as a `StateError` that says to run it.
 - `TandemScope` above the `BlocProvider`, or a chat with no `TandemScope` above it.
-- Approve and Reject enabled while `session.status` is not `AwaitingApproval`. The session ignores them then, so a tap does nothing.
 - A `.sees` value that changes on its own, for example on a timer. Every change invalidates an open card for good.
 - A `.callsWithApproval` method that depends on state not listed with `.sees`. A change to that state leaves the card pending, and the method runs on a state the agent never saw.
 - A `ScriptedAgent` made in `build`. A new connection starts a new session, so keep it in a field.

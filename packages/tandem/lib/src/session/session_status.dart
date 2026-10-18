@@ -28,11 +28,10 @@ final class const Calling(
   int get hashCode => Object.hash(tool, approved);
 }
 
-/// No run is open and [request] waits for the user.
-final class const AwaitingApproval(
-  /// The oldest pending request, when several wait.
-  final ApprovalRequest request,
-) extends SessionStatus {
+/// No run is open and [request] waits for the user. The other requests of
+/// the turn show after it.
+final class const AwaitingApproval(final ApprovalRequest request)
+    extends SessionStatus {
   @override
   bool operator ==(Object other) =>
       other is AwaitingApproval && other.request == request;

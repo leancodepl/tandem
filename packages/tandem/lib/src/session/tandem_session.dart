@@ -23,9 +23,9 @@ import 'package:tandem/src/session/turn.dart';
 /// Every run reads the screen's agent list again. When a run finishes, the
 /// calls of listed methods run, and the next run takes their answers to the
 /// agent at once. A call that needs approval shows as an [ApprovalRequest]
-/// instead, and the next run waits for the user. The request is invalidated
-/// for good once what the agent sees differs from what it saw when it asked,
-/// checked on every event of the surface's `changes`.
+/// instead, one at a time, and the next run waits for the user. A request is
+/// invalidated for good once what the agent sees differs from what it saw
+/// when it asked, checked on every event of the surface's `changes`.
 ///
 /// One run is open at a time: a message sent meanwhile shows at once and
 /// goes with the next run, after the answers. A run that breaks off moves
@@ -49,6 +49,7 @@ final class TandemSession({
 
   /// Null when no run is open, and once the session is disposed.
   Run? _run;
+  var _disposed = false;
 
   /// The calls of the last run, until their answers go out.
   var _turn = Turn(const []);
@@ -66,11 +67,12 @@ final class TandemSession({
     },
   };
 
-  /// Sends [text], trimmed; does nothing when it is empty. The message shows
-  /// at once, and its run starts when no other run is open.
+  /// Sends [text], trimmed; does nothing when it is empty or the session is
+  /// disposed. The message shows at once, and its run starts when no other
+  /// run is open.
   void send(String text) {
     final message = text.trim();
-    if (message.isEmpty) {
+    if (message.isEmpty || _disposed) {
       return;
     }
     _items.add(UserMessage(message));
@@ -101,37 +103,42 @@ final class TandemSession({
     notifyListeners();
   }
 
-  /// Calls the method of [request] and, once every call of its turn has an
-  /// answer, takes the answers to the agent. When what the agent sees changed
-  /// since it asked, invalidates the request instead. Does nothing unless
-  /// [status] is [AwaitingApproval] and [request] is pending.
+  /// Calls the method of [request]. Once it returned, the next request of
+  /// the turn shows or, when every call has an answer, the answers go to the
+  /// agent. Does nothing when [request] is approved already.
+  ///
+  /// Throws an [ApprovalNotPending] when [request] was rejected, cancelled
+  /// or invalidated, and also when what the agent sees changed since it
+  /// asked, which invalidates it.
   void approve(ApprovalRequest request) {
-    if (_run != null) {
-      return;
-    }
     // `changes` may not report every value the agent sees.
     _invalidateIfSeesChanged();
-    if (_turn.approve(request) case final call?) {
+    if (_turn.approve(_latest(request)) case final call?) {
       _showDecision(call);
       unawaited(_runApproved(call));
     }
   }
 
-  /// Tells the agent the user rejected [request], at once when every other
-  /// call of its turn has an answer. Does nothing unless [status] is
-  /// [AwaitingApproval] and [request] is pending.
+  /// Tells the agent the user rejected [request] and cancels the rest of its
+  /// turn, so the agent plans again. Does nothing when [request] is rejected
+  /// already. Throws an [ApprovalNotPending] when it was approved, cancelled
+  /// or invalidated.
   void reject(ApprovalRequest request) {
-    if (_run != null) {
-      return;
-    }
-    if (_turn.reject(request) case final call?) {
+    if (_turn.reject(_latest(request)) case final call?) {
       _showDecision(call);
       _startNextRun();
     }
   }
 
+  /// Whether [request] waits for the user to approve or reject it.
+  bool isPending(ApprovalRequest request) => _turn.isPending(request);
+
+  /// Cancels the requests that wait, so a later decision throws. Nothing runs,
+  /// goes to the agent or notifies after it.
   @override
   void dispose() {
+    _disposed = true;
+    _turn.cancelWaiting().forEach(_showDecision);
     _run = null;
     unawaited(_runSubscription?.cancel());
     unawaited(_stateChangesSubscription.cancel());
@@ -229,7 +236,7 @@ final class TandemSession({
     if (changedWhileThinking) {
       turn.invalidateWaiting();
     } else {
-      _items.addAll(turn.ask(_seesNow));
+      turn.ask(_seesNow);
     }
   }
 
@@ -240,6 +247,7 @@ final class TandemSession({
     notifyListeners();
     call.answer = await _execute(run, call);
     if (_run == run) {
+      _invalidateIfSeesChanged();
       _startNextRun();
     }
   }
@@ -284,6 +292,13 @@ final class TandemSession({
 
   SeesSnapshot get _seesNow => .read(_surface, report: _report);
 
+  /// The app may hold an older copy of [request], with an older status.
+  ApprovalRequest _latest(ApprovalRequest request) =>
+      _items.whereType<ApprovalRequest>().lastWhere(
+        (item) => item.toolCallId == request.toolCallId,
+        orElse: () => request,
+      );
+
   void _showDecision(ToolCall call) {
     if (call.request case final decided?) {
       final shown = _items.indexWhere(
@@ -310,7 +325,8 @@ final class TandemSession({
   }
 
   /// Starts the run of the next queued message or, unless the user stopped,
-  /// a run with only the answers once every call has one.
+  /// a run with only the answers once every call has one. Otherwise shows
+  /// the next request of the turn.
   void _startNextRun() {
     final answersOnly = status is! Stopping && _turn.answered;
     _run = null;
@@ -318,6 +334,8 @@ final class TandemSession({
       _start(_queuedMessages.removeAt(0));
     } else if (answersOnly) {
       _start();
+    } else if (_turn.next() case final request?) {
+      _items.add(request);
     }
     notifyListeners();
   }

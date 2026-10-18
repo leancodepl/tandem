@@ -25,7 +25,7 @@ A method of the cubit that the agent may call, listed with `.calls` or `.callsWi
 _Avoid_: client tool, action, command
 
 **Approval request**:
-The agent's call of a `.callsWithApproval` method, shown as a card with its arguments frozen. The method runs only after the user approves it.
+The agent's call of a `.callsWithApproval` method, shown as a card with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
 _Avoid_: confirmation, interrupt
 
 **Invalidated**:
