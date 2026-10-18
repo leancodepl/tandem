@@ -38,6 +38,15 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
 - Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`).
 - When the API changes, change `README.md`, `packages/tandem_bloc/README.md` (an identical copy) and `packages/tandem_bloc/skills/tandem-bloc-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
-- Commit messages are `task: <what>`, with no `Co-Authored-By` or other attribution.
 - Never read, print or create a `.env` file. No API keys in the repo.
 - Docs and comments: short sentences, plain words, no em dashes. Say what is true, not how it came to be.
+
+## Commits and pull requests
+
+- Commits follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Types: `feat`, `fix`, `refactor`, `test`, `docs`, `build`, `ci`, `chore`. The scope is a package or `example`, and only when the change stays in it: `fix(tandem): keep Stop unavailable while an approved method runs`.
+- The subject is lowercase imperative, at most 72 characters. A body only for a why the diff cannot show, in a few lines.
+- A change to the public API of a package that breaks apps gets `!` and a `BREAKING CHANGE:` footer that says what an app changes.
+- One commit per logical change that builds and passes the tests on its own, such as a refactor and then the fix that needs it. Its test, docs and generated code go in the same commit. Most PRs need one to three.
+- Review fixes go into the commit they fix: `git commit --fixup`, then `git rebase --autosquash`.
+- The PR title has the form of a commit subject. The description fills the sections of [.github/pull_request_template.md](.github/pull_request_template.md) and follows its hints.
+- A commit an AI agent wrote ends with a `Co-Authored-By:` trailer naming the agent and its model, such as `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Only a commit a human reviewed in full can carry no attribution. The PR description has no attribution line.
