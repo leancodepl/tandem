@@ -40,6 +40,9 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
        if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
      ];
 
+     @override
+     Stream<Object?> get changes => stream;
+
      /// The order as the user sees it on the screen.
      OrderDraft get draft => state.draft;
 
@@ -54,7 +57,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    }
    ```
 
-   The agent gets exactly what is on the list. It reads the doc comments, and the parameter types become the schema. The list is read again before every turn, so it can depend on the state or on who the user is.
+   The agent gets exactly what is on the list. It reads the doc comments, and the parameter types become the schema. The list is read again before every turn, so it can depend on the state or on who the user is. `changes` reports every change of the state, for a Cubit its `stream`.
 
 3. Generate the code:
 

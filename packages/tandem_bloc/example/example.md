@@ -25,6 +25,9 @@ class ShoppingListCubit()
     if (items.isNotEmpty) .callsWithApproval(clear),
   ];
 
+  @override
+  Stream<Object?> get changes => stream;
+
   /// What is on the shopping list now.
   List<String> get items => state.items;
 

@@ -7,7 +7,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 | Package | Owns | Depends on |
 |---|---|---|
 | `tandem` | the agent list, the AG-UI connection, the session, `ScriptedAgent` | flutter, http, uuid |
-| `tandem_bloc` | `TandemScope<C>`: takes the cubit from the context, invalidates approvals on its `stream`, passes `onAgentCall`; exports `tandem` | tandem, flutter_bloc |
+| `tandem_bloc` | `TandemScope<C>`: takes the cubit from the context, passes `onAgentCall`; exports `tandem` | tandem, flutter_bloc |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` does not depend on bloc. Riverpod support would be a separate `tandem_riverpod` with its own `TandemScope`.
@@ -28,7 +28,7 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 - One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run.
 - A call without approval runs at once, and its result goes in the next run.
 - After every call of a listed method that returned, including approved ones, the session calls `onAgentCall` with an `AgentCall`: the name, arguments and result. `TandemScope` passes it a context below the `BlocProvider`, so an app can read the cubit and highlight the changed fields.
-- A call that needs approval shows a card with a frozen copy of its arguments. Any emission of `changes` after the card shows invalidates it for good, even when the state comes back (A, B, A), which comparing the latest value would miss. `.sees` is captured after the turn's calls without approval ran, and the card shows one event-loop turn later, so what those calls emitted arrives first and invalidates nothing. Approve compares `.sees` again, for values `changes` does not report.
+- A call that needs approval shows a card with a frozen copy of its arguments. Any event of the surface's `changes` after the card shows invalidates it for good, even when the state comes back (A, B, A), which comparing the latest value would miss. `.sees` is captured after the turn's calls without approval ran, and the card shows one event-loop turn later, so what those calls emitted arrives first and invalidates nothing. Approve compares `.sees` again, for values `changes` does not report.
 - Several calls in one turn, one of them with approval: the others run first, then the card freezes. One run carries all the answers, and it starts when every call of the turn has one. A message queued meanwhile goes in the same run, after the answers. A run with only the answers starts only when nothing is queued.
 - Reject answers its call at once. Invalidation does not start a run: `invalidated` goes with the user's next message.
 - **Stop does not cancel the run.** Cancelling does not stop ADK: the model keeps generating, the answer lands in the server's session, and a run sent right after mixes up the history. Stop hides the rest of the text and drains the run: it reads the stream to `RUN_FINISHED` or `RUN_ERROR`.

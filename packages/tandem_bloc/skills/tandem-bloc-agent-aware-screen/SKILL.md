@@ -36,6 +36,9 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
     if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
   ];
 
+  @override
+  Stream<Object?> get changes => stream;
+
   /// The order as the user sees it on the screen.
   OrderDraft get draft => state.draft;
 
@@ -51,12 +54,13 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 - `.calls(method)`: a method of this class that a button already calls, so the same validation runs for both.
 - `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or that sends something. It runs only after the user taps Approve.
 - The list is read again before every turn and every call, so an `if` can hide a method.
+- `changes` reports every change of the Cubit: its `stream`. Any change while an approval card shows invalidates the card.
 - Every listed getter and method needs a doc comment written for the agent: it is all the agent knows about it. The agent calls a method by its name in snake_case, here `set_quantity`.
 - Types of parameters, results and getters: `String`, `bool`, `int`, `double`, `num`, `DateTime`, enums, extension types over a scalar, `List<T>` and plain classes. Maps, sets, records and generic classes fail the build: list a thin method that takes supported types instead. See [the rules](https://github.com/leancodepl/tandem/blob/main/packages/tandem_generator/README.md#supported-types).
 - Reject the agent's bad input with an `ArgumentError`: the agent gets its message and tries again. A `RangeError` is an `ArgumentError` too, but Tandem treats it as a bug, so do not use `RangeError.range` for this. Any other exception is a bug: Tandem reports it and tells the agent the call failed.
 - After an `await`, check `isClosed` before `emit`: the screen may have closed meanwhile.
 
-**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, and every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread.
+**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, `changes` returns `stream`, and every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread.
 
 ## 3. Generate the code
 

@@ -10,6 +10,7 @@ final class Shop() implements AgentSurface {
 
   Future<void> serverReply = Future.value();
 
+  @override
   Stream<Object?> get changes => _changes.stream;
 
   Future<void> close() => _changes.close();

@@ -27,7 +27,6 @@ void main() {
   }) {
     final session = TandemSession(
       surface: shop,
-      changes: shop.changes,
       connection: connection,
       onAgentCall: onAgentCall ?? agentCalls.add,
     );
@@ -399,7 +398,6 @@ void main() {
     // Not open(), which would dispose it again at the end.
     final session = TandemSession(
       surface: shop,
-      changes: shop.changes,
       connection: agent,
       onAgentCall: agentCalls.add,
     )..send('clear it');

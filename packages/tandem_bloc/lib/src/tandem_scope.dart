@@ -23,9 +23,6 @@ import 'package:tandem/tandem.dart';
 /// )
 /// ```
 ///
-/// Every state that [C] emits once an approval card shows invalidates the
-/// card for good, even a state that changes nothing the agent sees (`.sees`).
-///
 /// An ordinary rebuild keeps the session. A new session replaces the old one
 /// when the provider above gives another [C], when `agent` is another [Uri]
 /// (compared with `==`), or when `connected` gets another connection
@@ -114,12 +111,6 @@ final class _TandemScopeState<C extends AgentSurface>()
 
   TandemSession _open() => TandemSession(
     surface: _cubit,
-    changes: switch (_cubit) {
-      StateStreamable<Object?>(:final stream) => stream,
-      _ => throw FlutterError(
-        'TandemScope<C> needs C to be a Cubit or Bloc, provided above it.',
-      ),
-    },
     connection: switch ((widget._connection, widget._agent)) {
       (final connection?, _) => connection,
       (_, final agent?) => HttpAgentConnection(agent),
