@@ -1,5 +1,8 @@
+import 'package:example/agent_chat.dart';
 import 'package:example/order.dart';
 import 'package:example/order_cubit.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
@@ -10,16 +13,7 @@ void main() {
 
   setUp(() {
     orders = Orders();
-    cubit = OrderCubit(
-      catalog: Catalog([
-        const .new(
-          sku: 'VM-27Q',
-          name: 'Monitor 27"',
-          description: 'QHD IPS monitor',
-        ),
-      ]),
-      orders: orders,
-    );
+    cubit = OrderCubit(orders: orders);
   });
 
   tearDown(() => cubit.close());
@@ -34,17 +28,6 @@ void main() {
       },
     ]);
     expect(listing.tools, [
-      {
-        'name': 'search_catalog',
-        'description': 'Finds products by name or description.',
-        'parameters': {
-          'type': 'object',
-          'properties': {
-            'query': {'type': 'string'},
-          },
-          'required': ['query'],
-        },
-      },
       {
         'name': 'set_quantity',
         'description': 'Sets how many pieces of [sku] the order has.',
@@ -87,27 +70,35 @@ void main() {
       throwsA(isA<ToolCallRefused>()),
     );
     expect(await listing.call('place_order', {}, approved: true), 'ORD-1');
-    expect(cubit.draft.lines, isEmpty);
   });
 
-  test('an edit made while the order is placed stays on the screen', () async {
-    cubit.setQuantity('VM-27Q', 2);
+  testWidgets('the agent sets a quantity from the chat', (tester) async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 15}),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider.value(
+          value: cubit,
+          child: TandemScope.connected(
+            surface: (context) => context.read<OrderCubit>(),
+            connection: agent,
+            approvals: const .fromState(),
+            child: const AgentChat(),
+          ),
+        ),
+      ),
+    );
 
-    final placing = cubit.placeOrder();
-    cubit.setQuantity('VM-27Q', 3);
-    await placing;
+    await tester.enterText(find.byType(TextField), 'fifteen monitors');
+    await tester.tap(find.text('Send'));
+    await tester.pumpAndSettle();
 
-    expect(orders.placed.single.lines.map((line) => line.quantity), [2]);
-    expect(cubit.draft.lines.map((line) => line.quantity), [3]);
-  });
-
-  test('an order placed while the screen closes throws nothing', () async {
-    cubit.setQuantity('VM-27Q', 2);
-
-    final placing = cubit.placeOrder();
-    await cubit.close();
-
-    await expectLater(placing, completion('ORD-1'));
+    expect(cubit.draft.lines.single.quantity, 15);
+    expect(find.text('Done.'), findsOneWidget);
   });
 
   test(

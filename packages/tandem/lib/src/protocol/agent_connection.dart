@@ -56,6 +56,9 @@ abstract interface class AgentConnection {
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
 }
 
+/// Talks to an AG-UI endpoint over HTTP and reads the run's events as
+/// server-sent events. Give it a [client] that adds headers, such as the
+/// user's token.
 final class HttpAgentConnection(
   final Uri endpoint, {
 

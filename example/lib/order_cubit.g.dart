@@ -27,30 +27,6 @@ mixin _$OrderCubit implements AgentSurface {
       ],
       calls: [
         AgentTool(
-          surface.searchCatalog,
-          name: 'search_catalog',
-          description: 'Finds products by name or description.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'query': {'type': 'string'},
-            },
-            'required': ['query'],
-          },
-          invoke: (args) async {
-            final result = await surface.searchCatalog(args.read('query'));
-
-            return [
-              for (final item in result)
-                {
-                  'sku': item.sku,
-                  'name': item.name,
-                  'description': item.description,
-                },
-            ];
-          },
-        ),
-        AgentTool(
           surface.setQuantity,
           name: 'set_quantity',
           description: 'Sets how many pieces of [sku] the order has.',

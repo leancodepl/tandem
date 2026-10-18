@@ -71,6 +71,8 @@ final class TandemScope extends StatefulWidget {
   /// with `.callsWithApproval`.
   final TandemApprovals approvals;
 
+  /// The screen and its chat, which read the session with
+  /// [TandemSessionScope.of].
   final Widget child;
 
   /// Hears what happens in the session, with the context of this scope, so

@@ -8,6 +8,8 @@ sealed class const TandemEvent();
 final class const AgentCall({
   /// The method's name in snake_case.
   required final String tool,
+
+  /// The agent's arguments, decoded from JSON.
   required final Map<String, Object?> arguments,
 
   /// What the method returned, as JSON.

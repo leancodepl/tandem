@@ -1,20 +1,45 @@
-# tandem
+<p align="center">
+  <img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/logo.png" alt="tandem: a robot and Dash riding a tandem bike" width="400">
+</p>
 
 <p align="center">
-  <img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/logo.png" alt="A robot and Dash riding a tandem bike" width="400">
-  <br>
+  <a href="https://pub.dev/packages/tandem"><img src="https://img.shields.io/pub/v/tandem?style=for-the-badge&logo=dart" alt="tandem on pub.dev"></a>
+  <a href="https://github.com/leancodepl/tandem/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/leancodepl/tandem/test.yml?branch=main&style=for-the-badge&logo=github" alt="Test status"></a>
+  <a href="https://github.com/leancodepl/tandem/blob/main/LICENSE"><img src="https://img.shields.io/github/license/leancodepl/tandem?style=for-the-badge" alt="License: Apache 2.0"></a>
   <a href="https://pub.dev/packages/leancode_lint"><img src="https://img.shields.io/badge/style-leancode__lint-f0ff00?style=for-the-badge" alt="style: leancode_lint"></a>
 </p>
 
-Let an AI agent work on an existing Flutter screen together with the user. The agent sees what you let it see, calls the same methods your buttons call, and anything that matters waits for the user's approval.
+Add an AI agent to a Flutter screen you already have: it works on the screen together with the user and asks before anything that matters.
 
-Tandem speaks [AG-UI](https://docs.ag-ui.com), so the agent can run on any AG-UI backend.
+> [!NOTE]
+> Tandem is experimental. Its API can change before 1.0.
+
+## How it works
+
+![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies and calls to the app's methods.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
+
+The model does not run in the app. Your agent backend calls it and keeps the API key, and the app talks to the backend over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Google ADK, LangChain, CrewAI, Mastra and many other agent frameworks support it. Tandem is the app's side.
+
+Your state class lists what the agent may do:
+
+<!-- example/lib/order_cubit.dart -->
+```dart
+  List<AgentCapability> get agentCapabilities => [
+    .sees(draft),
+    .calls(setQuantity),
+    if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
+  ];
+```
+
+- `.sees(draft)`: the agent sees the draft as it is at each turn, and nothing the class does not list.
+- `.calls(setQuantity)`: the agent calls the method a button calls, so the same validation runs and the screen changes as after a tap.
+- `.callsWithApproval(placeOrder)`: the method runs only after the user approves the call.
 
 ## Quick start
 
 Requires Dart 3.13 (Flutter 3.47) or newer.
 
-1. Add the packages:
+1. Add the packages. Keep both on the same minor version: the generated code follows the API of `tandem`.
 
    ```sh
    flutter pub add tandem
@@ -23,11 +48,12 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
 2. List what the agent may see and call:
 
+   <!-- example/lib/order_cubit.dart -->
    ```dart
    part 'order_cubit.g.dart';
 
    @TandemAgent()
-   class OrderCubit({required final Catalog catalog, required final Orders orders})
+   class OrderCubit({required final Orders orders})
        extends Cubit<OrderState>
        with _$OrderCubit {
      this : super(.new(draft: .empty));
@@ -35,7 +61,6 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
      @override
      List<AgentCapability> get agentCapabilities => [
        .sees(draft),
-       .calls(searchCatalog),
        .calls(setQuantity),
        if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
      ];
@@ -46,18 +71,16 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
      /// The order as the user sees it on the screen.
      OrderDraft get draft => state.draft;
 
-     /// Finds products by name or description.
-     Future<List<Product>> searchCatalog(String query) => catalog.search(query);
-
      /// Sets how many pieces of [sku] the order has.
-     void setQuantity(String sku, int quantity) { ... }
+     void setQuantity(String sku, int quantity) =>
+         emit(.new(draft: draft.withQuantity(sku, quantity)));
 
      /// Places the order exactly as it is on the screen.
-     Future<OrderId> placeOrder() async { ... }
+     Future<OrderId> placeOrder() => orders.place(draft);
    }
    ```
 
-   The agent gets exactly what is on the list. It reads the doc comments, and the parameter types become the schema. The list is read again before every turn, so it can depend on the state or on who the user is. `changes` reports every change of the state, for a Cubit its `stream`.
+   The agent gets exactly what is on the list, with the doc comments, and the parameter types become the schema. The list is read again before every turn, so it can depend on the state or on who the user is. `changes` reports every change, here the Cubit's `stream`. Not on bloc? [Any state library](#any-state-library) shows the same with provider and Riverpod.
 
 3. Generate the code:
 
@@ -65,166 +88,272 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    dart run build_runner build
    ```
 
-   Every class with `@TandemAgent()` gets a `_$Name` mixin, here `_$OrderCubit`. Each `.sees` must stand directly in the list after `get agentCapabilities =>`, not inside an `if`, a `for`, a `?:` or a spread, or the build fails.
-
-   In CI, run `dart run build_runner build && git diff --exit-code`. An outdated `.g.dart` is not always caught at runtime, for example when two parameters of the same type swap places.
+   Every class with `@TandemAgent()` gets a `_$Name` mixin. Each `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread, or the build fails. In CI, run `dart run build_runner build && git diff --exit-code`: an outdated `.g.dart` is not always caught at runtime.
 
 4. Wrap the screen and its chat:
 
+   <!-- example/lib/order_screen.dart -->
    ```dart
-   BlocProvider(
-     create: (_) => OrderCubit(catalog: catalog, orders: orders),
-     child: TandemScope(
-       surface: (context) => context.read<OrderCubit>(),
-       agent: Uri.parse('http://localhost:8000/agent'),
-       approvals: const .fromState(),
-       child: const Row(
-         children: [
-           Expanded(child: OrderForm()),
-           SizedBox(width: 360, child: AgentChat()),
-         ],
+   final class const OrderScreen({super.key}) extends StatelessWidget {
+     @override
+     Widget build(BuildContext context) => BlocProvider(
+       create: (context) => OrderCubit(orders: context.read<Orders>()),
+       child: TandemScope(
+         surface: (context) => context.read<OrderCubit>(),
+         agent: Uri.parse('http://localhost:8000/agent'),
+         approvals: const .fromState(),
+         onEvent: showOrderMessages,
+         child: const Row(
+           children: [
+             Expanded(child: OrderForm()),
+             SizedBox(width: 360, child: AgentChat()),
+           ],
+         ),
        ),
-     ),
-   )
+     );
+   }
    ```
 
-   The scope reads the Cubit with `surface` when it opens its session, and keeps that session until it leaves the tree or gets another `agent`. `approvals` says how the user approves a call: here the chat draws the requests. See [Approvals](#approvals) for a dialog.
+   The scope reads the Cubit with `surface` when it opens its session, and keeps the session until it leaves the tree or gets another `agent`. [Approvals](#approvals) and [Events](#events) explain the other two lines.
 
-5. Build the chat. Tandem has no chat widget, so the chat has your app's texts, language and look. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes:
+5. Build the chat. Tandem has no chat widget, so the chat has your app's texts, language and look. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes. Each item of `session.items` is a sealed `ChatItem`:
 
+   <!-- example/lib/agent_chat.dart -->
    ```dart
-   final session = TandemSessionScope.of(context);
-
-   return ListView(
-     children: [
-       for (final item in session.items)
-         switch (item) {
-           UserMessage(:final text) => ...,
-           AgentMessage(:final text, :final stopped) => ...,
-           ChatNotice(:final kind) => ...,
-           final ApprovalRequest request => ...,
-         },
-     ],
-   );
+     Widget build(BuildContext context) => switch (item) {
+       UserMessage(:final text) => _Bubble(text, fromUser: true),
+       AgentMessage(:final text, :final stopped) => _Bubble(
+         text,
+         stopped: stopped,
+       ),
+       ChatNotice(:final kind) => _Notice(kind),
+       // A card of another call that lands at the same index gets a new state.
+       final ApprovalRequest request => _ApprovalCard(
+         request,
+         approvalBuilder,
+         key: ValueKey((session, request.toolCallId)),
+       ),
+     };
    ```
 
-   `ChatItem` is sealed, so the compiler checks that the switch covers every kind. The field calls `session.send(text)`. Its button switches on `session.status`, also sealed: Send while `Idle` or `AwaitingApproval`, Stop while `Thinking` or `Calling` a method the user did not approve, and disabled while an approved method runs to its end or a stopped run is `Stopping`. A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. The card's `description` is the method's doc comment, written for the agent, so a localized card picks its own text by `request.tool`.
-
-   [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example does all of this in one file, ready to copy.
-
-The agent changes the screen through the same methods as your buttons, so the same validation runs for both. When the user edits something, the agent sees it on its next turn.
+   [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example is the whole chat in one file, ready to copy. Its field calls `session.send(text)`, and its button switches on [the status](#session-status).
 
 > [!TIP]
 > Setting this up with a coding agent? `dart run skills@ get` installs Tandem's skill from your dependencies, and the agent follows these steps.
 
+## Try it without a key
+
+The [example](https://github.com/leancodepl/tandem/tree/main/example) is an order desk for an iPad: the agent fills in an order from a pasted e-mail and places it once the user approves. Its agent backend can run with a scripted model, so it needs no API key. [example/README.md](https://github.com/leancodepl/tandem/blob/main/example/README.md) says how to run it.
+
+To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent` ([how](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#without-an-api-key)). On Linux or Windows, run it in Chrome. [More examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) have screens to copy with bloc, Riverpod and provider.
+
+## Session status
+
+`session.status` says what the session does now. It is sealed, so a `switch` covers every case:
+
+<!-- example/lib/status_line.dart -->
+```dart
+final class const StatusLine({super.key}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      switch (TandemSessionScope.of(context).status) {
+        Idle() => const SizedBox.shrink(),
+        Thinking() => const LinearProgressIndicator(),
+        Calling(:final tool) => Text('Running $tool…'),
+        AwaitingApproval(:final request) => Text(
+          'Waiting for you: ${request.tool}',
+        ),
+        Stopping() => const Text('Stopping…'),
+      };
+}
+```
+
+Stop is available while the status is `Thinking`, or `Calling` a method the user did not approve. An approved method runs to its end.
+
 ## Approvals
 
-A method listed with `.callsWithApproval` runs only after the user approves it, which calls `session.approve`. The approval covers what the agent sees when it asks, so list everything the method depends on with `.sees`. Tandem compares `.sees` with what the agent saw when its turn ends, on every event of `changes` and on Approve. When they differ, the card is invalidated for good, or does not show at all, and the agent has to ask again. A change undone before Tandem checks, such as A, B, A in one go, leaves the card pending, and so does a change outside `.sees`, such as a selected tab or a loading flag.
+A method listed with `.callsWithApproval` runs only after the user approves it. The approval covers what the agent saw when it asked, so list everything the method depends on with `.sees`. When a value listed with `.sees` changes, Tandem invalidates the request for good and the agent has to ask again. A change outside `.sees`, such as a selected tab, leaves it pending.
 
 `approvals:` on the scope says how the screen asks:
 
-- `.fromState()`: the UI draws the requests itself, from `session.items` like the chat above, or from the status `AwaitingApproval(request)`.
-- `.callback((context, request, session) async { ... })`: Tandem calls it for each request when it shows, for a dialog, a bottom sheet or anything imperative. `context` is the scope's, and the callback decides with `session.approve` or `session.reject`. A request it leaves undecided stays pending until the user's next message cancels it.
-- `.none()`: the screen never asks. A call that needs approval is refused to the agent and reported in debug.
+| `approvals:` | For |
+|---|---|
+| `.fromState()` | a UI that draws the requests itself, from `session.items` or the status `AwaitingApproval(request)` |
+| `.callback((context, request, session) async { ... })` | a dialog, a bottom sheet or anything imperative |
+| `.none()` | a screen without `.callsWithApproval`: such a call is refused to the agent and reported in debug |
 
-A dialog to copy, where `approvalTitle` stands for your app's text for `request.tool`:
+A dialog, from [an example](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#an-approval-dialog) that passes `approvals: const .callback(_confirmSend)`:
 
+<!-- example/lib/recipes/approval_dialog/reply_screen.dart -->
 ```dart
-approvals: .callback((context, request, session) async {
-  final labels = MaterialLocalizations.of(context);
-  final approved = await showDialog<bool>(
+Future<void> _confirmSend(
+  BuildContext context,
+  ApprovalRequest request,
+  TandemSession session,
+) async {
+  final reply = context.read<ReplyCubit>().reply;
+  final send = await showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(approvalTitle(context, request)),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(labels.cancelButtonLabel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(labels.okButtonLabel),
-        ),
-      ],
-    ),
+    builder: (context) => _SendDialog(reply),
   );
   try {
-    if (approved ?? false) {
+    if (send ?? false) {
       session.approve(request);
     } else {
       session.reject(request);
     }
   } on ApprovalNotPending {
-    // Invalidated or cancelled while the dialog showed.
+    // The reply changed, or the screen closed, while the dialog showed.
   }
-}),
+}
 ```
 
-When the agent asks for several approvals in one turn, Tandem asks for them one at a time, in order: the next one shows once the previous one is decided and its method returned. Each keeps what the agent saw when it asked, so an approved method that changes `.sees` invalidates the rest. Reject tells the agent the user said no and cancels the rest, so the agent plans again. Sending a message while a card is open cancels the card.
-
-`approve` and `reject` either decide or throw. The same decision twice does nothing, so a double tap is harmless. A decision that cannot happen, such as approving an invalidated request, throws an `ApprovalNotPending`. `session.isPending(request)` tells whether a request still waits. Stop finishes reading the agent's turn but runs nothing more from it. An approved method runs to its end, so Stop is unavailable until it returns.
+- Several approvals of one turn show one at a time. A rejection cancels the rest, and the agent plans again.
+- `approve` and `reject` either decide or throw `ApprovalNotPending`. The same decision twice does nothing, so a double tap is harmless. `session.isPending(request)` tells whether a request still waits.
+- A message the user sends while a request waits cancels it. A request the callback leaves undecided waits until then.
 
 ## Events
 
-`onEvent` on the scope hears what happens in the session, as a sealed `TandemEvent`: `AgentCall` after a listed method returned, with its `tool`, `arguments` and `result`, then `RunStopped`, `RunFailed` and `ConnectionLost`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`. It gets the scope's context, below the `BlocProvider`, and the session:
+`onEvent` on the scope hears what happens in the session, as a sealed `TandemEvent`. It gets the scope's context and the session:
 
+<!-- example/lib/order_messages.dart -->
 ```dart
-onEvent: (context, event, session) {
-  if (event case AgentCall(tool: 'place_order', :final result)) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Placed order $result')),
-    );
+void showOrderMessages(
+  BuildContext context,
+  TandemEvent event,
+  TandemSession session,
+) {
+  final message = switch (event) {
+    AgentCall(tool: 'place_order', :final result) => 'Placed order $result.',
+    RunFailed() || ConnectionLost() => 'The agent did not answer. Try again.',
+    AgentCall() || RunStopped() => null,
+  };
+  if (message case final text?) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
-},
+}
 ```
 
-## The agent
+`AgentCall` comes after a listed method returned, with its `tool`, `arguments` and `result`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`.
+
+## Any state library
+
+Tandem reads the state object with `surface` and hears it change in `changes`, so a state library needs no adapter package. `changes` is a broadcast stream with an event for every change:
+
+| State | `changes` |
+|---|---|
+| bloc's `Cubit` | `stream` |
+| `ChangeNotifier` or `ValueNotifier` | a `StreamController.broadcast()` that an override of `notifyListeners` feeds |
+| Riverpod's `Notifier` | a `StreamController.broadcast()` that `listenSelf` in `build` feeds |
+
+With provider and a `ChangeNotifier`:
+
+<!-- example/lib/recipes/change_notifier/todo_list.dart -->
+```dart
+@TandemAgent()
+class TodoList() extends ChangeNotifier with _$TodoList {
+  final _changes = StreamController<Object?>.broadcast();
+  final _todos = <String>[];
+
+  @override
+  List<AgentCapability> get agentCapabilities => [
+    .sees(todos),
+    .calls(add),
+    if (todos.isNotEmpty) .callsWithApproval(clear),
+  ];
+
+  @override
+  Stream<Object?> get changes => _changes.stream;
+
+  @override
+  void notifyListeners() {
+    super.notifyListeners();
+    _changes.add(null);
+  }
+
+  /// The to-dos as the user sees them, oldest first.
+  List<String> get todos => List.unmodifiable(_todos);
+
+  /// Adds [todo] at the end of the list.
+  void add(String todo) {
+    _todos.add(todo);
+    notifyListeners();
+  }
+
+  /// Removes every to-do.
+  void clear() {
+    _todos.clear();
+    notifyListeners();
+  }
+}
+```
+
+With Riverpod:
+
+<!-- example/lib/recipes/riverpod/cart_notifier.dart -->
+```dart
+  List<String> build() {
+    // Riverpod drops this listener when it builds again, so it is never
+    // there twice.
+    listenSelf((_, next) => _changes.add(next));
+    return const [];
+  }
+```
+
+`surface` reads the object from the scope's context, such as `context.read<TodoList>()`, or `ref.read(cartProvider.notifier)` in a Riverpod `ConsumerWidget`. Put the scope below what owns the object, so the scope disposes its session first. `riverpod_generator` cannot be used on the same class: it writes a `_$Name` too. [The examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) have a screen for each.
+
+## Testing
+
+`ScriptedAgent` from `package:tandem/testing.dart` plays a script instead of a model, so widget tests run without a backend. `TandemScope.connected` takes it in place of the endpoint. Here `cubit` is an `OrderCubit` from `setUp`:
+
+<!-- example/test/order_cubit_test.dart -->
+```dart
+  testWidgets('the agent sets a quantity from the chat', (tester) async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 15}),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider.value(
+          value: cubit,
+          child: TandemScope.connected(
+            surface: (context) => context.read<OrderCubit>(),
+            connection: agent,
+            approvals: const .fromState(),
+            child: const AgentChat(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'fifteen monitors');
+    await tester.tap(find.text('Send'));
+    await tester.pumpAndSettle();
+
+    expect(cubit.draft.lines.single.quantity, 15);
+    expect(find.text('Done.'), findsOneWidget);
+  });
+```
+
+Every turn of the script is one run. `agent.requests` holds the body of every run, so a test can check what the agent saw. To check only what a class gives the agent, use `AgentListing.of(cubit)`.
+
+## The agent backend
 
 Any AG-UI endpoint works. The backend has to:
 
 - Put the AG-UI `context` into the model's prompt. ag-ui-adk does not, so its agent needs an instruction provider that adds it.
 - Accept `tools` on every run. Tandem always sends it, an empty list when no method is listed.
 - On the web, allow the app's origin with CORS.
+- Treat the `tools`, their descriptions and the `context` as untrusted input: they come from the app, and anyone can send a run with other ones.
 
-A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent.
+To send the user's token, give `HttpAgentConnection` an `http.Client` that adds it, and pass the connection to `TandemScope.connected` ([example](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#a-token-for-your-backend)). A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK agent to copy from.
 
-The [example](https://github.com/leancodepl/tandem/tree/main/example) is an order desk app with a Google ADK agent in Python. Its README says how to run both.
+## Project status
 
-## Testing
-
-`ScriptedAgent` plays a fixed script instead of a model, so widget tests run without network. `TandemScope.connected` takes it in place of the endpoint:
-
-```dart
-import 'package:tandem/testing.dart';
-
-final agent = ScriptedAgent([
-  (_) => [AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 15})],
-  (_) => [AgentStep.say('Done.')],
-]);
-
-await tester.pumpWidget(
-  MaterialApp(
-    home: BlocProvider(
-      create: (_) => OrderCubit(catalog: catalog, orders: orders),
-      child: TandemScope.connected(
-        surface: (context) => context.read<OrderCubit>(),
-        connection: agent,
-        approvals: const .fromState(),
-        child: const Row(
-          children: [
-            Expanded(child: OrderForm()),
-            SizedBox(width: 360, child: AgentChat()),
-          ],
-        ),
-      ),
-    ),
-  ),
-);
-```
-
-## Status
-
-Experimental. The API can change before 1.0. Not supported yet: AG-UI interrupts, Riverpod.
+Not supported yet: AG-UI interrupts, several state objects on one screen, and a conversation that goes on across screens.
 
 ## AI
 

@@ -434,7 +434,7 @@ final class const _ApprovalTitle(final ApprovalRequest request)
 
 ## The backend
 
-Any AG-UI endpoint works. The backend has to put the AG-UI `context` into the model's prompt, accept `tools` on every run and, on the web, allow the app's origin with CORS. Tandem is tested with [ag-ui-adk](https://pypi.org/project/ag-ui-adk/) 0.9.0.
+Any AG-UI endpoint works. The backend has to put the AG-UI `context` into the model's prompt, accept `tools` on every run and, on the web, allow the app's origin with CORS. The `tools`, their descriptions and the `context` come from the app, so the backend treats them as untrusted input. Tandem is tested with [ag-ui-adk](https://pypi.org/project/ag-ui-adk/) 0.9.0.
 
 The demo's agent in [`example/agent`](../example/agent) is a Google ADK agent to copy from:
 
