@@ -4,8 +4,7 @@ Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what a C
 
 ## Layout
 
-- `packages/tandem`: the agent list, the AG-UI connection, the session, `ScriptedAgent`. It does not depend on bloc and has no chat widget.
-- `packages/tandem_bloc`: `TandemScope<C>` and the Agent Skill in `skills/`. This is what apps depend on.
+- `packages/tandem`: the agent list, the AG-UI connection, the session, `TandemScope`, `ScriptedAgent` and the Agent Skill in `skills/`. This is what apps depend on. It does not depend on bloc and has no chat widget.
 - `packages/tandem_generator`: the builder behind `@TandemAgent()`. It is not a workspace member, so it has its own `pubspec.lock`, which is not committed. The root `pubspec.lock` is committed.
 - `example`: the order desk demo app (`lib/desk`) and its Google ADK agent in `example/agent` (Python, uv). Also the order form of the README (`lib/order_cubit.dart`), with its generated code and tests, and the chat that apps copy (`lib/agent_chat.dart`). The cubits and fixtures that only tests use, such as the shopping list, are in `test/`. How to run the demo: [example/README.md](example/README.md).
 
@@ -37,7 +36,7 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 - Few tests. One focused test per behaviour or fixed defect, in the existing test file when there is one. No test that restates the implementation.
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
 - Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`).
-- When the API changes, change `README.md`, `packages/tandem_bloc/README.md` (an identical copy) and `packages/tandem_bloc/skills/tandem-bloc-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
+- When the API changes, change `README.md`, `packages/tandem/README.md` (an identical copy) and `packages/tandem/skills/tandem-agent-aware-screen/SKILL.md`. When a session rule changes, change `doc/design.md`.
 - Never read, print or create a `.env` file. No API keys in the repo.
 - Docs and comments: short sentences, plain words, no em dashes. Say what is true, not how it came to be.
 

@@ -2,5 +2,5 @@ extends:
   - '@commitlint/config-conventional'
 rules:
   type-enum: [2, always, [feat, fix, refactor, test, docs, build, ci, chore]]
-  scope-enum: [2, always, [tandem, tandem_bloc, tandem_generator, example]]
+  scope-enum: [2, always, [tandem, tandem_generator, example]]
   header-max-length: [2, always, 72]

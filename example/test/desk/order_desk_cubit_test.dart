@@ -8,7 +8,7 @@ import 'package:example/desk/desk_order.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tandem_bloc/testing.dart';
+import 'package:tandem/testing.dart';
 
 const _cables = 'VC-HDMI-2M';
 const _monitor = 'VM-27Q';

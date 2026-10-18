@@ -16,6 +16,7 @@ export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
 export 'src/session/agent_call.dart' show AgentCall, AgentCallListener;
 export 'src/session/session_scope.dart' show TandemSessionScope;
+export 'src/session/tandem_scope.dart' show TandemScope;
 export 'src/session/tandem_session.dart' show TandemSession;
 export 'src/tandem_agent.dart' show TandemAgent;
 export 'src/tool_args.dart' show ToolArgs;

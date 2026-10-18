@@ -3,7 +3,7 @@ import 'package:example/desk/customers.dart';
 import 'package:example/desk/desk_order.dart';
 import 'package:example/desk/orders.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
+import 'package:tandem/tandem.dart';
 
 part 'order_desk_cubit.g.dart';
 

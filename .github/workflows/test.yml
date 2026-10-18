@@ -191,12 +191,6 @@ jobs:
           path: packages/tandem
           dry-run: true
 
-      - name: Dry run pub publish of tandem_bloc
-        uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
-        with:
-          path: packages/tandem_bloc
-          dry-run: true
-
       - name: Dry run pub publish of tandem_generator
         uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
         with:

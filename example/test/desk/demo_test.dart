@@ -7,7 +7,7 @@ import 'package:example/desk/ui/order_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tandem_bloc/testing.dart';
+import 'package:tandem/testing.dart';
 
 const _empty = 'Paste a customer e-mail into the chat to start an order.';
 const _customer = 'Acme Office Supply Sp. z o.o.';

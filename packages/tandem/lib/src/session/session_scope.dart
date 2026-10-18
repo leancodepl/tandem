@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:tandem/src/session/tandem_session.dart';
 
-/// Gives the widgets below it the [TandemSession] of the screen. The
-/// `TandemScope` of an adapter package such as `tandem_bloc` builds it.
+/// Gives the widgets below it the [TandemSession] of the screen. A
+/// `TandemScope` builds it.
 final class const TandemSessionScope({
   super.key,
   required TandemSession session,

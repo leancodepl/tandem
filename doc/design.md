@@ -6,11 +6,10 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, the AG-UI connection, the session, `ScriptedAgent` | flutter, http, uuid |
-| `tandem_bloc` | `TandemScope<C>`: takes the cubit from the context, passes `onAgentCall`; exports `tandem` | tandem, flutter_bloc |
+| `tandem` | the agent list, the AG-UI connection, the session, `TandemScope`, `ScriptedAgent` | flutter, http, uuid |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
-`tandem` does not depend on bloc. Riverpod support would be a separate `tandem_riverpod` with its own `TandemScope`.
+`tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
 
 `tandem` has no widget the user sees. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
 
@@ -18,16 +17,16 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 
 `tandem_generator` is not a workspace member: its dev dependency `test` needs a `test_api` that the pin of `flutter_test` rules out. It has its own lock, which is not committed. The example depends on it by path, and CI runs `dart pub get` in it.
 
-`packages/tandem_bloc/README.md`, the README pub.dev shows for `tandem_bloc`, is an identical copy of the root README. Change both.
+`packages/tandem/README.md`, the README pub.dev shows for `tandem`, is an identical copy of the root README. Change both.
 
-`tandem_bloc` ships an Agent Skill, `skills/tandem-bloc-agent-aware-screen`, that apps install with `dart run skills@ get`. It follows the API: change one, change the other.
+`tandem` ships an Agent Skill, `skills/tandem-agent-aware-screen`, that apps install with `dart run skills@ get`. The installer takes only skills whose name starts with `tandem-`. The skill follows the API: change one, change the other.
 
 ## Session rules
 
 - Every run reads the live list: `context` from `.sees`, `tools` from `.calls`. Every tool call checks the list again.
 - One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run.
 - A call without approval runs at once, and its result goes in the next run.
-- After every call of a listed method that returned, including approved ones, the session calls `onAgentCall` with an `AgentCall`: the name, arguments and result. `TandemScope` passes it a context below the `BlocProvider`, so an app can read the cubit and highlight the changed fields.
+- After every call of a listed method that returned, including approved ones, the session calls `onAgentCall` with an `AgentCall`: the name, arguments and result. `TandemScope` passes it its own context, so an app can read what is provided above it, such as the cubit, and highlight the changed fields.
 - A call that needs approval shows a card with a frozen copy of its arguments. Any event of the surface's `changes` after the card shows invalidates it for good, even when the state comes back (A, B, A), which comparing the latest value would miss. `.sees` is captured after the turn's calls without approval ran, and the card shows one event-loop turn later, so what those calls emitted arrives first and invalidates nothing. Approve compares `.sees` again, for values `changes` does not report.
 - Several calls in one turn, one of them with approval: the others run first, then the card freezes. One run carries all the answers, and it starts when every call of the turn has one. A message queued meanwhile goes in the same run, after the answers. A run with only the answers starts only when nothing is queued.
 - Reject answers its call at once. Invalidation does not start a run: `invalidated` goes with the user's next message.
@@ -39,7 +38,7 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 - A run is never sent twice: the server would answer with an empty `RUN_STARTED`/`RUN_FINISHED` pair.
 - A run that breaks without a final event adds a `connectionLost` notice, and the next message starts a new thread with fresh history.
 - No response headers or no bytes for 60 s counts as a broken run. ADK pings every 15 s, but the parser drops comments, so the timeout watches the raw bytes.
-- `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when the provider gives another cubit, `agent` is another `Uri` (`==`), or `connected` gets another connection (`identical`). The old session is disposed first. A scope that leaves the tree disposes its session before the `BlocProvider` closes the cubit. A new `onAgentCall` takes effect at once.
+- `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when `agent` is another `Uri` (`==`) or `connected` gets another connection (`identical`). The old session is disposed first. Each new session calls `surface` again with the scope's context. Another object from the provider under the same scope opens no session. A scope that leaves the tree disposes its session before the owner of the state object, such as a `BlocProvider`, closes it. A new `onAgentCall` takes effect at once.
 - `threadId` lives as long as its session and never comes back after it is gone: an orphaned ADK run would mix up the history.
 - A run error shows in the chat, and the next message works as usual. Its code and message, like every error the session catches, go to `FlutterError.reportError`, never to the chat.
 
@@ -85,4 +84,4 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 - A loop guard, if a real model loops.
 - l10n: the UI strings are hard-coded in English.
 - `additionalProperties: false` in the schemas, once Gemini accepts it.
-- Publishing to pub.dev: each of the three packages needs its own release, `tandem` first.
+- Publishing to pub.dev: `tandem` and `tandem_generator` each need their own release.

@@ -2,10 +2,9 @@ import 'dart:async';
 
 import 'package:example/agent_chat.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
-import 'package:tandem_bloc/testing.dart';
+import 'package:tandem/tandem.dart';
+import 'package:tandem/testing.dart';
 
 import 'shopping_list.dart';
 
@@ -83,12 +82,10 @@ Future<ShoppingListCubit> _sendClear(
   addTearDown(list.close);
   await tester.pumpWidget(
     MaterialApp(
-      home: BlocProvider.value(
-        value: list,
-        child: TandemScope<ShoppingListCubit>.connected(
-          connection: ScriptedAgent(turns),
-          child: AgentChat(approvalBuilder: approvalBuilder),
-        ),
+      home: TandemScope.connected(
+        surface: (context) => list,
+        connection: ScriptedAgent(turns),
+        child: AgentChat(approvalBuilder: approvalBuilder),
       ),
     ),
   );

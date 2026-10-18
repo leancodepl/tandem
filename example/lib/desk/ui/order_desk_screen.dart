@@ -10,7 +10,7 @@ import 'package:example/desk/ui/order_form.dart';
 import 'package:example/desk/ui/order_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
+import 'package:tandem/tandem.dart';
 
 /// The order form with the agent's chat beside it.
 ///
@@ -28,11 +28,13 @@ final class const OrderDeskScreen({
       orders: Orders(),
     ),
     child: switch (connection) {
-      final connection? => TandemScope<OrderDeskCubit>.connected(
+      final connection? => TandemScope.connected(
+        surface: (context) => context.read<OrderDeskCubit>(),
         connection: connection,
         child: const _OrderDeskView(),
       ),
-      null => TandemScope<OrderDeskCubit>(
+      null => TandemScope(
+        surface: (context) => context.read<OrderDeskCubit>(),
         agent: Uri.parse('http://localhost:8000/agent'),
         child: const _OrderDeskView(),
       ),

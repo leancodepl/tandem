@@ -1,6 +1,6 @@
 import 'package:example/order.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
+import 'package:tandem/tandem.dart';
 
 part 'order_cubit.g.dart';
 

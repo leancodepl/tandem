@@ -13,6 +13,9 @@ final class Shop() implements AgentSurface {
   @override
   Stream<Object?> get changes => _changes.stream;
 
+  /// Whether a session listens to [changes].
+  bool get hasSession => _changes.hasListener;
+
   Future<void> close() => _changes.close();
 
   @override
