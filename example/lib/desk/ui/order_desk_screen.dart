@@ -31,11 +31,13 @@ final class const OrderDeskScreen({
       final connection? => TandemScope.connected(
         surface: (context) => context.read<OrderDeskCubit>(),
         connection: connection,
+        approvals: const .fromState(),
         child: const _OrderDeskView(),
       ),
       null => TandemScope(
         surface: (context) => context.read<OrderDeskCubit>(),
         agent: Uri.parse('http://localhost:8000/agent'),
+        approvals: const .fromState(),
         child: const _OrderDeskView(),
       ),
     },

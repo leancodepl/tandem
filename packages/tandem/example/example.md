@@ -50,6 +50,7 @@ final class const ShoppingListScreen({super.key}) extends StatelessWidget {
     child: TandemScope(
       surface: (context) => context.read<ShoppingListCubit>(),
       agent: Uri.parse('http://localhost:8000/agent'),
+      approvals: const .fromState(),
       child: const _ShoppingListView(),
     ),
   );

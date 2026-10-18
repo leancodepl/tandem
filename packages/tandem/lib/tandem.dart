@@ -19,6 +19,7 @@ export 'src/errors.dart'
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
 export 'src/session/agent_call.dart' show AgentCall, AgentCallListener;
+export 'src/session/approvals.dart' show ApprovalCallback, TandemApprovals;
 export 'src/session/session_scope.dart' show TandemSessionScope;
 export 'src/session/session_status.dart'
     show AwaitingApproval, Calling, Idle, SessionStatus, Stopping, Thinking;

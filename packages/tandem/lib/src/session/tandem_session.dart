@@ -34,7 +34,18 @@ final class TandemSession({
   required final AgentSurface _surface,
   required final AgentConnection _connection,
   final AgentCallListener? _onAgentCall,
+
+  /// Gets each approval request when it shows, once the session waits for
+  /// it, so it can decide at once.
+  final Future<void> Function(ApprovalRequest request)? _onApprovalRequest,
+
+  /// Read when the agent asks. When it returns false, for a screen that never
+  /// asks, a call that needs approval is refused to the agent and reported in
+  /// debug.
+  final bool Function() _asksForApproval = _alwaysAsks,
 }) extends ChangeNotifier {
+  // Apps get a session from TandemScope, the one way to say how to approve.
+  @internal
   this {
     _stateChangesSubscription = _surface.changes.listen(
       (_) => _invalidateIfSeesChanged(),
@@ -232,11 +243,38 @@ final class TandemSession({
   }
 
   void _askUser(Turn turn, {required bool changedWhileThinking}) {
-    // The agent asked about what it has not seen.
-    if (changedWhileThinking) {
+    if (!_asksForApproval()) {
+      _refuseApprovals(turn);
+    } else if (changedWhileThinking) {
+      // The agent asked about what it has not seen.
       turn.invalidateWaiting();
     } else {
       turn.ask(_seesNow);
+    }
+  }
+
+  void _refuseApprovals(Turn turn) {
+    final refused = turn.refuseWaiting(
+      'The user cannot approve calls on this screen.',
+    );
+    for (final call in refused) {
+      if (kDebugMode) {
+        _report(
+          StateError(
+            '${call.tool} needs approval, but this screen has approvals: '
+            '.none().',
+          ),
+          .current,
+        );
+      }
+    }
+  }
+
+  Future<void> _ask(ApprovalRequest request) async {
+    try {
+      await _onApprovalRequest?.call(request);
+    } catch (err, st) {
+      _report(err, st);
     }
   }
 
@@ -330,17 +368,24 @@ final class TandemSession({
   void _startNextRun() {
     final answersOnly = status is! Stopping && _turn.answered;
     _run = null;
+    ApprovalRequest? asked;
     if (_queuedMessages.isNotEmpty) {
       _start(_queuedMessages.removeAt(0));
     } else if (answersOnly) {
       _start();
     } else if (_turn.next() case final request?) {
       _items.add(request);
+      asked = request;
     }
     notifyListeners();
+    if (asked != null) {
+      unawaited(_ask(asked));
+    }
   }
 
   void _report(Object err, StackTrace st) => FlutterError.reportError(
     FlutterErrorDetails(exception: err, stack: st, library: 'tandem'),
   );
 }
+
+bool _alwaysAsks() => true;

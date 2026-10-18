@@ -103,6 +103,7 @@ BlocProvider(
   child: TandemScope(
     surface: (context) => context.read<OrderCubit>(),
     agent: Uri.parse('http://localhost:8000/agent'),
+    approvals: const .fromState(),
     child: const Row(
       children: [
         Expanded(child: OrderForm()),
@@ -115,9 +116,15 @@ BlocProvider(
 
 `TandemScope` goes below the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `surface` reads the Cubit when the scope opens its session. `onAgentCall: (context, call) { ... }` hears every listed method that ran (`call.tool`, `call.arguments`, `call.result`). Both get the scope's context, below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
 
+`approvals` says how the user approves a call of a `.callsWithApproval` method:
+
+- `.fromState()` when the chat of step 4 draws the requests as cards.
+- `.callback((context, request, session) async { ... })` for a dialog or a bottom sheet. Tandem calls it for each request when it shows. Decide with `session.approve(request)` or `session.reject(request)` and catch `ApprovalNotPending`. The [README](https://github.com/leancodepl/tandem#approvals) has a dialog to copy.
+- `.none()` only for a screen without `.callsWithApproval`.
+
 Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) in the Tandem repository is a working Google ADK backend to copy from.
 
-**Done when** the app shows the chat next to the screen. Step 6 checks the rest without a backend.
+**Done when** the app shows the chat next to the screen, and a screen with `.callsWithApproval` has `.fromState()` with a chat that draws the cards, or `.callback`. Step 6 checks the rest without a backend.
 
 ## 6. Test it with a script
 
@@ -139,6 +146,7 @@ testWidgets('the agent sets a quantity', (tester) async {
         child: TandemScope.connected(
           surface: (context) => context.read<OrderCubit>(),
           connection: agent,
+          approvals: const .fromState(),
           child: const AgentChat(),
         ),
       ),
@@ -165,4 +173,5 @@ Every turn of the script is one run: the first calls the tool, the second comes 
 - `TandemScope` above the `BlocProvider`, or a chat with no `TandemScope` above it.
 - A `.sees` value that changes on its own, for example on a timer. Every change invalidates an open card for good.
 - A `.callsWithApproval` method that depends on state not listed with `.sees`. A change to that state leaves the card pending, and the method runs on a state the agent never saw.
+- `approvals: .none()` on a screen with `.callsWithApproval`. Every such call is refused.
 - A `ScriptedAgent` made in `build`. A new connection starts a new session, so keep it in a field.

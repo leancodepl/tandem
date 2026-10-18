@@ -85,6 +85,7 @@ Future<ShoppingListCubit> _sendClear(
       home: TandemScope.connected(
         surface: (context) => list,
         connection: ScriptedAgent(turns),
+        approvals: const .fromState(),
         child: AgentChat(approvalBuilder: approvalBuilder),
       ),
     ),
