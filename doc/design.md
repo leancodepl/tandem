@@ -17,9 +17,13 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 
 `tandem_generator` is not a workspace member: its dev dependency `test` needs a `test_api` that the pin of `flutter_test` rules out. It has its own lock, which is not committed. The example depends on it by path, and CI runs `dart pub get` in it.
 
+The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentSchema` from `AgentView.of` and `AgentTool`, reading the agent's arguments with `ToolArgs`. So both packages release together, with the same minor version. The generator cannot depend on `tandem`, which needs Flutter.
+
 `packages/tandem/README.md`, the README pub.dev shows for `tandem`, is an identical copy of the root README. Change both.
 
 `tandem` ships an Agent Skill, `skills/tandem-agent-aware-screen`, that apps install with `dart run skills@ get`. The installer takes only skills whose name starts with `tandem-`. The skill follows the API: change one, change the other.
+
+The README, `doc/examples.md` and both packages' `example/example.md` show only code from `example`, and `example/test/doc_snippets_test.dart` checks each Dart block against the file its comment names. The examples use bloc, Riverpod and provider, which only the example depends on.
 
 ## Session rules
 
@@ -27,7 +31,7 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 - One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run.
 - `status` follows from the open run: `Stopping` once the user stopped it, `Calling` while a listed method runs, else `Thinking`. Without a run it is `AwaitingApproval` with the request that shows, or `Idle`.
 - A call without approval runs at once, and its result goes in the next run.
-- The session tells `onEvent` what happened, as a sealed `TandemEvent`: an `AgentCall` after every call of a listed method that returned, including approved ones, with the name, arguments and result; `RunStopped` on every Stop that stops a run; `RunFailed` and `ConnectionLost`, which also add a `ChatNotice`. A Stop adds a notice too or marks the last message `stopped`. Each event comes once the session has settled and notified, so `onEvent` may send a message at once. `TandemScope` passes its own context and the session that sent the event, so an app can read what is provided above it, such as the cubit, highlight the changed fields or show a snackbar. Approval requests are not events: they go to `approvals:`. The events need no context, so a `session.events` stream of the same types can come later.
+- The session tells `onEvent` what happened, as a sealed `TandemEvent`: an `AgentCall` after every call of a listed method that returned, including approved ones, with the name, arguments and result; `RunStopped` on every Stop that stops a run; `RunFailed` and `ConnectionLost`, which also add a `ChatNotice`. A Stop adds a notice too or marks the last message `stopped`. Each event comes once the session has settled and notified, so `onEvent` may send a message at once. `TandemScope` passes its own context and the session that sent the event, so an app can read what is provided above it, such as the surface, highlight the changed fields or show a snackbar. Approval requests are not events: they go to `approvals:`. The events need no context, so a `session.events` stream of the same types can come later.
 - A call that needs approval shows a card with a frozen copy of its arguments and keeps a snapshot of `.sees`, taken after the turn's calls without approval ran. Every event of the surface's `changes` compares `.sees` with the snapshot, and a difference invalidates the card for good. An event that comes late or changes nothing in `.sees` does no harm, so the card shows at once. A change undone before the session hears of it goes unseen (A, B, A). Approve compares again, for values `changes` does not report. When `.sees` changed while the agent thought, compared with what its run sent, the turn's requests are invalidated before they show, and the answers go at once. A `.sees` that cannot be read counts as changed, and the error is reported.
 - Several calls in one turn: those without approval run first. Those with approval show one at a time, in order: the next once the previous one is decided and, when approved, its method returned. An approved method that changes `.sees` invalidates the rest, and Reject cancels the rest, so the agent plans again. A request that never showed gets only its answer. One run carries all the answers, and it starts when every call of the turn has one. A message queued meanwhile goes in the same run, after the answers. A run with only the answers starts only when nothing is queued.
 - `approve` and `reject` decide the request that shows. The same decision again does nothing. Any other throws `ApprovalNotPending`: approving a request that was rejected, cancelled or invalidated, or whose `.sees` changed, which invalidates it, and rejecting one that was approved, cancelled or invalidated.
@@ -81,10 +85,10 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 
 ## Deferred
 
-- Riverpod.
 - AG-UI interrupts.
+- Telling a message the app sent with `session.send` from one the user wrote. Both are a `UserMessage`, and the session does not record which one it was ([RFC 0001](rfc/0001-core-without-ui-and-state-libraries.md#events-and-status), decision 15).
+- Several state objects per screen, a conversation across screens, and `session.events` ([RFC 0001](rfc/0001-core-without-ui-and-state-libraries.md#later-not-in-pre-v1)).
 - Resync of a broken run through the experimental `/agents/state`.
 - A loop guard, if a real model loops.
-- l10n: the UI strings are hard-coded in English.
 - `additionalProperties: false` in the schemas, once Gemini accepts it.
-- Publishing to pub.dev: `tandem` and `tandem_generator` each need their own release.
+- Publishing from CI. pub.dev takes automated publishing only for a package that exists, so the first release of each package goes up by hand.

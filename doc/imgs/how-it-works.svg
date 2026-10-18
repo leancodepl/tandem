@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 180" width="960" height="180">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; fill: #1f2328; text-anchor: middle; }
+    .name { font-size: 18px; font-weight: 600; }
+    .note { font-size: 14px; fill: #59636e; }
+    .wire { font-size: 14px; fill: #1f2328; }
+    .protocol { font-size: 15px; font-weight: 600; fill: #0969da; }
+    .page { fill: #ffffff; stroke: #d1d9e0; }
+    .box { fill: #f6f8fa; stroke: #818b98; stroke-width: 1.5; }
+    .line { stroke: #0969da; stroke-width: 2; fill: none; }
+    .head { fill: #0969da; }
+    @media (prefers-color-scheme: dark) {
+      text, .wire { fill: #f0f6fc; }
+      .note { fill: #9198a1; }
+      .protocol { fill: #4493f8; }
+      .page { fill: #0d1117; stroke: #3d444d; }
+      .box { fill: #151b23; stroke: #656c76; }
+      .line { stroke: #4493f8; }
+      .head { fill: #4493f8; }
+    }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="head" d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="page" x="0.5" y="0.5" width="959" height="179" rx="12"/>
+
+  <rect class="box" x="24" y="30" width="220" height="120" rx="10"/>
+  <text class="name" x="134" y="84">Flutter app</text>
+  <text class="note" x="134" y="108">with tandem</text>
+
+  <text class="wire" x="400" y="56">message, what the agent sees and may call</text>
+  <line class="line" x1="252" y1="72" x2="548" y2="72" marker-end="url(#head)"/>
+  <text class="protocol" x="400" y="96">AG-UI</text>
+  <line class="line" x1="548" y1="110" x2="252" y2="110" marker-end="url(#head)"/>
+  <text class="wire" x="400" y="136">replies and calls to your methods</text>
+
+  <rect class="box" x="556" y="30" width="220" height="120" rx="10"/>
+  <text class="name" x="666" y="72">Agent backend</text>
+  <text class="note" x="666" y="96">Google ADK, LangChain, …</text>
+  <text class="note" x="666" y="118">keeps the API key</text>
+
+  <line class="line" x1="784" y1="90" x2="828" y2="90" marker-start="url(#head)" marker-end="url(#head)"/>
+
+  <rect class="box" x="836" y="30" width="100" height="120" rx="10"/>
+  <text class="name" x="886" y="96">Model</text>
+</svg>

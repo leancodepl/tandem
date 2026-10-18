@@ -4,6 +4,8 @@ Generates the code behind the `agentCapabilities` of a class marked `@TandemAgen
 
 Apps depend on [`tandem`](https://pub.dev/packages/tandem) and add this package as a dev dependency. See the [main README](https://github.com/leancodepl/tandem#readme) for how to use it.
 
+Use the same minor version of both: the generated code calls the API of `tandem`. The class can be a Cubit, a Riverpod `Notifier`, a `ChangeNotifier` or any other class. `riverpod_generator` cannot run on the same class, because both write a `_$Name` into the same `.g.dart`.
+
 ## Supported types
 
 The parameters of the listed methods become the JSON Schema the agent fills in. Results and `.sees` getters reach the agent as JSON. Any other type fails the build, which names the type and where it is.

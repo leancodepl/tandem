@@ -19,8 +19,13 @@ final class const ToolCallRefused(final String message) implements Exception {
 }
 
 /// The agent's endpoint answered with a status other than 200.
-final class const AgentHttpException(final int statusCode, final String body)
-    implements Exception {
+final class const AgentHttpException(
+  /// The HTTP status the endpoint answered with.
+  final int statusCode,
+
+  /// The response body as text, such as the server's error message.
+  final String body,
+) implements Exception {
   @override
   String toString() => 'AgentHttpException: $statusCode $body';
 }

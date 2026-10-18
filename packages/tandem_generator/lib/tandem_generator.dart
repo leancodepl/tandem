@@ -1,3 +1,8 @@
+/// The build_runner builder behind `@TandemAgent()` of `package:tandem`.
+/// Apps add this package as a dev dependency and run
+/// `dart run build_runner build`.
+library;
+
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 import 'package:tandem_generator/src/agent_generator.dart';

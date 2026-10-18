@@ -3,12 +3,13 @@
 An order desk for an iPad: an agent fills in a B2B order from a pasted e-mail, together with the
 user, and places it once the user approves. The app is `lib/main.dart` and `lib/desk/`, with
 `OrderDeskCubit` as the screen's cubit. Its agent is [`agent/`](agent), a Google ADK agent in
-Python. `lib/order_cubit.dart` is the example of the package README.
+Python. `lib/order_cubit.dart` is the example of the package README. `lib/recipes` holds the
+screens of [doc/examples.md](../doc/examples.md), with bloc, Riverpod and provider.
 
 ## Run the agent
 
 In `example/agent`, with [uv](https://docs.astral.sh/uv/). The scripted model needs no API key and
-no network:
+makes no model calls:
 
 ```sh
 TANDEM_FAKE_LLM=1 uv run order-agent

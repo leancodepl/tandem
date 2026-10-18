@@ -4,6 +4,8 @@ import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/tool_args.dart';
 
+/// One item of the agent list: a value the agent sees or a method it may
+/// call. Write it as `.sees`, `.calls` or `.callsWithApproval`.
 sealed class const AgentCapability() {
   /// The agent sees [value] on every turn. Pass a getter of the surface, as
   /// in `.sees(draft)`: its name and doc comment tell the agent what it is.

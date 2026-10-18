@@ -1,12 +1,12 @@
 # Tandem
 
-Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what a Cubit lists and acts only through the methods it lists. Design: [doc/design.md](doc/design.md). Words: [GLOSSARY.md](GLOSSARY.md). Decisions: [doc/adr](doc/adr). Proposals: [doc/rfc](doc/rfc).
+Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what the screen's state class lists and acts only through the methods it lists. Design: [doc/design.md](doc/design.md). Words: [GLOSSARY.md](GLOSSARY.md). Decisions: [doc/adr](doc/adr). Proposals: [doc/rfc](doc/rfc).
 
 ## Layout
 
 - `packages/tandem`: the agent list, the AG-UI connection, the session, `TandemScope`, `ScriptedAgent` and the Agent Skill in `skills/`. This is what apps depend on. It does not depend on bloc and has no chat widget.
 - `packages/tandem_generator`: the builder behind `@TandemAgent()`. It is not a workspace member, so it has its own `pubspec.lock`, which is not committed. The root `pubspec.lock` is committed.
-- `example`: the order desk demo app (`lib/desk`) and its Google ADK agent in `example/agent` (Python, uv). Also the order form of the README (`lib/order_cubit.dart`), with its generated code and tests, and the chat that apps copy (`lib/agent_chat.dart`). The examples of [doc/examples.md](doc/examples.md) are in `lib/recipes`, with Riverpod and provider, and their tests in `test/recipes`. `test/doc_snippets_test.dart` checks that every Dart block of that doc is a verbatim part of the file its comment names. The cubits and fixtures that only tests use, such as the shopping list, are in `test/`. How to run the demo: [example/README.md](example/README.md).
+- `example`: the order desk demo app (`lib/desk`) and its Google ADK agent in `example/agent` (Python, uv). Also the order form of the README (`lib/order_cubit.dart`, `lib/order_screen.dart`, `lib/order_messages.dart` and `lib/status_line.dart`), with its generated code and tests, the chat that apps copy (`lib/agent_chat.dart`), and the shopping list of `packages/tandem/example/example.md` (`lib/shopping_list`). The examples of [doc/examples.md](doc/examples.md) are in `lib/recipes`, with Riverpod and provider, and their tests in `test/recipes`. `test/doc_snippets_test.dart` checks that every Dart block of the README, that doc and both packages' `example/example.md` is a verbatim part of the file its comment names. The state classes and fixtures that only tests use, such as the shopping list that holds a method open with `serverReply`, are in `test/`. How to run the demo: [example/README.md](example/README.md).
 
 ## Commands
 

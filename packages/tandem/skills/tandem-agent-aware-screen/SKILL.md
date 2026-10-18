@@ -1,11 +1,11 @@
 ---
 name: tandem-agent-aware-screen
-description: Make a Flutter screen agent-aware with Tandem, so an AI agent sees what the screen shows, calls the Cubit's methods, and anything that matters waits for the user's approval. Use when asked to add an AI agent, assistant or copilot to a Flutter screen, or when the code uses TandemScope, TandemSessionScope, @TandemAgent or agentCapabilities.
+description: Make a Flutter screen agent-aware with Tandem, so an AI agent sees what the screen shows, calls the methods of its state class (a Cubit, a Riverpod Notifier or a ChangeNotifier), and anything that matters waits for the user's approval. Use when asked to add an AI agent, assistant or copilot to a Flutter screen, or when the code uses TandemScope, TandemSessionScope, @TandemAgent or agentCapabilities.
 ---
 
 # Make a screen agent-aware with Tandem
 
-Tandem works on a screen that already has a Cubit. The agent sees what the Cubit lists with `.sees` and acts only through the methods it lists, the same ones the screen's buttons call. Do the steps in order and check each "Done when" before the next.
+Tandem works on a screen that already has a state class: a Cubit, a Riverpod `Notifier`, a `ChangeNotifier`, or any class that can report its changes. The agent sees what the class lists with `.sees` and acts only through the methods it lists, the same ones the screen's buttons call. The steps use a Cubit. [The examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) show the same for Riverpod and provider. Do the steps in order and check each "Done when" before the next.
 
 ## 1. Add the packages
 
@@ -20,7 +20,7 @@ Needs Dart 3.13 (Flutter 3.47) or newer.
 
 ## 2. List what the agent may see and call
 
-In the screen's Cubit:
+In the screen's state class, here a Cubit:
 
 ```dart
 part 'order_cubit.g.dart';
@@ -54,13 +54,13 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 - `.calls(method)`: a method of this class that a button already calls, so the same validation runs for both.
 - `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or that sends something. It runs only after the user taps Approve. The approval covers only what is listed with `.sees`, so list everything the method depends on.
 - The list is read again before every turn and every call, so an `if` can hide a method.
-- `changes` reports every change of the Cubit: its `stream`. On each change Tandem checks the `.sees` values, and a card whose values changed is invalidated while the user looks at it. Other changes leave the card alone.
+- `changes` reports every change of the class as a broadcast stream. On each change Tandem checks the `.sees` values, and a card whose values changed is invalidated while the user looks at it. Other changes leave the card alone. A Cubit returns its `stream`. A Riverpod `Notifier` adds each state to a `StreamController.broadcast()` from `listenSelf` in `build`. A `ChangeNotifier` adds to one in an override of `notifyListeners`.
 - Every listed getter and method needs a doc comment written for the agent: it is all the agent knows about it. The agent calls a method by its name in snake_case, here `set_quantity`.
 - Types of parameters, results and getters: `String`, `bool`, `int`, `double`, `num`, `DateTime`, enums, extension types over a scalar, `List<T>` and plain classes. Maps, sets, records and generic classes fail the build: list a thin method that takes supported types instead. See [the rules](https://github.com/leancodepl/tandem/blob/main/packages/tandem_generator/README.md#supported-types).
 - Reject the agent's bad input with an `ArgumentError`: the agent gets its message and tries again. A `RangeError` is an `ArgumentError` too, but Tandem treats it as a bug, so do not use `RangeError.range` for this. Any other exception is a bug: Tandem reports it and tells the agent the call failed.
-- After an `await`, check `isClosed` before `emit`: the screen may have closed meanwhile.
+- After an `await`, check `isClosed` before `emit` (`ref.mounted` before `state =` in a `Notifier`): the screen may have closed meanwhile.
 
-**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, `changes` returns `stream`, every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread, and everything a `.callsWithApproval` method depends on is listed with `.sees`.
+**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, `changes` reports every change (for a Cubit, `stream`), every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread, and everything a `.callsWithApproval` method depends on is listed with `.sees`.
 
 ## 3. Generate the code
 
@@ -74,7 +74,7 @@ Run it again after every change to the list, to a listed method's signature or t
 
 ## 4. Build the chat
 
-Tandem has no chat widget. Write one in the app's design system, with every text in the app's localization. If the app already has a chat, give it this session.
+Tandem has no chat widget. Write one in the app's design system, with every text in the app's localization. If the app already has a chat, give it this session. A screen that needs no chat can have a button that calls `session.send` and shows `session.status` instead, as in [Fill from e-mail](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#fill-from-e-mail), and skip the rest of this step.
 
 ```dart
 final class const AgentChat() extends StatelessWidget {
@@ -114,17 +114,17 @@ BlocProvider(
 )
 ```
 
-`TandemScope` goes below the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `surface` reads the Cubit when the scope opens its session. `onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result`), `RunStopped`, `RunFailed` and `ConnectionLost`. `surface` and `onEvent` get the scope's context, below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
+`TandemScope` goes below whatever owns the state object, such as the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `surface` reads the object when the scope opens its session. With provider it is `context.read<TodoList>()` below the `ChangeNotifierProvider`. With Riverpod, the screen is a `ConsumerWidget` that watches the provider, and `surface` is `(context) => ref.read(cartProvider.notifier)`. `onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result`), `RunStopped`, `RunFailed` and `ConnectionLost`. `surface` and `onEvent` get the scope's context, below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
 
 `approvals` says how the user approves a call of a `.callsWithApproval` method:
 
 - `.fromState()` when the chat of step 4 draws the requests as cards.
-- `.callback((context, request, session) async { ... })` for a dialog or a bottom sheet. Tandem calls it for each request when it shows. Decide with `session.approve(request)` or `session.reject(request)` and catch `ApprovalNotPending`. The [README](https://github.com/leancodepl/tandem#approvals) has a dialog to copy.
+- `.callback((context, request, session) async { ... })` for a dialog or a bottom sheet. Tandem calls it for each request when it shows. Decide with `session.approve(request)` or `session.reject(request)` and catch `ApprovalNotPending`. [An approval dialog](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#an-approval-dialog) is a screen to copy.
 - `.none()` only for a screen without `.callsWithApproval`.
 
-Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) in the Tandem repository is a working Google ADK backend to copy from.
+Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) in the Tandem repository is a working Google ADK backend to copy from. For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field ([example](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#a-token-for-your-backend)).
 
-**Done when** the app shows the chat next to the screen, and a screen with `.callsWithApproval` has `.fromState()` with a chat that draws the cards, or `.callback`. Step 6 checks the rest without a backend.
+**Done when** the app shows the chat next to the screen, or the button on it, and a screen with `.callsWithApproval` has `.fromState()` with a chat that draws the cards, or `.callback`. Step 6 checks the rest without a backend.
 
 ## 6. Test it with a script
 
@@ -170,7 +170,9 @@ Every turn of the script is one run: the first calls the tool, the second comes 
 
 - `.sees` inside an `if`, a `for`, a `?:` or a spread. The build fails. Keep it listed and let the getter return an empty value.
 - A change to the list or a signature without running build_runner again. It shows as a `StateError` that says to run it.
-- `TandemScope` above the `BlocProvider`, or a chat with no `TandemScope` above it.
+- `TandemScope` above the provider of the state object, or a chat with no `TandemScope` above it.
+- `changes` from a plain `StreamController`. The next session cannot listen to it: use `StreamController.broadcast()`.
+- `riverpod_generator` on a class with `@TandemAgent()`. Both write `_$Name` into the same `.g.dart`, and it does not compile. Write the provider by hand.
 - A `.sees` value that changes on its own, for example on a timer. Every change invalidates an open card for good.
 - A `.callsWithApproval` method that depends on state not listed with `.sees`. A change to that state leaves the card pending, and the method runs on a state the agent never saw.
 - `approvals: .none()` on a screen with `.callsWithApproval`. Every such call is refused.

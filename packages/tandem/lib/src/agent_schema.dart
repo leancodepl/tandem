@@ -33,6 +33,7 @@ final class const AgentSchema({
   required final List<AgentTool> calls,
 });
 
+/// One `.sees` of the agent list, as the generated code describes it.
 final class AgentView._(
   /// The getter's name in snake_case.
   final String name,
@@ -67,6 +68,7 @@ final class AgentView._(
   Object? write(Object? value) => _write(value);
 }
 
+/// One method of the agent list, as the generated code describes it.
 final class const AgentTool(
   /// The method itself, to recognize it in the agent list: two tear-offs of
   /// one method of one object are equal.

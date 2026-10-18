@@ -1,3 +1,13 @@
+/// Makes an existing Flutter screen agent-aware over AG-UI.
+///
+/// A state class with `@TandemAgent()` lists what the agent sees with
+/// `.sees` and which of its methods it may call with `.calls` and
+/// `.callsWithApproval`. `tandem_generator` writes the code behind the list.
+/// `TandemScope` opens a `TandemSession` of that class with an AG-UI agent,
+/// and the app's own chat or buttons drive it through
+/// `TandemSessionScope.of`.
+library;
+
 export 'src/agent_list.dart' show AgentCapability;
 export 'src/agent_schema.dart'
     show AgentSchema, AgentSurface, AgentTool, AgentView;
