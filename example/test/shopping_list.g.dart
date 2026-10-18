@@ -58,8 +58,8 @@ mixin _$ShoppingListCubit implements AgentSurface {
           name: 'clear',
           description: 'Empties the list.',
           parameters: const {'type': 'object', 'properties': {}},
-          invoke: (args) {
-            surface.clear();
+          invoke: (args) async {
+            await surface.clear();
             return null;
           },
         ),

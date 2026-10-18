@@ -1,12 +1,12 @@
 import 'dart:convert';
 
+import 'package:example/agent_chat.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/ui/order_desk_screen.dart';
 import 'package:example/desk/ui/order_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tandem_bloc/tandem_bloc.dart';
 import 'package:tandem_bloc/testing.dart';
 
 const _empty = 'Paste a customer e-mail into the chat to start an order.';
@@ -122,7 +122,7 @@ void main() {
         findsNothing,
       );
       final cubit = tester
-          .element(find.byType(TandemChat))
+          .element(find.byType(AgentChat))
           .read<OrderDeskCubit>();
       expect(cubit.orders.placed.single.total, '16 710.05 PLN');
 
@@ -262,4 +262,4 @@ final _enabledButton = find.byWidgetPredicate(
 );
 
 Finder _inChat(String text) =>
-    find.descendant(of: find.byType(TandemChat), matching: find.text(text));
+    find.descendant(of: find.byType(AgentChat), matching: find.text(text));

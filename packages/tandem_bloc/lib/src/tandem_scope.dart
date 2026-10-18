@@ -5,7 +5,8 @@ import 'package:tandem/tandem.dart';
 /// Makes the screen below it agent-aware: one [TandemSession] of the [C]
 /// provided above it.
 ///
-/// Put it under the `BlocProvider` of [C], with the [TandemChat] below it:
+/// Put it under the `BlocProvider` of [C], with the screen and the app's chat
+/// below it. The chat reads the session with [TandemSessionScope.of]:
 ///
 /// ```dart
 /// BlocProvider(
@@ -15,7 +16,7 @@ import 'package:tandem/tandem.dart';
 ///     child: Row(
 ///       children: [
 ///         Expanded(child: OrderForm()),
-///         SizedBox(width: 360, child: TandemChat()),
+///         SizedBox(width: 360, child: AgentChat()),
 ///       ],
 ///     ),
 ///   ),

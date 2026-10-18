@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tandem_bloc/tandem_bloc.dart';
 
+import 'agent_chat.dart';
+
 part 'main.g.dart';
 
 class const ShoppingListState({final List<String> items = const []});
@@ -62,7 +64,7 @@ final class const _ShoppingListView() extends StatelessWidget {
               children: [for (final item in items) ListTile(title: Text(item))],
             ),
           ),
-          const SizedBox(width: 360, child: TandemChat()),
+          const SizedBox(width: 360, child: AgentChat()),
         ],
       ),
     );
@@ -70,4 +72,4 @@ final class const _ShoppingListView() extends StatelessWidget {
 }
 ```
 
-Run `dart run build_runner build` to generate `main.g.dart`, then start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
+Copy [`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) next to it and make its texts and look your own. Run `dart run build_runner build` to generate `main.g.dart`, then start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.

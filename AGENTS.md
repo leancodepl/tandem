@@ -4,10 +4,10 @@ Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what a C
 
 ## Layout
 
-- `packages/tandem`: the agent list, the AG-UI connection, the session, `TandemChat`, `ScriptedAgent`. It does not depend on bloc.
+- `packages/tandem`: the agent list, the AG-UI connection, the session, `ScriptedAgent`. It does not depend on bloc and has no chat widget.
 - `packages/tandem_bloc`: `TandemScope<C>` and the Agent Skill in `skills/`. This is what apps depend on.
 - `packages/tandem_generator`: the builder behind `@TandemAgent()`. It is not a workspace member, so it has its own `pubspec.lock`, which is not committed. The root `pubspec.lock` is committed.
-- `example`: the order desk demo app (`lib/desk`) and its Google ADK agent in `example/agent` (Python, uv). Also the order form of the README (`lib/order_cubit.dart`), with its generated code and tests. The cubits and fixtures that only tests use, such as the shopping list, are in `test/`. How to run the demo: [example/README.md](example/README.md).
+- `example`: the order desk demo app (`lib/desk`) and its Google ADK agent in `example/agent` (Python, uv). Also the order form of the README (`lib/order_cubit.dart`), with its generated code and tests, and the chat that apps copy (`lib/agent_chat.dart`). The cubits and fixtures that only tests use, such as the shopping list, are in `test/`. How to run the demo: [example/README.md](example/README.md).
 
 ## Commands
 

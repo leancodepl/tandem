@@ -66,7 +66,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
    In CI, run `dart run build_runner build && git diff --exit-code`. An outdated `.g.dart` is not always caught at runtime, for example when two parameters of the same type swap places.
 
-4. Wrap the screen:
+4. Wrap the screen and its chat:
 
    ```dart
    BlocProvider(
@@ -76,12 +76,34 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
        child: const Row(
          children: [
            Expanded(child: OrderForm()),
-           SizedBox(width: 360, child: TandemChat()),
+           SizedBox(width: 360, child: AgentChat()),
          ],
        ),
      ),
    )
    ```
+
+5. Build the chat. Tandem has no chat widget, so the chat has your app's texts, language and look. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes:
+
+   ```dart
+   final session = TandemSessionScope.of(context);
+
+   return ListView(
+     children: [
+       for (final item in session.items)
+         switch (item) {
+           UserMessage(:final text) => ...,
+           AgentMessage(:final text, :final stopped) => ...,
+           ChatNotice(:final kind) => ...,
+           final ApprovalRequest request => ...,
+         },
+     ],
+   );
+   ```
+
+   `ChatItem` is sealed, so the compiler checks that the switch covers every kind. The field calls `session.send(text)`. While `session.isRunning`, its button is Stop, which calls `session.stop()` only while `session.canStop`. `session.isStopping` stays true until the stopped run ends. A card whose `status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)` and do nothing while `session.isRunning`. The card's `description` is the method's doc comment, written for the agent, so a localized card picks its own text by `request.tool`.
+
+   [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example does all of this in one file, ready to copy.
 
 The agent changes the screen through the same methods as your buttons, so the same validation runs for both. When the user edits something, the agent sees it on its next turn.
 
@@ -90,7 +112,7 @@ The agent changes the screen through the same methods as your buttons, so the sa
 
 ## Approvals
 
-A method listed with `.callsWithApproval` runs only after the user taps Approve in `TandemChat`. The approval covers what the agent sees when it asks. If that changes, even back to what it was, the card is invalidated for good and the agent has to ask again.
+A method listed with `.callsWithApproval` runs only after the user approves it in the chat, which calls `session.approve`. The approval covers what the agent sees when it asks. If that changes, even back to what it was, the card is invalidated for good and the agent has to ask again.
 
 Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing more from it. An approved method runs to its end, so Stop is unavailable until it returns.
 
@@ -127,7 +149,7 @@ await tester.pumpWidget(
         child: const Row(
           children: [
             Expanded(child: OrderForm()),
-            SizedBox(width: 360, child: TandemChat()),
+            SizedBox(width: 360, child: AgentChat()),
           ],
         ),
       ),

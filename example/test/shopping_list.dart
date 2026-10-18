@@ -22,6 +22,8 @@ class ShoppingListCubit()
   /// What is on the shopping list now.
   List<String> get items => state.items;
 
+  Future<void> serverReply = Future.value();
+
   /// Adds [item] to the list.
   void add(String item) => emit(.new(items: [...items, item]));
 
@@ -29,5 +31,8 @@ class ShoppingListCubit()
   void remove(String item) => emit(.new(items: [...items]..remove(item)));
 
   /// Empties the list.
-  void clear() => emit(const .new());
+  Future<void> clear() async {
+    await serverReply;
+    emit(const .new());
+  }
 }

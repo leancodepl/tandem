@@ -1,6 +1,6 @@
 ---
 name: tandem-bloc-agent-aware-screen
-description: Make a Flutter screen agent-aware with Tandem (tandem_bloc), so an AI agent sees what the screen shows, calls the Cubit's methods, and anything that matters waits for the user's approval. Use when asked to add an AI agent, assistant or copilot to a Flutter screen, or when the code uses TandemScope, TandemChat, @TandemAgent or agentCapabilities.
+description: Make a Flutter screen agent-aware with Tandem (tandem_bloc), so an AI agent sees what the screen shows, calls the Cubit's methods, and anything that matters waits for the user's approval. Use when asked to add an AI agent, assistant or copilot to a Flutter screen, or when the code uses TandemScope, TandemSessionScope, @TandemAgent or agentCapabilities.
 ---
 
 # Make a screen agent-aware with Tandem
@@ -68,7 +68,30 @@ Run it again after every change to the list, to a listed method's signature or t
 
 **Done when** `order_cubit.g.dart` exists and `dart analyze --fatal-infos` is clean. A failed build names what to fix and where.
 
-## 4. Wrap the screen
+## 4. Build the chat
+
+Tandem has no chat widget. Write one in the app's design system, with every text in the app's localization. If the app already has a chat, give it this session.
+
+```dart
+final class const AgentChat() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final session = TandemSessionScope.of(context);
+    // The items of session.items, then the field and its button.
+  }
+}
+```
+
+- `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes.
+- Show every item of `session.items`, oldest first, with a `switch` over `ChatItem`: `UserMessage` and `AgentMessage` by their `text`, an `AgentMessage` with `stopped` marked as stopped, a `ChatNotice` by its `kind`, an `ApprovalRequest` as a card.
+- A card whose `status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. Disable both while `session.isRunning`. Every other status gets a line: `approved`, `rejected`, `invalidated` (the screen changed, so the user asks the agent again) and `cancelled`.
+- `request.description` and `request.arguments` are written for the agent. Show the user what the method will do in the app's words, chosen by `request.tool`.
+- The field calls `session.send(text)`. While `session.isRunning`, its button is Stop. It calls `session.stop()` while `session.canStop` and is disabled otherwise, such as while an approved method runs or `session.isStopping`.
+- [`example/lib/agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the Tandem repository does all of this in one file. Copy its structure, not its texts.
+
+**Done when** the switch covers every `ChatItem` without a `_` case and every text of the chat comes from the app's localization.
+
+## 5. Wrap the screen
 
 ```dart
 BlocProvider(
@@ -78,20 +101,20 @@ BlocProvider(
     child: const Row(
       children: [
         Expanded(child: OrderForm()),
-        SizedBox(width: 360, child: TandemChat()),
+        SizedBox(width: 360, child: AgentChat()),
       ],
     ),
   ),
 )
 ```
 
-`TandemScope` goes below the `BlocProvider` of the Cubit, and `TandemChat` below the scope. `TandemChat` fills its parent, so give it the size you want. `onAgentCall: (context, call) { ... }` hears every listed method that ran (`call.tool`, `call.arguments`, `call.result`). Its context is below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
+`TandemScope` goes below the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `onAgentCall: (context, call) { ... }` hears every listed method that ran (`call.tool`, `call.arguments`, `call.result`). Its context is below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
 
 Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) in the Tandem repository is a working Google ADK backend to copy from.
 
-**Done when** the app shows the chat next to the screen. Step 5 checks the rest without a backend.
+**Done when** the app shows the chat next to the screen. Step 6 checks the rest without a backend.
 
-## 5. Test it with a script
+## 6. Test it with a script
 
 `ScriptedAgent` plays a script instead of a model, so the test needs no network:
 
@@ -110,7 +133,7 @@ testWidgets('the agent sets a quantity', (tester) async {
         value: cubit,
         child: TandemScope<OrderCubit>.connected(
           connection: agent,
-          child: const TandemChat(),
+          child: const AgentChat(),
         ),
       ),
     ),
@@ -125,7 +148,7 @@ testWidgets('the agent sets a quantity', (tester) async {
 });
 ```
 
-Every turn of the script is one run: the first calls the tool, the second comes after Tandem sent the answer. `agent.requests` holds every body sent, so a test can check what the agent saw in `context`. To approve a call, tap `Approve` in the chat. To check only what the Cubit gives the agent, use `AgentListing.of(cubit)`, with its `context`, `tools` and `call(name, arguments)`.
+Every turn of the script is one run: the first calls the tool, the second comes after Tandem sent the answer. `agent.requests` holds every body sent, so a test can check what the agent saw in `context`. `find.text('Send')` stands for the chat's send button. To approve a call, tap the card's Approve. To check only what the Cubit gives the agent, use `AgentListing.of(cubit)`, with its `context`, `tools` and `call(name, arguments)`.
 
 **Done when** the test passes and shows the state the method changed.
 
@@ -133,7 +156,7 @@ Every turn of the script is one run: the first calls the tool, the second comes 
 
 - `.sees` inside an `if`, a `for`, a `?:` or a spread. The build fails. Keep it listed and let the getter return an empty value.
 - A change to the list or a signature without running build_runner again. It shows as a `StateError` that says to run it.
-- `TandemScope` above the `BlocProvider`, or `TandemChat` with no `TandemScope` above it.
-- `TandemChat` in a `Row` without a width.
+- `TandemScope` above the `BlocProvider`, or a chat with no `TandemScope` above it.
+- Approve and Reject enabled while `session.isRunning`. The session ignores them then, so a tap does nothing.
 - A Cubit that emits on its own, for example on a timer. Every state it emits while a card is open invalidates the card for good.
 - A `ScriptedAgent` made in `build`. A new connection starts a new session, so keep it in a field.

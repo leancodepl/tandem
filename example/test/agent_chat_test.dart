@@ -1,17 +1,19 @@
 import 'dart:async';
 
+import 'package:example/agent_chat.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tandem/tandem.dart';
-import 'package:tandem/testing.dart';
+import 'package:tandem_bloc/tandem_bloc.dart';
+import 'package:tandem_bloc/testing.dart';
 
-import '../support/shop.dart';
+import 'shopping_list.dart';
 
 void main() {
   testWidgets("shows the agent's text and a default card it can approve", (
     tester,
   ) async {
-    final shop = await _sendClear(tester, [
+    final list = await _sendClear(tester, [
       (_) => const [
         AgentStep.say('Clear the list?'),
         AgentStep.callTool('clear'),
@@ -29,7 +31,7 @@ void main() {
 
     expect(find.text('Approved'), findsOneWidget);
     expect(find.text('Cleared.'), findsOneWidget);
-    expect(shop.items, isEmpty);
+    expect(list.items, isEmpty);
   });
 
   testWidgets('a custom card shows what approvalBuilder builds, for the '
@@ -57,10 +59,10 @@ void main() {
   });
 
   testWidgets('Stop is disabled while an approved method runs', (tester) async {
-    final shop = await _sendClear(tester, [
+    final list = await _sendClear(tester, [
       (_) => const [AgentStep.callTool('clear')],
     ]);
-    shop.serverReply = Completer<void>().future;
+    list.serverReply = Completer<void>().future;
 
     await tester.tap(find.text('Approve'));
     await tester.pumpAndSettle();
@@ -72,29 +74,26 @@ void main() {
   });
 }
 
-Future<Shop> _sendClear(
+Future<ShoppingListCubit> _sendClear(
   WidgetTester tester,
   List<AgentTurn> turns, {
   ApprovalBuilder? approvalBuilder,
 }) async {
-  final shop = Shop()..add('x');
-  addTearDown(shop.close);
-  final session = TandemSession(
-    surface: shop,
-    changes: shop.changes,
-    connection: ScriptedAgent(turns),
-  );
-  addTearDown(session.dispose);
+  final list = ShoppingListCubit()..add('x');
+  addTearDown(list.close);
   await tester.pumpWidget(
     MaterialApp(
-      home: TandemSessionScope(
-        session: session,
-        child: TandemChat(approvalBuilder: approvalBuilder),
+      home: BlocProvider.value(
+        value: list,
+        child: TandemScope<ShoppingListCubit>.connected(
+          connection: ScriptedAgent(turns),
+          child: AgentChat(approvalBuilder: approvalBuilder),
+        ),
       ),
     ),
   );
   await tester.enterText(find.byType(TextField), 'clear');
   await tester.tap(find.text('Send'));
   await tester.pumpAndSettle();
-  return shop;
+  return list;
 }

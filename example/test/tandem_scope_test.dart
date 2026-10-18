@@ -1,3 +1,4 @@
+import 'package:example/agent_chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +19,7 @@ final class const _Screen({
       child: TandemScope<ShoppingListCubit>.connected(
         connection: agent,
         onAgentCall: onAgentCall,
-        child: const TandemChat(),
+        child: const AgentChat(),
       ),
     ),
   );
@@ -52,7 +53,7 @@ void main() {
             child: const Row(
               children: [
                 Expanded(child: SizedBox()),
-                SizedBox(width: 360, child: TandemChat()),
+                SizedBox(width: 360, child: AgentChat()),
               ],
             ),
           ),
@@ -63,7 +64,7 @@ void main() {
     await _send(tester, 'milk please');
 
     final cubit = tester
-        .element(find.byType(TandemChat))
+        .element(find.byType(AgentChat))
         .read<ShoppingListCubit>();
     expect(cubit.items, ['milk']);
     expect(find.text('Added milk.'), findsOneWidget);

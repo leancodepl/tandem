@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:tandem/src/chat/chat_item.dart';
-import 'package:tandem/src/session/session_scope.dart';
-import 'package:tandem/src/session/tandem_session.dart';
+import 'package:tandem_bloc/tandem_bloc.dart';
 
-/// Builds what an approval card shows above Tandem's own Approve and Reject.
+/// Builds what an approval card shows above Approve and Reject.
 typedef ApprovalBuilder = Widget Function(
   BuildContext context,
   ApprovalRequest request,
 );
 
 /// The chat of the user and the agent: its messages, the cards that ask for
-/// approval, and the field to write in. It needs a `TandemScope` above it,
-/// fills its parent and has its own background. Next to the screen, give it
-/// a width, as in `Row(children: [Expanded(child: OrderForm()),
-/// SizedBox(width: 360, child: TandemChat())])`.
-final class const TandemChat({
+/// approval, and the field to write in. It uses only the public
+/// [TandemSession], so an app can copy it and give it its own texts and look.
+/// It needs a `TandemScope` above it, fills its parent and has its own
+/// background. Next to the screen, give it a width, as in
+/// `Row(children: [Expanded(child: OrderForm()),
+/// SizedBox(width: 360, child: AgentChat())])`.
+final class const AgentChat({
   super.key,
 
   /// Without it, a card shows the method's description and arguments.
   final ApprovalBuilder? approvalBuilder,
 }) extends StatefulWidget {
   @override
-  State<TandemChat> createState() => _TandemChatState();
+  State<AgentChat> createState() => _AgentChatState();
 }
 
-final class _TandemChatState() extends State<TandemChat> {
+final class _AgentChatState() extends State<AgentChat> {
   final _messageController = TextEditingController();
 
   @override
