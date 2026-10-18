@@ -1,3 +1,4 @@
+import 'package:example/agent_chat.dart';
 import 'package:example/desk/catalog.dart';
 import 'package:example/desk/customers.dart';
 import 'package:example/desk/data/customers.dart';
@@ -58,7 +59,7 @@ final class const _OrderDeskView() extends StatelessWidget {
           const VerticalDivider(width: 1),
           SizedBox(
             width: 360,
-            child: TandemChat(
+            child: AgentChat(
               approvalBuilder: (context, request) => const OrderSummary(),
             ),
           ),

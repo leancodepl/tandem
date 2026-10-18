@@ -6,13 +6,13 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, the AG-UI connection, the session, `TandemChat`, `ScriptedAgent` | flutter, http, uuid |
+| `tandem` | the agent list, the AG-UI connection, the session, `ScriptedAgent` | flutter, http, uuid |
 | `tandem_bloc` | `TandemScope<C>`: takes the cubit from the context, invalidates approvals on its `stream`, passes `onAgentCall`; exports `tandem` | tandem, flutter_bloc |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` does not depend on bloc. Riverpod support would be a separate `tandem_riverpod` with its own `TandemScope`.
 
-`TandemChat` fills its parent: the app decides where it goes and how wide it is.
+`tandem` has no widget the user sees. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
 
 The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed, so development and CI resolve the same versions. The workspace members have no lock of their own.
 
@@ -32,12 +32,12 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 - Several calls in one turn, one of them with approval: the others run first, then the card freezes. One run carries all the answers, and it starts when every call of the turn has one. A message queued meanwhile goes in the same run, after the answers. A run with only the answers starts only when nothing is queued.
 - Reject answers its call at once. Invalidation does not start a run: `invalidated` goes with the user's next message.
 - **Stop does not cancel the run.** Cancelling does not stop ADK: the model keeps generating, the answer lands in the server's session, and a run sent right after mixes up the history. Stop hides the rest of the text and drains the run: it reads the stream to `RUN_FINISHED` or `RUN_ERROR`.
-- After Stop, the text already shown stays, marked "Stopped", and only that text goes back in the history. None of its remaining calls runs. Until the run ends the chat shows "Stopping…" and a new message waits.
+- After Stop, the text already shown stays, marked `stopped`, and only that text goes back in the history. None of its remaining calls runs. Until the run ends `isStopping` is true and a new message waits.
 - An approved method runs to its end, and `canStop` is false until it returns. Tandem cannot interrupt the app's code, and a request the method already sent stays sent.
 - Before each new user message, every call without an answer is answered, all in one run, the message last. Executed: the real result. Not executed (Stop, or the user wrote instead of deciding): `cancelled`. Invalidated: `invalidated`. The status goes in `content`, because the middleware ignores `error` and the model reads an empty `content` as success. AG-UI 1.0 also wants every call answered before the thread goes on.
 - `RUN_FINISHED` or `RUN_ERROR` ends the run's stream and closes the connection, even when the server keeps it open. The session cancels an unfinished stream only when it is disposed, or when the stream fails, which breaks the run. The cancel aborts a request that still waits for its response headers, and completes once the connection is cleaned up.
 - A run is never sent twice: the server would answer with an empty `RUN_STARTED`/`RUN_FINISHED` pair.
-- A run that breaks without a final event shows "Connection lost" and the next message starts a new thread with fresh history.
+- A run that breaks without a final event adds a `connectionLost` notice, and the next message starts a new thread with fresh history.
 - No response headers or no bytes for 60 s counts as a broken run. ADK pings every 15 s, but the parser drops comments, so the timeout watches the raw bytes.
 - `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when the provider gives another cubit, `agent` is another `Uri` (`==`), or `connected` gets another connection (`identical`). The old session is disposed first. A scope that leaves the tree disposes its session before the `BlocProvider` closes the cubit. A new `onAgentCall` takes effect at once.
 - `threadId` lives as long as its session and never comes back after it is gone: an orphaned ADK run would mix up the history.

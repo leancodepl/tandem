@@ -10,7 +10,6 @@ export 'src/chat/chat_item.dart'
         ChatNotice,
         ChatNoticeKind,
         UserMessage;
-export 'src/chat/tandem_chat.dart' show ApprovalBuilder, TandemChat;
 export 'src/errors.dart'
     show AgentHttpException, AgentRunException, ToolCallRefused;
 export 'src/protocol/agent_connection.dart'
