@@ -417,28 +417,29 @@ void main() {
     expect(reported, isEmpty);
   });
 
-  test('Stop while an approved method runs holds its answer for the next '
-      'message', () async {
+  test('Stop does nothing while an approved method runs, and its answer goes '
+      'to the agent at once', () async {
     final serverReply = Completer<void>();
     shop.serverReply = serverReply.future;
     final (session, agent) = await askToClear();
 
-    session
-      ..approve(_card(session))
-      ..stop();
+    session.approve(_card(session));
+    expect(session.canStop, isFalse);
+    session.stop();
+    expect(session.isStopping, isFalse);
     serverReply.complete();
     await pumpEventQueue();
 
     expect(shop.items, isEmpty);
-    expect(agent.requests, hasLength(1));
-    expect(_shown(session.items).last, ChatNoticeKind.stopped);
-    session.send('ok');
-    await pumpEventQueue();
     expect(_lines(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
       'tool-call-1 null',
-      'user: ok',
+    ]);
+    expect(_shown(session.items), [
+      ('user', 'clear it'),
+      ('clear', ApprovalStatus.approved),
+      ('agent', 'Cleared.', false),
     ]);
   });
 

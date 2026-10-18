@@ -4,7 +4,10 @@ import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/tool_call.dart';
 
 /// What the session keeps of its open run.
-final class Run(final AgentListing listing) {
+final class Run(
+  final AgentListing listing, {
+  final bool runsApprovedMethod = false,
+}) {
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
   final calls = <String, ToolCall>{};

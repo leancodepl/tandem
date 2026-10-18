@@ -198,7 +198,8 @@ final class const _InputRow(
   Widget build(BuildContext context) {
     final (String label, VoidCallback? onPressed) = switch (session) {
       TandemSession(isStopping: true) => ('Stopping…', null),
-      TandemSession(isRunning: true) => ('Stop', session.stop),
+      TandemSession(canStop: true) => ('Stop', session.stop),
+      TandemSession(isRunning: true) => ('Stop', null),
       _ => ('Send', _sendText),
     };
 
