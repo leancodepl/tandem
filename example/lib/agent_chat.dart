@@ -174,7 +174,7 @@ final class const _ApprovalCard(
               .approved => const Text('Approved'),
               .rejected => const Text('Rejected'),
               .invalidated => const Text(
-                'The screen changed. Ask the agent again.',
+                'What the agent saw changed. Ask it again.',
               ),
               .cancelled => const Text('Cancelled'),
             },

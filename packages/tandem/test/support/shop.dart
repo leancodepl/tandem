@@ -10,6 +10,13 @@ final class Shop() implements AgentSurface {
 
   Future<void> serverReply = Future.value();
 
+  /// The signals of [changes] wait for it, as with a state library that
+  /// reports a change later.
+  Future<void> changesArrive = Future.value();
+
+  /// Not listed with `.sees`, like a selected tab.
+  int tab = 0;
+
   @override
   Stream<Object?> get changes => _changes.stream;
 
@@ -18,13 +25,21 @@ final class Shop() implements AgentSurface {
 
   Future<void> close() => _changes.close();
 
+  /// Makes [agentCapabilities] throw, as a bug in the list would.
+  bool listThrows = false;
+
   @override
-  List<AgentCapability> get agentCapabilities => [
-    .sees(items),
-    .calls(add),
-    .calls(removeAt),
-    if (items.isNotEmpty) .callsWithApproval(clear),
-  ];
+  List<AgentCapability> get agentCapabilities {
+    if (listThrows) {
+      throw StateError('The list is broken.');
+    }
+    return [
+      .sees(items),
+      .calls(add),
+      .calls(removeAt),
+      if (items.isNotEmpty) .callsWithApproval(clear),
+    ];
+  }
 
   /// Adds [item] to the list.
   void add(String item) {
@@ -32,21 +47,31 @@ final class Shop() implements AgentSurface {
       throw ArgumentError.value(item, 'item', 'must not be empty');
     }
     items.add(item);
-    _changes.add([...items]);
+    _changed();
   }
 
   /// Removes the item at [index].
   void removeAt(int index) {
     // Unchecked, so a bad index throws a RangeError, as a bug would.
     items.removeAt(index);
-    _changes.add([...items]);
+    _changed();
   }
 
   /// Empties the list.
   Future<void> clear() async {
     await serverReply;
     items.clear();
-    _changes.add([...items]);
+    _changed();
+  }
+
+  void showTab(int index) {
+    tab = index;
+    _changed();
+  }
+
+  void _changed() {
+    final value = [...items];
+    unawaited(changesArrive.then((_) => _changes.add(value)));
   }
 
   @override

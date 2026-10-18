@@ -118,7 +118,7 @@ The agent changes the screen through the same methods as your buttons, so the sa
 
 ## Approvals
 
-A method listed with `.callsWithApproval` runs only after the user approves it in the chat, which calls `session.approve`. The approval covers what the agent sees when it asks. If that changes, even back to what it was, the card is invalidated for good and the agent has to ask again.
+A method listed with `.callsWithApproval` runs only after the user approves it in the chat, which calls `session.approve`. The approval covers what the agent sees when it asks, so list everything the method depends on with `.sees`. Tandem compares `.sees` with what the agent saw when its turn ends, on every event of `changes` and on Approve. When they differ, the card is invalidated for good, or does not show at all, and the agent has to ask again. A change undone before Tandem checks, such as A, B, A in one go, leaves the card pending, and so does a change outside `.sees`, such as a selected tab or a loading flag.
 
 Reject tells the agent the user said no. Sending a message while a card is open cancels the card. Stop finishes reading the agent's turn but runs nothing more from it. An approved method runs to its end, so Stop is unavailable until it returns.
 

@@ -31,8 +31,8 @@ enum ApprovalStatus() {
   approved,
   rejected,
 
-  /// The screen emitted a state after the card showed, so it can no longer
-  /// be approved.
+  /// A value listed with `.sees` changed after the agent asked, so it can no
+  /// longer be approved.
   invalidated,
 
   /// The user sent a message instead of deciding.

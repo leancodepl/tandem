@@ -52,15 +52,15 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 
 - `.sees(getter)`: a getter of this class. List only what the user sees on the screen.
 - `.calls(method)`: a method of this class that a button already calls, so the same validation runs for both.
-- `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or that sends something. It runs only after the user taps Approve.
+- `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or that sends something. It runs only after the user taps Approve. The approval covers only what is listed with `.sees`, so list everything the method depends on.
 - The list is read again before every turn and every call, so an `if` can hide a method.
-- `changes` reports every change of the Cubit: its `stream`. Any change while an approval card shows invalidates the card.
+- `changes` reports every change of the Cubit: its `stream`. On each change Tandem checks the `.sees` values, and a card whose values changed is invalidated while the user looks at it. Other changes leave the card alone.
 - Every listed getter and method needs a doc comment written for the agent: it is all the agent knows about it. The agent calls a method by its name in snake_case, here `set_quantity`.
 - Types of parameters, results and getters: `String`, `bool`, `int`, `double`, `num`, `DateTime`, enums, extension types over a scalar, `List<T>` and plain classes. Maps, sets, records and generic classes fail the build: list a thin method that takes supported types instead. See [the rules](https://github.com/leancodepl/tandem/blob/main/packages/tandem_generator/README.md#supported-types).
 - Reject the agent's bad input with an `ArgumentError`: the agent gets its message and tries again. A `RangeError` is an `ArgumentError` too, but Tandem treats it as a bug, so do not use `RangeError.range` for this. Any other exception is a bug: Tandem reports it and tells the agent the call failed.
 - After an `await`, check `isClosed` before `emit`: the screen may have closed meanwhile.
 
-**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, `changes` returns `stream`, and every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread.
+**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, `changes` returns `stream`, every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread, and everything a `.callsWithApproval` method depends on is listed with `.sees`.
 
 ## 3. Generate the code
 
@@ -88,7 +88,7 @@ final class const AgentChat() extends StatelessWidget {
 
 - `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes.
 - Show every item of `session.items`, oldest first, with a `switch` over `ChatItem`: `UserMessage` and `AgentMessage` by their `text`, an `AgentMessage` with `stopped` marked as stopped, a `ChatNotice` by its `kind`, an `ApprovalRequest` as a card.
-- A card whose `status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. Disable both while `session.isRunning`. Every other status gets a line: `approved`, `rejected`, `invalidated` (the screen changed, so the user asks the agent again) and `cancelled`.
+- A card whose `status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. Disable both while `session.isRunning`. Every other status gets a line: `approved`, `rejected`, `invalidated` (what the agent sees changed, so the user asks the agent again) and `cancelled`.
 - `request.description` and `request.arguments` are written for the agent. Show the user what the method will do in the app's words, chosen by `request.tool`.
 - The field calls `session.send(text)`. While `session.isRunning`, its button is Stop. It calls `session.stop()` while `session.canStop` and is disabled otherwise, such as while an approved method runs or `session.isStopping`.
 - [`example/lib/agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the Tandem repository does all of this in one file. Copy its structure, not its texts.
@@ -164,5 +164,6 @@ Every turn of the script is one run: the first calls the tool, the second comes 
 - A change to the list or a signature without running build_runner again. It shows as a `StateError` that says to run it.
 - `TandemScope` above the `BlocProvider`, or a chat with no `TandemScope` above it.
 - Approve and Reject enabled while `session.isRunning`. The session ignores them then, so a tap does nothing.
-- A Cubit that emits on its own, for example on a timer. Every state it emits while a card is open invalidates the card for good.
+- A `.sees` value that changes on its own, for example on a timer. Every change invalidates an open card for good.
+- A `.callsWithApproval` method that depends on state not listed with `.sees`. A change to that state leaves the card pending, and the method runs on a state the agent never saw.
 - A `ScriptedAgent` made in `build`. A new connection starts a new session, so keep it in a field.

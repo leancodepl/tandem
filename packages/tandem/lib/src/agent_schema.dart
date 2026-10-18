@@ -13,10 +13,11 @@ abstract interface class AgentSurface {
   /// turn, so it can depend on the state.
   List<AgentCapability> get agentCapabilities;
 
-  /// Reports every change of this object, such as a Cubit's `stream`. Any
-  /// event after an approval card shows invalidates the card for good, even
-  /// one that changes nothing the agent sees. Every new session listens to
-  /// it again, so it is a broadcast stream.
+  /// Reports every change of this object, such as a Cubit's `stream`. On each
+  /// event the session checks the values listed with `.sees`, so a pending
+  /// approval request is invalidated while the user looks at it. An event
+  /// that comes late or changes nothing the agent sees does no harm. Every
+  /// new session listens to it again, so it is a broadcast stream.
   Stream<Object?> get changes;
 
   AgentSchema get agentSchema;

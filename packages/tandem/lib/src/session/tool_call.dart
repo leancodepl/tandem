@@ -5,7 +5,13 @@ import 'package:tandem/src/session/tool_answer.dart';
 
 /// The agent's call of a listed method, from its run until its answer goes
 /// out with the next run.
-final class ToolCall(final String id, final String tool) {
+final class ToolCall(
+  final String id,
+  final String tool,
+
+  /// The method's doc comment, as the agent got it.
+  final String description,
+) {
   /// The JSON arguments, as streamed so far.
   String arguments = '';
 
@@ -27,11 +33,22 @@ final class ToolCall(final String id, final String tool) {
     }
   }
 
-  /// Gives the call a pending card that shows [description].
-  ApprovalRequest ask(String description) => request = ApprovalRequest(
+  ApprovalRequest ask() => request = ApprovalRequest(
     toolCallId: id,
     tool: tool,
     description: description,
     argumentsJson: argumentsJson,
   );
+
+  /// Gives the call the answer that [status] means, and its request, when it
+  /// showed, that status.
+  void decide(ApprovalStatus status) {
+    request = request?.withStatus(status);
+    answer = switch (status) {
+      .rejected => ToolAnswer.rejected,
+      .cancelled => ToolAnswer.cancelled,
+      .invalidated => ToolAnswer.invalidated,
+      .pending || .approved => null,
+    };
+  }
 }

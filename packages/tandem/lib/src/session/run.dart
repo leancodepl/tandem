@@ -17,6 +17,20 @@ final class Run(
   /// follows does not count as a lost connection.
   bool ended = false;
 
+  /// Adds [delta] to the agent's message [messageId]. Returns the message as
+  /// it grew and the one it replaces, null for a new message.
+  ({AgentMessage? shown, AgentMessage grown}) write(
+    String messageId,
+    String delta,
+  ) {
+    final shown = texts[messageId];
+    final grown = texts[messageId] = AgentMessage('${shown?.text ?? ''}$delta');
+    return (shown: shown, grown: grown);
+  }
+
+  void startCall(String id, String tool) =>
+      calls[id] = ToolCall(id, tool, listing.description(tool));
+
   List<Map<String, Object?>> get assistantTexts => [
     for (final MapEntry(key: id, value: message) in texts.entries)
       assistantText(id, message.text),
