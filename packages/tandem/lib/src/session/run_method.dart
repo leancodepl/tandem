@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/errors.dart';
-import 'package:tandem/src/session/agent_call.dart';
+import 'package:tandem/src/session/tandem_event.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 
-/// The agent's answer and, when the method returned, what `onAgentCall`
+/// The agent's answer and, when the method returned, the event `onEvent`
 /// hears.
 typedef MethodOutcome = ({ToolAnswer answer, AgentCall? returned});
 

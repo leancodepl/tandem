@@ -5,7 +5,7 @@ sealed class const AgentEvent() {
   /// has one of the wrong type, is an [IgnoredEvent].
   factory fromJson(Map<String, Object?> json) => switch (json) {
     {'type': 'RUN_FINISHED'} => const RunFinished(),
-    {'type': 'RUN_ERROR'} => RunFailed(
+    {'type': 'RUN_ERROR'} => RunError(
       _string(json['code']),
       _string(json['message']),
     ),
@@ -33,7 +33,7 @@ sealed class const AgentEvent() {
 
 final class const RunFinished() extends AgentEvent;
 
-final class const RunFailed(final String? code, final String? message)
+final class const RunError(final String? code, final String? message)
     extends AgentEvent;
 
 final class const TextDelta(final String messageId, final String delta)

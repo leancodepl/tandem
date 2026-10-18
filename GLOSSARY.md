@@ -21,7 +21,7 @@ One turn of the agent: a single request to the agent backend and the events it s
 _Avoid_: request, call
 
 **Tool**:
-A method of the cubit that the agent may call, listed with `.calls` or `.callsWithApproval`. It runs in the app, and `onAgentCall` reports it afterwards.
+A method of the cubit that the agent may call, listed with `.calls` or `.callsWithApproval`. It runs in the app, and `onEvent` reports it afterwards as an `AgentCall`.
 _Avoid_: client tool, action, command
 
 **Approval request**:
@@ -31,6 +31,10 @@ _Avoid_: confirmation, interrupt
 **Invalidated**:
 The state of an approval request when a value listed with `.sees` changed after the agent asked. It can no longer be approved, even when the value comes back.
 _Avoid_: stale, expired, outdated
+
+**Event**:
+What happened in a session that the app may react to, as a `TandemEvent`: a call that returned, a stop, a failed run, a lost connection. Approval requests are not events.
+_Avoid_: notification, notice
 
 **Stop**:
 The user's end of a run. The run is still read to its end, but its later text is hidden and none of its remaining calls runs.

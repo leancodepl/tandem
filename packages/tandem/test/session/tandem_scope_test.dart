@@ -67,20 +67,20 @@ void main() {
     expect(sessionOf(tester), isNot(same(session)));
   });
 
-  testWidgets('onAgentCall gets the scope context and the latest callback', (
-    tester,
-  ) async {
+  testWidgets('onEvent gets the scope context, the session and the latest '
+      'callback', (tester) async {
     final agent = ScriptedAgent([
       (_) => const [
         AgentStep.callTool('add', {'item': 'milk'}),
       ],
       (_) => const [AgentStep.say('Added milk.')],
     ]);
-    final heard = <(String, Widget)>[];
+    final heard = <(String, Widget, TandemEvent, TandemSession)>[];
     Widget listening(String name) => TandemScope.connected(
       surface: readShop,
       connection: agent,
-      onAgentCall: (context, _) => heard.add((name, context.widget)),
+      onEvent: (context, event, session) =>
+          heard.add((name, context.widget, event, session)),
       approvals: const .fromState(),
       child: const SizedBox(),
     );
@@ -90,9 +90,11 @@ void main() {
     sessionOf(tester).send('milk please');
     await tester.pumpAndSettle();
 
-    final [(name, widget)] = heard;
+    final [(name, widget, event, session)] = heard;
     expect(name, 'second');
     expect(widget, isA<TandemScope>());
+    expect(event, isA<AgentCall>());
+    expect(session, same(sessionOf(tester)));
     expect(shops.single.items, ['milk']);
   });
 

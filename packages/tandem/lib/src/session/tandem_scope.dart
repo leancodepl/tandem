@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
-import 'package:tandem/src/session/agent_call.dart';
 import 'package:tandem/src/session/approvals.dart';
 import 'package:tandem/src/session/session_scope.dart';
+import 'package:tandem/src/session/tandem_event.dart';
 import 'package:tandem/src/session/tandem_session.dart';
 
 /// Makes the screen below it agent-aware: one [TandemSession] of the object
@@ -33,8 +33,8 @@ import 'package:tandem/src/session/tandem_session.dart';
 /// An ordinary rebuild keeps the session. A new session replaces the old one
 /// when `agent` is another [Uri] (compared with `==`), or when `connected`
 /// gets another connection (compared with `identical`: keep it in a field,
-/// not in `build`). A new [onAgentCall] or [approvals] takes effect at once.
-/// A scope that leaves the tree disposes its session before an ancestor that
+/// not in `build`). A new [onEvent] or [approvals] takes effect at once. A
+/// scope that leaves the tree disposes its session before an ancestor that
 /// owns the surface closes it.
 final class TandemScope extends StatefulWidget {
   /// A scope that talks to the AG-UI endpoint `agent`.
@@ -44,7 +44,7 @@ final class TandemScope extends StatefulWidget {
     required Uri this._agent,
     required this.approvals,
     required this.child,
-    this.onAgentCall,
+    this.onEvent,
   }) : _connection = null;
 
   /// A scope that talks over `connection`, such as a `ScriptedAgent` in a
@@ -55,7 +55,7 @@ final class TandemScope extends StatefulWidget {
     required AgentConnection this._connection,
     required this.approvals,
     required this.child,
-    this.onAgentCall,
+    this.onEvent,
   }) : _agent = null;
 
   /// Reads the object the agent works on, a class with `@TandemAgent()`,
@@ -73,9 +73,15 @@ final class TandemScope extends StatefulWidget {
 
   final Widget child;
 
-  /// Called after every call of a listed method that ran, with the context
-  /// of this scope, so it can read what is provided above it.
-  final void Function(BuildContext context, AgentCall call)? onAgentCall;
+  /// Hears what happens in the session, with the context of this scope, so
+  /// it can read what is provided above it, and the session, which is below
+  /// it.
+  final void Function(
+    BuildContext context,
+    TandemEvent event,
+    TandemSession session,
+  )?
+  onEvent;
 
   @override
   State<TandemScope> createState() => _TandemScopeState();
@@ -119,7 +125,7 @@ final class _TandemScopeState() extends State<TandemScope> {
         (_, final agent?) => HttpAgentConnection(agent),
         _ => throw StateError('A TandemScope has an agent or a connection.'),
       },
-      onAgentCall: (call) => widget.onAgentCall?.call(context, call),
+      onEvent: (event) => widget.onEvent?.call(context, event, session),
       onApprovalRequest: (request) async {
         if (widget.approvals case ApprovalsByCallback(:final callback)) {
           await callback(context, request, session);
