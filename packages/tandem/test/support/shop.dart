@@ -39,6 +39,7 @@ final class Shop() implements AgentSurface {
       .calls(removeAt),
       .calls(refresh),
       if (items.isNotEmpty) .callsWithApproval(clear),
+      .callsWithApproval(share),
     ];
   }
 
@@ -67,6 +68,11 @@ final class Shop() implements AgentSurface {
 
   /// Reloads the list from the server.
   Future<void> refresh() async {
+    await serverReply;
+  }
+
+  /// Sends the list to the family.
+  Future<void> share() async {
     await serverReply;
   }
 
@@ -140,6 +146,16 @@ final class Shop() implements AgentSurface {
         parameters: {'type': 'object', 'properties': {}},
         invoke: (args) async {
           await clear();
+          return null;
+        },
+      ),
+      AgentTool(
+        share,
+        name: 'share',
+        description: 'Sends the list to the family.',
+        parameters: {'type': 'object', 'properties': {}},
+        invoke: (args) async {
+          await share();
           return null;
         },
       ),

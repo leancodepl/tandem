@@ -132,10 +132,17 @@ final class const _ApprovalCard(
   final ApprovalBuilder? builder, {
   super.key,
 }) extends StatelessWidget {
+  void _decide(void Function() decision) {
+    try {
+      decision();
+    } on ApprovalNotPending {
+      // The request changed as the user tapped. The card says so.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = TandemSessionScope.of(context);
-    final canDecide = session.status is AwaitingApproval;
 
     return Card(
       child: Padding(
@@ -159,13 +166,11 @@ final class const _ApprovalCard(
                 runSpacing: 8,
                 children: [
                   FilledButton(
-                    onPressed: canDecide
-                        ? () => session.approve(request)
-                        : null,
+                    onPressed: () => _decide(() => session.approve(request)),
                     child: const Text('Approve'),
                   ),
                   OutlinedButton(
-                    onPressed: canDecide ? () => session.reject(request) : null,
+                    onPressed: () => _decide(() => session.reject(request)),
                     child: const Text('Reject'),
                   ),
                 ],

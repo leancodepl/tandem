@@ -399,9 +399,12 @@ void main() {
 
   test('Reject answers rejected_by_user at once', () async {
     final (session, agent) = await askToClear();
+    final card = _card(session);
+    expect(session.isPending(card), isTrue);
 
-    session.reject(_card(session));
+    session.reject(card);
     await pumpEventQueue();
+    expect(session.isPending(card), isFalse);
 
     expect(_lines(agent.requests[1]), [
       'user: clear it',
@@ -435,7 +438,7 @@ void main() {
     shop.removeAt(1);
     await pumpEventQueue();
     expect(_card(session).status, ApprovalStatus.invalidated);
-    session.approve(card);
+    expect(() => session.approve(card), throwsA(isA<ApprovalNotPending>()));
     await pumpEventQueue();
     expect(shop.items, ['x']);
     expect(agent.requests, hasLength(1));
@@ -454,7 +457,10 @@ void main() {
     final (session, agent) = await askToClear();
 
     shop.items.add('y');
-    session.approve(_card(session));
+    expect(
+      () => session.approve(_card(session)),
+      throwsA(isA<ApprovalNotPending>()),
+    );
     await pumpEventQueue();
 
     expect(_card(session).status, ApprovalStatus.invalidated);
@@ -667,6 +673,129 @@ void main() {
     for (final answer in [first, second]) {
       expect(jsonDecode(answer), {'status': 'refused', 'reason': isNotEmpty});
     }
+  });
+
+  test('the next request shows once the previous one is approved and its '
+      'method returned', () async {
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Shared twice.')],
+    ]);
+    final session = open(agent)..send('share it twice');
+    await pumpEventQueue();
+
+    session.approve(_card(session));
+    await pumpEventQueue();
+    expect(_shown(session.items).last, ('share', ApprovalStatus.approved));
+
+    serverReply.complete();
+    await pumpEventQueue();
+    expect(_shown(session.items).skip(1), [
+      ('share', ApprovalStatus.approved),
+      ('share', ApprovalStatus.pending),
+    ]);
+  });
+
+  test('an approved method that changes .sees invalidates the rest', () async {
+    shop.add('x');
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('clear'), AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Cleared.')],
+    ]);
+    final session = open(agent)..send('clear and share');
+    await pumpEventQueue();
+
+    session.approve(_card(session));
+    await pumpEventQueue();
+
+    expect(_card(session).tool, 'clear');
+    expect(_lines(agent.requests[1]).skip(3), [
+      'tool-call-1 null',
+      'tool-call-2 {"status":"invalidated"}',
+    ]);
+  });
+
+  test(
+    'an approved request is no longer pending and cannot be rejected',
+    () async {
+      final serverReply = Completer<void>();
+      shop.serverReply = serverReply.future;
+      final (session, _) = await askToClear();
+      final card = _card(session);
+
+      session.approve(card);
+
+      expect(session.isPending(card), isFalse);
+      expect(() => session.reject(card), throwsA(isA<ApprovalNotPending>()));
+      serverReply.complete();
+      await pumpEventQueue();
+    },
+  );
+
+  test('a list that throws after an approved method leaves the session '
+      'usable', () async {
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final reported = _collectReports();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
+    ]);
+    final session = open(agent)..send('share it twice');
+    await pumpEventQueue();
+    session.approve(_card(session));
+    await pumpEventQueue();
+
+    shop.listThrows = true;
+    serverReply.complete();
+    await pumpEventQueue();
+
+    expect(session.status, isA<Idle>());
+    expect(
+      reported.map((details) => details.exception),
+      everyElement(isStateError),
+    );
+  });
+
+  test('a decision after dispose throws and sends nothing', () async {
+    shop.add('x');
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('clear')],
+    ]);
+    // Not open(), which would dispose it again at the end.
+    final session = TandemSession(surface: shop, connection: agent)
+      ..send('clear it');
+    await pumpEventQueue();
+    final card = _card(session);
+
+    session.dispose();
+
+    expect(session.isPending(card), isFalse);
+    expect(() => session.approve(card), throwsA(isA<ApprovalNotPending>()));
+    expect(() => session.reject(card), throwsA(isA<ApprovalNotPending>()));
+    session.send('still there?');
+    await pumpEventQueue();
+    expect(shop.items, ['x']);
+    expect(agent.requests, hasLength(1));
+  });
+
+  test('a rejection cancels the rest of the turn', () async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Not shared.')],
+    ]);
+    final session = open(agent)..send('share it twice');
+    await pumpEventQueue();
+
+    session.reject(_card(session));
+    await pumpEventQueue();
+
+    expect(_card(session).status, ApprovalStatus.rejected);
+    expect(_lines(agent.requests[1]).skip(3), [
+      'tool-call-1 {"status":"rejected_by_user"}',
+      'tool-call-2 {"status":"cancelled"}',
+    ]);
   });
 
   test('several calls in one turn are answered in one run', () async {

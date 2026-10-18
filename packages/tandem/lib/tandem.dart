@@ -11,7 +11,11 @@ export 'src/chat/chat_item.dart'
         ChatNoticeKind,
         UserMessage;
 export 'src/errors.dart'
-    show AgentHttpException, AgentRunException, ToolCallRefused;
+    show
+        AgentHttpException,
+        AgentRunException,
+        ApprovalNotPending,
+        ToolCallRefused;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
 export 'src/session/agent_call.dart' show AgentCall, AgentCallListener;
