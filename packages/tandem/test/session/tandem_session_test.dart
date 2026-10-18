@@ -360,14 +360,14 @@ void main() {
     expect(_card(session).status, ApprovalStatus.rejected);
   });
 
-  test('an edit invalidates the card for good, even one undone at once; the '
-      'answer goes with the next message', () async {
+  test('a change to .sees invalidates the card for good, also when undone '
+      'later; the answer goes with the next message', () async {
     final (session, agent) = await askToClear();
     final card = _card(session);
 
-    shop
-      ..add('y')
-      ..removeAt(1);
+    shop.add('y');
+    await pumpEventQueue();
+    shop.removeAt(1);
     await pumpEventQueue();
     expect(_card(session).status, ApprovalStatus.invalidated);
     session.approve(card);
@@ -384,6 +384,91 @@ void main() {
       'user: ok',
     ]);
   });
+
+  test('Approve compares .sees itself, without a change signal', () async {
+    final (session, agent) = await askToClear();
+
+    shop.items.add('y');
+    session.approve(_card(session));
+    await pumpEventQueue();
+
+    expect(_card(session).status, ApprovalStatus.invalidated);
+    expect(shop.items, ['x', 'y']);
+    expect(agent.requests, hasLength(1));
+  });
+
+  test(
+    'a .sees that cannot be read invalidates the card and is reported',
+    () async {
+      final reported = _collectReports();
+      final (session, _) = await askToClear();
+
+      shop
+        ..listThrows = true
+        ..showTab(1);
+      await pumpEventQueue();
+
+      expect(_card(session).status, ApprovalStatus.invalidated);
+      expect(reported.single.exception, isStateError);
+    },
+  );
+
+  test('a change to .sees while the agent thinks invalidates its request '
+      'before it shows', () async {
+    shop.add('x');
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        AgentStep.waitFor(gate.future),
+        const AgentStep.callTool('clear'),
+      ],
+      (_) => const [AgentStep.say('The list changed.')],
+    ]);
+    final session = open(agent)..send('clear it');
+    await pumpEventQueue();
+
+    shop.add('y');
+    gate.complete();
+    await pumpEventQueue();
+
+    expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+    expect(
+      _lines(agent.requests[1]).last,
+      'tool-call-1 {"status":"invalidated"}',
+    );
+  });
+
+  test('a change outside .sees leaves the card pending', () async {
+    final (session, _) = await askToClear();
+
+    shop.showTab(1);
+    await pumpEventQueue();
+
+    expect(_card(session).status, ApprovalStatus.pending);
+  });
+
+  test(
+    'a late signal of a change the turn made leaves the card pending',
+    () async {
+      final signals = Completer<void>();
+      shop
+        ..add('x')
+        ..changesArrive = signals.future;
+      final agent = ScriptedAgent([
+        (_) => const [
+          AgentStep.callTool('add', {'item': 'y'}),
+          AgentStep.callTool('clear'),
+        ],
+      ]);
+      final session = open(agent)..send('go');
+      await pumpEventQueue();
+
+      signals.complete();
+      await pumpEventQueue();
+
+      expect(_card(session).status, ApprovalStatus.pending);
+    },
+  );
 
   test('a session disposed while an approved method runs sends, hears and '
       'reports nothing more', () async {

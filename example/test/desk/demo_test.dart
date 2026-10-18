@@ -179,7 +179,7 @@ void main() {
     expect(find.text('Oct 24, 2026'), findsOneWidget);
     expect(_inChat('Delivery: $_address, Oct 24, 2026'), findsOneWidget);
     expect(
-      find.text('The screen changed. Ask the agent again.'),
+      find.text('What the agent saw changed. Ask it again.'),
       findsOneWidget,
     );
     expect(find.text('Approve'), findsNothing);

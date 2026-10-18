@@ -15,7 +15,9 @@ sealed class const AgentCapability() {
   factory calls(Function method) => _Calls(method, needsApproval: false);
 
   /// Like [AgentCapability.calls], but each call runs only after the user
-  /// approves it.
+  /// approves it. The approval covers the values listed with `.sees` as they
+  /// were when the agent asked, and a change to one invalidates the request.
+  /// So list everything [method] depends on with `.sees`.
   factory callsWithApproval(Function method) =>
       _Calls(method, needsApproval: true);
 }
