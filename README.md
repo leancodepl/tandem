@@ -2,17 +2,20 @@
   <img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/logo.png" alt="tandem: a robot and Dash riding a tandem bike" width="400">
 </p>
 
-<p align="center">
+<br>
+
+# tandem
+
+<p>
   <a href="https://pub.dev/packages/tandem"><img src="https://img.shields.io/pub/v/tandem?style=for-the-badge&logo=dart" alt="tandem on pub.dev"></a>
   <a href="https://github.com/leancodepl/tandem/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/leancodepl/tandem/test.yml?branch=main&style=for-the-badge&logo=github" alt="Test status"></a>
   <a href="https://github.com/leancodepl/tandem/blob/main/LICENSE"><img src="https://img.shields.io/github/license/leancodepl/tandem?style=for-the-badge" alt="License: Apache 2.0"></a>
   <a href="https://pub.dev/packages/leancode_lint"><img src="https://img.shields.io/badge/style-leancode__lint-f0ff00?style=for-the-badge" alt="style: leancode_lint"></a>
 </p>
 
-Add an AI agent to a Flutter screen you already have: it works on the screen together with the user and asks before anything that matters.
+Add an AI agent to your Flutter screens. It works on the screen together with the user, conveniently.
 
-> [!NOTE]
-> Tandem is experimental. Its API can change before 1.0.
+
 
 ## How it works
 
@@ -34,6 +37,9 @@ Your state class lists what the agent may do:
 - `.sees(draft)`: the agent sees the draft as it is at each turn, and nothing the class does not list.
 - `.calls(setQuantity)`: the agent calls the method a button calls, so the same validation runs and the screen changes as after a tap.
 - `.callsWithApproval(placeOrder)`: the method runs only after the user approves the call.
+
+> [!NOTE]
+> Tandem is experimental. Its API can change before 1.0.
 
 ## Quick start
 
