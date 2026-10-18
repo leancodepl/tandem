@@ -27,6 +27,9 @@ class OrderDeskCubit({
     if (canPlace) .callsWithApproval(placeOrder),
   ];
 
+  @override
+  Stream<Object?> get changes => stream;
+
   /// The order as the user sees it on the screen.
   DeskOrder get order => state.priced(catalog);
 

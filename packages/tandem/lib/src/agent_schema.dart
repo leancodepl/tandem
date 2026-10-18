@@ -5,13 +5,19 @@ import 'package:tandem/src/tool_args.dart';
 
 /// A class with an agent list. The `_$ClassName` mixin that
 /// `tandem_generator` writes for a class with `@TandemAgent()` implements it;
-/// the class itself only overrides [agentCapabilities].
+/// the class itself overrides [agentCapabilities] and [changes].
 // The experimental lint asks for a primary constructor on an interface too.
 // ignore: use_primary_constructors
 abstract interface class AgentSurface {
   /// What the agent may see and call now. Tandem reads it again before every
   /// turn, so it can depend on the state.
   List<AgentCapability> get agentCapabilities;
+
+  /// Reports every change of this object, such as a Cubit's `stream`. Any
+  /// event after an approval card shows invalidates the card for good, even
+  /// one that changes nothing the agent sees. Every new session listens to
+  /// it again, so it is a broadcast stream.
+  Stream<Object?> get changes;
 
   AgentSchema get agentSchema;
 }

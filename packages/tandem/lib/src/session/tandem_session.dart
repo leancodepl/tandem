@@ -21,20 +21,21 @@ import 'package:uuid/uuid.dart';
 /// Every run reads the screen's agent list again. When a run finishes, the
 /// calls of listed methods run, and the next run takes their answers to the
 /// agent at once. A call that needs approval shows as an [ApprovalRequest]
-/// instead, and the next run waits for the user. Any change `changes`
-/// reports after the card shows invalidates it for good.
+/// instead, and the next run waits for the user. Any change the surface's
+/// `changes` reports after the card shows invalidates it for good.
 ///
 /// One run is open at a time: a message sent meanwhile shows at once and
 /// goes with the next run, after the answers. A run that breaks off moves
 /// the chat to a new AG-UI thread.
 final class TandemSession({
   required final AgentSurface _surface,
-  required Stream<Object?> changes,
   required final AgentConnection _connection,
   final AgentCallListener? _onAgentCall,
 }) extends ChangeNotifier {
   this {
-    _stateChangesSubscription = changes.listen((_) => _invalidateCards());
+    _stateChangesSubscription = _surface.changes.listen(
+      (_) => _invalidateCards(),
+    );
   }
 
   late final StreamSubscription<Object?> _stateChangesSubscription;

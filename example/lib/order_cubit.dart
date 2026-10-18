@@ -18,6 +18,9 @@ class OrderCubit({required final Catalog catalog, required final Orders orders})
     if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
   ];
 
+  @override
+  Stream<Object?> get changes => stream;
+
   /// The order as the user sees it on the screen.
   OrderDraft get draft => state.draft;
 

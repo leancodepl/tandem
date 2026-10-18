@@ -25,6 +25,9 @@ class Shelf() with _$Shelf {
   @override
   List<AgentCapability> get agentCapabilities => [.calls(stock)];
 
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
   /// Puts [skus] on the shelf.
   void stock(
     List<Sku> skus,
@@ -44,6 +47,9 @@ class Dispatch() with _$Dispatch {
     .sees(lastBooked),
     .calls(book),
   ];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
 
   /// The delivery booked last, if any.
   Delivery? lastBooked;
