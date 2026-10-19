@@ -178,7 +178,7 @@ Stop is available while the status is `Thinking`, or `Calling` a method the user
 
 ## Approvals
 
-A method listed with `.callsWithApproval` runs only after the user approves it. The approval covers what the agent saw when it asked, so list everything the method depends on with `.sees`. When a value listed with `.sees` changes, Tandem invalidates the request for good and the agent has to ask again. A change outside `.sees`, such as a selected tab, leaves it pending.
+A method listed with `.callsWithApproval` runs only after the user approves it. The approval covers what the agent saw when it asked, so list everything the method depends on with `.sees`. When a value listed with `.sees` changes, Tandem invalidates the request for good and the agent has to ask again. This holds from the start of the agent's run: a change made by the agent's own calls of that turn invalidates the turn's requests before they show. A change outside `.sees`, such as a selected tab, leaves it pending.
 
 `approvals:` on the scope says how the screen asks:
 

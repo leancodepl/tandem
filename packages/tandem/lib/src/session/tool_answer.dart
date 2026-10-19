@@ -20,5 +20,9 @@ extension type const ToolAnswer._(String json) implements String {
   /// The call did not run: its run was stopped or failed, the user wrote
   /// instead of deciding, or an earlier request of its turn was rejected.
   static const cancelled = ToolAnswer._('{"status":"cancelled"}');
-  static const invalidated = ToolAnswer._('{"status":"invalidated"}');
+  static const invalidated = ToolAnswer._(
+    '{"status":"invalidated","reason":"What you see changed after you asked, '
+    'so this call did not run. Do not repeat calls that already returned. '
+    'Read the current context and ask again only if this call still fits."}',
+  );
 }

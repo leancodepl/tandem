@@ -11,6 +11,10 @@ final class Run(final AgentListing listing) {
   final calls = <String, ToolCall>{};
   bool stopped = false;
 
+  /// Whether what the agent sees differed from what this run sent, at any
+  /// check since it started, even when it changed back.
+  bool seesChanged = false;
+
   /// The listed method that runs now.
   Calling? calling;
 
