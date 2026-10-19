@@ -213,10 +213,10 @@ final class TandemSession({
     final turn = _turn = Turn([...run.calls.values]);
     _thread.addTurn(run, turn);
     try {
-      final changedWhileThinking = _seesNow != SeesSnapshot.of(run.listing);
+      _invalidateIfSeesChanged();
       await _answerCalls(run, turn);
       if (!run.stopped && _run == run) {
-        _askUser(turn, changedWhileThinking: changedWhileThinking);
+        _askUser(turn, seesChanged: run.seesChanged);
       }
     } catch (err, st) {
       _runFailed(err, st);
@@ -237,16 +237,20 @@ final class TandemSession({
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
+        if (run.stopped) {
+          return;
+        }
         call.answer = await _execute(run, call);
         run.calling = null;
+        _invalidateIfSeesChanged();
       }
     }
   }
 
-  void _askUser(Turn turn, {required bool changedWhileThinking}) {
+  void _askUser(Turn turn, {required bool seesChanged}) {
     if (!_asksForApproval()) {
       _refuseApprovals(turn);
-    } else if (changedWhileThinking) {
+    } else if (seesChanged) {
       // The agent asked about what it has not seen.
       turn.invalidateWaiting();
     } else {
@@ -321,13 +325,18 @@ final class TandemSession({
   }
 
   void _invalidateIfSeesChanged() {
-    if (_turn.waitsForUser && _didSeesChange) {
+    if (_run == null && !_turn.waitsForUser) {
+      return;
+    }
+    final seen = _seesNow;
+    if (_run case final run?) {
+      run.seesChanged = run.seesChanged || seen != SeesSnapshot.of(run.listing);
+    }
+    if (_turn.waitsForUser && seen != _turn.seen) {
       _turn.invalidateWaiting().forEach(_showDecision);
       notifyListeners();
     }
   }
-
-  bool get _didSeesChange => _seesNow != _turn.seen;
 
   SeesSnapshot get _seesNow => .read(_surface, report: _report);
 

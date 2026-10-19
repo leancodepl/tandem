@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
@@ -480,7 +481,7 @@ void main() {
     expect(_lines(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
-      'tool-call-1 {"status":"invalidated"}',
+      'tool-call-1 ${ToolAnswer.invalidated}',
       'user: ok',
     ]);
   });
@@ -537,7 +538,32 @@ void main() {
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(
       _lines(agent.requests[1]).last,
-      'tool-call-1 {"status":"invalidated"}',
+      'tool-call-1 ${ToolAnswer.invalidated}',
+    );
+  });
+
+  test('a change to .sees that `changes` never reports, made while the agent '
+      'thinks, invalidates its request before it shows', () async {
+    shop.add('x');
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        AgentStep.waitFor(gate.future),
+        const AgentStep.callTool('clear'),
+      ],
+      (_) => const [AgentStep.say('The list changed.')],
+    ]);
+    final session = open(agent)..send('clear it');
+    await pumpEventQueue();
+
+    shop.items.add('y');
+    gate.complete();
+    await pumpEventQueue();
+
+    expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+    expect(
+      _lines(agent.requests[1]).last,
+      'tool-call-1 ${ToolAnswer.invalidated}',
     );
   });
 
@@ -551,7 +577,7 @@ void main() {
   });
 
   test(
-    'a late signal of a change the turn made leaves the card pending',
+    'tool changes invalidate approvals before change signals arrive',
     () async {
       final signals = Completer<void>();
       shop
@@ -562,14 +588,26 @@ void main() {
           AgentStep.callTool('add', {'item': 'y'}),
           AgentStep.callTool('clear'),
         ],
+        (_) => const [AgentStep.say('The list changed.')],
       ]);
       final session = open(agent)..send('go');
       await pumpEventQueue();
 
+      expect(shop.items, ['x', 'y']);
+      expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+      expect(_lines(agent.requests[1]), [
+        'user: go',
+        'asst-call-1 add {"item":"y"}',
+        'asst-call-2 clear {}',
+        'tool-call-1 null',
+        'tool-call-2 ${ToolAnswer.invalidated}',
+      ]);
+
       signals.complete();
       await pumpEventQueue();
 
-      expect(_card(session).status, ApprovalStatus.pending);
+      expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+      expect(agent.requests, hasLength(2));
     },
   );
 
@@ -746,7 +784,7 @@ void main() {
     expect(_card(session).tool, 'clear');
     expect(_lines(agent.requests[1]).skip(3), [
       'tool-call-1 null',
-      'tool-call-2 {"status":"invalidated"}',
+      'tool-call-2 ${ToolAnswer.invalidated}',
     ]);
   });
 
@@ -834,15 +872,11 @@ void main() {
   test('several calls in one turn are answered in one run', () async {
     shop.add('x');
     final agent = ScriptedAgent([
-      (_) => const [
-        AgentStep.callTool('add', {'item': 'y'}),
-        AgentStep.callTool('clear'),
-      ],
+      (_) => const [AgentStep.callTool('refresh'), AgentStep.callTool('clear')],
       (_) => const [AgentStep.say('Done.')],
     ]);
     final session = open(agent)..send('go');
     await pumpEventQueue();
-    expect(shop.items, ['x', 'y']);
     expect(_card(session).status, ApprovalStatus.pending);
     expect(agent.requests, hasLength(1));
 
@@ -852,11 +886,64 @@ void main() {
     expect(agent.requests, hasLength(2));
     expect(_lines(agent.requests[1]), [
       'user: go',
-      'asst-call-1 add {"item":"y"}',
+      'asst-call-1 refresh {}',
       'asst-call-2 clear {}',
       'tool-call-1 null',
       'tool-call-2 null',
     ]);
+  });
+
+  test(
+    'a change during an async tool invalidates approval even when undone',
+    () async {
+      shop.add('x');
+      final gate = Completer<void>();
+      shop.serverReply = gate.future;
+      final agent = ScriptedAgent([
+        (_) => const [
+          AgentStep.callTool('refresh'),
+          AgentStep.callTool('clear'),
+        ],
+        (_) => const [AgentStep.say('Please confirm the new plan.')],
+      ]);
+      final session = open(agent)..send('refresh and clear');
+      await pumpEventQueue();
+
+      shop.add('y');
+      await pumpEventQueue();
+      shop.removeAt(1);
+      await pumpEventQueue();
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(shop.items, ['x']);
+      expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+      expect(
+        _lines(agent.requests[1]).last,
+        'tool-call-2 ${ToolAnswer.invalidated}',
+      );
+    },
+  );
+
+  test('Stop from a Calling listener prevents invocation', () async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('add', {'item': 'x'}),
+      ],
+    ]);
+    final session = open(agent);
+    session.addListener(() {
+      if (session.status is Calling) {
+        session.stop();
+      }
+    });
+    session.send('add x');
+    await pumpEventQueue();
+
+    expect(shop.items, isEmpty);
+    expect(agent.requests, hasLength(1));
+    expect(session.status, isA<Idle>());
+    expect(events, [isA<RunStopped>()]);
   });
 }
 

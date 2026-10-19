@@ -52,7 +52,7 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 
 - `.sees(getter)`: a getter of this class. List only what the user sees on the screen.
 - `.calls(method)`: a method of this class that a button already calls, so the same validation runs for both.
-- `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or that sends something. It runs only after the user taps Approve. The approval covers only what is listed with `.sees`, so list everything the method depends on.
+- `.callsWithApproval(method)`: anything the user cannot easily undo, that costs money or that sends something. It runs only after the user taps Approve. The approval covers only what is listed with `.sees`, so list everything the method depends on. A change to those values after the agent's run started invalidates the request before it shows, also a change made by the agent's own calls in the same turn.
 - The list is read again before every turn and every call, so an `if` can hide a method.
 - `changes` reports every change of the class as a broadcast stream. On each change Tandem checks the `.sees` values, and a card whose values changed is invalidated while the user looks at it. Other changes leave the card alone. A Cubit returns its `stream`. A Riverpod `Notifier` adds each state to a `StreamController.broadcast()` from `listenSelf` in `build`. A `ChangeNotifier` adds to one in an override of `notifyListeners`.
 - Every listed getter and method needs a doc comment written for the agent: it is all the agent knows about it. The agent calls a method by its name in snake_case, here `set_quantity`.
