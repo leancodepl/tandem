@@ -148,6 +148,11 @@ final class AgentListing._(
   static void _rejectUnknown(Object? json, Object? schema, String path) {
     switch ((json, schema)) {
       case (
+        final Object value,
+        {'anyOf': [final valueSchema, {'type': 'null'}]},
+      ):
+        _rejectUnknown(value, valueSchema, path);
+      case (
         final Map<String, Object?> object,
         {'properties': final Map<Object?, Object?> properties},
       ):
