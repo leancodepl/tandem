@@ -9,7 +9,7 @@
 <p>
   <a href="https://pub.dev/packages/tandem"><img src="https://img.shields.io/pub/v/tandem?style=for-the-badge&logo=dart" alt="tandem on pub.dev"></a>
   <a href="https://github.com/leancodepl/tandem/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/leancodepl/tandem/test.yml?branch=main&style=for-the-badge&logo=github" alt="Test status"></a>
-  <a href="https://github.com/leancodepl/tandem/blob/main/LICENSE"><img src="https://img.shields.io/github/license/leancodepl/tandem?style=for-the-badge" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/leancodepl/tandem/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green?style=for-the-badge" alt="License: Apache 2.0"></a>
   <a href="https://pub.dev/packages/leancode_lint"><img src="https://img.shields.io/badge/style-leancode__lint-f0ff00?style=for-the-badge" alt="style: leancode_lint"></a>
 </p>
 
