@@ -25,8 +25,8 @@ it:
 uv run order-agent
 ```
 
-The server listens on `127.0.0.1:8000`, with the AG-UI endpoint at `POST /agent`. Sessions live in
-memory, so a restart forgets every thread.
+By default the server listens on `127.0.0.1:8000`, with the AG-UI endpoint at `POST /agent`.
+Sessions live in memory, so a restart forgets every thread.
 
 ## Configuration
 
@@ -35,17 +35,18 @@ memory, so a restart forgets every thread.
 | `TANDEM_FAKE_LLM` | | `1` swaps in the scripted model. |
 | `TANDEM_MODEL` | `gemini-3.8-flash` | Any Gemini model name. |
 | `TANDEM_TODAY` | `2026-10-16` | The demo's today, so "by Friday" is 2026-10-23. |
-| `TANDEM_PORT` | `8000` | The port on `127.0.0.1`. |
+| `TANDEM_HOST` | `127.0.0.1` | The address to listen on. Only a physical device needs `0.0.0.0`: an emulator or a simulator reaches `127.0.0.1`. With `0.0.0.0`, anyone on your network can use the agent, which has no sign-in and spends your API key. |
+| `TANDEM_PORT` | `8000` | The port to listen on. |
 | `GOOGLE_API_KEY` | | The Gemini API key, also read from `.env`. |
 
 ## The script
 
-What the scripted model ([src/order_agent/scripted](src/order_agent/scripted)) plays, from the
-e-mail in [example/README.md](../README.md).
+What the scripted model ([src/order_agent/scripted](src/order_agent/scripted)) plays when the
+order desk of the gallery ([example/README.md](../README.md)) sends it the sample e-mail.
 
 | # | You | The agent | The screen |
 |---|---|---|---|
-| 1 | Paste the e-mail | `find_customer`, `get_order_history` | Nothing yet |
+| 1 | Tap the sample e-mail | `find_customer`, `get_order_history` | Nothing yet |
 | 2 | | `set_customer`, two times `search_catalog` | The customer card fills in |
 | 3 | | "I assumed the ProView 27Q, as in your September order ORD-0987." `set_quantity` for both products, `set_delivery` | Lines, prices, address and date appear |
 | 4 | | "40 HDMI cables and 12 ProView 27Q monitors, delivered on 23 Oct. Total 14 349.44 PLN. Shall I place it?" | |

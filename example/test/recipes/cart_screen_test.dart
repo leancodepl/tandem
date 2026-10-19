@@ -21,7 +21,10 @@ void main() {
         .read(cartProvider.notifier)
       ..add('milk')
       ..add('bread');
-    await tester.enterText(find.byType(TextField), 'Check out');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Message the agent'),
+      'Check out',
+    );
     await tester.tap(find.text('Send'));
     await tester.pumpAndSettle();
 

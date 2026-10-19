@@ -3,6 +3,8 @@ A shopping list the agent can read and change. It can empty the list only after 
 <!-- example/lib/shopping_list/shopping_list.dart -->
 ```dart
 import 'package:example/agent_chat.dart';
+import 'package:example/agent_workspace.dart';
+import 'package:example/item_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tandem/tandem.dart';
@@ -67,26 +69,17 @@ final class const ShoppingListScreen({
 
 final class const _ShoppingListView() extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final items = context.watch<ShoppingListCubit>().items;
-
-    return Scaffold(
-      body: Row(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [for (final item in items) ListTile(title: Text(item))],
-            ),
-          ),
-          const SizedBox(width: 360, child: AgentChat()),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const Scaffold(
+    body: AgentWorkspace(
+      title: 'Shopping list',
+      chat: AgentChat(suggestion: 'Add milk and bread, then empty the list.'),
+      child: _Items(),
+    ),
+  );
 }
 ```
 
-[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. `approvals: const .fromState()` lets the chat draw the card for `clear`. Run `dart run build_runner build` to generate `shopping_list.g.dart`, then start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
+[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. [`AgentWorkspace`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_workspace.dart) puts the list and the chat side by side, or one above the other on a phone, and `_Items` is the list itself, with buttons to remove an item and a field to add one ([the whole file](https://github.com/leancodepl/tandem/blob/main/example/lib/shopping_list/shopping_list.dart)). `approvals: const .fromState()` lets the chat draw the card for `clear`. Run `dart run build_runner build` to generate `shopping_list.g.dart`, then start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
 
 No agent yet? `ScriptedAgent` plays a script in its place, with no backend and no API key. Run this file with `flutter run -t` and its path:
 
@@ -113,4 +106,4 @@ void main() =>
     runApp(MaterialApp(home: ShoppingListScreen(connection: _agent)));
 ```
 
-More screens to copy, with Riverpod, provider, a dialog for approvals and a button instead of a chat, are in [doc/examples.md](https://github.com/leancodepl/tandem/blob/main/doc/examples.md).
+The [example gallery](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs this screen and five more with scripted agents. More screens to copy, with Riverpod, provider, a dialog for approvals and a button instead of a chat, are in [doc/examples.md](https://github.com/leancodepl/tandem/blob/main/doc/examples.md).

@@ -19,6 +19,9 @@ final class const AgentChat({
 
   /// Without it, a card shows the method's description and arguments.
   final ApprovalBuilder? approvalBuilder,
+
+  /// A message that an empty chat sends with one tap.
+  final String? suggestion,
 }) extends StatefulWidget {
   @override
   State<AgentChat> createState() => _AgentChatState();
@@ -26,10 +29,41 @@ final class const AgentChat({
 
 final class _AgentChatState() extends State<AgentChat> {
   final _messageController = TextEditingController();
+  final _scrollController = ScrollController();
+  final _newestItem = GlobalKey();
+  (TandemSession, String)? _shownCard;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final session = TandemSessionScope.of(context);
+    if (session.items.lastOrNull case ApprovalRequest(:final toolCallId)
+        when _shownCard != (session, toolCallId)) {
+      _shownCard = (session, toolCallId);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showNewestCard());
+    }
+  }
+
+  void _showNewestCard({bool jumped = false}) {
+    if (!mounted) {
+      return;
+    }
+    if (_newestItem.currentContext case final card?) {
+      // In the reversed list, 1 shows a card taller than the chat from its top.
+      Scrollable.ensureVisible(card, alignment: 1);
+    } else if (!jumped && _scrollController.hasClients) {
+      // The list does not build a card far below what the reader sees.
+      _scrollController.jumpTo(0);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _showNewestCard(jumped: true),
+      );
+    }
+  }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -42,22 +76,72 @@ final class _AgentChatState() extends State<AgentChat> {
       child: Column(
         children: [
           Expanded(
-            // Reversed, so that the newest item stays in view.
-            child: ListView.builder(
-              reverse: true,
-              padding: const .all(8),
-              itemCount: items.length,
-              itemBuilder: (context, index) => _Item(
-                items[items.length - 1 - index],
-                session,
-                widget.approvalBuilder,
+            child: switch (items) {
+              [] => _EmptyChat(widget.suggestion, session),
+              // Reversed, so that the newest item stays in view.
+              _ => ListView.builder(
+                controller: _scrollController,
+                reverse: true,
+                padding: const .all(12),
+                itemCount: items.length,
+                itemBuilder: (context, index) => KeyedSubtree(
+                  key: index == 0 ? _newestItem : null,
+                  child: _Item(
+                    items[items.length - 1 - index],
+                    session,
+                    widget.approvalBuilder,
+                  ),
+                ),
               ),
-            ),
+            },
           ),
+          _Progress(session.status),
           _InputRow(session, _messageController),
         ],
       ),
     );
+  }
+}
+
+final class const _EmptyChat(
+  final String? suggestion,
+  final TandemSession session,
+) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding: const .all(20),
+      child: switch (suggestion) {
+        final text? => OutlinedButton(
+          onPressed: () => session.send(text),
+          child: Padding(
+            padding: const .symmetric(vertical: 12),
+            child: Text(text, textAlign: .center),
+          ),
+        ),
+        null => const Text('Ask the agent to help with this screen.'),
+      },
+    ),
+  );
+}
+
+final class const _Progress(final SessionStatus status)
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final text = switch (status) {
+      Idle() || AwaitingApproval() || Stopping() => null,
+      Thinking() => 'Thinking…',
+      Calling() => 'Applying the change…',
+    };
+
+    return switch (text) {
+      final text? => Padding(
+        padding: const .symmetric(horizontal: 16, vertical: 4),
+        child: Text(text, style: context.textTheme.bodySmall),
+      ),
+      null => const SizedBox.shrink(),
+    };
   }
 }
 
@@ -94,16 +178,31 @@ final class const _Bubble(
 
     return Align(
       alignment: fromUser ? .centerRight : .centerLeft,
-      child: Card(
-        color: fromUser ? colors.primaryContainer : colors.surfaceContainer,
-        child: Padding(
-          padding: const .all(8),
-          child: Column(
-            crossAxisAlignment: .start,
-            children: [
-              Text(text),
-              if (stopped) Text('Stopped', style: context.textTheme.bodySmall),
-            ],
+      child: Padding(
+        padding: const .only(bottom: 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: fromUser
+                ? colors.primaryContainer
+                : colors.surfaceContainerHigh,
+            borderRadius: .circular(12),
+          ),
+          child: Padding(
+            padding: const .symmetric(horizontal: 14, vertical: 10),
+            child: Column(
+              crossAxisAlignment: .start,
+              mainAxisSize: .min,
+              spacing: 4,
+              children: [
+                Text(
+                  fromUser ? 'You' : 'Agent',
+                  style: context.textTheme.labelSmall,
+                ),
+                Text(text),
+                if (stopped)
+                  Text('Stopped', style: context.textTheme.bodySmall),
+              ],
+            ),
           ),
         ),
       ),
@@ -145,14 +244,24 @@ final class const _ApprovalCard(
     final session = TandemSessionScope.of(context);
 
     return Card(
+      margin: const .only(bottom: 12),
       child: Padding(
-        padding: const .all(8),
+        padding: const .all(16),
         child: Column(
           crossAxisAlignment: .start,
+          spacing: 12,
           children: [
+            Text(switch (request.status) {
+              .pending => 'Approval',
+              .approved => 'Approved',
+              .rejected => 'Rejected',
+              .invalidated => 'What the agent saw changed. Ask it again.',
+              .cancelled => 'Cancelled',
+            }, style: context.textTheme.labelLarge),
             builder?.call(context, request) ??
                 Column(
                   crossAxisAlignment: .start,
+                  spacing: 4,
                   children: [
                     Text(request.description),
                     for (final MapEntry(:key, :value)
@@ -160,8 +269,8 @@ final class const _ApprovalCard(
                       Text('$key: $value'),
                   ],
                 ),
-            switch (request.status) {
-              .pending => Wrap(
+            if (request.status == .pending)
+              Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
@@ -175,13 +284,6 @@ final class const _ApprovalCard(
                   ),
                 ],
               ),
-              .approved => const Text('Approved'),
-              .rejected => const Text('Rejected'),
-              .invalidated => const Text(
-                'What the agent saw changed. Ask it again.',
-              ),
-              .cancelled => const Text('Cancelled'),
-            },
           ],
         ),
       ),
@@ -208,14 +310,15 @@ final class const _InputRow(
     };
 
     return Padding(
-      padding: const .all(8),
+      padding: const .all(12),
       child: Row(
         spacing: 8,
         children: [
           Expanded(
             child: TextField(
               controller: messageController,
-              decoration: const InputDecoration(hintText: 'Message'),
+              decoration: const InputDecoration(hintText: 'Message the agent'),
+              textInputAction: .send,
               // Unlike onSubmitted, it leaves the focus in the field.
               onEditingComplete: _sendText,
             ),

@@ -149,7 +149,11 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
 ## Try it without a key
 
-The [example](https://github.com/leancodepl/tandem/tree/main/example) is an order desk for an iPad: the agent fills in an order from a pasted e-mail and places it once the user approves. Its agent backend can run with a scripted model, so it needs no API key. [example/README.md](https://github.com/leancodepl/tandem/blob/main/example/README.md) says how to run it.
+<p align="center">
+  <a href="https://github.com/leancodepl/tandem/blob/main/example/README.md"><img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/examples/approval.gif" alt="The agent asks to empty a shopping list. Removing an item invalidates the request, and a new request can be approved." width="300"></a>
+</p>
+
+The [example gallery](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs six screens on Android, iOS and macOS with scripted agents, without a backend or an API key. Its order desk can also talk to the example's agent backend, which has a scripted model too.
 
 To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent` ([how](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#without-an-api-key)). On Linux or Windows, run it in Chrome. [More examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) have screens to copy with bloc, Riverpod and provider.
 

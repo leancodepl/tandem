@@ -1,6 +1,6 @@
 # Examples
 
-Each example is real code in [`example/lib/recipes`](../example/lib/recipes). All but the last have a test in [`example/test/recipes`](../example/test/recipes). CI analyzes and tests them, and a test checks that the code below matches the files. Copy the one closest to your screen.
+Each example is real code in [`example/lib/recipes`](../example/lib/recipes). All but the last have a test in [`example/test/recipes`](../example/test/recipes). CI analyzes and tests them, and a test checks that the code below matches the files. Copy the one closest to your screen. The [example gallery](../example/README.md) runs most of them with scripted agents.
 
 The screens take an `AgentConnection`, except the last, which makes its own. In the app it is `HttpAgentConnection(Uri.parse('https://your.server/agent'))`, made once and kept, not made in `build`. In a test it is a `ScriptedAgent`. `TandemScope(agent: uri, ...)` makes the connection for you when you need nothing else.
 
@@ -74,8 +74,6 @@ Nothing here needs approval, so the scope has `approvals: const .none()`. Withou
               .showSnackBar(SnackBar(content: Text(text)));
         }
       },
-      child: const Scaffold(body: _ContactForm()),
-    ),
 ```
 
 The button sends the e-mail with `session.send`. `session.status` tells what the agent does now, and the agent's last message is the last `AgentMessage` in `session.items`:
@@ -204,43 +202,25 @@ class CartNotifier() extends Notifier<List<String>> with _$CartNotifier {
 - Do not close the controller in `ref.onDispose`. Riverpod calls it before every rebuild of the provider, and the notifier with its controller lives on.
 - `riverpod_lint`'s `avoid_public_notifier_properties` skips a getter marked `@protected`, and `.sees` takes one. A private getter works too, but its generated code trips `no_leading_underscores_for_local_identifiers`.
 
-The screen is a `ConsumerWidget`. `ref.watch(cartProvider)` keeps the notifier alive while the screen shows, and the scope reads it with `ref.read`:
+The screen is a `ConsumerWidget`, and the scope reads the notifier with `ref.read`. `_Cart` below it lists the items with `ref.watch(cartProvider)`, which keeps the notifier alive while the screen shows:
 
 <!-- example/lib/recipes/riverpod/cart_screen.dart -->
 ```dart
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(cartProvider);
-
-    return TandemScope.connected(
-      surface: (context) => ref.read(cartProvider.notifier),
-      connection: connection,
-      approvals: const .fromState(),
-      child: Scaffold(
-        body: Row(
-          children: [
-            Expanded(
-              child: ListView(
-                children: [
-                  for (final item in items)
-                    ListTile(
-                      title: Text(item),
-                      trailing: IconButton(
-                        tooltip: 'Remove $item',
-                        icon: const Icon(Icons.remove_circle_outline),
-                        onPressed: () =>
-                            ref.read(cartProvider.notifier).remove(item),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 360, child: AgentChat()),
-          ],
+  Widget build(BuildContext context, WidgetRef ref) => TandemScope.connected(
+    surface: (context) => ref.read(cartProvider.notifier),
+    connection: connection,
+    approvals: const .fromState(),
+    child: const Scaffold(
+      body: AgentWorkspace(
+        title: 'Shopping cart',
+        chat: AgentChat(
+          suggestion: 'Add a keyboard and a USB-C cable, then check out.',
         ),
+        child: _Cart(),
       ),
-    );
-  }
+    ),
+  );
 ```
 
 When the screen closes, the scope disposes its session first, and `autoDispose` disposes the notifier a frame later. Test: [`cart_screen_test.dart`](../example/test/recipes/cart_screen_test.dart), where removing an item invalidates the checkout card.
@@ -305,16 +285,13 @@ final class const TodoScreen({
       connection: connection,
       approvals: const .fromState(),
       child: Scaffold(
-        body: Row(
-          children: [
-            const Expanded(child: _Todos()),
-            SizedBox(
-              width: 360,
-              child: AgentChat(
-                approvalBuilder: (context, request) => _ApprovalTitle(request),
-              ),
-            ),
-          ],
+        body: AgentWorkspace(
+          title: 'Release tasks',
+          chat: AgentChat(
+            suggestion: 'Add two release tasks, then clear the list.',
+            approvalBuilder: (context, request) => _ApprovalTitle(request),
+          ),
+          child: const _Todos(),
         ),
       ),
     ),
@@ -393,7 +370,7 @@ In `example`, `flutter run -t lib/recipes/fill_from_email/try_it.dart` runs it. 
 TANDEM_FAKE_LLM=1 uv run order-agent
 ```
 
-Then run the app in `example` and paste the e-mail from [example/README.md](../example/README.md).
+Then [connect the order desk](../example/README.md#connect-the-order-desk-to-a-backend) of the gallery to it and send the sample e-mail.
 
 **A local model.** ADK runs local models through LiteLLM, such as Ollama with `LiteLlm(model="ollama_chat/<model>")` and `OLLAMA_API_BASE=http://localhost:11434` ([ADK docs](https://adk.dev/agents/models/ollama/)). Use `ollama_chat`, not `ollama`, and a model whose `ollama show` lists `tools`. The demo's agent takes only Gemini names: to try one, return a `LiteLlm` from `_model` in [`agent.py`](../example/agent/src/order_agent/agent.py) and add the `litellm` package. This is not tested with the demo. Small local models are weaker at many tool calls in a row, and the order desk script makes nine of them. The fix for parallel calls in [`streaming.py`](../example/agent/src/order_agent/streaming.py) is for Gemini only, so two calls of the same tool in one turn, as the demo's two `set_quantity`, may not reach the app.
 
@@ -405,9 +382,10 @@ Tandem shows no text of its own. In [`AgentChat`](../example/lib/agent_chat.dart
 
 <!-- example/lib/recipes/change_notifier/todo_screen.dart -->
 ```dart
-              child: AgentChat(
-                approvalBuilder: (context, request) => _ApprovalTitle(request),
-              ),
+          chat: AgentChat(
+            suggestion: 'Add two release tasks, then clear the list.',
+            approvalBuilder: (context, request) => _ApprovalTitle(request),
+          ),
 ```
 
 <!-- example/lib/recipes/change_notifier/todo_screen.dart -->
@@ -434,7 +412,7 @@ final class const _ApprovalTitle(final ApprovalRequest request)
 
 ## The backend
 
-Any AG-UI endpoint works. The backend has to put the AG-UI `context` into the model's prompt, accept `tools` on every run and, on the web, allow the app's origin with CORS. The `tools`, their descriptions and the `context` come from the app, so the backend treats them as untrusted input. Tandem is tested with [ag-ui-adk](https://pypi.org/project/ag-ui-adk/) 0.9.0.
+Any AG-UI endpoint works. The backend has to put the AG-UI `context` into the model's prompt, accept `tools` on every run and, on the web, allow the app's origin with CORS. The example backend has no CORS middleware, so a browser build cannot reach it without adding one. The `tools`, their descriptions and the `context` come from the app, so the backend treats them as untrusted input. Tandem is tested with [ag-ui-adk](https://pypi.org/project/ag-ui-adk/) 0.9.0.
 
 The demo's agent in [`example/agent`](../example/agent) is a Google ADK agent to copy from:
 

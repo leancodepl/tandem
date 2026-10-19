@@ -114,7 +114,7 @@ BlocProvider(
 )
 ```
 
-`TandemScope` goes below whatever owns the state object, such as the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `surface` reads the object when the scope opens its session. With provider it is `context.read<TodoList>()` below the `ChangeNotifierProvider`. With Riverpod, the screen is a `ConsumerWidget` that watches the provider, and `surface` is `(context) => ref.read(cartProvider.notifier)`. `onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result`), `RunStopped`, `RunFailed` and `ConnectionLost`. `surface` and `onEvent` get the scope's context, below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
+`TandemScope` goes below whatever owns the state object, such as the `BlocProvider` of the Cubit, and the screen and its chat below the scope. `surface` reads the object when the scope opens its session. With provider it is `context.read<TodoList>()` below the `ChangeNotifierProvider`. With Riverpod, the screen is a `ConsumerWidget`, a widget below the scope watches the provider to keep it alive, and `surface` is `(context) => ref.read(cartProvider.notifier)`. `onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result`), `RunStopped`, `RunFailed` and `ConnectionLost`. `surface` and `onEvent` get the scope's context, below the `BlocProvider`, so `context.read<OrderCubit>()` works there.
 
 `approvals` says how the user approves a call of a `.callsWithApproval` method:
 

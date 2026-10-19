@@ -15,4 +15,4 @@ def create_app(settings: Settings) -> FastAPI:
 
 def main() -> None:
     settings = load_settings()
-    uvicorn.run(create_app(settings), host="127.0.0.1", port=settings.port)
+    uvicorn.run(create_app(settings), host=settings.host, port=settings.port)

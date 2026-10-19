@@ -1,4 +1,6 @@
 import 'package:example/agent_chat.dart';
+import 'package:example/agent_workspace.dart';
+import 'package:example/item_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tandem/tandem.dart';
@@ -63,20 +65,44 @@ final class const ShoppingListScreen({
 
 final class const _ShoppingListView() extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final items = context.watch<ShoppingListCubit>().items;
+  Widget build(BuildContext context) => const Scaffold(
+    body: AgentWorkspace(
+      title: 'Shopping list',
+      chat: AgentChat(suggestion: 'Add milk and bread, then empty the list.'),
+      child: _Items(),
+    ),
+  );
+}
 
-    return Scaffold(
-      body: Row(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [for (final item in items) ListTile(title: Text(item))],
+final class const _Items() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.watch<ShoppingListCubit>();
+
+    return Column(
+      children: [
+        Expanded(
+          child: switch (cubit.items) {
+            [] => const Center(child: Text('Your shopping list is empty.')),
+            final items => ListView(
+              padding: const .symmetric(vertical: 8),
+              children: [
+                for (final item in items)
+                  ListTile(
+                    leading: const Icon(Icons.shopping_bag_outlined),
+                    title: Text(item),
+                    trailing: IconButton(
+                      tooltip: 'Remove $item',
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: () => cubit.remove(item),
+                    ),
+                  ),
+              ],
             ),
-          ),
-          const SizedBox(width: 360, child: AgentChat()),
-        ],
-      ),
+          },
+        ),
+        ItemInput(label: 'Add an item', onAdd: cubit.add),
+      ],
     );
   }
 }
