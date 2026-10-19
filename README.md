@@ -15,7 +15,9 @@
 
 Add an AI agent to your Flutter screens. It works on the screen together with the user, conveniently.
 
-
+<p align="center">
+  <a href="https://github.com/leancodepl/tandem/blob/main/example/README.md"><img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/reel.gif" alt="A customer e-mails an order. The agent fills the order desk through the cubit's methods, the user changes a quantity and approves the order, and the agent confirms in chat." width="600"></a>
+</p>
 
 ## How it works
 
