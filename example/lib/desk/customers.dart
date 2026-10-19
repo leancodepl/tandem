@@ -1,3 +1,5 @@
+import 'package:tandem/tandem.dart';
+
 class const Customer({
   required final String id,
   required final String name,
@@ -8,6 +10,6 @@ class const Customer({
 class Customers(final List<Customer> all) {
   Customer byId(String id) => all.firstWhere(
     (customer) => customer.id == id,
-    orElse: () => throw ArgumentError.value(id, 'customerId', 'is unknown'),
+    orElse: () => throw ToolCallRefused('No customer has the id $id.'),
   );
 }

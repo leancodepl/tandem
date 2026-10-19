@@ -10,9 +10,9 @@ import 'package:tandem/src/session/tool_call.dart';
 /// hears.
 typedef MethodOutcome = ({ToolAnswer answer, AgentCall? returned});
 
-/// Runs the method behind [call]. Never throws: a refused call and the
-/// agent's bad input are refused, and any other error is reported and
-/// answered as failed.
+/// Runs the method behind [call]. Never throws: a refused call is refused,
+/// and any other error is reported and answered as failed, or as
+/// result_unavailable when only encoding the result failed.
 Future<MethodOutcome> runMethod(
   AgentListing listing,
   ToolCall call, {
@@ -25,22 +25,21 @@ Future<MethodOutcome> runMethod(
       arguments,
       approved: call.approved,
     );
-    return (
-      answer: ToolAnswer.returned(result),
-      returned: AgentCall(
-        tool: call.tool,
-        arguments: arguments,
-        result: result,
-      ),
+    final returned = AgentCall(
+      tool: call.tool,
+      arguments: arguments,
+      result: result,
     );
+    try {
+      return (answer: ToolAnswer.returned(result), returned: returned);
+    } catch (err, st) {
+      report(err, st);
+      return (answer: ToolAnswer.resultUnavailable, returned: returned);
+    }
   } on ToolCallRefused catch (refusal) {
     return (answer: ToolAnswer.refused(refusal.message), returned: null);
   } catch (err, st) {
-    // The agent's bad input. A RangeError is a bug, so it is reported.
-    if (err is ArgumentError && err is! RangeError) {
-      return (answer: ToolAnswer.refused('$err'), returned: null);
-    }
     report(err, st);
-    return (answer: ToolAnswer.failed(err), returned: null);
+    return (answer: ToolAnswer.failed, returned: null);
   }
 }

@@ -191,7 +191,7 @@ void main() {
   });
 
   test(
-    'an ArgumentError is refused, others are reported; the next message works',
+    'a ToolCallRefused is refused, others are reported; the next message works',
     () async {
       final agent = ScriptedAgent([
         (_) => const [
@@ -212,10 +212,7 @@ void main() {
         'status': 'refused',
         'reason': contains('item'),
       });
-      expect(jsonDecode(failed), {
-        'status': 'failed',
-        'error': contains('RangeError'),
-      });
+      expect(failed, ToolAnswer.failed);
       expect(reported.map((details) => details.exception), [
         isRangeError,
         isA<AgentRunException>().having(

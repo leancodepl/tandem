@@ -16,7 +16,7 @@ The parameters of the listed methods become the JSON Schema the agent fills in. 
 | `int`, `double`, `num` | integer, number | `15.0` is read as `15`. An `int` refuses `1.5` and any double of magnitude 2^53 or more. |
 | `DateTime` | ISO 8601 string | Read with [`DateTime.parse`](https://api.dart.dev/dart-core/DateTime/parse.html), so `2026-10-23` and `2026-10-23T10:20:00Z` both work. A day that does not exist rolls over: `2026-02-30` is 2 March. |
 | enum | the value's name | |
-| extension type over `String`, `int`, `double`, `num` or `bool` | that value | Built as `Code(value)`, so the unnamed constructor must be public and take only the value, as one positional, non-nullable parameter of the type it wraps. A factory constructor there checks the agent's values too. |
+| extension type over `String`, `int`, `double`, `num` or `bool` | that value | Built as `Code(value)`, so the unnamed constructor must be public and take only the value, as one positional, non-nullable parameter of the type it wraps. A factory constructor there checks the agent's values too, and throws a `ToolCallRefused` to tell the agent what is wrong. |
 | `List<T>` | array | In a parameter, `T` is neither nullable nor a list, and the list has no `?` and no default. |
 | plain class | object | Public, not generic, not from the SDK. Built with its public unnamed constructor, whose parameters are all named except at most one, and written through the getters of the same names. It needs no `fromJson` or `toJson`. |
 

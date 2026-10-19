@@ -54,7 +54,7 @@ class OrderDeskCubit({
   void setQuantity(String sku, int quantity) {
     final product = catalog.bySku(sku);
     if (quantity < 0) {
-      throw ArgumentError.value(quantity, 'quantity', 'must not be negative');
+      throw const ToolCallRefused('Quantity must not be negative.');
     }
     final quantities = {...state.quantities, product.sku: quantity}
       ..removeWhere((_, pieces) => pieces == 0);

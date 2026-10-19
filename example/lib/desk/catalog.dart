@@ -1,3 +1,5 @@
+import 'package:tandem/tandem.dart';
+
 class const Product({
   required final String sku,
   required final String name,
@@ -8,8 +10,7 @@ class const Product({
 class Catalog(final List<Product> products) {
   Product bySku(String sku) => products.firstWhere(
     (product) => product.sku == sku,
-    orElse: () =>
-        throw ArgumentError.value(sku, 'sku', 'is not in the catalog'),
+    orElse: () => throw ToolCallRefused('No product has the SKU $sku.'),
   );
 
   Future<List<Product>> search(String query) async {

@@ -46,7 +46,7 @@ final class Shop() implements AgentSurface {
   /// Adds [item] to the list.
   void add(String item) {
     if (item.isEmpty) {
-      throw ArgumentError.value(item, 'item', 'must not be empty');
+      throw const ToolCallRefused('The item must not be empty.');
     }
     items.add(item);
     _changed();

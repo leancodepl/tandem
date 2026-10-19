@@ -8,6 +8,7 @@ import 'package:example/desk/desk_order.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
 const _cables = 'VC-HDMI-2M';
@@ -131,9 +132,10 @@ void main() {
   });
 
   test('unknown customers and skus and negative quantities are refused', () {
-    expect(() => cubit.setCustomer('nobody'), throwsArgumentError);
-    expect(() => cubit.setQuantity('VX-1', 1), throwsArgumentError);
-    expect(() => cubit.setQuantity(_monitor, -1), throwsArgumentError);
+    final refused = throwsA(isA<ToolCallRefused>());
+    expect(() => cubit.setCustomer('nobody'), refused);
+    expect(() => cubit.setQuantity('VX-1', 1), refused);
+    expect(() => cubit.setQuantity(_monitor, -1), refused);
     expect(cubit.order.lines, isEmpty);
   });
 

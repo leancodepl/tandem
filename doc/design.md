@@ -75,11 +75,14 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 | Situation | Content |
 |---|---|
 | executed | `jsonEncode(result)`, `null` for `void` |
-| refused: not listed at call time, needs approval, the screen takes no approvals, bad arguments, or the method threw an `ArgumentError` other than a `RangeError` | `{"status":"refused","reason":<message>}` |
-| the method threw anything else | `{"status":"failed","error":<toString>}` |
+| refused: not listed at call time, needs approval, the screen takes no approvals, bad arguments, or the method threw a `ToolCallRefused` | `{"status":"refused","reason":<message>}` |
+| the method threw anything else | `{"status":"failed","error":<fixed message>}` |
+| the method returned, but `jsonEncode` failed on its result | `{"status":"result_unavailable","reason":<fixed message>}` |
 | Reject | `{"status":"rejected_by_user"}` |
 | not executed, or the user wrote instead of deciding | `{"status":"cancelled"}` |
 | invalidated | `{"status":"invalidated","reason":<fixed message>}` |
+
+Only a `ToolCallRefused` gives the agent its message. Any other error of a method, an `ArgumentError` too, goes only to `FlutterError.reportError`.
 
 `rejected_by_user`, not `rejected`: Gemini answers a plain `rejected` as if the system refused the call.
 
