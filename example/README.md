@@ -28,14 +28,14 @@ chunks.
 
 ## Run the app
 
-In `example`, on an iPad simulator (the example has the iOS platform only):
+In `example`, on an iPad simulator, or on macOS with `-d macos`:
 
 ```sh
 fvm flutter run
 ```
 
-The app talks to the agent at `http://localhost:8000/agent`, which a simulator reaches on the same
-Mac. Paste this e-mail into the chat:
+The app talks to the agent at `http://localhost:8000/agent`, which a simulator or a macOS app
+reaches on the same Mac. Paste this e-mail into the chat:
 
 > Hi, could you send us 40 HDMI cables (2 m) and 12 of the 27-inch monitors like last time? Delivery to Magazynowa 5, Poznań by Friday please. Thanks, Marta, Acme Office Supply
 
