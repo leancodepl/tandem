@@ -44,10 +44,16 @@ final class AgentTypes(final ExecutableElement _element) {
           'the default value',
         );
       }
+      final valueSchema = schema(type, '$prefix$name');
       properties[name] = {
-        ...schema(type, '$prefix$name'),
-        // OpenAPI's form, as ag-ui-adk 0.9.0 fails on a list of types.
-        if (nullable) 'nullable': true,
+        // Not a list of types, which ag-ui-adk 0.9.0 fails on.
+        if (nullable)
+          'anyOf': [
+            valueSchema,
+            {'type': 'null'},
+          ]
+        else
+          ...valueSchema,
         'description': ?_doc(parameter, owner),
       };
     }

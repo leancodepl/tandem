@@ -26,16 +26,25 @@ mixin _$Shelf implements AgentSurface {
                 'items': {'type': 'string'},
               },
               'size': {
-                'type': 'string',
-                'enum': ['s', 'm', 'l'],
-                'nullable': true,
+                'anyOf': [
+                  {
+                    'type': 'string',
+                    'enum': ['s', 'm', 'l'],
+                  },
+                  {'type': 'null'},
+                ],
               },
               'count': {'type': 'integer'},
               'fit': {
                 'type': 'string',
                 'enum': ['s', 'm', 'l'],
               },
-              'note': {'type': 'string', 'nullable': true},
+              'note': {
+                'anyOf': [
+                  {'type': 'string'},
+                  {'type': 'null'},
+                ],
+              },
             },
             'required': ['skus'],
           },
@@ -133,8 +142,10 @@ mixin _$Dispatch implements AgentSurface {
                     'enum': ['morning', 'afternoon'],
                   },
                   'note': {
-                    'type': 'string',
-                    'nullable': true,
+                    'anyOf': [
+                      {'type': 'string'},
+                      {'type': 'null'},
+                    ],
                     'description': 'Anything the courier should know.',
                   },
                 },
@@ -180,6 +191,75 @@ mixin _$Dispatch implements AgentSurface {
               'slot': result.slot.name,
               'note': result.note,
             };
+          },
+        ),
+        AgentTool(
+          surface.setDelivery,
+          name: 'set_delivery',
+          description: 'Replaces or clears the delivery.',
+          parameters: const {
+            'type': 'object',
+            'properties': {
+              'delivery': {
+                'anyOf': [
+                  {
+                    'type': 'object',
+                    'description': 'Where and when an order goes.',
+                    'properties': {
+                      'address': {
+                        'type': 'object',
+                        'description': 'Where the courier brings the order.',
+                        'properties': {
+                          'street': {'type': 'string'},
+                          'city': {'type': 'string'},
+                        },
+                        'required': ['street', 'city'],
+                      },
+                      'day': {
+                        'type': 'string',
+                        'format': 'date-time',
+                        'description': 'The day the order arrives.',
+                      },
+                      'slot': {
+                        'type': 'string',
+                        'enum': ['morning', 'afternoon'],
+                      },
+                      'note': {
+                        'anyOf': [
+                          {'type': 'string'},
+                          {'type': 'null'},
+                        ],
+                        'description': 'Anything the courier should know.',
+                      },
+                    },
+                    'required': ['address', 'day'],
+                  },
+                  {'type': 'null'},
+                ],
+              },
+            },
+          },
+          invoke: (args) {
+            surface.setDelivery(
+              args.readObject(
+                'delivery',
+                (delivery) => .new(
+                  address: delivery.readObject(
+                    'address',
+                    (address) => .new(
+                      street: address.read('street'),
+                      city: address.read('city'),
+                    ),
+                  ),
+                  day: delivery.read('day'),
+                  slot: delivery.json.containsKey('slot')
+                      ? delivery.read('slot', oneOf: [.morning, .afternoon])
+                      : .morning,
+                  note: delivery.read('note'),
+                ),
+              ),
+            );
+            return null;
           },
         ),
       ],

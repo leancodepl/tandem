@@ -46,6 +46,7 @@ class Dispatch() with _$Dispatch {
   List<AgentCapability> get agentCapabilities => [
     .sees(lastBooked),
     .calls(book),
+    .calls(setDelivery),
   ];
 
   @override
@@ -53,6 +54,9 @@ class Dispatch() with _$Dispatch {
 
   /// The delivery booked last, if any.
   Delivery? lastBooked;
+
+  /// Replaces or clears the delivery.
+  void setDelivery(Delivery? delivery) => lastBooked = delivery;
 
   /// Books a courier for [lines] and returns the delivery as booked.
   Future<Delivery> book(List<OrderLine> lines, Delivery delivery) async {
@@ -82,16 +86,25 @@ void main() {
           'items': {'type': 'string'},
         },
         'size': {
-          'type': 'string',
-          'enum': ['s', 'm', 'l'],
-          'nullable': true,
+          'anyOf': [
+            {
+              'type': 'string',
+              'enum': ['s', 'm', 'l'],
+            },
+            {'type': 'null'},
+          ],
         },
         'count': {'type': 'integer'},
         'fit': {
           'type': 'string',
           'enum': ['s', 'm', 'l'],
         },
-        'note': {'type': 'string', 'nullable': true},
+        'note': {
+          'anyOf': [
+            {'type': 'string'},
+            {'type': 'null'},
+          ],
+        },
       },
       'required': ['skus'],
     });
@@ -152,7 +165,7 @@ void main() {
   test(
     'plain classes: the schema comes from constructors and doc comments',
     () {
-      expect(AgentListing.of(Dispatch()).tools.single['parameters'], {
+      expect(AgentListing.of(Dispatch()).tools.first['parameters'], {
         'type': 'object',
         'properties': {
           'lines': {
@@ -197,8 +210,10 @@ void main() {
                 'enum': ['morning', 'afternoon'],
               },
               'note': {
-                'type': 'string',
-                'nullable': true,
+                'anyOf': [
+                  {'type': 'string'},
+                  {'type': 'null'},
+                ],
                 'description': 'Anything the courier should know.',
               },
             },
@@ -293,6 +308,37 @@ void main() {
       message('delivery.day: expected an ISO 8601 date, got "23 Oct 2026"'),
     );
     expect(dispatch.booked, isEmpty);
+  });
+
+  test('nullable objects reject unknown fields before the method runs', () async {
+    final dispatch = Dispatch();
+    final listing = AgentListing.of(dispatch);
+
+    await expectLater(
+      listing.call('set_delivery', {
+        'delivery': {
+          ..._delivery,
+          'address': {
+            'street': 'Magazynowa 5',
+            'city': 'Poznań',
+            'street_typo': 'Unknown',
+          },
+        },
+      }),
+      throwsA(
+        isA<ToolCallRefused>().having(
+          (error) => error.message,
+          'message',
+          'delivery.address.street_typo: unknown, expected one of street, city',
+        ),
+      ),
+    );
+    expect(dispatch.lastBooked, isNull);
+
+    await listing.call('set_delivery', {'delivery': _delivery});
+    expect(dispatch.lastBooked?.address.city, 'Poznań');
+    await listing.call('set_delivery', {'delivery': null});
+    expect(dispatch.lastBooked, isNull);
   });
 
   test('an int refuses a whole double past 2^53 - 1, not an exact int', () {
