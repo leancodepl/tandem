@@ -33,8 +33,15 @@ final class Run(final AgentListing listing) {
     return (shown: shown, grown: grown);
   }
 
-  void startCall(String id, String tool) =>
+  void startCall(String id, String tool) {
+    if (calls[id] case final call?) {
+      if (call.tool != tool) {
+        throw const FormatException('A tool call changed its method.');
+      }
+    } else {
       calls[id] = ToolCall(id, tool, listing.description(tool));
+    }
+  }
 
   List<Map<String, Object?>> get assistantTexts => [
     for (final MapEntry(key: id, value: message) in texts.entries)

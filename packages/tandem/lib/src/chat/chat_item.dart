@@ -11,16 +11,18 @@ final class const UserMessage(final String text) extends ChatItem;
 final class const AgentMessage(
   final String text, {
 
-  /// The user stopped the run after this text.
+  /// The user or the backend stopped the run after this text.
   final bool stopped = false,
 }) extends ChatItem;
 
 /// What a [ChatNotice] tells the user.
 enum ChatNoticeKind() {
-  /// The user stopped a run before the agent said anything.
+  /// The user or the backend stopped a run before the agent said anything.
   stopped,
 
-  /// The run ended with an error, or the app's agent list threw.
+  /// The run ended with an error, or the app's agent list threw. After a
+  /// run Tandem cannot follow, such as one that ends with an interrupt, the
+  /// next message starts a new conversation.
   runFailed,
 
   /// The run broke off; the next message starts a new conversation.

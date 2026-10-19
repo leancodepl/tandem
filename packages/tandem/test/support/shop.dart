@@ -17,6 +17,8 @@ final class Shop() implements AgentSurface {
   /// Not listed with `.sees`, like a selected tab.
   int tab = 0;
 
+  int refreshes = 0;
+
   @override
   Stream<Object?> get changes => _changes.stream;
 
@@ -68,6 +70,7 @@ final class Shop() implements AgentSurface {
 
   /// Reloads the list from the server.
   Future<void> refresh() async {
+    refreshes++;
     await serverReply;
   }
 

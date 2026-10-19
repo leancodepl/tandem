@@ -174,7 +174,13 @@ final class TandemSession({
       _runSubscription = _connection
           .run(_thread.input(run.listing))
           .listen(
-            (json) => _handleEvent(run, .fromJson(json)),
+            (json) {
+              try {
+                _handleEvent(run, .fromJson(json));
+              } catch (err, st) {
+                _abort(run, err, st);
+              }
+            },
             onError: (Object err, StackTrace st) {
               _report(err, st);
               _connectionLost(run);
@@ -189,16 +195,37 @@ final class TandemSession({
   }
 
   void _handleEvent(Run run, AgentEvent event) {
+    if (_run != run || run.ended) {
+      return;
+    }
     switch (event) {
       case TextDelta(:final messageId, :final delta) when !run.stopped:
         _showText(run.write(messageId, delta));
       // A call of a tool the listing does not list runs on the server.
       case ToolCallStarted(:final toolCallId, :final name)
-          when run.listing.lists(name):
+          when run.listing.lists(name) || run.calls.containsKey(toolCallId):
         run.startCall(toolCallId, name);
       case ToolCallArgs(:final toolCallId, :final delta):
         run.calls[toolCallId]?.arguments += delta;
-      case RunFinished():
+      case RunFinished(outcome: .cancelled):
+        run.ended = true;
+        stop();
+        if (_run != run) {
+          return;
+        }
+        _turn = Turn([...run.calls.values]);
+        _thread.addTurn(run, _turn);
+        _startNextRun();
+      case RunFinished(outcome: .unsupported):
+        _abort(
+          run,
+          const AgentRunException(
+            'UNSUPPORTED_OUTCOME',
+            'Unsupported run outcome.',
+          ),
+          .current,
+        );
+      case RunFinished(outcome: .success):
         run.ended = true;
         unawaited(_finish(run));
       case RunError(:final code, :final message):
@@ -355,6 +382,25 @@ final class TandemSession({
       );
       _items[shown] = decided;
     }
+  }
+
+  void _abort(Run run, Object error, StackTrace stack) {
+    if (_run != run) {
+      return;
+    }
+    run.ended = true;
+    _run = null;
+    _turn = Turn(const []);
+    _thread.startOver();
+    for (final message in _queuedMessages) {
+      _thread.addAnswers(_turn, message);
+    }
+    _queuedMessages.clear();
+    unawaited(_runSubscription?.cancel());
+    _report(error, stack);
+    _items.add(const ChatNotice(.runFailed));
+    notifyListeners();
+    _emit(const RunFailed());
   }
 
   void _runFailed(Object err, StackTrace st) {

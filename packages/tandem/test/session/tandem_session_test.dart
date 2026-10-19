@@ -287,12 +287,13 @@ void main() {
     expect(_shown(session.items).last, ('agent', 'Hi', false));
   });
 
-  test('the pieces of one message grow one item', () async {
+  test('the pieces of one message grow one item until the run ends', () async {
     final connection = _RawFirstRun(
       Stream.fromIterable([
         {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'Hel'},
         {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'lo'},
         {'type': 'RUN_FINISHED'},
+        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': ' late'},
       ]),
       ScriptedAgent([]),
     );
@@ -301,6 +302,44 @@ void main() {
 
     expect(_shown(session.items), [('user', 'a'), ('agent', 'Hello', false)]);
   });
+
+  test(
+    'events after the end of a run change nothing while its calls run',
+    () async {
+      final serverReply = Completer<void>();
+      shop.serverReply = serverReply.future;
+      final first = StreamController<Map<String, Object?>>();
+      final connection = _RawFirstRun(
+        first.stream,
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Done.')],
+        ]),
+      );
+      final session = open(connection)..send('a');
+      first
+        ..add({
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'c1',
+          'toolCallName': 'refresh',
+        })
+        ..add({'type': 'RUN_FINISHED'});
+      await pumpEventQueue();
+      first
+        ..add({
+          'type': 'TEXT_MESSAGE_CONTENT',
+          'messageId': 'm1',
+          'delta': 'Late',
+        })
+        ..add({'type': 'RUN_FINISHED'});
+      await pumpEventQueue();
+      serverReply.complete();
+      await pumpEventQueue();
+      await first.close();
+
+      expect(shop.refreshes, 1);
+      expect(_shown(session.items), [('user', 'a'), ('agent', 'Done.', false)]);
+    },
+  );
 
   test(
     'a broken stream shows connection lost and starts a new thread',
@@ -942,6 +981,177 @@ void main() {
     expect(session.status, isA<Idle>());
     expect(events, [isA<RunStopped>()]);
   });
+
+  test(
+    'an unsupported outcome discards calls and preserves queued user input',
+    () async {
+      var responseCancelled = false;
+      final stream = StreamController<Map<String, Object?>>(
+        onCancel: () => responseCancelled = true,
+      );
+      final connection = _RawFirstRun(
+        stream.stream,
+        ScriptedAgent([
+          (_) => const [AgentStep.say('New conversation.')],
+        ]),
+      );
+      final reported = _collectReports();
+      final session = open(connection)..send('go');
+      stream
+        ..add({
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'c1',
+          'toolCallName': 'add',
+        })
+        ..add({
+          'type': 'TOOL_CALL_ARGS',
+          'toolCallId': 'c1',
+          'delta': '{"item":"x"}',
+        })
+        ..add({
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'c2',
+          'toolCallName': 'share',
+        });
+      await pumpEventQueue();
+      session.send('queued');
+      stream.add({
+        'type': 'RUN_FINISHED',
+        'outcome': {'type': 'interrupt'},
+      });
+      await pumpEventQueue();
+      expect(responseCancelled, isTrue);
+      await stream.close();
+
+      expect(shop.items, isEmpty);
+      expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+      expect(connection.requests, hasLength(1));
+      expect(session.status, isA<Idle>());
+      expect(_shown(session.items).last, ChatNoticeKind.runFailed);
+      expect(reported.single.exception, isA<AgentRunException>());
+      expect(events, [isA<RunFailed>()]);
+
+      session.send('next');
+      await pumpEventQueue();
+
+      final [first, second] = connection.requests;
+      expect(second['threadId'], isNot(first['threadId']));
+      expect(_lines(second), ['user: queued', 'user: next']);
+    },
+  );
+
+  test(
+    'a cancelled outcome stops without executing calls or asking for approval',
+    () async {
+      final connection = _RawFirstRun(
+        Stream.fromIterable([
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c1',
+            'toolCallName': 'add',
+          },
+          {
+            'type': 'TOOL_CALL_ARGS',
+            'toolCallId': 'c1',
+            'delta': '{"item":"x"}',
+          },
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c2',
+            'toolCallName': 'share',
+          },
+          {
+            'type': 'RUN_FINISHED',
+            'outcome': {'type': 'cancelled'},
+          },
+        ]),
+        ScriptedAgent([
+          (_) => const [AgentStep.say('OK.')],
+        ]),
+      );
+      final session = open(connection)..send('go');
+      await pumpEventQueue();
+
+      expect(shop.items, isEmpty);
+      expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+      expect(connection.requests, hasLength(1));
+      expect(session.status, isA<Idle>());
+      expect(_shown(session.items).last, ChatNoticeKind.stopped);
+      expect(events, [isA<RunStopped>()]);
+
+      session.send('next');
+      await pumpEventQueue();
+
+      expect(_lines(connection.requests[1]), [
+        'user: go',
+        'asst-c1 add {"item":"x"}',
+        'asst-c2 share {}',
+        'tool-c1 {"status":"cancelled"}',
+        'tool-c2 {"status":"cancelled"}',
+        'user: next',
+      ]);
+    },
+  );
+
+  test(
+    'a reopened tool preserves arguments and a changed method fails closed',
+    () async {
+      final reported = _collectReports();
+      final connection = _RawFirstRun(
+        Stream.fromIterable([
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c1',
+            'toolCallName': 'add',
+          },
+          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":'},
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c1',
+            'toolCallName': 'add',
+          },
+          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '"x"}'},
+          {'type': 'RUN_FINISHED'},
+        ]),
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Done.')],
+        ]),
+      );
+      open(connection).send('go');
+      await pumpEventQueue();
+      expect(shop.items, ['x']);
+      expect(reported, isEmpty);
+      expect(_lines(connection.requests[1])[1], 'asst-c1 add {"item":"x"}');
+
+      final conflicting = _RawFirstRun(
+        Stream.fromIterable([
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c1',
+            'toolCallName': 'add',
+          },
+          {
+            'type': 'TOOL_CALL_ARGS',
+            'toolCallId': 'c1',
+            'delta': '{"item":"y"}',
+          },
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c1',
+            'toolCallName': 'transfer_to_agent',
+          },
+          {'type': 'RUN_FINISHED'},
+        ]),
+        ScriptedAgent([]),
+      );
+      final second = open(conflicting)..send('conflicting');
+      await pumpEventQueue();
+      expect(shop.items, ['x']);
+      expect(conflicting.requests, hasLength(1));
+      expect(_shown(second.items).last, ChatNoticeKind.runFailed);
+      expect(reported.single.exception, isFormatException);
+    },
+  );
 }
 
 ApprovalRequest _card(TandemSession session) =>
