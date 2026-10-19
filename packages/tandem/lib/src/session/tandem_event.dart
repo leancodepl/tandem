@@ -16,12 +16,15 @@ final class const AgentCall({
   required final Object? result,
 }) extends TandemEvent;
 
-/// The user stopped a run. Sent on every Stop that stops one, whether it
-/// adds a notice or marks the last message `stopped`.
+/// The user or the backend stopped a run. Sent on every Stop that stops one,
+/// and when the backend cancels one, whether it adds a notice or marks the
+/// last message `stopped`.
 final class const RunStopped() extends TandemEvent;
 
 /// A run ended with an error, or the app's agent list threw. The error goes
-/// to `FlutterError.reportError`.
+/// to `FlutterError.reportError`. After a run Tandem cannot follow, such as
+/// one that ends with an interrupt, the next message goes to a new thread,
+/// without the earlier history.
 final class const RunFailed() extends TandemEvent;
 
 /// A run broke off. The next message goes to a new thread, without the

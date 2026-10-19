@@ -19,16 +19,38 @@ void _endWithTimeout(EventSink<List<int>> sink) {
     ..close();
 }
 
-// Unlike `takeWhile`, delivers the event that ends the run. Closing the sink
-// cancels the response, which closes the connection if the server keeps it.
-void _endAfterRun(
-  Map<String, Object?> event,
-  EventSink<Map<String, Object?>> sink,
+// A response may replay older runs before the requested one. Closing the
+// sink after the run's end cancels the response, which closes the
+// connection if the server keeps it.
+StreamTransformer<Map<String, Object?>, Map<String, Object?>> _requestedRun(
+  Map<String, Object?> input,
 ) {
-  sink.add(event);
-  if (event['type'] case 'RUN_FINISHED' || 'RUN_ERROR') {
-    sink.close();
-  }
+  var active = input['runId'] is! String;
+  var started = false;
+
+  return StreamTransformer.fromHandlers(
+    handleData: (event, sink) {
+      if (event['type'] == 'RUN_STARTED') {
+        started = true;
+        active =
+            input['runId'] is! String ||
+            (event['runId'] == input['runId'] &&
+                event['threadId'] == input['threadId']);
+      }
+      if (active ||
+          (!started &&
+              event['type'] == 'RUN_ERROR' &&
+              (!event.containsKey('runId') ||
+                  event['runId'] == input['runId']) &&
+              (!event.containsKey('threadId') ||
+                  event['threadId'] == input['threadId']))) {
+        sink.add(event);
+        if (event['type'] case 'RUN_FINISHED' || 'RUN_ERROR') {
+          sink.close();
+        }
+      }
+    },
+  );
 }
 
 /// The link to the agent: one AG-UI run per call. Implement it for another
@@ -44,13 +66,15 @@ abstract interface class AgentConnection {
   /// continuing its own open message or call. A chunk without an id that
   /// several subagents could own fails the stream with a [FormatException].
   ///
-  /// The stream ends right after `RUN_FINISHED` or `RUN_ERROR`, and the
+  /// Replayed runs before the requested `runId` and `threadId` are skipped.
+  /// The stream ends right after its `RUN_FINISHED` or `RUN_ERROR`, and the
   /// connection closes with it. A stream that ends earlier, or fails, means
   /// the run broke. Cancelling the subscription aborts the request, even
   /// while it waits for the response headers, and its future completes once
   /// the connection is cleaned up.
   ///
-  /// The session cancels only when it is disposed or the stream fails.
+  /// The session cancels only when it is disposed, when the stream fails, or
+  /// when an event fails the run.
   /// Stopping a run does not cancel it: ADK keeps running, and the thread
   /// stays consistent only if the run's events are read to the end.
   Stream<Map<String, Object?>> run(Map<String, Object?> input);
@@ -116,8 +140,8 @@ final class HttpAgentConnection(
             response.stream.timeout(_idleTimeout, onTimeout: _endWithTimeout),
           )
           .map((event) => jsonDecode(event) as Map<String, Object?>)
-          .expand(ChunkExpander().call)
-          .transform(StreamTransformer.fromHandlers(handleData: _endAfterRun));
+          .transform(_requestedRun(input))
+          .expand(ChunkExpander().call);
     } on http.RequestAbortedException {
       // The caller cancelled the run: nobody is left to hear of it.
     } finally {

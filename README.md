@@ -359,7 +359,7 @@ To send the user's token, give `HttpAgentConnection` an `http.Client` that adds 
 
 ## Project status
 
-Not supported yet: AG-UI interrupts, several state objects on one screen, and a conversation that goes on across screens.
+Not supported yet: AG-UI interrupts, several state objects on one screen, and a conversation that goes on across screens. A run that ends with an interrupt fails, and the next message starts a new conversation.
 
 ## AI
 

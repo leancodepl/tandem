@@ -137,6 +137,116 @@ void main() {
     );
   });
 
+  test('skips replayed runs before the requested run', () async {
+    final replay = [
+      {'type': 'RUN_STARTED', 'threadId': 'thread-A', 'runId': 'run-old'},
+      {
+        'type': 'MESSAGES_SNAPSHOT',
+        'messages': [
+          {'id': 'm1', 'role': 'assistant', 'content': 'Already said.'},
+          {
+            'id': 'asst-c1',
+            'role': 'assistant',
+            'toolCalls': [
+              {
+                'id': 'c1',
+                'type': 'function',
+                'function': {'name': 'add', 'arguments': '{"item":"milk"}'},
+              },
+            ],
+          },
+        ],
+      },
+      {'type': 'RUN_ERROR', 'message': 'Old'},
+      {'type': 'RUN_STARTED', 'threadId': 'thread-B', 'runId': 'run-current'},
+      {'type': 'RUN_FINISHED'},
+      {'type': 'RUN_STARTED', 'threadId': 'thread-A', 'runId': 'run-current'},
+      {'type': 'TEXT_MESSAGE_CHUNK', 'messageId': 'm2', 'delta': 'Next.'},
+      {
+        'type': 'TOOL_CALL_CHUNK',
+        'toolCallId': 'c2',
+        'toolCallName': 'add',
+        'delta': '{"item":"eggs"}',
+      },
+      {'type': 'RUN_FINISHED'},
+    ];
+    final client = MockClient.streaming(
+      (request, bodyStream) async => http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            [for (final event in replay) 'data: ${jsonEncode(event)}\n\n']
+                .join(),
+          ),
+        ),
+        200,
+      ),
+    );
+
+    final events = await HttpAgentConnection(
+      _endpoint,
+      client: client,
+    ).run({'threadId': 'thread-A', 'runId': 'run-current'}).toList();
+
+    expect(events, [
+      replay[5],
+      {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm2', 'delta': 'Next.'},
+      {'type': 'TOOL_CALL_START', 'toolCallId': 'c2', 'toolCallName': 'add'},
+      {
+        'type': 'TOOL_CALL_ARGS',
+        'toolCallId': 'c2',
+        'delta': '{"item":"eggs"}',
+      },
+      replay.last,
+    ]);
+  });
+
+  test('skips an opening error that names another thread or run', () async {
+    final client = MockClient.streaming(
+      (request, bodyStream) async => http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            'data: {"type":"RUN_ERROR","threadId":"thread-A",'
+            '"runId":"run-old","message":"Old failure"}\n\n'
+            'data: {"type":"RUN_ERROR","threadId":"thread-B",'
+            '"runId":"run-current","message":"Other thread"}\n\n'
+            'data: {"type":"RUN_STARTED","threadId":"thread-A",'
+            '"runId":"run-current"}\n\n'
+            'data: {"type":"RUN_FINISHED"}\n\n',
+          ),
+        ),
+        200,
+      ),
+    );
+
+    final events = await HttpAgentConnection(
+      _endpoint,
+      client: client,
+    ).run({'threadId': 'thread-A', 'runId': 'run-current'}).toList();
+
+    expect(events, [
+      {'type': 'RUN_STARTED', 'threadId': 'thread-A', 'runId': 'run-current'},
+      {'type': 'RUN_FINISHED'},
+    ]);
+  });
+
+  test('reports a run error before the requested run starts', () async {
+    const error = {'type': 'RUN_ERROR', 'message': 'Unavailable'};
+    final client = MockClient.streaming(
+      (request, bodyStream) async => http.StreamedResponse(
+        Stream.value(utf8.encode('data: ${jsonEncode(error)}\n\n')),
+        200,
+      ),
+    );
+
+    await expectLater(
+      HttpAgentConnection(
+        _endpoint,
+        client: client,
+      ).run({'threadId': 'thread-A', 'runId': 'run-current'}),
+      emitsInOrder([error, emitsDone]),
+    );
+  });
+
   test('decodes the chunk events of the AG-UI specification', () async {
     final events = await _agentEvents('ag_ui_chunk_events.sse');
 
