@@ -1,0 +1,3 @@
+PRODUCT_NAME = Tandem examples
+PRODUCT_BUNDLE_IDENTIFIER = co.leancode.tandem.example
+PRODUCT_COPYRIGHT = Copyright © 2026 LeanCode. All rights reserved.

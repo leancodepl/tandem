@@ -385,7 +385,7 @@ final _agent = ScriptedAgent([
 void main() => runApp(MaterialApp(home: ContactScreen(connection: _agent)));
 ```
 
-In `example`, `flutter run -t lib/recipes/fill_from_email/try_it.dart` runs it. The example has only the iOS platform, so this needs a Mac with an iPhone or iPad simulator. On Linux or Windows, add the web platform first with `flutter create --platforms=web .` in `example`, then run `flutter run -d chrome -t lib/recipes/fill_from_email/try_it.dart`. `ScriptedAgent` sends nothing over the network, so the browser needs no CORS.
+In `example`, `flutter run -t lib/recipes/fill_from_email/try_it.dart` runs it. The example has Android, iOS and macOS hosts. For a browser, add the web platform first with `flutter create --platforms=web .` in `example`, then run `flutter run -d chrome -t lib/recipes/fill_from_email/try_it.dart`. `ScriptedAgent` sends nothing over the network, so the browser needs no CORS.
 
 **The demo with a scripted model.** The demo's agent has a scripted model that plays the order desk script with no key and no model calls. In `example/agent`, with [uv](https://docs.astral.sh/uv/):
 
