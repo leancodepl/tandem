@@ -26,6 +26,12 @@
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
+		A1E000000000000000000011 /* AppleFoundationModelsRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E000000000000000000001 /* AppleFoundationModelsRunner.swift */; };
+		A1E000000000000000000012 /* AppleHandoffTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E000000000000000000002 /* AppleHandoffTool.swift */; };
+		A1E000000000000000000013 /* AppleToolSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E000000000000000000003 /* AppleToolSchema.swift */; };
+		A1E000000000000000000014 /* AppleFoundationModelsChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E000000000000000000004 /* AppleFoundationModelsChannel.swift */; };
+		A1E000000000000000000015 /* AppleConversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E000000000000000000005 /* AppleConversation.swift */; };
+		A1E000000000000000000016 /* AppleToolOutcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E000000000000000000006 /* AppleToolOutcome.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,6 +74,12 @@
 		33E5194F232828860026EE4D /* AppInfo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppInfo.xcconfig; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		A1E000000000000000000001 /* AppleFoundationModelsRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationModelsRunner.swift; sourceTree = "<group>"; };
+		A1E000000000000000000002 /* AppleHandoffTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHandoffTool.swift; sourceTree = "<group>"; };
+		A1E000000000000000000003 /* AppleToolSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleToolSchema.swift; sourceTree = "<group>"; };
+		A1E000000000000000000004 /* AppleFoundationModelsChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleFoundationModelsChannel.swift; sourceTree = "<group>"; };
+		A1E000000000000000000005 /* AppleConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleConversation.swift; sourceTree = "<group>"; };
+		A1E000000000000000000006 /* AppleToolOutcome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleToolOutcome.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +107,7 @@
 		33CC10E42044A3C60003C045 = {
 			isa = PBXGroup;
 			children = (
+				A1E000000000000000000020 /* Apple Foundation Models */,
 				33FAB671232836740065AC1E /* Runner */,
 				33CEB47122A05771004F2AC0 /* Flutter */,
 				33CC10EE2044A3C60003C045 /* Products */,
@@ -150,6 +163,20 @@
 			children = (
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A1E000000000000000000020 /* Apple Foundation Models */ = {
+			isa = PBXGroup;
+			children = (
+				A1E000000000000000000001 /* AppleFoundationModelsRunner.swift */,
+				A1E000000000000000000002 /* AppleHandoffTool.swift */,
+				A1E000000000000000000003 /* AppleToolSchema.swift */,
+				A1E000000000000000000004 /* AppleFoundationModelsChannel.swift */,
+				A1E000000000000000000005 /* AppleConversation.swift */,
+				A1E000000000000000000006 /* AppleToolOutcome.swift */,
+			);
+			name = "Apple Foundation Models";
+			path = ../apple;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -279,6 +306,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1E000000000000000000011 /* AppleFoundationModelsRunner.swift in Sources */,
+				A1E000000000000000000012 /* AppleHandoffTool.swift in Sources */,
+				A1E000000000000000000013 /* AppleToolSchema.swift in Sources */,
+				A1E000000000000000000014 /* AppleFoundationModelsChannel.swift in Sources */,
+				A1E000000000000000000015 /* AppleConversation.swift in Sources */,
+				A1E000000000000000000016 /* AppleToolOutcome.swift in Sources */,
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,

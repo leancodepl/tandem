@@ -54,6 +54,7 @@ void main() => runApp(
 final class const ShoppingListScreen({
   super.key,
   required final AgentConnection connection,
+  final String suggestion = 'Add milk and bread, then empty the list.',
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -62,18 +63,19 @@ final class const ShoppingListScreen({
       surface: (context) => context.read<ShoppingListCubit>(),
       connection: connection,
       approvals: const .fromState(),
-      child: const _ShoppingListView(),
+      child: _ShoppingListView(suggestion),
     ),
   );
 }
 
-final class const _ShoppingListView() extends StatelessWidget {
+final class const _ShoppingListView(final String suggestion)
+    extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => const Scaffold(
+  Widget build(BuildContext context) => Scaffold(
     body: AgentWorkspace(
       title: 'Shopping list',
-      chat: AgentChat(suggestion: 'Add milk and bread, then empty the list.'),
-      child: _Items(),
+      chat: AgentChat(suggestion: suggestion),
+      child: const _Items(),
     ),
   );
 }
