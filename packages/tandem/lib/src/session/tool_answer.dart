@@ -6,13 +6,21 @@ import 'dart:convert';
 extension type const ToolAnswer._(String json) implements String {
   new returned(Object? result) : this._(jsonEncode(result));
 
-  /// The method did not run, or threw for the agent's bad input.
+  /// The method did not run, or threw a `ToolCallRefused`.
   new refused(String reason)
     : this._(jsonEncode({'status': 'refused', 'reason': reason}));
 
-  /// The method threw [error], which is a bug of the app.
-  new failed(Object error)
-    : this._(jsonEncode({'status': 'failed', 'error': '$error'}));
+  /// The method threw anything else. The error stays in the app's reports.
+  static const failed = ToolAnswer._(
+    '{"status":"failed","error":"The method failed and may have changed '
+    'the app. Do not retry automatically."}',
+  );
+
+  /// The method returned, but `jsonEncode` failed on its result.
+  static const resultUnavailable = ToolAnswer._(
+    '{"status":"result_unavailable","reason":"The method returned; '
+    'result encoding failed. Do not repeat the call."}',
+  );
 
   /// Not a bare `rejected`: Gemini reads that as the system refusing the call.
   static const rejected = ToolAnswer._('{"status":"rejected_by_user"}');

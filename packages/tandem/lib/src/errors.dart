@@ -12,7 +12,8 @@ final class const ApprovalNotPending(final ApprovalRequest request)
 
 /// A call of a listed method that did not run, because the agent called a
 /// method that is not listed now or waits for approval, or sent arguments
-/// that do not fit. [message] is written for the agent.
+/// that do not fit. A method may throw it too, to refuse a call before it
+/// changes any state. [message] goes to the agent and must be safe to share.
 final class const ToolCallRefused(final String message) implements Exception {
   @override
   String toString() => message;
