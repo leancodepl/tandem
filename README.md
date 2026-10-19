@@ -15,10 +15,6 @@
 
 Add an AI agent to your Flutter screens. It works on the screen together with the user, conveniently.
 
-<p align="center">
-  <a href="https://github.com/leancodepl/tandem/blob/main/example/README.md"><img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/reel.gif" alt="A customer e-mails an order. The agent fills the order desk through the cubit's methods, the user changes a quantity and approves the order, and the agent confirms in chat." width="600"></a>
-</p>
-
 ## How it works
 
 ![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies and calls to the app's methods.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
