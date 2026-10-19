@@ -8,6 +8,7 @@ import 'package:tandem/tandem.dart';
 final class const ContactScreen({
   super.key,
   required final AgentConnection connection,
+  final String initialEmail = '',
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -27,12 +28,13 @@ final class const ContactScreen({
               .showSnackBar(SnackBar(content: Text(text)));
         }
       },
-      child: const Scaffold(body: _ContactForm()),
+      child: Scaffold(body: _ContactForm(initialEmail)),
     ),
   );
 }
 
-final class const _ContactForm() extends StatelessWidget {
+final class const _ContactForm(final String initialEmail)
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.watch<ContactCubit>();
@@ -41,22 +43,26 @@ final class const _ContactForm() extends StatelessWidget {
     return ListView(
       padding: const .all(16),
       children: [
-        const _FillFromEmail(),
+        _FillFromEmail(initialEmail),
+        const SizedBox(height: 24),
         _Field('Name', contact.name, cubit.setName),
+        const SizedBox(height: 12),
         _Field('E-mail', contact.email, cubit.setEmail),
+        const SizedBox(height: 12),
         _Field('Company', contact.company, cubit.setCompany),
       ],
     );
   }
 }
 
-final class const _FillFromEmail() extends StatefulWidget {
+final class const _FillFromEmail(final String initialEmail)
+    extends StatefulWidget {
   @override
   State<_FillFromEmail> createState() => _FillFromEmailState();
 }
 
 final class _FillFromEmailState() extends State<_FillFromEmail> {
-  final _email = TextEditingController();
+  late final _email = TextEditingController(text: widget.initialEmail);
 
   @override
   void dispose() {

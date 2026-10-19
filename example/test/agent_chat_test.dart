@@ -57,6 +57,37 @@ void main() {
     expect(find.text('call-2'), findsOneWidget);
   });
 
+  testWidgets('a scrolled-up chat jumps only to show a new card', (
+    tester,
+  ) async {
+    tester.view
+      ..physicalSize = const Size(400, 320)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final more = Completer<void>();
+    final card = Completer<void>();
+    await _sendClear(tester, [
+      (_) => [
+        for (var index = 0; index < 20; index++) AgentStep.say('Update $index'),
+        AgentStep.waitFor(more.future),
+        const AgentStep.say('One more update'),
+        AgentStep.waitFor(card.future),
+        const AgentStep.callTool('clear'),
+      ],
+    ]);
+    await tester.drag(find.byType(ListView), const Offset(0, 1000));
+    await tester.pumpAndSettle();
+    final readerAt = _chatOffset(tester);
+
+    more.complete();
+    await tester.pumpAndSettle();
+    expect(_chatOffset(tester), readerAt);
+
+    card.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Approve').hitTestable(), findsOneWidget);
+  });
+
   testWidgets('Stop is disabled while an approved method runs', (tester) async {
     final list = await _sendClear(tester, [
       (_) => const [AgentStep.callTool('clear')],
@@ -95,3 +126,6 @@ Future<ShoppingListCubit> _sendClear(
   await tester.pumpAndSettle();
   return list;
 }
+
+double? _chatOffset(WidgetTester tester) =>
+    tester.widget<ListView>(find.byType(ListView)).controller?.offset;

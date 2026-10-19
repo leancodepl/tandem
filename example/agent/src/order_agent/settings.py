@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     model: str = "gemini-3.8-flash"
     # Pinned so that "by Friday" in the demo e-mail is always 2026-10-23, as in the script.
     today: date = date(2026, 10, 16)
+    host: str = "127.0.0.1"
     port: int = 8000
 
 

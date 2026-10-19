@@ -13,17 +13,24 @@ void main() {
       (_) => const [AgentStep.callTool('clear')],
     ]);
     await tester.pumpWidget(MaterialApp(home: TodoScreen(connection: agent)));
-    final list = Provider.of<TodoList>(
+    Provider.of<TodoList>(
       tester.element(find.text('Send')),
       listen: false,
-    )..add('Call the bank');
-    await tester.enterText(find.byType(TextField), 'Clear my list');
+    ).add('Call the bank');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Message the agent'),
+      'Clear my list',
+    );
     await tester.tap(find.text('Send'));
     await tester.pumpAndSettle();
 
     expect(find.text('Approve'), findsOneWidget);
 
-    list.add('Water the plants');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Add a task'),
+      'Water the plants',
+    );
+    await tester.tap(find.byTooltip('Add'));
     await tester.pumpAndSettle();
 
     expect(find.text('Approve'), findsNothing);
