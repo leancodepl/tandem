@@ -3,81 +3,22 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/chunk_events.dart';
 import 'package:tandem/src/protocol/sse.dart';
 
-// ADK sends a `: ping` comment every 15 s. parseSse drops it, so the timeout
-// watches the raw bytes: 60 s without any, or without the response headers,
-// means the connection is dead.
-const _idleTimeout = Duration(seconds: 60);
-
-// Without `onTimeout`, `timeout` only adds the error and keeps the dead
-// connection open. Ending the stream cancels it.
-void _endWithTimeout(EventSink<List<int>> sink) {
-  sink
-    ..addError(TimeoutException('No bytes from the agent', _idleTimeout))
-    ..close();
-}
-
-// A response may replay older runs before the requested one. Closing the
-// sink after the run's end cancels the response, which closes the
-// connection if the server keeps it.
-StreamTransformer<Map<String, Object?>, Map<String, Object?>> _requestedRun(
-  Map<String, Object?> input,
-) {
-  var active = input['runId'] is! String;
-  var started = false;
-
-  return StreamTransformer.fromHandlers(
-    handleData: (event, sink) {
-      if (event['type'] == 'RUN_STARTED') {
-        started = true;
-        active =
-            input['runId'] is! String ||
-            (event['runId'] == input['runId'] &&
-                event['threadId'] == input['threadId']);
-      }
-      if (active ||
-          (!started &&
-              event['type'] == 'RUN_ERROR' &&
-              (!event.containsKey('runId') ||
-                  event['runId'] == input['runId']) &&
-              (!event.containsKey('threadId') ||
-                  event['threadId'] == input['threadId']))) {
-        sink.add(event);
-        if (event['type'] case 'RUN_FINISHED' || 'RUN_ERROR') {
-          sink.close();
-        }
-      }
-    },
-  );
-}
-
-/// The link to the agent: one AG-UI run per call. Implement it for another
-/// transport or a fake agent.
+/// One AG-UI run per call, over a transport or a fake agent.
 // The experimental lint asks for a primary constructor on an interface too.
 // ignore: use_primary_constructors
 abstract interface class AgentConnection {
-  /// Posts [input], the body of one AG-UI run, and streams the events of the
-  /// run as decoded JSON.
+  /// Posts [input] and streams the requested run as decoded JSON.
   ///
-  /// `TEXT_MESSAGE_CHUNK` and `TOOL_CALL_CHUNK` come as the content, start
-  /// and args events they abbreviate, each sender, parent or subagent,
-  /// continuing its own open message or call. A chunk without an id that
-  /// several subagents could own fails the stream with a [FormatException].
-  ///
-  /// Replayed runs before the requested `runId` and `threadId` are skipped.
-  /// The stream ends right after its `RUN_FINISHED` or `RUN_ERROR`, and the
-  /// connection closes with it. A stream that ends earlier, or fails, means
-  /// the run broke. Cancelling the subscription aborts the request, even
-  /// while it waits for the response headers, and its future completes once
-  /// the connection is cleaned up.
-  ///
-  /// The session cancels only when it is disposed, when the stream fails, or
-  /// when an event fails the run.
-  /// Stopping a run does not cancel it: ADK keeps running, and the thread
-  /// stays consistent only if the run's events are read to the end.
-  Stream<Map<String, Object?>> run(Map<String, Object?> input);
+  /// Skips replayed runs, expands text and tool-call chunks, and closes after
+  /// `RUN_FINISHED` or `RUN_ERROR`. An ambiguous chunk fails with a
+  /// [FormatException]. An earlier end or stream error means the run broke.
+  /// Cancelling aborts even pending response headers and waits for cleanup.
+  /// Drain a stopped run to keep the agent's thread consistent.
+  Stream<JsonObject> run(JsonObject input);
 }
 
 /// Talks to an AG-UI endpoint over HTTP and reads the run's events as
@@ -90,13 +31,14 @@ final class HttpAgentConnection(
   /// own and closes it at the end.
   final http.Client? client,
 }) implements AgentConnection {
+  static const _idleTimeout = Duration(seconds: 60);
+
   @override
-  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
+  Stream<JsonObject> run(JsonObject input) {
     final abortTrigger = Completer<void>();
-    late final StreamSubscription<Map<String, Object?>> subscription;
-    late final StreamController<Map<String, Object?>> controller;
-    // A cancelled `async*` stream ends only at its next `yield`, so it cannot
-    // abort a request that waits for its headers: the controller can.
+    late final StreamSubscription<JsonObject> subscription;
+    late final StreamController<JsonObject> controller;
+    // A controller can abort pending headers before async* reaches a yield.
     controller = StreamController(
       onListen: () {
         subscription = _events(input, abortTrigger.future).listen(
@@ -113,33 +55,29 @@ final class HttpAgentConnection(
     return controller.stream;
   }
 
-  Stream<Map<String, Object?>> _events(
-    Map<String, Object?> input,
+  Stream<JsonObject> _events(
+    JsonObject input,
     Future<void> abortTrigger,
   ) async* {
     final httpClient = client ?? http.Client();
     try {
-      final request =
-          http.AbortableRequest('POST', endpoint, abortTrigger: abortTrigger)
-            ..headers.addAll({
-              'Accept': 'text/event-stream',
-              'Content-Type': 'application/json',
-            })
-            // Bytes, not `body`, which would add a charset to the content type.
-            ..bodyBytes = utf8.encode(jsonEncode(input));
+      final request = _request(input, abortTrigger: abortTrigger);
       final response = await httpClient.send(request).timeout(_idleTimeout);
       if (response.statusCode != 200) {
-        throw AgentHttpException(
-          response.statusCode,
-          await response.stream.bytesToString().timeout(_idleTimeout),
+        final body = await response.stream.bytesToString().timeout(
+          _idleTimeout,
         );
+        throw AgentHttpException(response.statusCode, body);
       }
-      // `yield*` and transformers, not `await for` and `yield`: the latter
-      // delays a cancel until the next event arrives.
-      yield* parseSse(
-            response.stream.timeout(_idleTimeout, onTimeout: _endWithTimeout),
-          )
-          .map((event) => jsonDecode(event) as Map<String, Object?>)
+
+      // Count raw bytes so ADK's ping comments reset the timeout.
+      final bytes = response.stream.timeout(
+        _idleTimeout,
+        onTimeout: _endWithTimeout,
+      );
+      // Delegation keeps cancellation responsive while waiting for events.
+      yield* parseSse(bytes)
+          .map((event) => jsonDecode(event) as JsonObject)
           .transform(_requestedRun(input))
           .expand(ChunkExpander().call);
     } on http.RequestAbortedException {
@@ -150,4 +88,72 @@ final class HttpAgentConnection(
       }
     }
   }
+
+  http.AbortableRequest _request(
+    JsonObject input, {
+    required Future<void> abortTrigger,
+  }) => http.AbortableRequest('POST', endpoint, abortTrigger: abortTrigger)
+    ..headers.addAll({
+      'Accept': 'text/event-stream',
+      'Content-Type': 'application/json',
+    })
+    // Bytes, not `body`, which would add a charset to the content type.
+    ..bodyBytes = utf8.encode(jsonEncode(input));
+
+  // Closing the sink cancels the silent connection; an error alone does not.
+  static void _endWithTimeout(EventSink<List<int>> sink) {
+    sink
+      ..addError(TimeoutException('No bytes from the agent', _idleTimeout))
+      ..close();
+  }
+}
+
+// Closing the sink cancels a response the server may leave open.
+StreamTransformer<JsonObject, JsonObject> _requestedRun(JsonObject input) {
+  var acceptingEvents = input[AgUiFields.runId] is! String;
+  var awaitingRunStart = true;
+
+  return StreamTransformer.fromHandlers(
+    handleData: (event, sink) {
+      if (event[AgUiFields.type] == AgUiEventTypes.runStarted) {
+        awaitingRunStart = false;
+        acceptingEvents = _isRequestedRun(event, input: input);
+      }
+
+      final isOpeningError =
+          awaitingRunStart && _isRunErrorFor(event, input: input);
+      if (acceptingEvents || isOpeningError) {
+        sink.add(event);
+        if (event[AgUiFields.type]
+            case AgUiEventTypes.runFinished || AgUiEventTypes.runError) {
+          sink.close();
+        }
+      }
+    },
+  );
+}
+
+bool _isRequestedRun(JsonObject event, {required JsonObject input}) {
+  if (input[AgUiFields.runId] is! String) {
+    return true;
+  }
+
+  return event[AgUiFields.runId] == input[AgUiFields.runId] &&
+      event[AgUiFields.threadId] == input[AgUiFields.threadId];
+}
+
+bool _isRunErrorFor(JsonObject event, {required JsonObject input}) {
+  if (event[AgUiFields.type] != AgUiEventTypes.runError) {
+    return false;
+  }
+  if (event.containsKey(AgUiFields.runId) &&
+      event[AgUiFields.runId] != input[AgUiFields.runId]) {
+    return false;
+  }
+  if (event.containsKey(AgUiFields.threadId) &&
+      event[AgUiFields.threadId] != input[AgUiFields.threadId]) {
+    return false;
+  }
+
+  return true;
 }

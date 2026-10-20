@@ -1,5 +1,6 @@
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/tool_answer.dart';
@@ -30,7 +31,7 @@ final class Turn(final List<ToolCall> calls) {
 
   /// The tool messages that answer the calls. A call without an answer is
   /// `cancelled`.
-  List<Map<String, Object?>> get answers => [
+  List<JsonObject> get answers => [
     for (final call in calls)
       toolAnswer(call.id, call.answer ?? ToolAnswer.cancelled),
   ];

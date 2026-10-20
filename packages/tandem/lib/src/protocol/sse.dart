@@ -1,50 +1,50 @@
 import 'dart:async';
 import 'dart:convert';
 
-const _dataPrefix = 'data:';
-
-/// Parses an SSE byte stream into the `data` of its events, following
-/// https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
+/// Reads SSE `data` fields, ignoring comments and other fields.
+/// Delivers the last event even without a trailing blank line.
 ///
-/// AG-UI sends only `data:` lines: comments, such as the keep-alive pings of
-/// ADK, and every other field are dropped. Like the AG-UI TypeScript client,
-/// a last event that is not followed by a blank line is still delivered when
-/// the stream ends.
-///
-/// Cancelling the returned stream cancels [bytes] at once, which closes the
-/// HTTP connection.
+/// Cancelling the result cancels [bytes].
 Stream<String> parseSse(Stream<List<int>> bytes) {
-  final data = <String>[];
-
-  void dispatch(EventSink<String> sink) {
-    if (data.isNotEmpty) {
-      sink.add(data.join('\n'));
-      data.clear();
-    }
-  }
-
-  void handleLine(String line, EventSink<String> sink) {
-    if (line.isEmpty) {
-      dispatch(sink);
-      return;
-    }
-    if (line.startsWith(_dataPrefix)) {
-      final value = line.substring(_dataPrefix.length);
-      // The grammar drops one space after the colon.
-      data.add(value.startsWith(' ') ? value.substring(1) : value);
-    }
-  }
+  final parser = _SseParser();
 
   return utf8.decoder
       .bind(bytes)
       .transform(const LineSplitter())
       .transform(
         StreamTransformer.fromHandlers(
-          handleData: handleLine,
-          handleDone: (sink) {
-            dispatch(sink);
-            sink.close();
-          },
+          handleData: parser.addLine,
+          handleDone: parser.close,
         ),
       );
+}
+
+final class _SseParser() {
+  static const _dataPrefix = 'data:';
+
+  final _data = <String>[];
+
+  void addLine(String line, EventSink<String> sink) {
+    if (line.isEmpty) {
+      _dispatch(sink);
+      return;
+    }
+    if (line.startsWith(_dataPrefix)) {
+      final value = line.substring(_dataPrefix.length);
+      // The grammar drops one space after the colon.
+      _data.add(value.startsWith(' ') ? value.substring(1) : value);
+    }
+  }
+
+  void close(EventSink<String> sink) {
+    _dispatch(sink);
+    sink.close();
+  }
+
+  void _dispatch(EventSink<String> sink) {
+    if (_data.isEmpty) return;
+
+    sink.add(_data.join('\n'));
+    _data.clear();
+  }
 }

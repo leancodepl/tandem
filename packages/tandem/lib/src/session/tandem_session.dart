@@ -6,6 +6,8 @@ import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/protocol/ag_ui_event_decoder.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/session/ag_ui_thread.dart';
@@ -53,7 +55,7 @@ final class TandemSession({
   }
 
   late final StreamSubscription<Object?> _stateChangesSubscription;
-  StreamSubscription<Map<String, Object?>>? _runSubscription;
+  StreamSubscription<JsonObject>? _runSubscription;
   final _items = <ChatItem>[];
   final _queuedMessages = <String>[];
   final _thread = AgUiThread();
@@ -176,7 +178,7 @@ final class TandemSession({
           .listen(
             (json) {
               try {
-                _handleEvent(run, .fromJson(json));
+                _handleEvent(run, decodeAgUiEvent(json));
               } catch (err, st) {
                 _abort(run, err, st);
               }

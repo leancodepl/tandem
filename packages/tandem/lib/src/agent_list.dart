@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/tool_args.dart';
 
 /// One item of the agent list: a value the agent sees or a method it may
@@ -77,8 +78,8 @@ final class AgentListing._(
     return ._(surface, [
       for (final (index, view) in schema.sees.indexed)
         {
-          'description': '${view.name}: ${view.description}',
-          'value': jsonEncode(view.write(visibleValues[index])),
+          AgUiFields.description: '${view.name}: ${view.description}',
+          AgUiFields.value: jsonEncode(view.write(visibleValues[index])),
         },
     ], tools);
   }
@@ -88,9 +89,9 @@ final class AgentListing._(
   List<Map<String, Object?>> get tools => [
     for (final tool in _tools.values)
       {
-        'name': tool.name,
-        'description': tool.description,
-        'parameters': tool.parameters,
+        AgUiFields.name: tool.name,
+        AgUiFields.description: tool.description,
+        AgUiFields.parameters: tool.parameters,
       },
   ];
 
