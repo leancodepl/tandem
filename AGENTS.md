@@ -29,7 +29,7 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 ## Rules
 
 - Never use the null-assertion operator `!`, also not in tests or generated code. Check null with a pattern (`if (x case final y?)`), with `?.` or `??` and a real fallback, or use a type that cannot be null.
-- Small files, one concept each. Write the thinnest code that does the job. The code uses Dart 3.13 primary constructors, dot shorthands and switch expressions.
+- For behavior changes or refactors, read [code quality](doc/code-quality.md) before editing and apply its readability review before handoff. Spelling and formatting edits need only the relevant mechanical checks.
 - Named constants for real values, not for obvious JSON keys. UI strings and spacing go inline at the use site, not in blocks of private constants.
 - No `Widget _buildX()` methods: write a private `StatelessWidget` with a const constructor.
 - The code explains itself. Write a comment only for a why the code cannot show (a protocol quirk, an upstream bug, an invariant), in one short line, with a link when there is one. A doc comment says more than the name and type, or it is not written. The same holds for the Python agent: docstrings only where they add something, type hints, ruff clean.
