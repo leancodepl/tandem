@@ -3,6 +3,10 @@ include: package:leancode_lint/analysis_options.yaml
 plugins:
   leancode_lint: ^27.0.0
 
+linter:
+  rules:
+    always_put_control_body_on_new_line: false
+
 analyzer:
   exclude:
     - build/**
