@@ -1,6 +1,7 @@
 A Cubit with `@TandemAgent()` lists what the agent sees and calls. It is from the [examples of tandem](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#fill-from-e-mail):
 
 <!-- example/lib/recipes/fill_from_email/contact_cubit.dart -->
+
 ```dart
 @TandemAgent()
 class ContactCubit() extends Cubit<ContactState> with _$ContactCubit {
@@ -34,6 +35,7 @@ class ContactCubit() extends Cubit<ContactState> with _$ContactCubit {
 `dart run build_runner build` writes the `_$ContactCubit` mixin into `contact_cubit.g.dart`. Its `agentSchema` gives each `.sees` its name, doc comment and JSON:
 
 <!-- example/lib/recipes/fill_from_email/contact_cubit.g.dart -->
+
 ```dart
         AgentView.of(
           () => surface.contact,
@@ -50,6 +52,7 @@ class ContactCubit() extends Cubit<ContactState> with _$ContactCubit {
 And each method its name in snake_case, doc comment, JSON Schema and a call with the agent's arguments:
 
 <!-- example/lib/recipes/fill_from_email/contact_cubit.g.dart -->
+
 ```dart
         AgentTool(
           surface.setName,

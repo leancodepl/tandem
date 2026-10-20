@@ -15,7 +15,7 @@ void main() {
     test('every snippet of $path is in its file', () {
       final doc = File('../$path').readAsStringSync();
       final snippets = RegExp(
-        r'^( *)<!-- (\S+) -->\n\1```dart\n(.*?)^\1```',
+        r'^( *)<!-- (\S+) -->\n(?:[ \t]*\n)*\1```dart\n(.*?)^\1```',
         multiLine: true,
         dotAll: true,
       ).allMatches(doc);
