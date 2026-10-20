@@ -262,6 +262,39 @@ mixin _$Dispatch implements AgentSurface {
             return null;
           },
         ),
+        AgentTool(
+          surface.findDelivery,
+          name: 'find_delivery',
+          description: 'Finds the last booked delivery, if any.',
+          parameters: const {'type': 'object', 'properties': {}},
+          invoke: (args) async {
+            final result = await surface.findDelivery();
+
+            return switch (result) {
+              null => null,
+              final result => {
+                'address': {
+                  'street': result.address.street,
+                  'city': result.address.city,
+                },
+                'day': result.day.toIso8601String(),
+                'slot': result.slot.name,
+                'note': result.note,
+              },
+            };
+          },
+        ),
+        AgentTool(
+          surface.deliveryDay,
+          name: 'delivery_day',
+          description: 'The day of the last booked delivery, if any.',
+          parameters: const {'type': 'object', 'properties': {}},
+          invoke: (args) async {
+            final result = await surface.deliveryDay();
+
+            return result?.toIso8601String();
+          },
+        ),
       ],
     );
   }

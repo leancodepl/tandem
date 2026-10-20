@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:example/order.dart' show OrderLine;
@@ -47,6 +48,8 @@ class Dispatch() with _$Dispatch {
     .sees(lastBooked),
     .calls(book),
     .calls(setDelivery),
+    .calls(findDelivery),
+    .calls(deliveryDay),
   ];
 
   @override
@@ -57,6 +60,18 @@ class Dispatch() with _$Dispatch {
 
   /// Replaces or clears the delivery.
   void setDelivery(Delivery? delivery) => lastBooked = delivery;
+
+  /// Finds the last booked delivery, if any.
+  Future<Delivery>? findDelivery() {
+    final delivery = lastBooked;
+
+    if (delivery == null) return null;
+
+    return Future.value(delivery);
+  }
+
+  /// The day of the last booked delivery, if any.
+  FutureOr<DateTime>? deliveryDay() => lastBooked?.day;
 
   /// Books a courier for [lines] and returns the delivery as booked.
   Future<Delivery> book(List<OrderLine> lines, Delivery delivery) async {
@@ -254,6 +269,23 @@ void main() {
       );
     },
   );
+
+  test('nullable futures return null or the encoded result', () async {
+    final listing = AgentListing.of(Dispatch());
+
+    expect(await listing.call('find_delivery', {}), isNull);
+    expect(await listing.call('delivery_day', {}), isNull);
+
+    await listing.call('set_delivery', {'delivery': _delivery});
+
+    expect(await listing.call('find_delivery', {}), {
+      'address': {'street': 'Magazynowa 5', 'city': 'Poznań'},
+      'day': '2026-10-23T00:00:00.000Z',
+      'slot': 'morning',
+      'note': null,
+    });
+    expect(await listing.call('delivery_day', {}), '2026-10-23T00:00:00.000Z');
+  });
 
   test('a wrong value deep inside names its path; nothing runs', () async {
     final dispatch = Dispatch();
