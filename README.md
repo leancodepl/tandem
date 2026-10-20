@@ -365,7 +365,7 @@ Not supported yet: AG-UI interrupts, several state objects on one screen, and a 
 
 ## AI
 
-Tandem is written with AI assistance and reviewed by hand, except the AG-UI protocol layer ([`packages/tandem/lib/src/protocol`](https://github.com/leancodepl/tandem/tree/main/packages/tandem/lib/src/protocol)) and [`tandem_generator`](https://pub.dev/packages/tandem_generator), which have not had a full human review yet.
+Tandem is written with AI assistance and reviewed by hand, except the AG-UI protocol layer ([`packages/tandem/lib/src/protocol`](https://github.com/leancodepl/tandem/tree/main/packages/tandem/lib/src/protocol)), which has not had a full human review yet.
 
 ## 🛠️ Maintained by LeanCode
 

@@ -46,4 +46,4 @@ In the same way, `.sees` can take a getter that returns a plain class made for t
 
 ## AI
 
-This package is written with AI assistance and has not had a full human review yet.
+This package is written with AI assistance and reviewed by hand.
