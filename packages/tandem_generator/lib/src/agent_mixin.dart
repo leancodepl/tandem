@@ -2,6 +2,8 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
 import 'package:tandem_generator/src/agent_types.dart';
+import 'package:tandem_generator/src/dart_literal.dart';
+import 'package:tandem_generator/src/source_documentation.dart';
 import 'package:tandem_generator/src/tokens.dart';
 
 final class const AgentMixin({
@@ -10,37 +12,30 @@ final class const AgentMixin({
   required final Set<MethodElement> methods,
 }) {
   String generate() {
-    final viewCode = _list(views.map(_view));
-    final toolCode = _list(methods.map(_tool));
+    final viewCode = _generateList(views.map(_generateView));
+    final toolCode = _generateList(methods.map(_generateTool));
+    final surfaceDeclaration = _generateSurfaceDeclaration();
 
-    final code = StringBuffer('''
+    return '''
 mixin _\$$className implements AgentSurface {
   @override
   AgentSchema get agentSchema {
-''');
+$surfaceDeclaration
 
-    if (views.isNotEmpty || methods.isNotEmpty) {
-      code
-        ..writeln('final surface = this as $className;')
-        ..writeln();
-    }
-
-    code.write('''
     return AgentSchema(
       sees: $viewCode,
       calls: $toolCode,
     );
   }
-}''');
-
-    return code.toString();
+}''';
   }
 
-  static String _view(GetterElement getter) {
+  static String _generateView(GetterElement getter) {
     final name = getter.displayName;
-    final write = AgentTypes(getter).write(getter.returnType, name, name);
-    final agentName = dartJsonLiteral(_snakeCase(name));
-    final description = dartJsonLiteral(_documentation(getter));
+    final types = AgentTypes(getter);
+    final write = types.write(getter.returnType, value: name, path: name);
+    final agentName = DartLiteral.json(_snakeCase(name));
+    final description = DartLiteral.json(_documentation(getter));
 
     return '''
 AgentView.of(
@@ -51,15 +46,16 @@ AgentView.of(
 ),''';
   }
 
-  static String _tool(MethodElement method) {
+  static String _generateTool(MethodElement method) {
     final name = method.displayName;
     final types = AgentTypes(method);
-    final parameters = method.formalParameters;
-    final schema = dartJsonLiteral(types.object(parameters, ''));
-    final call = 'surface.$name(${types.arguments(parameters, 'args')})';
-    final agentName = dartJsonLiteral(_snakeCase(name));
-    final description = dartJsonLiteral(_documentation(method));
-    final invoke = _invoke(types, method, call);
+    final parameters = types.parameters(method.formalParameters, from: 'args');
+    final schema = DartLiteral.json(parameters.schema);
+    final arguments = parameters.arguments;
+    final call = 'surface.$name($arguments)';
+    final agentName = DartLiteral.json(_snakeCase(name));
+    final description = DartLiteral.json(_documentation(method));
+    final invoke = _generateInvocation(method, types: types, call: call);
 
     return '''
 AgentTool(
@@ -71,7 +67,17 @@ AgentTool(
 ),''';
   }
 
-  static String _invoke(AgentTypes types, MethodElement method, String call) {
+  String _generateSurfaceDeclaration() {
+    if (views.isEmpty && methods.isEmpty) return '';
+
+    return '    final surface = this as $className;';
+  }
+
+  static String _generateInvocation(
+    MethodElement method, {
+    required AgentTypes types,
+    required String call,
+  }) {
     final asyncResultType = _asyncResultType(method.returnType);
     final resultType = asyncResultType ?? method.returnType;
     var async = '';
@@ -88,8 +94,8 @@ AgentTool(
 
     final write = types.write(
       resultType,
-      'result',
-      'the result of ${method.displayName}',
+      value: 'result',
+      path: 'the result of ${method.displayName}',
     );
 
     if (write == 'result') return '(args) => $call';
@@ -110,7 +116,7 @@ AgentTool(
     return null;
   }
 
-  static String _list(Iterable<String> items) {
+  static String _generateList(Iterable<String> items) {
     if (items.isEmpty) return 'const []';
 
     final code = items.join(Tokens.newLine);
