@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:tandem/src/protocol/ag_ui_event_decoder.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 
@@ -34,7 +35,7 @@ Stream<Map<String, Object?>> _run(String name) {
 }
 
 Future<List<AgentEvent>> _agentEvents(String name) async => [
-  for (final json in await _run(name).toList()) AgentEvent.fromJson(json),
+  for (final json in await _run(name).toList()) decodeAgUiEvent(json),
 ];
 
 Map<String, String> _texts(List<AgentEvent> events) {
@@ -126,7 +127,7 @@ void main() {
       ],
     );
     expect(
-      AgentEvent.fromJson(events[6]),
+      decodeAgUiEvent(events[6]),
       isA<ToolCallStarted>()
           .having(
             (event) => event.toolCallId,

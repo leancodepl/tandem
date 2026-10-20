@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 
 /// What the agent does in one run of a [ScriptedAgent], given the body of
@@ -62,13 +63,16 @@ final class ScriptedAgent(final List<AgentTurn> turns)
     int turn,
     Map<String, Object?> input,
   ) async* {
-    final ids = {'threadId': input['threadId'], 'runId': input['runId']};
-    yield {'type': 'RUN_STARTED', ...ids};
+    final ids = {
+      AgUiFields.threadId: input[AgUiFields.threadId],
+      AgUiFields.runId: input[AgUiFields.runId],
+    };
+    yield {AgUiFields.type: AgUiEventTypes.runStarted, ...ids};
     if (turn >= turns.length) {
       yield {
-        'type': 'RUN_ERROR',
-        'message': 'The script has no more turns.',
-        'code': 'SCRIPT_ENDED',
+        AgUiFields.type: AgUiEventTypes.runError,
+        AgUiFields.message: 'The script has no more turns.',
+        AgUiFields.code: 'SCRIPT_ENDED',
       };
       return;
     }
@@ -77,38 +81,48 @@ final class ScriptedAgent(final List<AgentTurn> turns)
         case _Say(:final text):
           final messageId = 'msg-${++_textMessages}';
           yield {
-            'type': 'TEXT_MESSAGE_START',
-            'messageId': messageId,
-            'role': 'assistant',
+            AgUiFields.type: AgUiEventTypes.textMessageStart,
+            AgUiFields.messageId: messageId,
+            AgUiFields.role: AgUiMessageRoles.assistant,
           };
           yield {
-            'type': 'TEXT_MESSAGE_CONTENT',
-            'messageId': messageId,
-            'delta': text,
+            AgUiFields.type: AgUiEventTypes.textMessageContent,
+            AgUiFields.messageId: messageId,
+            AgUiFields.delta: text,
           };
-          yield {'type': 'TEXT_MESSAGE_END', 'messageId': messageId};
+          yield {
+            AgUiFields.type: AgUiEventTypes.textMessageEnd,
+            AgUiFields.messageId: messageId,
+          };
         case _CallTool(:final name, :final arguments):
           final toolCallId = 'call-${++_toolCalls}';
           yield {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': toolCallId,
-            'toolCallName': name,
+            AgUiFields.type: AgUiEventTypes.toolCallStart,
+            AgUiFields.toolCallId: toolCallId,
+            AgUiFields.toolCallName: name,
           };
           if (arguments.isNotEmpty) {
             yield {
-              'type': 'TOOL_CALL_ARGS',
-              'toolCallId': toolCallId,
-              'delta': jsonEncode(arguments),
+              AgUiFields.type: AgUiEventTypes.toolCallArgs,
+              AgUiFields.toolCallId: toolCallId,
+              AgUiFields.delta: jsonEncode(arguments),
             };
           }
-          yield {'type': 'TOOL_CALL_END', 'toolCallId': toolCallId};
+          yield {
+            AgUiFields.type: AgUiEventTypes.toolCallEnd,
+            AgUiFields.toolCallId: toolCallId,
+          };
         case _WaitFor(:final signal):
           await signal;
         case _Fail(:final message):
-          yield {'type': 'RUN_ERROR', 'message': message, 'code': 'SCRIPTED'};
+          yield {
+            AgUiFields.type: AgUiEventTypes.runError,
+            AgUiFields.message: message,
+            AgUiFields.code: 'SCRIPTED',
+          };
           return;
       }
     }
-    yield {'type': 'RUN_FINISHED', ...ids};
+    yield {AgUiFields.type: AgUiEventTypes.runFinished, ...ids};
   }
 }

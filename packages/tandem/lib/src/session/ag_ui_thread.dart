@@ -1,4 +1,5 @@
 import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/turn.dart';
@@ -8,10 +9,10 @@ import 'package:uuid/uuid.dart';
 /// sends again.
 final class AgUiThread() {
   var _id = const Uuid().v4();
-  final _messages = <Map<String, Object?>>[];
+  final _messages = <JsonObject>[];
 
   /// The body of the next run, with what [listing] shares with the agent.
-  Map<String, Object?> input(AgentListing listing) => runInput(
+  JsonObject input(AgentListing listing) => runInput(
     threadId: _id,
     runId: const Uuid().v4(),
     messages: [..._messages],

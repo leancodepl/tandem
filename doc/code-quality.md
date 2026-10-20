@@ -15,6 +15,9 @@ excessive indirection both add reading work.
 3. **Make decisions easy to follow.** Prefer early returns for stepwise checks.
    Give a coherent condition a precise name when that removes work from the
    caller. Keep distinct failures visible when they need different handling.
+   Prefer positive predicates and clear branches over a leading `!condition`,
+   which is easy to miss. Keep logical negation only when it makes the condition
+   substantially clearer. Rephrase the decision rather than adding `== false`.
 4. **Make names and call sites explain intent.** Name an operation for what it
    does and a predicate for what it actually guarantees. Use named arguments
    where roles would otherwise be ambiguous. Compute complex inputs before the
