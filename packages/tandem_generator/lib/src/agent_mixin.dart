@@ -78,7 +78,7 @@ AgentTool(
     required AgentTypes types,
     required String call,
   }) {
-    final asyncResultType = _asyncResultType(method.returnType);
+    final asyncResultType = _asyncResultType(method);
     final resultType = asyncResultType ?? method.returnType;
     var async = '';
     var invocation = call;
@@ -108,12 +108,13 @@ AgentTool(
 }''';
   }
 
-  static DartType? _asyncResultType(DartType type) {
-    if (type is! InterfaceType) return null;
-    if (type.isDartAsyncFuture) return type.typeArguments.single;
-    if (type.isDartAsyncFutureOr) return type.typeArguments.single;
+  static DartType? _asyncResultType(MethodElement method) {
+    final type = method.returnType;
 
-    return null;
+    if (type is! InterfaceType) return null;
+    if (!type.isDartAsyncFuture && !type.isDartAsyncFutureOr) return null;
+
+    return method.library.typeSystem.flatten(type);
   }
 
   static String _generateList(Iterable<String> items) {
