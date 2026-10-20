@@ -3,3 +3,7 @@
 # second plugin host, and then `dart analyze` at the root runs the plugin rules
 # only here and not in the workspace packages.
 include: package:leancode_lint/analysis_options.yaml
+
+linter:
+  rules:
+    always_put_control_body_on_new_line: false
