@@ -29,6 +29,8 @@ export 'src/errors.dart'
         ToolCallRefused;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
+export 'src/protocol/on_device_agent.dart'
+    show OnDeviceAgent, OnDeviceAvailability, OnDeviceErrorCode;
 export 'src/session/approvals.dart' show ApprovalCallback, TandemApprovals;
 export 'src/session/session_scope.dart' show TandemSessionScope;
 export 'src/session/session_status.dart'

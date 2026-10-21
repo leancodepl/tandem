@@ -125,6 +125,8 @@ BlocProvider(
 
 Any AG-UI endpoint works. The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) in the Tandem repository is a working Google ADK backend to copy from. For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field ([example](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#a-token-for-your-backend)).
 
+For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connected`; calling it in `build` is fine. Offer it only when `await OnDeviceAgent.apple().availability()` is `available`. On `RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)`, call `session.startOver()`. [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).
+
 **Done when** the app shows the chat next to the screen, or the button on it, and a screen with `.callsWithApproval` has `.fromState()` with a chat that draws the cards, or `.callback`. Step 6 checks the rest without a backend.
 
 ## 6. Test it with a script

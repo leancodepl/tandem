@@ -1,6 +1,6 @@
 # Examples
 
-Each example is real code in [`example/lib/recipes`](../example/lib/recipes). All but the last have a test in [`example/test/recipes`](../example/test/recipes). CI analyzes and tests them, and a test checks that the code below matches the files. Copy the one closest to your screen. The [example gallery](../example/README.md) runs most of them with scripted agents.
+The examples use real code in [`example/lib/recipes`](../example/lib/recipes) and [`example/lib/shopping_list`](../example/lib/shopping_list). Their UI tests use scripted agents. CI analyzes the code and checks that the snippets below match the files. Copy the one closest to your screen. The [example gallery](../example/README.md) runs most of them with scripted agents.
 
 The screens take an `AgentConnection`, except the last, which makes its own. In the app it is `HttpAgentConnection(Uri.parse('https://your.server/agent'))`, made once and kept, not made in `build`. In a test it is a `ScriptedAgent`. `TandemScope(agent: uri, ...)` makes the connection for you when you need nothing else.
 
@@ -13,6 +13,7 @@ The screens take an `AgentConnection`, except the last, which makes its own. In 
 | provider or a `ChangeNotifier` | [A ChangeNotifier](#a-changenotifier) |
 | An agent behind sign-in | [A token for your backend](#a-token-for-your-backend) |
 | No backend or no API key yet | [Without an API key](#without-an-api-key) |
+| Apple's local system model | [On-device Apple](#on-device-apple) |
 
 ## A chat next to the screen
 
@@ -419,3 +420,16 @@ The demo's agent in [`example/agent`](../example/agent) is a Google ADK agent to
 - [`instruction.py`](../example/agent/src/order_agent/instruction.py) puts the `context` into the prompt. ag-ui-adk does not.
 - [`streaming.py`](../example/agent/src/order_agent/streaming.py) streams all calls of a Gemini turn in one chunk. ag-ui-adk drops a second parallel call of the same tool when the calls come in separate chunks.
 - Its own tools, such as `find_customer`, run on the server. The app's methods come as the run's `tools`, so the agent changes the screen only through them.
+
+## On-device Apple
+
+The shopping list with Apple's on-device model instead of a backend, with the same capabilities and approvals. Entry point: [`recipes/on_device/apple.dart`](../example/lib/recipes/on_device/apple.dart).
+
+<!-- example/lib/recipes/on_device/apple.dart -->
+```dart
+void main() => runApp(
+  MaterialApp(home: ShoppingListScreen(connection: OnDeviceAgent.apple())),
+);
+```
+
+[Requirements and limits](../README.md#apples-on-device-model), [how to run it](../example/README.md#run-the-shopping-list-with-apples-on-device-model).

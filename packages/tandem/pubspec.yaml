@@ -20,8 +20,10 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.6.0
+  meta: ^1.19.0
   uuid: ^4.6.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  pigeon: ^29.0.11

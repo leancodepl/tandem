@@ -47,8 +47,8 @@ final class TandemScope extends StatefulWidget {
     this.onEvent,
   }) : _connection = null;
 
-  /// A scope that talks over `connection`, such as a `ScriptedAgent` in a
-  /// test or a client of your own.
+  /// A scope that talks over `connection`, such as `OnDeviceAgent.apple()`,
+  /// a `ScriptedAgent` in a test or a client of your own.
   const new connected({
     super.key,
     required this.surface,

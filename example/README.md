@@ -78,3 +78,11 @@ fvm flutter run -d windows
 
 For Linux, use `linux`. For a browser, use `--platforms=web` and `-d chrome`. The example backend
 has no CORS middleware, so a browser build cannot reach it without adding one.
+
+## Run the shopping list with Apple's on-device model
+
+```sh
+fvm flutter run -d macos -t lib/recipes/on_device/apple.dart
+```
+
+For an iPhone, select it instead of `macos`. Unlike the gallery's scripts, this asks the real model. [Requirements and limits](../README.md#apples-on-device-model).
