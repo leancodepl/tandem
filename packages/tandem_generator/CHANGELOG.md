@@ -1,6 +1,7 @@
 ## 0.2.0
 
 - A description joins the wrapped lines of its doc comment and keeps its paragraphs, so the agent reads whole sentences.
+- A method can return `Future<T>?` or `FutureOr<T>?`. When it returns null, the agent gets null as the result.
 
 ## 0.1.0
 
