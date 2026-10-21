@@ -277,7 +277,7 @@ void main() {
       agent,
       onEvent: (event) {
         events.add(event);
-        if (event case RunFailed(code: .scripted)) {
+        if (event case RunFailed(code: ScriptedErrorCode.scripted)) {
           session.startOver();
         }
       },

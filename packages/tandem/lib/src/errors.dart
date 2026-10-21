@@ -42,16 +42,11 @@ final class const AgentRunException(
   String toString() => 'AgentRunException: ${[?code, ?message].join(' ')}';
 }
 
-/// The code of a failed run. A backend can send any string; the constants
-/// are the codes Tandem itself sends.
+/// The code of a failed run. A backend can send any string. The session's
+/// own code is here; a connection that sends its own codes has a type for
+/// them, such as `ScriptedErrorCode`.
 extension type const RunErrorCode(String value) implements String {
   /// The run ended with an AG-UI outcome Tandem cannot follow, such as an
   /// interrupt.
   static const unsupportedOutcome = RunErrorCode('UNSUPPORTED_OUTCOME');
-
-  /// A `ScriptedAgent` step failed the run.
-  static const scripted = RunErrorCode('SCRIPTED');
-
-  /// A `ScriptedAgent` had no turn left for the run.
-  static const scriptEnded = RunErrorCode('SCRIPT_ENDED');
 }
