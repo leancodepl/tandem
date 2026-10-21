@@ -39,6 +39,15 @@ final class const _WaitFor(final Future<void> signal) extends AgentStep;
 
 final class const _Fail(final String message) extends AgentStep;
 
+/// The codes a [ScriptedAgent] fails its runs with.
+extension type const ScriptedErrorCode._(String value) implements RunErrorCode {
+  /// An [AgentStep.fail] step failed the run.
+  static const scripted = ScriptedErrorCode._('SCRIPTED');
+
+  /// The script had no turn left for the run.
+  static const scriptEnded = ScriptedErrorCode._('SCRIPT_ENDED');
+}
+
 /// An [AgentConnection] that plays a script in the event shapes of
 /// ag-ui-adk, for tests without a model.
 ///
@@ -73,7 +82,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
       yield {
         AgUiFields.type: AgUiEventTypes.runError,
         AgUiFields.message: 'The script has no more turns.',
-        AgUiFields.code: RunErrorCode.scriptEnded,
+        AgUiFields.code: ScriptedErrorCode.scriptEnded,
       };
       return;
     }
@@ -119,7 +128,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
           yield {
             AgUiFields.type: AgUiEventTypes.runError,
             AgUiFields.message: message,
-            AgUiFields.code: RunErrorCode.scripted,
+            AgUiFields.code: ScriptedErrorCode.scripted,
           };
           return;
       }
