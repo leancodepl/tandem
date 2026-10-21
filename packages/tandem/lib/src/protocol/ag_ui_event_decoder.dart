@@ -1,3 +1,4 @@
+import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/events.dart';
 
@@ -24,7 +25,7 @@ RunFinished _decodeRunFinished(JsonObject json) =>
     RunFinished(_decodeOutcome(json[AgUiFields.outcome]));
 
 RunError _decodeRunError(JsonObject json) => RunError(
-  _tryString(json[AgUiFields.code]),
+  _tryCode(json[AgUiFields.code]),
   _tryString(json[AgUiFields.message]),
 );
 
@@ -67,3 +68,6 @@ RunOutcome _decodeOutcome(Object? json) => switch (json) {
 };
 
 String? _tryString(Object? value) => value is String ? value : null;
+
+RunErrorCode? _tryCode(Object? value) =>
+    value is String ? RunErrorCode(value) : null;

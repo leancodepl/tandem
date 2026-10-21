@@ -219,6 +219,8 @@ final class const _Notice(final ChatNoticeKind kind) extends StatelessWidget {
         .stopped => 'Stopped',
         .runFailed => 'The agent ran into a problem. Try again.',
         .connectionLost => 'Connection lost. Starting a new conversation.',
+        .startedOver =>
+          'New conversation. The agent no longer sees the messages above.',
       },
       textAlign: .center,
       style: context.textTheme.bodySmall,

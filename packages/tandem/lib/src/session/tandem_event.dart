@@ -1,3 +1,5 @@
+import 'package:tandem/src/errors.dart';
+
 /// Something that happened in a session, for the app to react to, such as
 /// with a snackbar. Approval requests are not events: they go to
 /// `approvals:`.
@@ -25,7 +27,11 @@ final class const RunStopped() extends TandemEvent;
 /// to `FlutterError.reportError`. After a run Tandem cannot follow, such as
 /// one that ends with an interrupt, the next message goes to a new thread,
 /// without the earlier history.
-final class const RunFailed() extends TandemEvent;
+final class const RunFailed({
+  /// The `code` of the backend's `RUN_ERROR`, or one of Tandem's own. Null
+  /// when the error has none, such as when the agent list threw.
+  final RunErrorCode? code,
+}) extends TandemEvent;
 
 /// A run broke off. The next message goes to a new thread, without the
 /// earlier history.

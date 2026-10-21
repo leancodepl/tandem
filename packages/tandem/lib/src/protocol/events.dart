@@ -1,3 +1,5 @@
+import 'package:tandem/src/errors.dart';
+
 /// The part of an agent's run that the session handles.
 sealed class const AgentEvent();
 
@@ -12,7 +14,7 @@ enum RunOutcome() {
 final class const RunFinished([final RunOutcome outcome = .success])
     extends AgentEvent;
 
-final class const RunError(final String? code, final String? message)
+final class const RunError(final RunErrorCode? code, final String? message)
     extends AgentEvent;
 
 final class const TextDelta(final String messageId, final String delta)
