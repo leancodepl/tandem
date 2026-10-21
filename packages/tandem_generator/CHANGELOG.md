@@ -1,3 +1,7 @@
+## 0.2.0
+
+- A description joins the wrapped lines of its doc comment and keeps its paragraphs, so the agent reads whole sentences.
+
 ## 0.1.0
 
 - Generates the `_$Name` mixin of a class with `@TandemAgent()`: the names, doc comments and JSON Schemas of what its `agentCapabilities` list.
