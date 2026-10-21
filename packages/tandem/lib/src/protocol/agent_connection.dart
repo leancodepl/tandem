@@ -11,7 +11,7 @@ import 'package:tandem/src/protocol/sse.dart';
 // The experimental lint asks for a primary constructor on an interface too.
 // ignore: use_primary_constructors
 abstract interface class AgentConnection {
-  /// Posts [input] and streams the requested run as decoded JSON.
+  /// Starts a run with [input] and streams it as decoded JSON.
   ///
   /// Skips replayed runs, expands text and tool-call chunks, and closes after
   /// `RUN_FINISHED` or `RUN_ERROR`. An ambiguous chunk fails with a

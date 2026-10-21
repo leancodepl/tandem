@@ -6,7 +6,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, the AG-UI connection, the session, `TandemScope`, `ScriptedAgent` | flutter, http, uuid |
+| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `ScriptedAgent` | flutter, http, meta, uuid; FoundationModels on Apple systems |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
@@ -50,6 +50,24 @@ The README, `doc/examples.md` and both packages' `example/example.md` show only 
 - `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when `agent` is another `Uri` (`==`) or `connected` gets another connection (`identical`). The old session is disposed first. Each new session calls `surface` again with the scope's context. Another object from the provider under the same scope opens no session. A scope that leaves the tree disposes its session before the owner of the state object, such as a `BlocProvider`, closes it. A new `onEvent` or `approvals` takes effect at once.
 - `threadId` lives as long as its session and never comes back after it is gone: an orphaned ADK run would mix up the history.
 - A run error shows in the chat, and the next message works as usual. Its code and message, like every error the session catches, go to `FlutterError.reportError`, never to the chat.
+
+## Apple on-device connection
+
+`OnDeviceAgent.apple()` is an `AgentConnection` backed by a plugin inside `tandem`, with shared Darwin sources for SwiftPM and CocoaPods. Dart and Swift talk through the Pigeon API of `packages/tandem/pigeons/apple_api.dart`: the run's AG-UI body goes as JSON, and the answer comes back as text, a batch of calls or a failure code. `apple()` returns one immutable object, so a scope keeps its session across rebuilds. Each run gets its own request ID, native task and model session, so sharing the connection shares no conversation. Tandem keeps the history, context, execution and approvals.
+
+Dart builds the instructions for every run from the current tools and context (`on_device_instructions.dart`). They stay short for the 4096-token window. Swift turns the AG-UI history into Apple's transcript: consecutive assistant calls form one batch, every call needs its result, and the last user message becomes the prompt. A run that ends with tool results has no prompt.
+
+**Handoff.** Native tool callbacks never run app methods. The first callback copies the model's whole batch from the transcript and throws a private error; its siblings check that they belong to that batch. Only that error turns into proposed calls. Dart then checks the batch (`_RunInput.wholeBatch`): every call must be a current tool with object arguments and an ID unused in the batch and the history, or none runs and the run fails. A remote turn would run its other calls, but here an odd call means the batch was read wrong. Tandem runs the calls with its usual checks and approvals.
+
+The copy relies on when Apple writes the batch to the transcript. That timing was measured on macOS 26.6.2 and iOS 26.6.1 and is not documented. Native probes passed all 36 handoff cases on a physical Mac and iPhone, but they cannot prove that no sibling is missing. The model can also propose a wrong current call, so app validation and approvals stay responsible.
+
+**Schemas.** Tool schemas go through `GenerationSchema`'s Codable form. It takes `type`, `description`, `properties`, `required`, `items`, string `enum` and `anyOf`, which is everything `tandem_generator` writes except `format`. Any other keyword, such as the `format` of a `DateTime`, fails the run with `OnDeviceErrorCode.unsupportedSchema` instead of being dropped. iOS 26.2 rejects a union with null, which macOS 26.6.2 takes. Then every property that may be null becomes optional, and `ToolArgs` reads an omitted one as null, so the method gets the same value. A null union inside an array item still fails. Only the schema step of this was checked, on the iOS 26.2 simulator, whose model does not generate.
+
+**Numbers.** Apple keeps numbers as `Double`. Integral arguments beyond ±(2^53 - 1), in the history or new, fail with `OnDeviceErrorCode.unsupportedArguments` instead of being rounded.
+
+**Ending a run.** The text arrives whole when generation ends. Stop drains the run and runs none of its calls. Disposing the session cancels the native task and waits for it to end. Nothing retries, summarizes or shortens the history: an overflow fails with `OnDeviceErrorCode.contextWindowExceeded`, and the app may call `session.startOver()`. Other native failures keep their own `OnDeviceErrorCode`.
+
+`bash tool/check_apple.sh` runs the native contracts without inference. On `main`, CI also builds the plugin in the macOS and unsigned iOS examples. `tool/apple_smoke.swift --generate` asks the real model and stays manual.
 
 ## Wire rules
 

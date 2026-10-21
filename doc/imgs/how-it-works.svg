@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 180" width="960" height="180">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" width="960" height="320">
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; fill: #1f2328; text-anchor: middle; }
     .name { font-size: 18px; font-weight: 600; }
@@ -25,11 +25,11 @@
     </marker>
   </defs>
 
-  <rect class="page" x="0.5" y="0.5" width="959" height="179" rx="12"/>
+  <rect class="page" x="0.5" y="0.5" width="959" height="319" rx="12"/>
 
-  <rect class="box" x="24" y="30" width="220" height="120" rx="10"/>
-  <text class="name" x="134" y="84">Flutter app</text>
-  <text class="note" x="134" y="108">with tandem</text>
+  <rect class="box" x="24" y="30" width="220" height="260" rx="10"/>
+  <text class="name" x="134" y="154">Flutter app</text>
+  <text class="note" x="134" y="178">with tandem</text>
 
   <text class="wire" x="400" y="56">message, what the agent sees and may call</text>
   <line class="line" x1="252" y1="72" x2="548" y2="72" marker-end="url(#head)"/>
@@ -46,4 +46,14 @@
 
   <rect class="box" x="836" y="30" width="100" height="120" rx="10"/>
   <text class="name" x="886" y="96">Model</text>
+
+  <text class="wire" x="400" y="196">the same, on the device</text>
+  <line class="line" x1="252" y1="212" x2="548" y2="212" marker-end="url(#head)"/>
+  <text class="protocol" x="400" y="236">OnDeviceAgent</text>
+  <line class="line" x1="548" y1="250" x2="252" y2="250" marker-end="url(#head)"/>
+  <text class="wire" x="400" y="276">no backend, no API key</text>
+
+  <rect class="box" x="556" y="170" width="380" height="120" rx="10"/>
+  <text class="name" x="746" y="224">Apple's on-device model</text>
+  <text class="note" x="746" y="248">iOS and macOS 26</text>
 </svg>

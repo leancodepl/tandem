@@ -116,3 +116,14 @@ void main() =>
 ```
 
 The [example gallery](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs this screen and five more with scripted agents. More screens to copy, with Riverpod, provider, a dialog for approvals and a button instead of a chat, are in [doc/examples.md](https://github.com/leancodepl/tandem/blob/main/doc/examples.md).
+
+The same screen can use Apple's on-device model instead of a backend:
+
+<!-- example/lib/recipes/on_device/apple.dart -->
+```dart
+void main() => runApp(
+  MaterialApp(home: ShoppingListScreen(connection: OnDeviceAgent.apple())),
+);
+```
+
+[Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).

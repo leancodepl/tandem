@@ -20,6 +20,7 @@ fvm dart format --set-exit-if-changed .
 (cd packages/tandem && fvm flutter test)
 (cd packages/tandem_generator && fvm dart test)
 (cd example && fvm dart run build_runner build)     # then git diff --exit-code: the generated code is committed
+(cd packages/tandem && fvm dart run pigeon --input pigeons/apple_api.dart && fvm dart format lib test)  # the Swift bridge's API
 (cd example && fvm flutter test)
 (cd example/agent && uv sync --locked && uv run ruff check && uv run ruff format --check && uv run pytest)
 ```
@@ -29,7 +30,7 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 ## Rules
 
 - Make every change in a dedicated Git worktree. Keep the primary checkout on a clean `main`.
-- Never use the null-assertion operator `!`, also not in tests or generated code. Check null with a pattern (`if (x case final y?)`), with `?.` or `??` and a real fallback, or use a type that cannot be null.
+- Never use the null-assertion operator `!`, also not in tests or in the code `tandem_generator` writes. Code from other generators, such as Pigeon's, is exempt: nobody edits it. Check null with a pattern (`if (x case final y?)`), with `?.` or `??` and a real fallback, or use a type that cannot be null.
 - For behavior changes or refactors, read [code quality](doc/code-quality.md) before editing and apply its readability review before handoff. Spelling and formatting edits need only the relevant mechanical checks.
 - Named constants for real values, not for obvious JSON keys. Exception: AG-UI wire keys in `packages/tandem/lib` use `AgUiFields` from [ag_ui.dart](packages/tandem/lib/src/protocol/ag_ui.dart). UI strings and spacing go inline at the use site, not in blocks of private constants.
 - No `Widget _buildX()` methods: write a private `StatelessWidget` with a const constructor.
