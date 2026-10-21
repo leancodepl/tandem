@@ -28,6 +28,7 @@ CI runs the same, plus a dry run of `pub publish` and a pana score for each pack
 
 ## Rules
 
+- Make every change in a dedicated Git worktree. Keep the primary checkout on a clean `main`.
 - Never use the null-assertion operator `!`, also not in tests or generated code. Check null with a pattern (`if (x case final y?)`), with `?.` or `??` and a real fallback, or use a type that cannot be null.
 - For behavior changes or refactors, read [code quality](doc/code-quality.md) before editing and apply its readability review before handoff. Spelling and formatting edits need only the relevant mechanical checks.
 - Named constants for real values, not for obvious JSON keys. Exception: AG-UI wire keys in `packages/tandem/lib` use `AgUiFields` from [ag_ui.dart](packages/tandem/lib/src/protocol/ag_ui.dart). UI strings and spacing go inline at the use site, not in blocks of private constants.
