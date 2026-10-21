@@ -19,7 +19,7 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 
 The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentSchema` from `AgentView.of` and `AgentTool`, reading the agent's arguments with `ToolArgs`. So both packages release together, with the same minor version. The generator cannot depend on `tandem`, which needs Flutter.
 
-`packages/tandem/README.md`, the README pub.dev shows for `tandem`, is an identical copy of the root README. Change both.
+`packages/tandem/README.md`, the README pub.dev shows for `tandem`, is a copy of the root README with one difference: under "Try it without a key", GitHub plays the demo film and pub.dev, which plays no video, shows it as a GIF. Change both.
 
 `tandem` ships an Agent Skill, `skills/tandem-agent-aware-screen`, that apps install with `dart run skills@ get`. The installer takes only skills whose name starts with `tandem-`. The skill follows the API: change one, change the other.
 
