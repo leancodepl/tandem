@@ -143,6 +143,34 @@ class CartCubit() {
     );
   }
 
+  test(
+    'a doc comment keeps its paragraphs but not its wrapped lines',
+    () async {
+      final result = await _build('''
+@TandemAgent()
+class OrderCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(placeOrder)];
+
+  /// Places the order exactly as it is
+  /// on the screen.
+  ///
+  /// Needs approval.
+  void placeOrder() {}
+}
+''');
+
+      expect(result.errors, isEmpty);
+      expect(
+        result.readerWriter.testing.readString(
+          .parse('app|lib/screen.tandem.g.part'),
+        ),
+        contains(
+          r"'Places the order exactly as it is on the screen.\n\nNeeds approval.'",
+        ),
+      );
+    },
+  );
+
   test('a default with control characters becomes a valid literal', () async {
     final result = await _build(r'''
 @TandemAgent()
