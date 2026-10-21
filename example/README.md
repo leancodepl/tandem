@@ -86,3 +86,13 @@ fvm flutter run -d macos -t lib/recipes/on_device/apple.dart
 ```
 
 For an iPhone, select it instead of `macos`. Unlike the gallery's scripts, this asks the real model. [Requirements and limits](../README.md#apples-on-device-model).
+
+## Smart invoice input with Apple's on-device model
+
+```sh
+fvm flutter run -d macos -t lib/recipes/on_device/invoice_demo.dart
+```
+
+An invoice list with a search field. Search for `May invoice` and four invoices match their titles. Turn on smart input with the brain, enter `Archive invoices issued in May` and press Return. Now six invoices match by their issue date, two of them without May in the title. Nothing is archived until you choose **Archive**, and **Undo** brings the invoices back.
+
+The model only reports what the sentence asks for, through one method with a typed argument for each part. The app decides what it supports and finds the invoices. It supports invoices issued in one month and answers anything else with a hint. Each command starts a new session. The model can misread a request, so the card shows what the app found before anything changes. [Requirements and limits](../README.md#apples-on-device-model).
