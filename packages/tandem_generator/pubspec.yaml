@@ -1,6 +1,6 @@
 name: tandem_generator
 description: "Generates the code behind a Tandem agent list: the names, doc comments and JSON Schemas of what a class lets the agent see and call."
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem_generator
 issue_tracker: https://github.com/leancodepl/tandem/issues
 topics:
