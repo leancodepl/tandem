@@ -25,6 +25,7 @@ export 'src/errors.dart'
         AgentHttpException,
         AgentRunException,
         ApprovalNotPending,
+        RunErrorCode,
         ToolCallRefused;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;

@@ -34,8 +34,24 @@ final class const AgentHttpException(
 /// The agent's run ended with `RUN_ERROR`. The session reports it for the
 /// logs only: the chat shows a notice and never the [message], which can be
 /// 2 KB of the model provider's JSON.
-final class const AgentRunException(final String? code, final String? message)
-    implements Exception {
+final class const AgentRunException(
+  final RunErrorCode? code,
+  final String? message,
+) implements Exception {
   @override
   String toString() => 'AgentRunException: ${[?code, ?message].join(' ')}';
+}
+
+/// The code of a failed run. A backend can send any string; the constants
+/// are the codes Tandem itself sends.
+extension type const RunErrorCode(String value) implements String {
+  /// The run ended with an AG-UI outcome Tandem cannot follow, such as an
+  /// interrupt.
+  static const unsupportedOutcome = RunErrorCode('UNSUPPORTED_OUTCOME');
+
+  /// A `ScriptedAgent` step failed the run.
+  static const scripted = RunErrorCode('SCRIPTED');
+
+  /// A `ScriptedAgent` had no turn left for the run.
+  static const scriptEnded = RunErrorCode('SCRIPT_ENDED');
 }

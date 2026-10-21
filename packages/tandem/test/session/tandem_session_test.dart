@@ -264,6 +264,62 @@ void main() {
     expect(session.status, isA<Idle>());
   });
 
+  test('startOver after a failed run sends the next message to a new thread '
+      'without the earlier history', () async {
+    _collectReports();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi')],
+      (_) => const [AgentStep.fail('Too long.')],
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    late final TandemSession session;
+    session = open(
+      agent,
+      onEvent: (event) {
+        events.add(event);
+        if (event case RunFailed(code: .scripted)) {
+          session.startOver();
+        }
+      },
+    );
+
+    session.send('a');
+    await pumpEventQueue();
+    session.send('b');
+    await pumpEventQueue();
+    session.send('c');
+    await pumpEventQueue();
+
+    expect(events, [isA<RunFailed>()]);
+    expect(agent.requests[2]['threadId'], isNot(agent.requests[1]['threadId']));
+    expect(_lines(agent.requests[2]), ['user: c']);
+    expect(_shown(session.items), [
+      ('user', 'a'),
+      ('agent', 'Hi', false),
+      ('user', 'b'),
+      ChatNoticeKind.runFailed,
+      ChatNoticeKind.startedOver,
+      ('user', 'c'),
+      ('agent', 'Fresh.', false),
+    ]);
+  });
+
+  test('startOver cancels a waiting request, and does nothing while a run is '
+      'open', () async {
+    final (session, agent) = await askToClear();
+
+    session.startOver();
+    expect(_card(session).status, ApprovalStatus.cancelled);
+    expect(session.status, isA<Idle>());
+
+    session
+      ..send('again')
+      ..startOver();
+    expect(_shown(session.items).last, ('user', 'again'));
+    await pumpEventQueue();
+    expect(_lines(agent.requests.last), ['user: again']);
+  });
+
   test('a throwing onEvent is reported; the next message works', () async {
     final agent = ScriptedAgent([
       (_) => const [

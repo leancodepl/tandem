@@ -244,6 +244,8 @@ void showOrderMessages(
 
 `AgentCall` comes after a listed method returned, with its `tool`, `arguments` and `result`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`.
 
+`RunFailed` has the error's `code` when it has one, a `RunErrorCode` that a pattern such as `RunFailed(code: .unsupportedOutcome)` matches. When the history no longer fits the model, `session.startOver()` sends the next message to a new thread without it. The chat keeps its items and adds a `startedOver` notice. It does nothing while a run is open.
+
 ## Any state library
 
 Tandem reads the state object with `surface` and hears it change in `changes`, so a state library needs no adapter package. `changes` is a broadcast stream with an event for every change:

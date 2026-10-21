@@ -147,6 +147,22 @@ final class TandemSession({
   /// Whether [request] waits for the user to approve or reject it.
   bool isPending(ApprovalRequest request) => _turn.isPending(request);
 
+  /// Moves the chat to a new AG-UI thread: the next message goes without the
+  /// earlier history, such as after a [RunFailed] whose `code` says the
+  /// history no longer fits the model. The items stay, with a
+  /// [ChatNoticeKind.startedOver] notice, and requests that wait are
+  /// cancelled. Does nothing while a run is open, or once disposed.
+  void startOver() {
+    if (_run != null || _disposed) {
+      return;
+    }
+    _turn.cancelWaiting().forEach(_showDecision);
+    _turn = Turn(const []);
+    _thread.startOver();
+    _items.add(const ChatNotice(.startedOver));
+    notifyListeners();
+  }
+
   /// Cancels the requests that wait, so a later decision throws. Nothing runs,
   /// goes to the agent or notifies after it.
   @override
@@ -222,7 +238,7 @@ final class TandemSession({
         _abort(
           run,
           const AgentRunException(
-            'UNSUPPORTED_OUTCOME',
+            RunErrorCode.unsupportedOutcome,
             'Unsupported run outcome.',
           ),
           .current,
@@ -402,14 +418,14 @@ final class TandemSession({
     _report(error, stack);
     _items.add(const ChatNotice(.runFailed));
     notifyListeners();
-    _emit(const RunFailed());
+    _emit(RunFailed(code: _codeOf(error)));
   }
 
   void _runFailed(Object err, StackTrace st) {
     _report(err, st);
     _items.add(const ChatNotice(.runFailed));
     _startNextRun();
-    _emit(const RunFailed());
+    _emit(RunFailed(code: _codeOf(err)));
   }
 
   void _connectionLost(Run run) {
@@ -449,3 +465,8 @@ final class TandemSession({
 }
 
 bool _alwaysAsks() => true;
+
+RunErrorCode? _codeOf(Object error) => switch (error) {
+  AgentRunException(:final code) => code,
+  _ => null,
+};

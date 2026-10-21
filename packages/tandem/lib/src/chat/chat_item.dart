@@ -27,6 +27,10 @@ enum ChatNoticeKind() {
 
   /// The run broke off; the next message starts a new conversation.
   connectionLost,
+
+  /// The app called `session.startOver`; the agent no longer has the
+  /// messages above.
+  startedOver,
 }
 
 /// A line from Tandem itself, not from the user or the agent.

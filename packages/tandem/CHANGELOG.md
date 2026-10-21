@@ -1,3 +1,10 @@
+## 0.2.0
+
+- **Breaking:** `ChatNoticeKind.startedOver`. A `switch` over `ChatNoticeKind` needs a case for it.
+- **Breaking:** `AgentRunException.code` is a `RunErrorCode`. Wrap a string with `RunErrorCode(...)` to build one.
+- `session.startOver()` sends the next message to a new AG-UI thread, without the earlier history. The chat keeps its items.
+- `RunFailed` has the error's `code`, a `RunErrorCode`: any string a backend sends, with constants for the codes Tandem sends itself.
+
 ## 0.1.0
 
 - `@TandemAgent()` and `agentCapabilities`: the agent sees the values a state class lists with `.sees` and calls only the methods it lists with `.calls` and `.callsWithApproval`.

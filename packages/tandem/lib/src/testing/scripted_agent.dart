@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
+import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 
@@ -72,7 +73,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
       yield {
         AgUiFields.type: AgUiEventTypes.runError,
         AgUiFields.message: 'The script has no more turns.',
-        AgUiFields.code: 'SCRIPT_ENDED',
+        AgUiFields.code: RunErrorCode.scriptEnded,
       };
       return;
     }
@@ -118,7 +119,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
           yield {
             AgUiFields.type: AgUiEventTypes.runError,
             AgUiFields.message: message,
-            AgUiFields.code: 'SCRIPTED',
+            AgUiFields.code: RunErrorCode.scripted,
           };
           return;
       }
