@@ -22,6 +22,7 @@ fvm dart format --set-exit-if-changed .
 (cd example && fvm dart run build_runner build)     # then git diff --exit-code: the generated code is committed
 (cd packages/tandem && fvm dart run pigeon --input pigeons/apple_api.dart && fvm dart format lib test)  # the Swift bridge's API
 (cd example && fvm flutter test)
+bash tool/check_apple.sh                           # macOS 26+, no inference
 (cd example/agent && uv sync --locked && uv run ruff check && uv run ruff format --check && uv run pytest)
 ```
 
