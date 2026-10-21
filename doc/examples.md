@@ -433,3 +433,5 @@ void main() => runApp(
 ```
 
 [Requirements and limits](../README.md#apples-on-device-model), [how to run it](../example/README.md#run-the-shopping-list-with-apples-on-device-model).
+
+**Smart input.** The invoice list of [`recipes/on_device/invoices`](../example/lib/recipes/on_device/invoices) has no chat. Its search field sends one sentence, and the model reports what it asks for with `interpretInvoiceInput`, a method with an enum for each part of the request. The app checks what it supports, and the user approves the invoices it found ([how to run it](../example/README.md#smart-invoice-input-with-apples-on-device-model)).
