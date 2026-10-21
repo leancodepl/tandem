@@ -32,8 +32,17 @@ class ShoppingListCubit()
   /// Adds [item] to the list.
   void add(String item) => emit(.new(items: [...items, item]));
 
-  /// Removes [item] from the list.
-  void remove(String item) => emit(.new(items: [...items]..remove(item)));
+  /// Removes [item] from the list. Refuses names absent from the current list.
+  void remove(String item) {
+    if (items.contains(item)) {
+      emit(.new(items: [...items]..remove(item)));
+    } else {
+      throw ToolCallRefused(
+        '"$item" is not on the shopping list. '
+        'Use an exact item name from the current list.',
+      );
+    }
+  }
 
   /// Empties the list.
   void clear() => emit(const .new());

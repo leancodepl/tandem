@@ -40,7 +40,7 @@ mixin _$ShoppingListCubit implements AgentSurface {
         AgentTool(
           surface.remove,
           name: 'remove',
-          description: 'Removes [item] from the list.',
+          description: 'Removes [item] from the list. Refuses names absent from the current list.',
           parameters: const {
             'type': 'object',
             'properties': {
