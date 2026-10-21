@@ -10,6 +10,16 @@ topics:
   - ag-ui
   - generative-ai
 
+# The plugin registers only on iOS and macOS. Remote connections work on every
+# platform, and this list keeps them all on pub.dev.
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
 resolution: workspace
 
 environment:
@@ -27,3 +37,13 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   pigeon: ^29.0.11
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: TandemPlugin
+        sharedDarwinSource: true
+      macos:
+        pluginClass: TandemPlugin
+        sharedDarwinSource: true
