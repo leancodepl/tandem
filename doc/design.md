@@ -21,7 +21,7 @@ The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentS
 
 `packages/tandem/README.md`, the README pub.dev shows for `tandem`, is a copy of the root README with one difference: under "Try it without a key", GitHub plays the demo film and pub.dev, which plays no video, shows it as a GIF. Change both.
 
-`tandem` ships an Agent Skill, `skills/tandem-agent-aware-screen`, that apps install with `dart run skills@ get`. The installer takes only skills whose name starts with `tandem-`. The skill follows the API: change one, change the other.
+`tandem` ships three Agent Skills in `skills/`, which apps install with `dart run skills@ get --package tandem --all`: `tandem-agent-aware-screen` lists what the agent sees and calls and wraps the screen, `tandem-coding-agent` lets a coding agent drive it through `TandemBridge`, and `tandem-in-app-agent` adds a chat or a button with a backend or Apple's model. The installer takes only skills whose name starts with `tandem-`. The skills follow the API: change one, change the other.
 
 The README, `doc/examples.md` and both packages' `example/example.md` show only code from `example`, and `example/test/doc_snippets_test.dart` checks each Dart block against the file its comment names. The examples use bloc, Riverpod and provider, which only the example depends on.
 
