@@ -1,6 +1,7 @@
 ---
 name: tandem-in-app-agent
 description: Give an agent-aware Flutter screen an in-app agent for the app's users, with a chat or a button, over an AG-UI backend or Apple's on-device model. Use when asked to add an AI chat, assistant or "fill with AI" button to a screen that has a TandemScope, or when the code uses TandemSessionScope, ScriptedAgent or OnDeviceAgent.
+user-invocable: false
 ---
 
 # Add an in-app agent to a Tandem screen
