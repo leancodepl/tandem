@@ -1,3 +1,8 @@
+## 0.2.3
+
+- `TandemView` shows a view the in-app agent draws for the user: texts, columns, rows, lists, cards, dividers and buttons in A2UI v0.9.1. While it is below a `TandemScope`, every run offers the agent the tool `show_view`. The view shows only what the screen lists with `.sees`, and a view that does not fit the screen is refused with what to fix. It needs a strong model behind an AG-UI backend.
+- `tandem` depends on `a2ui_core`. A release build of an app without `TandemView` holds none of its code.
+
 ## 0.2.2
 
 - When the user sends several messages before a run goes out, the agent gets them as one user message, the texts joined by a blank line: ag-ui-adk passes the model only the last new user message of a run. This covers the messages queued during a run that ends with an `interrupt` or an outcome of the wrong shape, and a message whose run failed before it went out, such as when `agentCapabilities` throws.

@@ -64,6 +64,14 @@ _Avoid_: debug server, MCP server
 The screen a call of the coding agent goes to when it names none: the only open `TandemScope`, or else the only one on the current route.
 _Avoid_: active screen, current screen
 
+**View**:
+What the in-app agent drew with `show_view` in a `TandemView`: A2UI of Tandem's catalog, showing only `.sees`. A2UI calls it a surface.
+_Avoid_: surface (the surface is the state object), generated screen
+
+**Catalog**:
+The components an agent may draw a view with, and the one function, `formatString`.
+_Avoid_: widget set, design system
+
 **Chat**:
 What the user sees of a session, in order: messages, notices and approval requests.
 _Avoid_: timeline, history, transcript

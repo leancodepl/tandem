@@ -11,7 +11,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
 
-`tandem` has no widget the user sees. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
+`tandem` has one widget the user sees, `TandemView`, and it has no texts of its own: everything it shows comes from the agent and `.sees`. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
 
 The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed, so development and CI resolve the same versions. The workspace members have no lock of their own.
 
@@ -72,6 +72,15 @@ A coding agent, such as Claude Code or Cursor, drives a debug build through the 
 
 Every answer of `call` is a `ToolAnswer` as `json`: the tool answer of the in-app agent with its `status`, and `{"status":"returned","result":<result>}` when the method returned. No screen, an unknown `screen` or no front screen is `refused`, with the ids of the open screens. So is another call that needs approval while one waits, and one on a screen with `approvals: .none()`, with what to do.
 
+## Drawn view
+
+`TandemView` below a `TandemScope` lets the in-app agent draw a view for the user, in A2UI v0.9.1 with Tandem's own catalog: Text, Column, Row, List, Card, Divider and Button. `a2ui_core` parses and validates the messages. The session reaches the view only through `AttachedView` (`session/attached_view.dart`), so it imports no A2UI code, and a release build of an app without `TandemView` holds none.
+
+- Every run that starts while a view is attached offers its tool `show_view(messages)` after the listed methods. Its description teaches the catalog, because the backend writes the system prompt and passes `context` to the model only if its instructions do. The run keeps the view it started with.
+- A call of `show_view` is answered when the run finishes, as a method without approval, but with no `Calling` status and no `AgentCall`. The view checks the messages first (`genui/view_check.dart`): the version, `createSurface`, `updateComponents` and `deleteSurface` only, one surface, the catalog, `formatString` as the only function, actions only as events that name a listed method with its parameters, and paths that exist in `.sees`. A view that fits replaces the whole drawing and answers `{"status":"shown"}`; one that does not is refused with every problem, one per line, and the drawing stays. A view removed while its run was open refuses.
+- The data model of the drawing holds a copy of `.sees`, each value under `/<name>`, written again on every event of `changes`. Only the view writes it: the agent cannot send `updateDataModel`, and no component writes data.
+- A new session of the scope starts with an empty view. The drawing stays after `startOver` and a broken run.
+
 ## Apple on-device connection
 
 `OnDeviceAgent.apple()` is an `AgentConnection` backed by a plugin inside `tandem`, with shared Darwin sources for SwiftPM and CocoaPods. Dart and Swift talk through the Pigeon API of `packages/tandem/pigeons/apple_api.dart`: the run's AG-UI body goes as JSON, and the answer comes back as text, a batch of calls or a failure code. `apple()` returns one immutable object, so a scope keeps its session across rebuilds. Each run gets its own request ID, native task and model session, so sharing the connection shares no conversation. Tandem keeps the history, context, execution and approvals.
@@ -118,6 +127,7 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 | Situation | Content |
 |---|---|
 | executed | `jsonEncode(result)`, `null` for `void` |
+| `show_view` drew | `{"status":"shown"}` |
 | refused: not listed at call time, needs approval, the screen takes no approvals, bad arguments, or the method threw a `ToolCallRefused` | `{"status":"refused","reason":<message>}` |
 | the method threw anything else | `{"status":"failed","error":<fixed message>}` |
 | the method returned, but `jsonEncode` failed on its result | `{"status":"result_unavailable","reason":<fixed message>}` |

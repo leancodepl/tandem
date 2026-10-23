@@ -1,4 +1,3 @@
-import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/next_user_message.dart';
 import 'package:tandem/src/session/run.dart';
@@ -12,12 +11,17 @@ final class AgUiThread() {
   final _messages = <AgUiMessage>[];
   final _nextUserMessage = NextUserMessage();
 
-  /// The body of the next run, with what [listing] shares with the agent.
-  RunInput input(AgentListing listing) {
+  /// The body of [run], with what it shares with the agent.
+  RunInput input(Run run) {
     if (_nextUserMessage.take() case final message?) {
       _messages.add(message);
     }
-    return RunInput(threadId: _id, messages: [..._messages], listing: listing);
+    return RunInput(
+      threadId: _id,
+      messages: [..._messages],
+      tools: run.tools,
+      context: run.listing.context,
+    );
   }
 
   /// What the agent said in [run], and its calls.

@@ -12,6 +12,7 @@ import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/ag_ui_thread.dart';
+import 'package:tandem/src/session/attached_view.dart';
 import 'package:tandem/src/session/call_pipeline.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/run.dart';
@@ -74,6 +75,7 @@ final class TandemSession({
 
   /// Null when no run is open, and once the session is disposed.
   Run? _run;
+  AttachedView? _view;
   var _disposed = false;
 
   /// Oldest first.
@@ -150,6 +152,18 @@ final class TandemSession({
   @internal
   OutsideCalls get calls => _calls;
 
+  /// Offers [view]'s tool from the next run on.
+  @internal
+  void attach(AttachedView view) => _view = view;
+
+  /// Stops offering [view]'s tool from the next run on.
+  @internal
+  void detach(AttachedView view) {
+    if (identical(view, _view)) {
+      _view = null;
+    }
+  }
+
   /// Moves the chat to a new AG-UI thread: the next message goes without the
   /// earlier history, such as after a [RunFailed] whose `code` says the
   /// history no longer fits the model. The items stay, with a
@@ -190,9 +204,9 @@ final class TandemSession({
 
   void _open() {
     try {
-      final run = _run = Run(AgentListing.of(_surface));
+      final run = _run = Run(AgentListing.of(_surface), view: _view);
       _runSubscription = _connection
-          .run(_thread.input(run.listing))
+          .run(_thread.input(run))
           .listen(
             (json) {
               try {
@@ -221,9 +235,9 @@ final class TandemSession({
     switch (event) {
       case TextDelta(:final messageId, :final delta) when !run.stopped:
         _showText(run.write(messageId, delta));
-      // A call of a tool the listing does not list runs on the server.
+      // A call of a tool the run does not offer runs on the server.
       case ToolCallStarted(:final toolCallId, :final name)
-          when run.listing.lists(name) || run.calls.containsKey(toolCallId):
+          when run.offers(name) || run.calls.containsKey(toolCallId):
         run.startCall(toolCallId, name);
       case ToolCallArgs(:final toolCallId, :final delta):
         run.calls[toolCallId]?.arguments += delta;

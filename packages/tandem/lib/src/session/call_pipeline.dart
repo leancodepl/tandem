@@ -20,7 +20,8 @@ import 'package:uuid/uuid.dart';
 
 /// The calls of one screen's listed methods, from every caller: the in-app
 /// agent's turn, whose answers go back with its next run, and the calls of
-/// outside callers, whose answers go only to them. A call that needs
+/// outside callers, whose answers go only to them. A call of the attached
+/// view's tool in the turn goes to the view. A call that needs
 /// approval waits for the user as an [ApprovalRequest], one at a time, and
 /// is invalidated once what the agent sees differs from what it saw.
 final class CallPipeline({
@@ -193,8 +194,13 @@ final class CallPipeline({
   }
 
   Future<void> _answer(Run run, ToolCall call) async {
-    if (call.objectArguments == null) {
+    final arguments = call.objectArguments;
+    if (arguments == null) {
       call.answer = .refused('The arguments must be a JSON object.');
+      return;
+    }
+    if (run.viewOf(call.tool) case final view?) {
+      call.answer = view.show(arguments);
       return;
     }
     if (run.listing.needsApproval(call.tool)) {

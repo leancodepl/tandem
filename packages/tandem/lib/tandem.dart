@@ -5,8 +5,9 @@
 /// `.callsWithApproval`. `tandem_generator` writes the code behind the list.
 /// `TandemScope` opens a `TandemSession` of that class with an AG-UI agent,
 /// and the app's own chat or buttons drive it through
-/// `TandemSessionScope.of`. In a debug build, `TandemBridge` lets a coding
-/// agent drive the same screens.
+/// `TandemSessionScope.of`. `TandemView` shows a view the agent draws for
+/// the user. In a debug build, `TandemBridge` lets a coding agent drive the
+/// same screens.
 library;
 
 export 'src/agent_list.dart' show AgentCapability;
@@ -29,6 +30,7 @@ export 'src/errors.dart'
         ApprovalNotPending,
         RunErrorCode,
         ToolCallRefused;
+export 'src/genui/tandem_view.dart' show TandemView;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
 export 'src/protocol/on_device_agent.dart'
