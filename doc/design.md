@@ -6,7 +6,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `ScriptedAgent` | flutter, http, meta, uuid; FoundationModels on Apple systems |
+| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` | flutter, http, meta, uuid; FoundationModels on Apple systems |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
@@ -50,6 +50,18 @@ The README, `doc/examples.md` and both packages' `example/example.md` show only 
 - `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when `agent` is another `Uri` (`==`) or `connected` gets another connection (`identical`). The old session is disposed first. Each new session calls `surface` again with the scope's context. Another object from the provider under the same scope opens no session. A scope without `agent` runs over a connection whose every run ends with `RUN_ERROR`, so `send` reports what is missing. A scope that leaves the tree disposes its session before the owner of the state object, such as a `BlocProvider`, closes it. A new `onEvent` or `approvals` takes effect at once.
 - `threadId` lives as long as its session and never comes back after it is gone: an orphaned ADK run would mix up the history.
 - A run error shows in the chat, and the next message works as usual. Its code and message, like every error the session catches, go to `FlutterError.reportError`, never to the chat.
+
+## Coding agent
+
+A coding agent, such as Claude Code or Cursor, drives a debug build through the Dart MCP server and `TandemBridge`. `TandemBridge.enable()` in `main()` registers the VM service extensions `ext.tandem.describe` and `ext.tandem.call`, once per isolate. An extension cannot be unregistered, so one line switches the whole app, not a parameter of each scope. Outside `kDebugMode` it does nothing, and the compiler drops the extensions.
+
+- Every `TandemScope` of a debug build is an open screen, also without `enable()` and without `agent`, so a test needs no setup. Its id is the class name of its surface, numbered when taken: `Shop`, `Shop#2`.
+- A call without `screen` goes to the front screen: the only one open, or else the only one whose route is current (`ModalRoute.isCurrentOf`). A scope outside any route counts as on the current one. Tabs of an `IndexedStack` share a route, so a call names its screen.
+- `describe` gives every open screen as the in-app agent would get it: `sees` is the AG-UI `context` and `tools` the AG-UI `tools`, plus `needsApproval`. Every answer of `call` has them too, read after the call.
+- A call checks the live list, as the in-app agent's calls do, and `onEvent` hears an `AgentCall` once the method returned. The call stays out of the AG-UI thread: the in-app agent sees its effect in `.sees` on its next run.
+- `TandemBridge.describe()` and `TandemBridge.call()` give the JSON of the extensions as Dart values. An agent list that the generated code no longer fits throws a `StateError`, as in a run, and the extension answers with that error, so the coding agent can run build_runner.
+
+Every answer of `call` is a `ToolAnswer` as `json`: the tool answer of the in-app agent with its `status`, and `{"status":"returned","result":<result>}` when the method returned. No screen, an unknown `screen` or no front screen is `refused`, with the ids of the open screens.
 
 ## Apple on-device connection
 

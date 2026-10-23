@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:tandem/src/agent_schema.dart';
+import 'package:tandem/src/debug/open_screens.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/session/approvals.dart';
@@ -38,8 +40,9 @@ import 'package:tandem/src/session/tandem_session.dart';
 /// scope that leaves the tree disposes its session before an ancestor that
 /// owns the surface closes it.
 final class TandemScope extends StatefulWidget {
-  /// A scope that talks to the AG-UI endpoint `agent`. Without one, the
-  /// screen has no in-app agent, and a run of `session.send` fails.
+  /// A scope that talks to the AG-UI endpoint `agent`. Without one, only a
+  /// coding agent drives the screen, through `TandemBridge`, and a run of
+  /// `session.send` fails.
   const new({
     super.key,
     required this.surface,
@@ -93,11 +96,15 @@ final class TandemScope extends StatefulWidget {
 
 final class _TandemScopeState() extends State<TandemScope> {
   late TandemSession _session;
+  late final OpenScreen _openScreen;
 
   @override
   void initState() {
     super.initState();
     _session = _open();
+    if (kDebugMode) {
+      _openScreen = OpenScreens.open(context, () => _session);
+    }
   }
 
   @override
@@ -112,6 +119,9 @@ final class _TandemScopeState() extends State<TandemScope> {
 
   @override
   void dispose() {
+    if (kDebugMode) {
+      OpenScreens.close(_openScreen);
+    }
     _session.dispose();
     super.dispose();
   }

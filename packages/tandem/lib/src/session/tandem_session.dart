@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:tandem/src/agent_list.dart';
@@ -146,6 +147,35 @@ final class TandemSession({
 
   /// Whether [request] waits for the user to approve or reject it.
   bool isPending(ApprovalRequest request) => _turn.isPending(request);
+
+  /// What the agent works on.
+  @internal
+  AgentSurface get surface => _surface;
+
+  /// Calls [tool] for a coding agent, such as through `TandemBridge`. The
+  /// call stays out of the agent's history, and `onEvent` hears of its
+  /// return as of the agent's own calls. Throws a [StateError] when the
+  /// agent list does not fit the generated code.
+  @internal
+  Future<ToolAnswer> callForCodingAgent(
+    String tool,
+    Map<String, Object?> arguments,
+  ) async {
+    final (:answer, :returned) = await runMethod(
+      AgentListing.of(_surface),
+      tool,
+      jsonEncode(arguments),
+      approved: false,
+      report: _report,
+    );
+    if (_disposed) {
+      return answer;
+    }
+    if (returned case final agentCall?) {
+      _emit(agentCall);
+    }
+    return answer;
+  }
 
   /// Moves the chat to a new AG-UI thread: the next message goes without the
   /// earlier history, such as after a [RunFailed] whose `code` says the
@@ -343,7 +373,9 @@ final class TandemSession({
   Future<ToolAnswer> _execute(Run run, ToolCall call) async {
     final (:answer, :returned) = await runMethod(
       run.listing,
-      call,
+      call.tool,
+      call.argumentsJson,
+      approved: call.approved,
       report: _report,
     );
     if (returned case final agentCall? when _run == run) {

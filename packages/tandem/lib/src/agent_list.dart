@@ -97,6 +97,9 @@ final class AgentListing._(
 
   bool lists(String tool) => _tools.containsKey(tool);
 
+  /// The names of the tools this listing lists.
+  Iterable<String> get toolNames => _tools.keys;
+
   /// The doc comment of [tool], as the agent got it. Throws a [StateError] for
   /// a tool this listing does not list.
   String description(String tool) => switch (_tools[tool]) {

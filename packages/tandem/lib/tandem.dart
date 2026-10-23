@@ -5,7 +5,8 @@
 /// `.callsWithApproval`. `tandem_generator` writes the code behind the list.
 /// `TandemScope` opens a `TandemSession` of that class with an AG-UI agent,
 /// and the app's own chat or buttons drive it through
-/// `TandemSessionScope.of`.
+/// `TandemSessionScope.of`. In a debug build, `TandemBridge` lets a coding
+/// agent drive the same screens.
 library;
 
 export 'src/agent_list.dart' show AgentCapability;
@@ -20,6 +21,7 @@ export 'src/chat/chat_item.dart'
         ChatNotice,
         ChatNoticeKind,
         UserMessage;
+export 'src/debug/tandem_bridge.dart' show TandemBridge;
 export 'src/errors.dart'
     show
         AgentHttpException,
