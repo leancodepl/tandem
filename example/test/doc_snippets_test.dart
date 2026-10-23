@@ -42,4 +42,22 @@ void main() {
       }
     });
   }
+
+  test('the README of tandem is a copy of the README', () {
+    // pub.dev plays no video, so the copy shows the film as a GIF.
+    final readme = File('../README.md').readAsStringSync().replaceFirst(
+      RegExp(r'^https://github\.com/user-attachments/\S+$', multiLine: true),
+      'the film',
+    );
+    final copy = File('../packages/tandem/README.md')
+        .readAsStringSync()
+        .replaceFirst(
+          RegExp(
+            r'^<p align="center">\n[^\n]*\.gif[^\n]*\n</p>$',
+            multiLine: true,
+          ),
+          'the film',
+        );
+    expect(copy, readme);
+  });
 }
