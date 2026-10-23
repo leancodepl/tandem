@@ -1,6 +1,7 @@
 ---
 name: tandem-agent-aware-screen
 description: Make a Flutter screen agent-aware with Tandem, so an agent sees what the screen shows, calls the methods of its state class (a Cubit, a Riverpod Notifier or a ChangeNotifier), and anything that matters waits for the user's approval. Use when asked to add Tandem or an AI agent to a Flutter screen, or when the code uses TandemScope, @TandemAgent or agentCapabilities.
+user-invocable: false
 ---
 
 # Make a screen agent-aware with Tandem

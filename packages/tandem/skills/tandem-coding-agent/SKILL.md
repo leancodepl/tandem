@@ -1,6 +1,7 @@
 ---
 name: tandem-coding-agent
 description: Fill in or change a screen of a running Flutter debug app that uses Tandem, such as a form, through the methods its state class lists, and set up TandemBridge so a coding agent can. Use when asked to fill a Flutter form or screen from a text, an e-mail or a ticket, or to let the coding agent drive the app.
+user-invocable: false
 ---
 
 # Drive a Tandem screen as the coding agent
