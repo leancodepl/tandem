@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
+import 'package:tandem/testing.dart';
 
 import '../support/shop.dart';
 
@@ -14,13 +18,28 @@ void main() {
 
   Widget scope(
     Shop shop, {
+    TandemApprovals approvals = const .fromState(),
     void Function(BuildContext, TandemEvent, TandemSession)? onEvent,
   }) => TandemScope(
     surface: (context) => shop,
-    approvals: const .fromState(),
+    approvals: approvals,
     onEvent: onEvent,
     child: const SizedBox(),
   );
+
+  Widget connected(Shop shop, AgentConnection connection) =>
+      TandemScope.connected(
+        surface: (context) => shop,
+        connection: connection,
+        approvals: const .fromState(),
+        child: const SizedBox(),
+      );
+
+  TandemSession sessionOf(WidgetTester tester) =>
+      TandemSessionScope.of(tester.element(find.byType(SizedBox)));
+
+  ApprovalRequest lastRequest(WidgetTester tester) =>
+      sessionOf(tester).items.whereType<ApprovalRequest>().last;
 
   testWidgets('describe lists the open screens with what the agent sees, '
       'its tools and which need approval', (tester) async {
@@ -138,11 +157,243 @@ void main() {
     expect(shop.items, isEmpty);
   });
 
-  test('enable twice does not throw', () {
-    TandemBridge.enable();
+  testWidgets('a call that needs approval shows as AwaitingApproval, and '
+      'Approve returns its result', (tester) async {
+    final shop = newShop();
+    await tester.pumpWidget(scope(shop));
 
-    expect(TandemBridge.enable, returnsNormally);
+    final answer = TandemBridge.call('share');
+    final request = lastRequest(tester);
+    expect(sessionOf(tester).status, AwaitingApproval(request));
+    sessionOf(tester).approve(request);
+
+    expect(await answer, containsPair('status', 'returned'));
+    expect(sessionOf(tester).status, isA<Idle>());
   });
+
+  testWidgets('Reject answers rejected_by_user', (tester) async {
+    final shop = newShop();
+    await tester.pumpWidget(scope(shop));
+
+    final answer = TandemBridge.call('share');
+    sessionOf(tester).reject(lastRequest(tester));
+
+    expect(await answer, containsPair('status', 'rejected_by_user'));
+  });
+
+  testWidgets('a change to .sees while the request shows invalidates it', (
+    tester,
+  ) async {
+    final shop = newShop();
+    await tester.pumpWidget(scope(shop));
+
+    final answer = TandemBridge.call('share');
+    shop.add('milk');
+    await tester.pump();
+
+    expect(await answer, containsPair('status', 'invalidated'));
+    expect(lastRequest(tester).status, ApprovalStatus.invalidated);
+  });
+
+  testWidgets('the approval callback gets the request', (tester) async {
+    final shop = newShop();
+    final asked = <String>[];
+    await tester.pumpWidget(
+      scope(
+        shop,
+        approvals: .callback((context, request, session) async {
+          asked.add(request.tool);
+          session.approve(request);
+        }),
+      ),
+    );
+
+    final answer = await TandemBridge.call('share');
+
+    expect(answer, containsPair('status', 'returned'));
+    expect(asked, ['share']);
+  });
+
+  testWidgets('a screen that takes no approvals refuses the call, and '
+      'autoApprove runs it without a request', (tester) async {
+    final shop = newShop();
+    addTearDown(TandemBridge.enable);
+    await tester.pumpWidget(scope(shop, approvals: const .none()));
+
+    final refused = await TandemBridge.call('share');
+    TandemBridge.enable(autoApprove: true);
+    final approved = await TandemBridge.call('share');
+
+    expect(refused, containsPair('reason', contains('autoApprove')));
+    expect(approved, containsPair('status', 'returned'));
+    expect(sessionOf(tester).items, isEmpty);
+  });
+
+  testWidgets('the same call joins the waiting request, and another one is '
+      'refused', (tester) async {
+    final shop = newShop();
+    shop.items.add('milk');
+    await tester.pumpWidget(scope(shop));
+
+    final first = TandemBridge.call('share');
+    final again = TandemBridge.call('share');
+    final other = await TandemBridge.call('clear');
+    sessionOf(tester).approve(lastRequest(tester));
+
+    expect(await first, containsPair('status', 'returned'));
+    expect(await again, containsPair('status', 'returned'));
+    expect(other, containsPair('status', 'refused'));
+    expect(sessionOf(tester).items.whereType<ApprovalRequest>(), hasLength(1));
+    expect(shop.items, ['milk']);
+  });
+
+  testWidgets('a request of the coding agent waits while one of the in-app '
+      'agent shows, and no call of the bridge reaches the agent', (
+    tester,
+  ) async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Shared.')],
+    ]);
+    await tester.pumpWidget(connected(newShop(), agent));
+    await TandemBridge.call('add', arguments: {'item': 'milk'});
+    sessionOf(tester).send('share it');
+    await tester.pumpAndSettle();
+    final inApp = lastRequest(tester);
+
+    final answer = TandemBridge.call('share');
+    expect(lastRequest(tester), same(inApp));
+    sessionOf(tester).approve(inApp);
+    await tester.pumpAndSettle();
+    final codingAgents = lastRequest(tester);
+    sessionOf(tester).approve(codingAgents);
+
+    expect(await answer, containsPair('status', 'returned'));
+    expect(agent.requests, hasLength(2));
+    expect(
+      jsonEncode([for (final request in agent.requests) request['messages']]),
+      isNot(anyOf(contains('"add"'), contains(codingAgents.toolCallId))),
+    );
+  });
+
+  testWidgets('a request of the coding agent shows once a run of the in-app '
+      'agent breaks', (tester) async {
+    final gate = Completer<void>();
+    await tester.pumpWidget(connected(newShop(), _Interrupted(gate.future)));
+    sessionOf(tester).send('hi');
+
+    final answer = TandemBridge.call('share');
+    gate.complete();
+    await tester.pump();
+    expect(tester.takeException(), isA<AgentRunException>());
+    sessionOf(tester).approve(lastRequest(tester));
+
+    expect(await answer, containsPair('status', 'returned'));
+  });
+
+  testWidgets('a request of the coding agent shows once a change to .sees '
+      'invalidates the request of the in-app agent', (tester) async {
+    final shop = newShop();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share')],
+    ]);
+    await tester.pumpWidget(connected(shop, agent));
+    sessionOf(tester).send('share it');
+    await tester.pumpAndSettle();
+    final changesArrive = Completer<void>();
+    shop
+      ..changesArrive = changesArrive.future
+      ..add('milk');
+
+    unawaited(TandemBridge.call('clear'));
+    changesArrive.complete();
+    await tester.pump();
+
+    expect(lastRequest(tester).tool, 'clear');
+    expect(sessionOf(tester).status, AwaitingApproval(lastRequest(tester)));
+  });
+
+  testWidgets('a message of the user cancels the request that shows', (
+    tester,
+  ) async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi')],
+    ]);
+    await tester.pumpWidget(connected(newShop(), agent));
+
+    final answer = TandemBridge.call('share');
+    sessionOf(tester).send('hi');
+    await tester.pumpAndSettle();
+
+    expect(await answer, containsPair('status', 'cancelled'));
+    expect(lastRequest(tester).status, ApprovalStatus.cancelled);
+    expect(
+      jsonEncode(agent.requests.single['messages']),
+      isNot(contains('share')),
+    );
+  });
+
+  testWidgets('closing the screen cancels the request that waits', (
+    tester,
+  ) async {
+    final shop = newShop();
+    await tester.pumpWidget(scope(shop));
+
+    final answer = TandemBridge.call('share');
+    await tester.pumpWidget(const SizedBox());
+
+    expect(await answer, {'status': 'cancelled', 'screens': <Object?>[]});
+  });
+
+  testWidgets('enable twice does not throw, and the last autoApprove holds', (
+    tester,
+  ) async {
+    final shop = newShop();
+    addTearDown(TandemBridge.enable);
+    TandemBridge.enable(autoApprove: true);
+    TandemBridge.enable();
+    await tester.pumpWidget(scope(shop));
+
+    unawaited(TandemBridge.call('share'));
+    await tester.pump();
+
+    expect(sessionOf(tester).status, isA<AwaitingApproval>());
+  });
+
+  testWidgets('once the user decided, describe shows the last approval with '
+      'its answer', (tester) async {
+    final shop = newShop();
+    await tester.pumpWidget(scope(shop));
+
+    // The coding agent stopped waiting, as after a timeout of its client.
+    unawaited(TandemBridge.call('share'));
+    sessionOf(tester).approve(lastRequest(tester));
+    await tester.pump();
+
+    final {'screens': screens as List<Object?>} = TandemBridge.describe();
+    expect(
+      screens.single,
+      containsPair('lastApproval', {
+        'tool': 'share',
+        'arguments': <String, Object?>{},
+        'status': 'returned',
+        'result': null,
+      }),
+    );
+  });
+}
+
+/// Ends its run with an interrupt, which Tandem cannot follow, once [_gate]
+/// completes.
+final class _Interrupted(final Future<void> _gate) implements AgentConnection {
+  @override
+  Stream<Map<String, Object?>> run(Map<String, Object?> input) async* {
+    await _gate;
+    yield {
+      'type': 'RUN_FINISHED',
+      'outcome': {'type': 'interrupt'},
+    };
+  }
 }
 
 PageRouteBuilder<void> _route(Widget screen) =>
