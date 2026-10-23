@@ -3,9 +3,11 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/debug/open_screens.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/session/tool_answer.dart';
+import 'package:tandem/src/session/tool_call.dart';
 
 /// Lets a coding agent, such as Claude Code or Cursor, call the methods that
 /// the open screens of a debug build list, as the in-app agent does. The
@@ -25,18 +27,27 @@ import 'package:tandem/src/session/tool_answer.dart';
 /// extensions, for tests.
 final class TandemBridge._() {
   static var _registered = false;
+  static var _autoApprove = false;
 
   /// Registers the extensions, once per isolate. Does nothing in a profile
   /// or release build.
-  static void enable() {
+  ///
+  /// A call of a method listed with `.callsWithApproval` waits for the user,
+  /// as the in-app agent's calls do. With [autoApprove], for automation,
+  /// every call runs at once, also on a screen with `approvals: .none()`.
+  /// The last call of [enable] holds.
+  static void enable({bool autoApprove = false}) {
     if (kDebugMode) {
+      _autoApprove = autoApprove;
       _register();
     }
   }
 
   /// The open screens under `screens`, each with its `id`, whether it is the
   /// `front` one, what the agent `sees`, the `tools` it may call and which of
-  /// them `needsApproval`.
+  /// them `needsApproval`. Once a call of a coding agent asked the user, its
+  /// `tool`, `arguments` and answer are the `lastApproval`: `pending` while
+  /// the user decides, `approved` while the method runs.
   static Map<String, Object?> describe() {
     final front = OpenScreens.front;
     return {
@@ -52,6 +63,10 @@ final class TandemBridge._() {
   /// its `status`, such as `returned` with the `result`, and the `screens`
   /// after the call.
   ///
+  /// A call that waits for the user answers once the user decided, such as
+  /// `rejected_by_user`. Meanwhile the same call waits for the same answer,
+  /// and another call that needs approval is refused.
+  ///
   /// [describe] and [call] throw a [StateError] when an agent list does not
   /// fit the generated code, and the extension answers with it.
   static Future<Map<String, Object?>> call(
@@ -64,7 +79,11 @@ final class TandemBridge._() {
       return _withScreens(.refused(OpenScreens.whyNotFound(screen)));
     }
     return _withScreens(
-      await target.session.callForCodingAgent(tool, arguments),
+      await target.session.callForCodingAgent(
+        tool,
+        arguments,
+        autoApprove: _autoApprove,
+      ),
     );
   }
 
@@ -97,6 +116,7 @@ final class TandemBridge._() {
 
   static JsonObject _describe(OpenScreen screen, {required bool front}) {
     final listing = AgentListing.of(screen.session.surface);
+    final lastApproval = screen.session.codingAgentRequest;
     return {
       'id': screen.id,
       'front': front,
@@ -106,8 +126,16 @@ final class TandemBridge._() {
         for (final tool in listing.toolNames)
           if (listing.needsApproval(tool)) tool,
       ],
+      if (lastApproval != null) 'lastApproval': _lastApproval(lastApproval),
     };
   }
+
+  static JsonObject _lastApproval(ToolCall call) => {
+    'tool': call.tool,
+    'arguments': jsonDecode(call.argumentsJson),
+    ...call.answer?.json ??
+        {'status': (call.request?.status ?? ApprovalStatus.pending).name},
+  };
 
   static JsonObject _withScreens(ToolAnswer answer) => {
     ...answer.json,

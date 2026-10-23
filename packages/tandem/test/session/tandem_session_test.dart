@@ -733,6 +733,31 @@ void main() {
     expect(reported, isEmpty);
   });
 
+  test('a session disposed while a method without approval runs sends, '
+      'hears and reports nothing more', () async {
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('refresh')],
+    ]);
+    final reported = _collectReports();
+    // Not open(), which would dispose it again at the end.
+    final session = TandemSession(
+      surface: shop,
+      connection: agent,
+      onEvent: events.add,
+    )..send('refresh');
+    await pumpEventQueue();
+
+    session.dispose();
+    serverReply.complete();
+    await pumpEventQueue();
+
+    expect(agent.requests, hasLength(1));
+    expect(events, isEmpty);
+    expect(reported, isEmpty);
+  });
+
   test('Stop does nothing while an approved method runs, and its answer goes '
       'to the agent at once', () async {
     final serverReply = Completer<void>();

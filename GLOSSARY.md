@@ -29,7 +29,7 @@ A method of the surface that the agent may call, listed with `.calls` or `.calls
 _Avoid_: client tool, action, command
 
 **Approval request**:
-The agent's call of a `.callsWithApproval` method, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
+A call of a `.callsWithApproval` method by the in-app agent or a coding agent, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
 _Avoid_: confirmation, interrupt
 
 **Invalidated**:
