@@ -29,6 +29,8 @@ The README, `doc/examples.md` and both packages' `example/example.md` show only 
 
 ## Session rules
 
+`TandemSession` keeps the AG-UI run, the thread and the queued messages. Every call of a listed method, from the in-app agent's turn or from a caller outside it, goes through one call pipeline (`session/call_pipeline.dart`), which runs the methods, shows the approval requests and invalidates them. A caller outside the run calls through `OutsideCalls`, and its answer goes only to it.
+
 - Every run reads the live list: `context` from `.sees`, `tools` from `.calls`. Every tool call checks the list again.
 - One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run.
 - `status` follows from the open run: `Stopping` once the user stopped it, `Calling` while a listed method runs, else `Thinking`. Without a run it is `AwaitingApproval` with the request that shows, or `Idle`.

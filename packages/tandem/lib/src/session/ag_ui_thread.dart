@@ -20,10 +20,10 @@ final class AgUiThread() {
     return RunInput(threadId: _id, messages: [..._messages], listing: listing);
   }
 
-  /// What the agent said in [run], and the calls of its [turn].
-  void addTurn(Run run, Turn turn) => _messages.addAll([
+  /// What the agent said in [run], and its calls.
+  void addTurn(Run run) => _messages.addAll([
     ...run.assistantTexts,
-    for (final call in turn.calls)
+    for (final call in run.calls.values)
       AgUiMessage.assistantToolCall(call.id, call.tool, call.argumentsJson),
   ]);
 
@@ -38,6 +38,9 @@ final class AgUiThread() {
       _nextUserMessage.add(message);
     }
   }
+
+  /// The user's [text], without answers.
+  void addMessage(String text) => _nextUserMessage.add(text);
 
   /// A new thread without the earlier messages, for when what ADK kept of a
   /// run is unknown.

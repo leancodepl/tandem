@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:tandem/src/agent_list.dart';
@@ -11,16 +10,13 @@ import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/ag_ui_event_decoder.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
+import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/ag_ui_thread.dart';
+import 'package:tandem/src/session/call_pipeline.dart';
+import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/run.dart';
-import 'package:tandem/src/session/run_method.dart';
-import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tandem_event.dart';
-import 'package:tandem/src/session/tool_answer.dart';
-import 'package:tandem/src/session/tool_call.dart';
-import 'package:tandem/src/session/turn.dart';
-import 'package:uuid/uuid.dart';
 
 /// The chat of the user and the agent about one screen.
 ///
@@ -56,7 +52,7 @@ final class TandemSession({
   @internal
   this {
     _stateChangesSubscription = _surface.changes.listen(
-      (_) => _invalidateIfSeesChanged(),
+      (_) => _calls.invalidateIfSeesChanged(),
     );
   }
 
@@ -65,29 +61,28 @@ final class TandemSession({
   final _items = <ChatItem>[];
   final _queuedMessages = <String>[];
   final _thread = AgUiThread();
+  late final _calls = CallPipeline(
+    surface: _surface,
+    items: _items,
+    openRun: () => _run,
+    decided: ({required agentTurn}) => _startNextRun(withAnswers: agentTurn),
+    notify: notifyListeners,
+    emit: _emit,
+    onApprovalRequest: _onApprovalRequest,
+    asksForApproval: _asksForApproval,
+  );
 
   /// Null when no run is open, and once the session is disposed.
   Run? _run;
   var _disposed = false;
-
-  /// The calls of the last run, until their answers go out.
-  var _turn = Turn(const []);
-
-  /// The last call of a coding agent that asked the user, in a turn of its
-  /// own that never goes to the agent.
-  var _codingAgentTurn = Turn(const []);
 
   /// Oldest first.
   List<ChatItem> get items => UnmodifiableListView(_items);
 
   SessionStatus get status => switch (_run) {
     Run(stopped: true) => const Stopping(),
-    Run(:final calling?) => calling,
-    Run() => const Thinking(),
-    null => switch (_turn.awaited ?? _codingAgentTurn.awaited) {
-      final request? => AwaitingApproval(request),
-      null => const Idle(),
-    },
+    Run() => _calls.calling ?? const Thinking(),
+    null => _calls.status,
   };
 
   /// Sends [text], trimmed; does nothing when it is empty or the session is
@@ -99,10 +94,8 @@ final class TandemSession({
       return;
     }
     _items.add(UserMessage(message));
-    if (_codingAgentTurn.awaited != null) {
-      _codingAgentTurn.cancelWaiting().forEach(_showDecision);
-    }
-    if (_run != null) {
+    _calls.cancelShownOutside();
+    if (_busy) {
       _queuedMessages.add(message);
     } else {
       _start(message);
@@ -117,7 +110,7 @@ final class TandemSession({
   /// user did not approve.
   void stop() {
     final run = _run;
-    if (run == null || run.stopped || (run.calling?.approved ?? false)) {
+    if (run == null || run.stopped) {
       return;
     }
     run.stopped = true;
@@ -137,114 +130,25 @@ final class TandemSession({
   /// Throws an [ApprovalNotPending] when [request] was rejected, cancelled
   /// or invalidated, and also when what the agent sees changed since it
   /// asked, which invalidates it.
-  void approve(ApprovalRequest request) {
-    // `changes` may not report every value the agent sees.
-    _invalidateIfSeesChanged();
-    final turn = _turnOf(request);
-    if (turn.approve(_latest(request)) case final call?) {
-      _showDecision(call);
-      unawaited(_runApproved(call, turn));
-    }
-  }
+  void approve(ApprovalRequest request) => _calls.approve(request);
 
   /// Tells the agent the user rejected [request] and cancels the rest of its
   /// turn, so the agent plans again. Does nothing when [request] is rejected
   /// already. Throws an [ApprovalNotPending] when it was approved, cancelled
   /// or invalidated.
-  void reject(ApprovalRequest request) {
-    final turn = _turnOf(request);
-    if (turn.reject(_latest(request)) case final call?) {
-      _showDecision(call);
-      _continueAfter(turn);
-    }
-  }
+  void reject(ApprovalRequest request) => _calls.reject(request);
 
   /// Whether [request] waits for the user to approve or reject it.
-  bool isPending(ApprovalRequest request) =>
-      _turnOf(request).isPending(request);
+  bool isPending(ApprovalRequest request) => _calls.isPending(request);
 
   /// What the agent works on.
   @internal
   AgentSurface get surface => _surface;
 
-  /// The last call of a coding agent that asked the user, null before the
-  /// first one.
+  /// The way in for callers outside the agent's run, such as a coding agent
+  /// through `TandemBridge`.
   @internal
-  ToolCall? get codingAgentRequest => _codingAgentTurn.calls.singleOrNull;
-
-  /// Calls [tool] for a coding agent, such as through `TandemBridge`. The
-  /// call stays out of the agent's history, and `onEvent` hears of its
-  /// return as of the agent's own calls. Throws a [StateError] when the
-  /// agent list does not fit the generated code.
-  ///
-  /// With [autoApprove], every call runs at once, approved in advance.
-  /// Otherwise a call that needs approval waits for the user as an
-  /// [ApprovalRequest], which shows once the session is idle. One waits at a
-  /// time: the same call waits for the same answer, and another is refused.
-  @internal
-  Future<ToolAnswer> callForCodingAgent(
-    String tool,
-    Map<String, Object?> arguments, {
-    required bool autoApprove,
-  }) {
-    final listing = AgentListing.of(_surface);
-    final argumentsJson = jsonEncode(arguments);
-    if (autoApprove) {
-      return _runForCodingAgent(listing, tool, argumentsJson, approved: true);
-    }
-    if (listing.needsApproval(tool)) {
-      final call = ToolCall(const Uuid().v4(), tool, listing.description(tool))
-        ..arguments = argumentsJson;
-      return _askForCodingAgent(call);
-    }
-    return _runForCodingAgent(listing, tool, argumentsJson, approved: false);
-  }
-
-  Future<ToolAnswer> _runForCodingAgent(
-    AgentListing listing,
-    String tool,
-    String argumentsJson, {
-    required bool approved,
-  }) async {
-    final (:answer, :returned) = await runMethod(
-      listing,
-      tool,
-      argumentsJson,
-      approved: approved,
-      report: _report,
-    );
-    if (_disposed) {
-      return answer;
-    }
-    if (returned case final agentCall?) {
-      _emit(agentCall);
-    }
-    return answer;
-  }
-
-  Future<ToolAnswer> _askForCodingAgent(ToolCall call) async {
-    if (codingAgentRequest case final waiting? when waiting.answer == null) {
-      if (waiting.tool == call.tool && waiting.arguments == call.arguments) {
-        return await waiting.answered;
-      }
-      return .refused(
-        '${waiting.tool} waits for the user or still runs. Repeat that call '
-        'to wait for its answer before you call ${call.tool}.',
-      );
-    }
-    if (_asksForApproval()) {
-      _codingAgentTurn = Turn([call])..ask(_seesNow);
-      if (status is Idle) {
-        _showNextRequest();
-      }
-      return await call.answered;
-    }
-    return .refused(
-      "${call.tool} needs the user's approval, but this screen has "
-      'approvals: .none(). TandemBridge.enable(autoApprove: true) approves '
-      'the calls of a coding agent.',
-    );
-  }
+  OutsideCalls get calls => _calls;
 
   /// Moves the chat to a new AG-UI thread: the next message goes without the
   /// earlier history, such as after a [RunFailed] whose `code` says the
@@ -252,11 +156,10 @@ final class TandemSession({
   /// [ChatNoticeKind.startedOver] notice, and requests that wait are
   /// cancelled. Does nothing while a run is open, or once disposed.
   void startOver() {
-    if (_run != null || _disposed) {
+    if (_busy || _disposed) {
       return;
     }
-    _cancelWaiting();
-    _turn = Turn(const []);
+    _calls.cancelAll();
     _thread.startOver();
     _items.add(const ChatNotice(.startedOver));
     notifyListeners();
@@ -267,22 +170,22 @@ final class TandemSession({
   @override
   void dispose() {
     _disposed = true;
-    _cancelWaiting();
+    _calls.dispose();
     _run = null;
     unawaited(_runSubscription?.cancel());
     unawaited(_stateChangesSubscription.cancel());
     super.dispose();
   }
 
-  void _start([String? text]) {
-    _closeTurn(text);
-    _open();
-  }
+  /// A run is open, or a method the user approved runs.
+  bool get _busy => switch (status) {
+    Idle() || AwaitingApproval() => false,
+    _ => true,
+  };
 
-  void _closeTurn(String? text) {
-    _turn.cancelWaiting().forEach(_showDecision);
-    _thread.addAnswers(_turn, text);
-    _turn = Turn(const []);
+  void _start([String? text]) {
+    _thread.addAnswers(_calls.closeTurn(), text);
+    _open();
   }
 
   void _open() {
@@ -299,7 +202,7 @@ final class TandemSession({
               }
             },
             onError: (Object err, StackTrace st) {
-              _report(err, st);
+              report(err, st);
               _connectionLost(run);
             },
             onDone: () => _connectionLost(run),
@@ -330,8 +233,7 @@ final class TandemSession({
         if (_run != run) {
           return;
         }
-        _turn = Turn([...run.calls.values]);
-        _thread.addTurn(run, _turn);
+        _endTurn(run);
         _startNextRun();
       case RunFinished(outcome: .unsupported):
         _abort(
@@ -354,14 +256,9 @@ final class TandemSession({
   }
 
   Future<void> _finish(Run run) async {
-    final turn = _turn = Turn([...run.calls.values]);
-    _thread.addTurn(run, turn);
+    _endTurn(run);
     try {
-      _invalidateIfSeesChanged();
-      await _answerCalls(run, turn);
-      if (!run.stopped && _run == run) {
-        _askUser(turn, seesChanged: run.seesChanged);
-      }
+      await _calls.answerTurn(run);
     } catch (err, st) {
       _runFailed(err, st);
       return;
@@ -371,108 +268,16 @@ final class TandemSession({
     }
   }
 
-  Future<void> _answerCalls(Run run, Turn turn) async {
-    for (final call in turn.calls) {
-      if (run.stopped || _run != run) {
-        return;
-      }
-      if (!call.hasObjectArguments) {
-        call.answer = .refused('The arguments must be a JSON object.');
-      } else if (!run.listing.needsApproval(call.tool)) {
-        run.calling = Calling(call.tool, approved: false);
-        notifyListeners();
-        if (run.stopped) {
-          return;
-        }
-        call.answer = await _execute(run, call);
-        run.calling = null;
-        _invalidateIfSeesChanged();
-      }
-    }
-  }
-
-  void _askUser(Turn turn, {required bool seesChanged}) {
-    if (!_asksForApproval()) {
-      _refuseApprovals(turn);
-    } else if (seesChanged) {
-      // The agent asked about what it has not seen.
-      turn.invalidateWaiting();
-    } else {
-      turn.ask(_seesNow);
-    }
-  }
-
-  void _refuseApprovals(Turn turn) {
-    final refused = turn.refuseWaiting(
-      'The user cannot approve calls on this screen.',
-    );
-    for (final call in refused) {
-      if (kDebugMode) {
-        _report(
-          StateError(
-            '${call.tool} needs approval, but this screen has approvals: '
-            '.none().',
-          ),
-          .current,
-        );
-      }
-    }
-  }
-
-  Future<void> _ask(ApprovalRequest request) async {
-    try {
-      await _onApprovalRequest?.call(request);
-    } catch (err, st) {
-      _report(err, st);
-    }
-  }
-
-  // Its own run: a new message waits, dispose skips the follow-up.
-  Future<void> _runApproved(ToolCall call, Turn turn) async {
-    final run = _run = Run(AgentListing.of(_surface))
-      ..calling = Calling(call.tool, approved: true);
-    notifyListeners();
-    call.answer = await _execute(run, call);
-    if (_run == run) {
-      _invalidateIfSeesChanged();
-      _continueAfter(turn);
-    }
-  }
-
-  /// Goes on once a request of [turn] is decided and, when approved, its
-  /// method returned. A coding agent's request leaves the agent's turn as it
-  /// was: its answers wait for the user's next message.
-  void _continueAfter(Turn turn) {
-    if (identical(turn, _turn)) {
-      _startNextRun();
-      return;
-    }
-    _run = null;
-    if (_queuedMessages.isNotEmpty) {
-      _start(_queuedMessages.removeAt(0));
-    }
-    notifyListeners();
-  }
-
-  Future<ToolAnswer> _execute(Run run, ToolCall call) async {
-    final (:answer, :returned) = await runMethod(
-      run.listing,
-      call.tool,
-      call.argumentsJson,
-      approved: call.approved,
-      report: _report,
-    );
-    if (returned case final agentCall? when _run == run) {
-      _emit(agentCall);
-    }
-    return answer;
+  void _endTurn(Run run) {
+    _calls.takeTurn(run);
+    _thread.addTurn(run);
   }
 
   void _emit(TandemEvent event) {
     try {
       _onEvent?.call(event);
     } catch (err, st) {
-      _report(err, st);
+      report(err, st);
     }
   }
 
@@ -485,91 +290,25 @@ final class TandemSession({
     notifyListeners();
   }
 
-  void _invalidateIfSeesChanged() {
-    final waiting = [
-      for (final turn in _turns)
-        if (turn.waitsForUser) turn,
-    ];
-    if (_run == null && waiting.isEmpty) {
-      return;
-    }
-    final seen = _seesNow;
-    if (_run case final run?) {
-      run.seesChanged = run.seesChanged || seen != SeesSnapshot.of(run.listing);
-    }
-    final changed = [
-      for (final turn in waiting)
-        if (seen != turn.seen) turn,
-    ];
-    if (changed.isEmpty) {
-      return;
-    }
-    for (final turn in changed) {
-      turn.invalidateWaiting().forEach(_showDecision);
-    }
-    // The agent's request that no longer shows uncovers a coding agent's.
-    if (status is Idle) {
-      _showNextRequest();
-    } else {
-      notifyListeners();
-    }
-  }
-
-  SeesSnapshot get _seesNow => .read(_surface, report: _report);
-
-  /// The turns whose requests wait for the user: the agent's and a coding
-  /// agent's.
-  List<Turn> get _turns => [_turn, _codingAgentTurn];
-
-  Turn _turnOf(ApprovalRequest request) =>
-      _codingAgentTurn.calls.any((call) => call.id == request.toolCallId)
-      ? _codingAgentTurn
-      : _turn;
-
-  void _cancelWaiting() {
-    for (final turn in _turns) {
-      turn.cancelWaiting().forEach(_showDecision);
-    }
-  }
-
-  /// The app may hold an older copy of [request], with an older status.
-  ApprovalRequest _latest(ApprovalRequest request) =>
-      _items.whereType<ApprovalRequest>().lastWhere(
-        (item) => item.toolCallId == request.toolCallId,
-        orElse: () => request,
-      );
-
-  void _showDecision(ToolCall call) {
-    if (call.request case final decided?) {
-      final shown = _items.indexWhere(
-        (item) =>
-            item is ApprovalRequest && item.toolCallId == decided.toolCallId,
-      );
-      _items[shown] = decided;
-    }
-  }
-
   void _abort(Run run, Object error, StackTrace stack) {
     if (_run != run) {
       return;
     }
     run.ended = true;
     _run = null;
-    _turn = Turn(const []);
+    _calls.dropTurn();
     _thread.startOver();
-    for (final message in _queuedMessages) {
-      _thread.addAnswers(_turn, message);
-    }
+    _queuedMessages.forEach(_thread.addMessage);
     _queuedMessages.clear();
     unawaited(_runSubscription?.cancel());
-    _report(error, stack);
+    report(error, stack);
     _items.add(const ChatNotice(.runFailed));
-    _showNextRequest();
+    _calls.showNext();
     _emit(RunFailed(code: _codeOf(error)));
   }
 
   void _runFailed(Object err, StackTrace st) {
-    _report(err, st);
+    report(err, st);
     _items.add(const ChatNotice(.runFailed));
     _startNextRun();
     _emit(RunFailed(code: _codeOf(err)));
@@ -585,11 +324,12 @@ final class TandemSession({
     _emit(const ConnectionLost());
   }
 
-  /// Starts the run of the next queued message or, unless the user stopped,
-  /// a run with only the answers once every call has one. Otherwise shows
-  /// the next request.
-  void _startNextRun() {
-    final answersOnly = status is! Stopping && _turn.answered;
+  /// Starts the run of the next queued message or, [withAnswers] and unless
+  /// the user stopped, a run with only the answers once every call has one.
+  /// Otherwise shows the next request. An outside caller's decision goes on
+  /// without the answers: they wait for the user's next message.
+  void _startNextRun({bool withAnswers = true}) {
+    final answersOnly = withAnswers && status is! Stopping && _calls.answersDue;
     _run = null;
     if (_queuedMessages.isNotEmpty) {
       _start(_queuedMessages.removeAt(0));
@@ -598,26 +338,9 @@ final class TandemSession({
       _start();
       notifyListeners();
     } else {
-      _showNextRequest();
+      _calls.showNext();
     }
   }
-
-  /// Shows the next request of the agent's turn or, when it has none, the
-  /// one of a coding agent.
-  void _showNextRequest() {
-    final request = _turn.next() ?? _codingAgentTurn.next();
-    if (request != null) {
-      _items.add(request);
-    }
-    notifyListeners();
-    if (request != null) {
-      unawaited(_ask(request));
-    }
-  }
-
-  void _report(Object err, StackTrace st) => FlutterError.reportError(
-    FlutterErrorDetails(exception: err, stack: st, library: 'tandem'),
-  );
 }
 
 bool _alwaysAsks() => true;
