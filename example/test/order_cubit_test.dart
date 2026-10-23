@@ -1,6 +1,7 @@
 import 'package:example/agent_chat.dart';
 import 'package:example/order.dart';
 import 'package:example/order_cubit.dart';
+import 'package:example/order_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -99,6 +100,48 @@ void main() {
 
     expect(cubit.draft.lines.single.quantity, 15);
     expect(find.text('Done.'), findsOneWidget);
+  });
+
+  testWidgets('a coding agent fills the order screen', (tester) async {
+    await tester.pumpWidget(
+      RepositoryProvider.value(
+        value: orders,
+        child: const MaterialApp(home: OrderScreen()),
+      ),
+    );
+
+    final answer = await TandemBridge.call(
+      'set_quantity',
+      arguments: {'sku': 'VM-27Q', 'quantity': 15},
+    );
+    await tester.pump();
+
+    expect(answer['status'], 'returned');
+    expect(find.text('15'), findsOneWidget);
+  });
+
+  testWidgets('a coding agent places the order once the user approves it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepositoryProvider.value(
+        value: orders,
+        child: const MaterialApp(home: OrderScreen()),
+      ),
+    );
+    await TandemBridge.call(
+      'set_quantity',
+      arguments: {'sku': 'VM-27Q', 'quantity': 2},
+    );
+
+    final answer = TandemBridge.call('place_order');
+    await tester.pumpAndSettle();
+    expect(orders.placed, isEmpty);
+    await tester.tap(find.text('Place order'));
+    await tester.pumpAndSettle();
+
+    expect(await answer, containsPair('status', 'returned'));
+    expect(orders.placed, hasLength(1));
   });
 
   test(

@@ -15,6 +15,14 @@
 
 **Make your Flutter app intelligent, one feature at a time.**
 
+Start with your coding agent: in 10 minutes, it fills a form of your running app through the setters your buttons already call. No backend, no API key. Give Claude Code this prompt in your app's folder:
+
+```text
+Run `dart run skills@ add leancodepl/tandem --skill tandem --agent claude`, then read `.claude/skills/tandem/SKILL.md` and follow it.
+```
+
+In Cursor, use `--agent cursor` and `.cursor/skills/tandem/SKILL.md`. In Codex, use `--agent codex` and `.agents/skills/tandem/SKILL.md`. In a new session, `/tandem` does the same.
+
 Pick a screen. Its state class lists what an AI agent may see and which of its methods the agent may call. The agent then works on that screen together with the user, through the methods your buttons already call, and the important ones wait for the user's approval. The rest of the app stays as it is.
 
 ## How it works
@@ -24,6 +32,8 @@ Pick a screen. Its state class lists what an AI agent may see and which of its m
 With a remote agent, your backend calls the model and keeps the API key. The app talks to it over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Google ADK, LangChain, CrewAI, Mastra and many other agent frameworks support it.
 
 On iOS and macOS 26, `OnDeviceAgent` can run [Apple's on-device model](#apples-on-device-model) instead, without a backend or an API key. The screen, its capabilities and approvals stay the same.
+
+In a debug build, [your coding agent](#your-coding-agent), such as Claude Code, Cursor or Codex, calls the same methods through `TandemBridge`, with the same checks and approvals.
 
 Your state class lists what the agent may do:
 
@@ -98,7 +108,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
    Every class with `@TandemAgent()` gets a `_$Name` mixin. Each `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread, or the build fails. In CI, run `dart run build_runner build && git diff --exit-code`: an outdated `.g.dart` is not always caught at runtime.
 
-4. Wrap the screen and its chat:
+4. Wrap the screen:
 
    <!-- example/lib/order_screen.dart -->
    ```dart
@@ -108,46 +118,84 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
        create: (context) => OrderCubit(orders: context.read<Orders>()),
        child: TandemScope(
          surface: (context) => context.read<OrderCubit>(),
-         agent: Uri.parse('http://localhost:8000/agent'),
-         approvals: const .fromState(),
-         onEvent: showOrderMessages,
-         child: const Row(
-           children: [
-             Expanded(child: OrderForm()),
-             SizedBox(width: 360, child: AgentChat()),
-           ],
-         ),
+         approvals: const .callback(confirmOrder),
+         child: const Scaffold(body: OrderForm()),
        ),
      );
    }
    ```
 
-   The scope reads the Cubit with `surface` when it opens its session, and keeps the session until it leaves the tree or gets another `agent`. [Approvals](#approvals) and [Events](#events) explain the other two lines.
+   The scope reads the Cubit with `surface` when it opens its session. `confirmOrder` shows a dialog in which the user approves or rejects `placeOrder` ([Approvals](#approvals)). The scope has no in-app agent: [An in-app agent](#an-in-app-agent) adds one.
 
-5. Build the chat. Tandem has no chat widget, so the chat has your app's texts, language and look. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes. Each item of `session.items` is a sealed `ChatItem`:
+5. Let your coding agent fill it. One line in `main()` opens the screens of a debug build to it:
 
-   <!-- example/lib/agent_chat.dart -->
+   <!-- example/lib/main.dart -->
    ```dart
-     Widget build(BuildContext context) => switch (item) {
-       UserMessage(:final text) => _Bubble(text, fromUser: true),
-       AgentMessage(:final text, :final stopped) => _Bubble(
-         text,
-         stopped: stopped,
-       ),
-       ChatNotice(:final kind) => _Notice(kind),
-       // A card of another call that lands at the same index gets a new state.
-       final ApprovalRequest request => _ApprovalCard(
-         request,
-         approvalBuilder,
-         key: ValueKey((session, request.toolCallId)),
-       ),
-     };
+   void main() {
+     TandemBridge.enable();
+     runApp(const DemoApp());
+   }
    ```
 
-   [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example is the whole chat in one file, ready to copy. Its field calls `session.send(text)`, and its button switches on [the status](#session-status).
+   Run the app in debug and ask your coding agent to fill the order, such as from an e-mail. [Your coding agent](#your-coding-agent) explains how it reaches the app.
 
 > [!TIP]
-> Setting this up with a coding agent? `dart run skills@ get` installs Tandem's skill from your dependencies, and the agent follows these steps.
+> `/tandem` from the prompt above walks your coding agent through these steps. `dart run skills@ get --package tandem --all` installs the skills of your version of Tandem: the base steps, the coding agent and the in-app agent.
+
+## Your coding agent
+
+`TandemBridge.enable()` registers two VM service extensions in a debug build. `ext.tandem.describe` gives the open screens, with what the agent sees and may call. `ext.tandem.call` calls one of the listed methods. A profile or release build registers nothing.
+
+A coding agent reaches them with the `vm_service` tool of the Dart MCP server (`dart mcp-server`), or over HTTP at the VM service address that `flutter run` prints. The skill `tandem-coding-agent` teaches it both.
+
+- The coding agent sees what an in-app agent would see, and calls only the listed methods, with the same checks.
+- A call goes to the front screen: the only open `TandemScope`, or else the only one on the current route. When there are several, the call names one.
+- A `.callsWithApproval` method waits until the user approves it in the app, as `approvals:` of the scope asks. `TandemBridge.enable(autoApprove: true)` lets the coding agent approve its own calls, for a scripted run.
+- Claude Code waits up to 30 minutes for a call through the Dart MCP server, and the CLIs of Codex and Cursor 60 seconds. The request keeps waiting in the app, and `describe` shows its outcome in `lastApproval`, so the coding agent does not call the method twice.
+
+## An in-app agent
+
+An in-app agent works with your app's users, in a chat or behind a button. Give the scope the address of your AG-UI backend as `agent:`, and put the chat next to the screen:
+
+<!-- example/lib/order_screen.dart -->
+```dart
+    child: TandemScope(
+      surface: (context) => context.read<OrderCubit>(),
+      agent: Uri.parse('http://localhost:8000/agent'),
+      approvals: const .fromState(),
+      onEvent: showOrderMessages,
+      child: const Row(
+        children: [
+          Expanded(child: OrderForm()),
+          SizedBox(width: 360, child: AgentChat()),
+        ],
+      ),
+    ),
+```
+
+The scope keeps its session until it leaves the tree or gets another `agent`. `approvals: const .fromState()` lets the chat draw the approval cards, and [Events](#events) explains `onEvent`.
+
+Tandem has no chat widget, so the chat has your app's texts, language and look. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes. Each item of `session.items` is a sealed `ChatItem`:
+
+<!-- example/lib/agent_chat.dart -->
+```dart
+  Widget build(BuildContext context) => switch (item) {
+    UserMessage(:final text) => _Bubble(text, fromUser: true),
+    AgentMessage(:final text, :final stopped) => _Bubble(
+      text,
+      stopped: stopped,
+    ),
+    ChatNotice(:final kind) => _Notice(kind),
+    // A card of another call that lands at the same index gets a new state.
+    final ApprovalRequest request => _ApprovalCard(
+      request,
+      approvalBuilder,
+      key: ValueKey((session, request.toolCallId)),
+    ),
+  };
+```
+
+[`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example is the whole chat in one file, ready to copy. Its field calls `session.send(text)`, and its button switches on [the status](#session-status). The skill `tandem-in-app-agent` builds the chat, or a button, with your coding agent.
 
 ## Try it without a key
 
@@ -157,7 +205,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
 The [example gallery](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs six screens on Android, iOS and macOS with scripted agents, without a backend or an API key. Its order desk can also talk to the example's agent backend, which has a scripted model too. On a Mac or an iPhone with Apple Intelligence, the [invoice list](https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model) above and the shopping list run on Apple's on-device model, a real model that needs no key.
 
-To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent` ([how](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#without-an-api-key)). [More examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) have screens to copy with bloc, Riverpod and provider.
+The gallery enables `TandemBridge`, so your coding agent can fill its screens too. To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent` ([how](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#without-an-api-key)). [More examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) have screens to copy with bloc, Riverpod and provider.
 
 ## Apple's on-device model
 
@@ -247,6 +295,7 @@ Future<void> _confirmSend(
 - Several approvals of one turn show one at a time. A rejection cancels the rest, and the agent plans again.
 - `approve` and `reject` either decide or throw `ApprovalNotPending`. The same decision twice does nothing, so a double tap is harmless. `session.isPending(request)` tells whether a request still waits.
 - A message the user sends while a request waits cancels it. A request the callback leaves undecided waits until then.
+- A request of a [coding agent](#your-coding-agent) shows the same way, while the in-app agent does nothing.
 
 ## Events
 
@@ -377,6 +426,29 @@ With Riverpod:
 ```
 
 Every turn of the script is one run. `agent.requests` holds the body of every run, so a test can check what the agent saw. To check only what a class gives the agent, use `AgentListing.of(cubit)`.
+
+`TandemBridge.call` calls a listed method as a coding agent does, so a test of the screen needs no agent at all:
+
+<!-- example/test/order_cubit_test.dart -->
+```dart
+  testWidgets('a coding agent fills the order screen', (tester) async {
+    await tester.pumpWidget(
+      RepositoryProvider.value(
+        value: orders,
+        child: const MaterialApp(home: OrderScreen()),
+      ),
+    );
+
+    final answer = await TandemBridge.call(
+      'set_quantity',
+      arguments: {'sku': 'VM-27Q', 'quantity': 15},
+    );
+    await tester.pump();
+
+    expect(answer['status'], 'returned');
+    expect(find.text('15'), findsOneWidget);
+  });
+```
 
 ## The agent backend
 

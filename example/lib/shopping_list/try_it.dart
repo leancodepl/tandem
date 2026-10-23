@@ -1,5 +1,6 @@
 import 'package:example/shopping_list/shopping_list.dart';
 import 'package:flutter/material.dart';
+import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
 // Plays these turns whatever the user writes. A run past the script fails.
@@ -15,5 +16,7 @@ final _agent = ScriptedAgent([
   (_) => const [AgentStep.say('Done.')],
 ]);
 
-void main() =>
-    runApp(MaterialApp(home: ShoppingListScreen(connection: _agent)));
+void main() {
+  TandemBridge.enable();
+  runApp(MaterialApp(home: ShoppingListScreen(connection: _agent)));
+}
