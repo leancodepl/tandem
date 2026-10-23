@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:a2ui_core/a2ui_core.dart';
 import 'package:flutter/material.dart';
 import 'package:tandem/src/genui/a2ui.dart';
 import 'package:tandem/src/genui/catalog.dart';
+import 'package:tandem/src/genui/drawn_view.dart';
 
-/// [surface] drawn with the widgets of Tandem's catalog.
+/// [surface] of [view] drawn with the widgets of Tandem's catalog.
 final class const DrawnSurface(
+  final DrawnView view,
   final SurfaceModel<ComponentApi> surface, {
   super.key,
 }) extends StatefulWidget {
@@ -40,7 +44,7 @@ final class _DrawnSurfaceState() extends State<DrawnSurface> {
 
   @override
   Widget build(BuildContext context) => switch (_root) {
-    final root? => _Node(root),
+    final root? => _ViewScope(widget.view, child: _Node(root)),
     null => const SizedBox.shrink(),
   };
 
@@ -117,11 +121,24 @@ final class _NodeState() extends State<_Node> {
         .divider => const Divider(),
         .button => _Button(
           variant: _props[A2uiFields.variant],
+          onPressed: _onPressed(_ViewScope.of(context)),
           child: _nodeOf(_props[A2uiFields.child]),
         ),
         // The check refuses components outside the catalog.
         null => const SizedBox.shrink(),
       };
+
+  VoidCallback? _onPressed(DrawnView view) {
+    final node = widget.node;
+    final tool = _toolOf(node);
+    if (tool == null || !view.canPress(node.componentId, tool)) {
+      return null;
+    }
+    return switch (_props[A2uiFields.action]) {
+      final Future<void> Function() press => () => unawaited(press()),
+      _ => null,
+    };
+  }
 
   void _listen() {
     _props = widget.node.props.peek();
@@ -132,6 +149,27 @@ final class _NodeState() extends State<_Node> {
     });
   }
 }
+
+/// The [DrawnView] of the buttons below it.
+final class const _ViewScope(final DrawnView view, {required super.child})
+    extends InheritedWidget {
+  static DrawnView of(BuildContext context) =>
+      switch (context.dependOnInheritedWidgetOfExactType<_ViewScope>()) {
+        final scope? => scope.view,
+        null => throw FlutterError('A drawn component outside its view.'),
+      };
+
+  @override
+  bool updateShouldNotify(_ViewScope oldWidget) =>
+      !identical(view, oldWidget.view);
+}
+
+/// The method the button [node] calls, as the agent wrote it.
+String? _toolOf(ComponentNode<ComponentApi> node) =>
+    switch (node.context?.componentModel.properties[A2uiFields.action]) {
+      {A2uiFields.event: {A2uiFields.name: final String name}} => name,
+      _ => null,
+    };
 
 List<Widget> _nodes(Object? children) => [
   if (children case final List<Object?> nodes)
@@ -170,12 +208,13 @@ final class const _Text(final String text, {required final Object? variant})
 
 final class const _Button({
   required final Object? variant,
+  required final VoidCallback? onPressed,
   required final Widget child,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (variant) {
-    ButtonVariant.primary => FilledButton(onPressed: null, child: child),
-    ButtonVariant.borderless => TextButton(onPressed: null, child: child),
-    _ => OutlinedButton(onPressed: null, child: child),
+    ButtonVariant.primary => FilledButton(onPressed: onPressed, child: child),
+    ButtonVariant.borderless => TextButton(onPressed: onPressed, child: child),
+    _ => OutlinedButton(onPressed: onPressed, child: child),
   };
 }

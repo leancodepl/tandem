@@ -20,7 +20,7 @@ import 'package:uuid/uuid.dart';
 
 /// The calls of one screen's listed methods, from every caller: the in-app
 /// agent's turn, whose answers go back with its next run, and the calls of
-/// outside callers, whose answers go only to them. A call of the attached
+/// outside callers, whose answers go to them. A call of the attached
 /// view's tool in the turn goes to the view. A call that needs
 /// approval waits for the user as an [ApprovalRequest], one at a time, and
 /// is invalidated once what the agent sees differs from what it saw.
@@ -36,6 +36,9 @@ final class CallPipeline({
   required final void Function({required bool agentTurn}) _decided,
   required final void Function() _notify,
   required final void Function(TandemEvent event) _emit,
+
+  /// Gives the in-app agent a note with its next run.
+  required final void Function(String note) _tellAgent,
   required final Future<void> Function(ApprovalRequest request)?
   _onApprovalRequest,
   required final bool Function() _asksForApproval,
@@ -159,9 +162,26 @@ final class CallPipeline({
     Caller caller,
     String tool,
     Map<String, Object?> arguments,
+  ) async {
+    final argumentsJson = jsonEncode(arguments);
+    final answer = await _callFrom(caller, tool, argumentsJson);
+    if (answer.ran && !_disposed) {
+      if (caller.toldAgent(tool, argumentsJson, answer) case final note?) {
+        _tellAgent(note);
+      }
+    }
+    return answer;
+  }
+
+  @override
+  ToolCall? lastAsked(Caller caller) => _requests.lastAsked(caller);
+
+  Future<ToolAnswer> _callFrom(
+    Caller caller,
+    String tool,
+    String argumentsJson,
   ) {
     final listing = AgentListing.of(_surface);
-    final argumentsJson = jsonEncode(arguments);
     if (caller.approvedInAdvance) {
       return _callMethod(listing, tool, argumentsJson, approved: true);
     }
@@ -172,9 +192,6 @@ final class CallPipeline({
     }
     return _callMethod(listing, tool, argumentsJson, approved: false);
   }
-
-  @override
-  ToolCall? lastAsked(Caller caller) => _requests.lastAsked(caller);
 
   Future<ToolAnswer> _waitForUser(Caller caller, ToolCall call) async {
     if (lastAsked(caller) case final waiting? when waiting.answer == null) {

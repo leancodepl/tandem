@@ -63,6 +63,12 @@ sealed class const ToolAnswer() {
 
   ToolStatus get status;
 
+  /// Whether the method ran, so the app may have changed.
+  bool get ran => switch (status) {
+    .returned || .failed || .resultUnavailable => true,
+    _ => false,
+  };
+
   /// The answer with its `status`, as a coding agent gets it.
   JsonObject get json;
 

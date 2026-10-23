@@ -1,9 +1,10 @@
 import 'package:tandem/src/protocol/run_input.dart';
 
-/// What the user wrote since the last run went out. It goes to the agent as
-/// one message, the texts joined by a blank line: ag-ui-adk passes the model
-/// only the last new user message of a run.
+/// What the user wrote since the last run went out, after the notes for the
+/// agent. It goes to the agent as one message, the texts joined by a blank
+/// line: ag-ui-adk passes the model only the last new user message of a run.
 final class NextUserMessage() {
+  final _notes = <String>[];
   final _texts = <String>[];
 
   /// Throws an [ArgumentError] when [text] is blank.
@@ -14,16 +15,21 @@ final class NextUserMessage() {
     _texts.add(text);
   }
 
-  /// The message for the next run, or null when the user wrote nothing. A
+  /// [text] goes before what the user wrote.
+  void addNote(String text) => _notes.add(text);
+
+  /// The message for the next run, or null when there is nothing to send. A
   /// text goes out with one run only.
   AgUiMessage? take() {
-    if (_texts.isEmpty) {
+    final said = [..._notes, ..._texts];
+    if (said.isEmpty) {
       return null;
     }
-    final message = AgUiMessage.user(_texts.join('\n\n'));
+    _notes.clear();
     _texts.clear();
-    return message;
+    return AgUiMessage.user(said.join('\n\n'));
   }
 
+  /// Drops what the user wrote. The notes stay.
   void clear() => _texts.clear();
 }

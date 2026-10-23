@@ -69,6 +69,7 @@ final class TandemSession({
     decided: ({required agentTurn}) => _startNextRun(withAnswers: agentTurn),
     notify: notifyListeners,
     emit: _emit,
+    tellAgent: _thread.addNote,
     onApprovalRequest: _onApprovalRequest,
     asksForApproval: _asksForApproval,
   );
@@ -151,6 +152,10 @@ final class TandemSession({
   /// through `TandemBridge`.
   @internal
   OutsideCalls get calls => _calls;
+
+  /// Whether the screen asks the user to approve, unlike `approvals: .none()`.
+  @internal
+  bool get asksForApproval => _asksForApproval();
 
   /// Offers [view]'s tool from the next run on.
   @internal

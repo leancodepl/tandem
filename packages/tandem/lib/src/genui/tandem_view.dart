@@ -43,10 +43,12 @@ final class _TandemViewState() extends State<TandemView> {
 
   @override
   Widget build(BuildContext context) => switch (_view) {
-    final view? => ValueListenableBuilder(
-      valueListenable: view.surface,
-      builder: (context, surface, _) => switch (surface) {
-        final surface? => SingleChildScrollView(child: DrawnSurface(surface)),
+    final view? => ListenableBuilder(
+      listenable: view,
+      builder: (context, _) => switch (view.surface) {
+        final surface? => SingleChildScrollView(
+          child: DrawnSurface(view, surface),
+        ),
         null => const SizedBox.shrink(),
       },
     ),

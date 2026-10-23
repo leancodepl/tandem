@@ -119,6 +119,184 @@ void main() {
     ]);
   });
 
+  Future<ScriptedAgent> drawButtons(
+    WidgetTester tester,
+    Shop shop, {
+    List<AgentTurn> later = const [],
+    TandemApprovals approvals = const .fromState(),
+    void Function(BuildContext, TandemEvent, TandemSession)? onEvent,
+  }) async {
+    final agent = ScriptedAgent([_show(_buttons), _say, ...later]);
+    await tester.pumpWidget(
+      _app(shop, agent, approvals: approvals, onEvent: onEvent),
+    );
+    await ask(tester, 'show buttons');
+    return agent;
+  }
+
+  ApprovalRequest lastRequest(WidgetTester tester) =>
+      sessionOf(tester).items.whereType<ApprovalRequest>().last;
+
+  testWidgets('a button calls its method, onEvent hears it, and the agent '
+      'gets no call', (tester) async {
+    final shop = newShop();
+    final events = <TandemEvent>[];
+    final agent = await drawButtons(
+      tester,
+      shop,
+      later: [_say],
+      onEvent: (context, event, _) => events.add(event),
+    );
+
+    await tester.tap(find.text('Add eggs'));
+    await tester.pumpAndSettle();
+    await ask(tester, 'hi');
+
+    expect(shop.items, ['milk', 'eggs']);
+    expect(
+      events.single,
+      isA<AgentCall>().having((c) => c.tool, 'tool', 'add'),
+    );
+    expect(_toolCallNames(agent), isNot(contains('add')));
+  });
+
+  testWidgets('the agent learns what a button did with the next message', (
+    tester,
+  ) async {
+    final shop = newShop();
+    final agent = await drawButtons(tester, shop, later: [_say]);
+
+    await tester.tap(find.text('Add eggs'));
+    await tester.pumpAndSettle();
+    await ask(tester, 'did it work?');
+
+    // One message: ag-ui-adk passes on only the last user message of a run.
+    expect(_userTexts(agent.requests.last), [
+      'show buttons',
+      allOf(
+        startsWith('The user pressed a button in your view. It called add '),
+        contains('{"item":"eggs"}'),
+        endsWith('\n\ndid it work?'),
+      ),
+    ]);
+  });
+
+  testWidgets('a button of a method with approval asks the user, and Approve '
+      'runs it', (tester) async {
+    final shop = newShop();
+    await drawButtons(tester, shop);
+
+    await tester.tap(find.text('Clear'));
+    await tester.pump();
+    final request = lastRequest(tester);
+    expect(request.tool, 'clear');
+    expect(sessionOf(tester).status, AwaitingApproval(request));
+    sessionOf(tester).approve(request);
+    await tester.pumpAndSettle();
+
+    expect(shop.items, isEmpty);
+  });
+
+  testWidgets('Reject keeps the method from running, and the agent learns '
+      'nothing of it', (tester) async {
+    final shop = newShop();
+    final agent = await drawButtons(tester, shop, later: [_say]);
+
+    await tester.tap(find.text('Clear'));
+    await tester.pump();
+    sessionOf(tester).reject(lastRequest(tester));
+    await tester.pumpAndSettle();
+    await ask(tester, 'hi');
+
+    expect(lastRequest(tester).status, ApprovalStatus.rejected);
+    expect(shop.items, ['milk']);
+    expect(_userTexts(agent.requests.last), ['show buttons', 'hi']);
+  });
+
+  testWidgets('a change to .sees invalidates the request of a button', (
+    tester,
+  ) async {
+    final shop = newShop();
+    await drawButtons(tester, shop);
+
+    await tester.tap(find.text('Clear'));
+    await tester.pump();
+    shop.add('eggs');
+    await tester.pumpAndSettle();
+
+    expect(lastRequest(tester).status, ApprovalStatus.invalidated);
+    expect(shop.items, ['milk', 'eggs']);
+  });
+
+  testWidgets('a button with approval is off while the session is not idle', (
+    tester,
+  ) async {
+    final shop = newShop();
+    final gate = Completer<void>();
+    await drawButtons(
+      tester,
+      shop,
+      later: [
+        (_) => [AgentStep.waitFor(gate.future)],
+      ],
+    );
+
+    sessionOf(tester).send('think');
+    await tester.pump();
+    final whileThinking = _onPressed(tester, 'Clear');
+    final callsWhileThinking = _onPressed(tester, 'Add eggs');
+    gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(whileThinking, isNull);
+    expect(callsWhileThinking, isNotNull);
+    expect(_onPressed(tester, 'Clear'), isNotNull);
+  });
+
+  testWidgets('a button is off when its method is not listed now, and with '
+      'approval on a screen that never asks', (tester) async {
+    final shop = newShop();
+    await drawButtons(tester, shop, approvals: const .none());
+
+    shop.removeAt(0);
+    await tester.pumpAndSettle();
+
+    expect(_onPressed(tester, 'Clear'), isNull);
+    expect(_onPressed(tester, 'Share'), isNull);
+    expect(_onPressed(tester, 'Add eggs'), isNotNull);
+  });
+
+  testWidgets('a message of the user cancels the request of a button', (
+    tester,
+  ) async {
+    final shop = newShop();
+    await drawButtons(tester, shop, later: [_say]);
+
+    await tester.tap(find.text('Clear'));
+    await tester.pump();
+    await ask(tester, 'no, wait');
+
+    expect(lastRequest(tester).status, ApprovalStatus.cancelled);
+    expect(shop.items, ['milk']);
+  });
+
+  testWidgets('a request of the coding agent waits for the request of a '
+      'button and shows after it', (tester) async {
+    final shop = newShop();
+    await drawButtons(tester, shop);
+
+    await tester.tap(find.text('Share'));
+    await tester.pump();
+    final click = lastRequest(tester);
+    final coding = TandemBridge.call('clear');
+    expect(lastRequest(tester), same(click));
+    sessionOf(tester).approve(click);
+    await tester.pumpAndSettle();
+    sessionOf(tester).approve(lastRequest(tester));
+
+    expect(await coding, containsPair('status', 'returned'));
+  });
+
   testWidgets('a new session of the scope starts with an empty view', (
     tester,
   ) async {
@@ -135,22 +313,28 @@ void main() {
 
 const _below = Key('below');
 
-Widget _app(Shop shop, AgentConnection agent, {bool withView = true}) =>
-    MaterialApp(
-      home: Scaffold(
-        body: TandemScope.connected(
-          surface: (context) => shop,
-          connection: agent,
-          approvals: const .fromState(),
-          child: Column(
-            children: [
-              if (withView) const Expanded(child: TandemView()),
-              const SizedBox(key: _below),
-            ],
-          ),
-        ),
+Widget _app(
+  Shop shop,
+  AgentConnection agent, {
+  bool withView = true,
+  TandemApprovals approvals = const .fromState(),
+  void Function(BuildContext, TandemEvent, TandemSession)? onEvent,
+}) => MaterialApp(
+  home: Scaffold(
+    body: TandemScope.connected(
+      surface: (context) => shop,
+      connection: agent,
+      approvals: approvals,
+      onEvent: onEvent,
+      child: Column(
+        children: [
+          if (withView) const Expanded(child: TandemView()),
+          const SizedBox(key: _below),
+        ],
       ),
-    );
+    ),
+  ),
+);
 
 List<AgentStep> _say(Map<String, Object?> request) => const [
   AgentStep.say('Done.'),
@@ -175,6 +359,35 @@ AgentTurn _show(List<Map<String, Object?>> components) =>
       }),
     ];
 
+/// The first item, and a button for each of `add`, `clear` and `share`.
+final _buttons = [
+  {
+    'id': 'root',
+    'component': 'Column',
+    'children': ['first', 'add', 'clear', 'share'],
+  },
+  ..._firstItem.map((text) => {...text, 'id': 'first'}),
+  for (final (id, label, context) in [
+    ('add', 'Add eggs', {'item': 'eggs'}),
+    ('clear', 'Clear', <String, Object?>{}),
+    ('share', 'Share', <String, Object?>{}),
+  ]) ...[
+    {
+      'id': id,
+      'component': 'Button',
+      'child': '${id}_label',
+      'action': {
+        'event': {'name': id, 'context': context},
+      },
+    },
+    {'id': '${id}_label', 'component': 'Text', 'text': label},
+  ],
+];
+
+VoidCallback? _onPressed(WidgetTester tester, String label) => tester
+    .widget<OutlinedButton>(find.widgetWithText(OutlinedButton, label))
+    .onPressed;
+
 const _firstItem = [
   {
     'id': 'root',
@@ -194,4 +407,20 @@ List<Object?> _answers(Map<String, Object?> request) => [
   if (request case {'messages': final List<Object?> messages})
     for (final message in messages)
       if (message case {'role': 'tool', 'content': final content}) content,
+];
+
+/// The contents of the user messages in [request].
+List<Object?> _userTexts(Map<String, Object?> request) => [
+  if (request case {'messages': final List<Object?> messages})
+    for (final message in messages)
+      if (message case {'role': 'user', 'content': final content}) content,
+];
+
+/// The names of the calls the agent made in the messages of its last run.
+List<Object?> _toolCallNames(ScriptedAgent agent) => [
+  if (agent.requests.last case {'messages': final List<Object?> messages})
+    for (final message in messages)
+      if (message case {'toolCalls': final List<Object?> calls})
+        for (final call in calls)
+          if (call case {'function': {'name': final name}}) name,
 ];

@@ -27,7 +27,7 @@ The screen's data is your context: an entry "<name>: ..." is at the path /<name>
 
 Rules:
 - Show the screen's data only by path, never as copied text.
-- A button calls one of your other tools when the user clicks it, with its parameter names. You see what it did in your context next time.
+- A button calls one of your other tools when the user clicks it, with its parameter names. With the user's next message, you get what it answered.
 - No other components, properties, functions or message types.
 
 Example. Context: profile: {"name": "Ann", "email": "ann@example.com"}. Tools: save_profile(). The user asks to see their profile, and you call show_view with these messages:

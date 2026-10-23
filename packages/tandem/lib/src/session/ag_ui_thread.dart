@@ -43,11 +43,14 @@ final class AgUiThread() {
     }
   }
 
+  /// [text] goes to the agent with the next run, before the user's texts.
+  void addNote(String text) => _nextUserMessage.addNote(text);
+
   /// The user's [text], without answers.
   void addMessage(String text) => _nextUserMessage.add(text);
 
   /// A new thread without the earlier messages, for when what ADK kept of a
-  /// run is unknown.
+  /// run is unknown. The notes not sent yet stay.
   void startOver() {
     _id = const Uuid().v4();
     _messages.clear();
