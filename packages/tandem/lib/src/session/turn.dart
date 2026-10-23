@@ -33,7 +33,7 @@ final class Turn(final List<ToolCall> calls) {
   /// `cancelled`.
   List<JsonObject> get answers => [
     for (final call in calls)
-      toolAnswer(call.id, call.answer ?? ToolAnswer.cancelled),
+      toolAnswer(call.id, (call.answer ?? ToolAnswer.cancelled).content),
   ];
 
   /// The calls without an answer wait for the user, one at a time through

@@ -38,7 +38,7 @@ void main() {
       report: (error, _) => reported.add(error),
     );
 
-    expect(jsonDecode(outcome.answer), {
+    expect(outcome.answer.json, {
       'status': 'result_unavailable',
       'reason': isNotEmpty,
     });

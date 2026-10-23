@@ -57,6 +57,9 @@ void main() {
 
     expect(turn.invalidateWaiting(), [waiting]);
     expect(waiting.answer, ToolAnswer.invalidated);
-    expect([answered.answer, approved.answer], ['null', null]);
+    expect(
+      [answered.answer?.status, approved.answer],
+      [ToolStatus.returned, null],
+    );
   });
 }

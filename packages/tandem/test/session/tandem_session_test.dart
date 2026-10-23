@@ -212,7 +212,7 @@ void main() {
         'status': 'refused',
         'reason': contains('item'),
       });
-      expect(failed, ToolAnswer.failed);
+      expect(failed, ToolAnswer.failed.content);
       expect(reported.map((details) => details.exception), [
         isRangeError,
         isA<AgentRunException>().having(
@@ -573,7 +573,7 @@ void main() {
     expect(_lines(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
-      'tool-call-1 ${ToolAnswer.invalidated}',
+      'tool-call-1 ${ToolAnswer.invalidated.content}',
       'user: ok',
     ]);
   });
@@ -630,7 +630,7 @@ void main() {
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(
       _lines(agent.requests[1]).last,
-      'tool-call-1 ${ToolAnswer.invalidated}',
+      'tool-call-1 ${ToolAnswer.invalidated.content}',
     );
   });
 
@@ -655,7 +655,7 @@ void main() {
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(
       _lines(agent.requests[1]).last,
-      'tool-call-1 ${ToolAnswer.invalidated}',
+      'tool-call-1 ${ToolAnswer.invalidated.content}',
     );
   });
 
@@ -692,7 +692,7 @@ void main() {
         'asst-call-1 add {"item":"y"}',
         'asst-call-2 clear {}',
         'tool-call-1 null',
-        'tool-call-2 ${ToolAnswer.invalidated}',
+        'tool-call-2 ${ToolAnswer.invalidated.content}',
       ]);
 
       signals.complete();
@@ -876,7 +876,7 @@ void main() {
     expect(_card(session).tool, 'clear');
     expect(_lines(agent.requests[1]).skip(3), [
       'tool-call-1 null',
-      'tool-call-2 ${ToolAnswer.invalidated}',
+      'tool-call-2 ${ToolAnswer.invalidated.content}',
     ]);
   });
 
@@ -1012,7 +1012,7 @@ void main() {
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
       expect(
         _lines(agent.requests[1]).last,
-        'tool-call-2 ${ToolAnswer.invalidated}',
+        'tool-call-2 ${ToolAnswer.invalidated.content}',
       );
     },
   );
