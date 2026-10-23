@@ -48,6 +48,22 @@ _Avoid_: state, running, busy
 The user's end of a run. The run is still read to its end, but its later text is hidden and none of its remaining calls runs.
 _Avoid_: abort, disconnect
 
+**In-app agent**:
+The agent a screen chats with through its session, over AG-UI or on the device. The app's user talks to it. Where nothing else is said, "the agent" is this one.
+_Avoid_: assistant, chatbot
+
+**Coding agent**:
+An agent that writes the app's code, such as Claude Code or Cursor. In a debug build it calls the methods of the open screens through the bridge, as the in-app agent would.
+_Avoid_: dev agent, external agent
+
+**Bridge**:
+`TandemBridge`, which a coding agent reaches a debug build through: the VM service extensions `ext.tandem.describe` and `ext.tandem.call`. A profile or release build has none.
+_Avoid_: debug server, MCP server
+
+**Front screen**:
+The screen a call of the coding agent goes to when it names none: the only open `TandemScope`, or else the only one on the current route.
+_Avoid_: active screen, current screen
+
 **Chat**:
 What the user sees of a session, in order: messages, notices and approval requests.
 _Avoid_: timeline, history, transcript

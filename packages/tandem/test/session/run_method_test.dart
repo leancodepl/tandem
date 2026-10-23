@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/session/run_method.dart';
 import 'package:tandem/src/session/tool_answer.dart';
-import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/tandem.dart';
 
 void main() {
@@ -19,7 +18,9 @@ void main() {
       final reported = <Object>[];
       final outcome = await runMethod(
         AgentListing.of(_Surface(() => throw error)),
-        ToolCall('1', 'execute', 'Executes an operation.'),
+        'execute',
+        '{}',
+        approved: false,
         report: (error, _) => reported.add(error),
       );
 
@@ -34,7 +35,9 @@ void main() {
     final reported = <Object>[];
     final outcome = await runMethod(
       AgentListing.of(_Surface(() => double.nan)),
-      ToolCall('1', 'execute', 'Executes an operation.'),
+      'execute',
+      '{}',
+      approved: false,
       report: (error, _) => reported.add(error),
     );
 

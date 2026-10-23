@@ -1,5 +1,6 @@
 ## 0.2.1
 
+- `TandemBridge` lets a coding agent, such as Claude Code or Cursor, drive the screens of a running debug build through the Dart MCP server. `TandemBridge.enable()` in `main()` registers the VM service extensions `ext.tandem.describe` and `ext.tandem.call`; a profile or release build gets none. The coding agent sees what the in-app agent sees and calls only the listed methods. `TandemBridge.describe()` and `TandemBridge.call()` give the same JSON in a test.
 - `agent:` of `TandemScope` is optional. Without it, the screen has no in-app agent, and a run of `session.send` fails with a report that says so.
 
 ## 0.2.0

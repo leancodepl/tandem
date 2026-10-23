@@ -153,8 +153,8 @@ void main() {
     );
   });
 
-  testWidgets('a scope without an agent fails a run with a report that '
-      'names what is missing', (tester) async {
+  testWidgets('a scope without an agent takes calls of a coding agent, and '
+      'fails a run with a report that names what is missing', (tester) async {
     await tester.pumpWidget(
       TandemScope(
         surface: readShop,
@@ -163,9 +163,12 @@ void main() {
       ),
     );
 
+    final answer = await TandemBridge.call('add', arguments: {'item': 'milk'});
     sessionOf(tester).send('hi');
     await tester.pumpAndSettle();
 
+    expect(answer, containsPair('status', 'returned'));
+    expect(shops.single.items, ['milk']);
     expect(
       tester.takeException(),
       isA<AgentRunException>().having(
