@@ -1,3 +1,7 @@
+## 0.2.1
+
+- `agent:` of `TandemScope` is optional. Without it, the screen has no in-app agent, and a run of `session.send` fails with a report that says so.
+
 ## 0.2.0
 
 - **Breaking:** `ChatNoticeKind.startedOver`. A `switch` over `ChatNoticeKind` needs a case for it.

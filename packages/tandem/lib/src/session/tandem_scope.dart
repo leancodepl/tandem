@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:tandem/src/agent_schema.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/session/approvals.dart';
 import 'package:tandem/src/session/session_scope.dart';
@@ -37,11 +38,12 @@ import 'package:tandem/src/session/tandem_session.dart';
 /// scope that leaves the tree disposes its session before an ancestor that
 /// owns the surface closes it.
 final class TandemScope extends StatefulWidget {
-  /// A scope that talks to the AG-UI endpoint `agent`.
+  /// A scope that talks to the AG-UI endpoint `agent`. Without one, the
+  /// screen has no in-app agent, and a run of `session.send` fails.
   const new({
     super.key,
     required this.surface,
-    required Uri this._agent,
+    this._agent,
     required this.approvals,
     required this.child,
     this.onEvent,
@@ -125,7 +127,7 @@ final class _TandemScopeState() extends State<TandemScope> {
       connection: switch ((widget._connection, widget._agent)) {
         (final connection?, _) => connection,
         (_, final agent?) => HttpAgentConnection(agent),
-        _ => throw StateError('A TandemScope has an agent or a connection.'),
+        _ => const _NoAgent(),
       },
       onEvent: (event) => widget.onEvent?.call(context, event, session),
       onApprovalRequest: (request) async {
@@ -136,4 +138,15 @@ final class _TandemScopeState() extends State<TandemScope> {
       asksForApproval: () => widget.approvals is! NoApprovals,
     );
   }
+}
+
+/// The connection of a scope without `agent`: every run fails and says so.
+final class const _NoAgent() implements AgentConnection {
+  @override
+  Stream<JsonObject> run(JsonObject input) => Stream.value({
+    AgUiFields.type: AgUiEventTypes.runError,
+    AgUiFields.message:
+        'This TandemScope has no agent. Give it agent: or use '
+        'TandemScope.connected to send messages.',
+  });
 }

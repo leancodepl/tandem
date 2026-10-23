@@ -153,6 +153,30 @@ void main() {
     );
   });
 
+  testWidgets('a scope without an agent fails a run with a report that '
+      'names what is missing', (tester) async {
+    await tester.pumpWidget(
+      TandemScope(
+        surface: readShop,
+        approvals: const .fromState(),
+        child: const SizedBox(),
+      ),
+    );
+
+    sessionOf(tester).send('hi');
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.takeException(),
+      isA<AgentRunException>().having(
+        (error) => error.message,
+        'message',
+        contains('no agent'),
+      ),
+    );
+    expect(sessionOf(tester).items.last, const ChatNotice(.runFailed));
+  });
+
   testWidgets('a scope disposes its session before the surface closes', (
     tester,
   ) async {
