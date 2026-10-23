@@ -6,7 +6,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` | flutter, http, meta, uuid; FoundationModels on Apple systems |
+| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` | a2ui_core, flutter, http, meta, uuid; FoundationModels on Apple systems |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
