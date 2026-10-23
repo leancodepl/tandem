@@ -6,6 +6,7 @@ The screens take an `AgentConnection`, except the last, which makes its own. In 
 
 | You have | Example |
 |---|---|
+| A screen your coding agent fills while you build it | [Your coding agent](../README.md#your-coding-agent) |
 | A bloc screen, and you want a chat next to it | [A chat next to the screen](#a-chat-next-to-the-screen) |
 | A form to fill in from text, without a chat | [Fill from e-mail](#fill-from-e-mail) |
 | An action the user approves in a dialog | [An approval dialog](#an-approval-dialog) |

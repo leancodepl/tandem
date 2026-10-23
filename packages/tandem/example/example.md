@@ -96,6 +96,7 @@ No agent yet? `ScriptedAgent` plays a script in its place, with no backend and n
 ```dart
 import 'package:example/shopping_list/shopping_list.dart';
 import 'package:flutter/material.dart';
+import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
 // Plays these turns whatever the user writes. A run past the script fails.
@@ -111,9 +112,13 @@ final _agent = ScriptedAgent([
   (_) => const [AgentStep.say('Done.')],
 ]);
 
-void main() =>
-    runApp(MaterialApp(home: ShoppingListScreen(connection: _agent)));
+void main() {
+  TandemBridge.enable();
+  runApp(MaterialApp(home: ShoppingListScreen(connection: _agent)));
+}
 ```
+
+`TandemBridge.enable()` lets your coding agent, such as Claude Code, change the same list while the app runs in debug, with the skill `tandem-coding-agent`. Its request to empty the list shows as a card in the chat, as the in-app agent's does.
 
 The [example gallery](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs this screen and five more with scripted agents. More screens to copy, with Riverpod, provider, a dialog for approvals and a button instead of a chat, are in [doc/examples.md](https://github.com/leancodepl/tandem/blob/main/doc/examples.md).
 
