@@ -32,7 +32,7 @@ void main() {
 You need the VM service address of the app in debug mode, such as `http://127.0.0.1:50300/Xq3uEv7mT1c=/`. `flutter run` prints it as "A Dart VM Service on … is available at", and so does the debug console of the IDE.
 
 - The user runs the app: ask for the address. After the change of step 1, the app needs a hot restart or a new start, since hot reload does not run `main()` again.
-- You start the app: run it in the background with `flutter run -d <device> --vmservice-out-file=build/tandem_vm_service.txt`, and wait until that file has the address. The first build takes a minute or two. `flutter devices` lists the devices. On a desktop host with that platform enabled, its desktop device builds fastest; otherwise ask. The file has the WebSocket form of the address, such as `ws://127.0.0.1:50300/Xq3uEv7mT1c=/ws`.
+- You start the app: run it in the background with `flutter run -d <device> --vmservice-out-file=build/tandem_vm_service.txt`, and wait until that file has the address. The first build takes a minute or two. `flutter devices` lists the devices. When the project has a folder for the host's desktop, such as `macos/` on a Mac, `-d macos` builds fastest; otherwise ask. The file has the WebSocket form of the address, such as `ws://127.0.0.1:50300/Xq3uEv7mT1c=/ws`.
 - When the address stops answering, the app has stopped, such as with the end of your session's turn: start it again.
 
 Call the extensions in one of two ways:
