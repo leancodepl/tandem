@@ -260,7 +260,7 @@ void main() {
 
     gate.complete();
     await pumpEventQueue();
-    expect(agent.requests, hasLength(1));
+    expect(_lines(agent.requests.single), ['user: hi\n\nagain']);
     expect(session.status, isA<Idle>());
   });
 
@@ -1095,7 +1095,9 @@ void main() {
           'toolCallName': 'share',
         });
       await pumpEventQueue();
-      session.send('queued');
+      session
+        ..send('queued')
+        ..send('also queued');
       stream.add({
         'type': 'RUN_FINISHED',
         'outcome': {'type': 'interrupt'},
@@ -1117,7 +1119,7 @@ void main() {
 
       final [first, second] = connection.requests;
       expect(second['threadId'], isNot(first['threadId']));
-      expect(_lines(second), ['user: queued', 'user: next']);
+      expect(_lines(second), ['user: queued\n\nalso queued\n\nnext']);
     },
   );
 
