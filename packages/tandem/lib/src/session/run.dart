@@ -1,6 +1,5 @@
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
-import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
@@ -44,8 +43,8 @@ final class Run(final AgentListing listing) {
     }
   }
 
-  List<JsonObject> get assistantTexts => [
+  List<AgUiMessage> get assistantTexts => [
     for (final MapEntry(key: id, value: message) in texts.entries)
-      assistantText(id, message.text),
+      AgUiMessage.assistantText(id, message.text),
   ];
 }
