@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = 'tandem'
-  s.version = '0.2.1'
+  s.version = '0.2.2'
   s.summary = 'An AG-UI connection to Apple Foundation Models.'
   s.homepage = 'https://github.com/leancodepl/tandem'
   s.license = { :file => '../LICENSE' }
