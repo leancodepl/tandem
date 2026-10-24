@@ -87,6 +87,14 @@ fvm flutter run -d macos -t lib/recipes/on_device/apple.dart
 
 For an iPhone, select it instead of `macos`. Unlike the gallery's scripts, this asks the real model. [Requirements and limits](../README.md#apples-on-device-model).
 
+## A shopping list the agent draws
+
+```sh
+fvm flutter run -d macos -t lib/shopping_list/drawn_list.dart
+```
+
+Send any message. A scripted agent adds milk and bread and draws the list in a `TandemView`, with a **Remove** button on each item and **Empty the list**, which waits for your approval in the chat. The buttons call the cubit's methods, as the agent would.
+
 ## Smart invoice input with Apple's on-device model
 
 ```sh

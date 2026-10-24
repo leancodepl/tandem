@@ -39,6 +39,9 @@ final class AgentListing._(
 
   /// The `context` of AG-UI's `RunAgentInput`: one entry for every `.sees`.
   final List<Map<String, Object?>> context,
+
+  /// What the agent sees, as JSON, by the name of each `.sees`.
+  final Map<String, Object?> seen,
   final Map<String, AgentTool> _tools,
 ) {
   /// Reads [surface]'s [AgentSurface.agentCapabilities] and names its items
@@ -75,13 +78,22 @@ final class AgentListing._(
         tools[tool.name] = tool;
       }
     }
-    return ._(surface, [
+    final seen = {
       for (final (index, view) in schema.sees.indexed)
-        {
-          AgUiFields.description: '${view.name}: ${view.description}',
-          AgUiFields.value: jsonEncode(view.write(visibleValues[index])),
-        },
-    ], tools);
+        view.name: view.write(visibleValues[index]),
+    };
+    return ._(
+      surface,
+      [
+        for (final view in schema.sees)
+          {
+            AgUiFields.description: '${view.name}: ${view.description}',
+            AgUiFields.value: jsonEncode(seen[view.name]),
+          },
+      ],
+      seen,
+      tools,
+    );
   }
 
   /// The `tools` of AG-UI's `RunAgentInput`: the methods listed when this
@@ -99,6 +111,10 @@ final class AgentListing._(
 
   /// The names of the tools this listing lists.
   Iterable<String> get toolNames => _tools.keys;
+
+  /// The JSON Schema of the arguments of [tool], null for a tool this
+  /// listing does not list.
+  Map<String, Object?>? parameters(String tool) => _tools[tool]?.parameters;
 
   /// The doc comment of [tool], as the agent got it. Throws a [StateError] for
   /// a tool this listing does not list.

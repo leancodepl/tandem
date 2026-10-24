@@ -313,6 +313,26 @@ void main() {
     expect(sessionOf(tester).status, AwaitingApproval(lastRequest(tester)));
   });
 
+  testWidgets('a decision on the request of the coding agent sends no '
+      'answers of the in-app agent', (tester) async {
+    final shop = newShop();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share')],
+    ]);
+    await tester.pumpWidget(connected(shop, agent));
+    sessionOf(tester).send('share it');
+    await tester.pumpAndSettle();
+    shop.add('milk');
+    await tester.pumpAndSettle();
+
+    final answer = TandemBridge.call('clear');
+    sessionOf(tester).approve(lastRequest(tester));
+
+    expect(await answer, containsPair('status', 'returned'));
+    await tester.pumpAndSettle();
+    expect(agent.requests, hasLength(1));
+  });
+
   testWidgets('a message of the user cancels the request that shows', (
     tester,
   ) async {

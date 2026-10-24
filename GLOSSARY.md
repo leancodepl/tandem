@@ -29,7 +29,7 @@ A method of the surface that the agent may call, listed with `.calls` or `.calls
 _Avoid_: client tool, action, command
 
 **Approval request**:
-A call of a `.callsWithApproval` method by the in-app agent or a coding agent, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
+A call of a `.callsWithApproval` method by the in-app agent, a coding agent or a button of a view, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
 _Avoid_: confirmation, interrupt
 
 **Invalidated**:
@@ -63,6 +63,14 @@ _Avoid_: debug server, MCP server
 **Front screen**:
 The screen a call of the coding agent goes to when it names none: the only open `TandemScope`, or else the only one on the current route.
 _Avoid_: active screen, current screen
+
+**View**:
+What the in-app agent drew with `show_view` in a `TandemView`: A2UI of Tandem's catalog, showing only `.sees`. A2UI calls it a surface.
+_Avoid_: surface (the surface is the state object), generated screen
+
+**Catalog**:
+The components an agent may draw a view with, and the one function, `formatString`.
+_Avoid_: widget set, design system
 
 **Chat**:
 What the user sees of a session, in order: messages, notices and approval requests.

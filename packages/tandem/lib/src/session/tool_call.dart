@@ -40,11 +40,15 @@ final class ToolCall(
   // ag-ui-adk sends no `TOOL_CALL_ARGS` for a call without arguments.
   String get argumentsJson => arguments.isEmpty ? '{}' : arguments;
 
-  bool get hasObjectArguments {
+  /// The arguments as a JSON object, null when they are not one.
+  Map<String, Object?>? get objectArguments {
     try {
-      return jsonDecode(argumentsJson) is Map<String, Object?>;
+      return switch (jsonDecode(argumentsJson)) {
+        final Map<String, Object?> object => object,
+        _ => null,
+      };
     } on FormatException {
-      return false;
+      return null;
     }
   }
 

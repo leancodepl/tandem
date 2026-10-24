@@ -1,11 +1,17 @@
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/run_input.dart';
-import 'package:tandem/src/session/session_status.dart';
+import 'package:tandem/src/session/attached_view.dart';
 import 'package:tandem/src/session/tool_call.dart';
 
 /// What the session keeps of its open run.
-final class Run(final AgentListing listing) {
+final class Run(
+  final AgentListing listing, {
+
+  /// The view attached when the run started, whose tool the run offers.
+  final AttachedView? view,
+}) {
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
   final calls = <String, ToolCall>{};
@@ -14,9 +20,6 @@ final class Run(final AgentListing listing) {
   /// Whether what the agent sees differed from what this run sent, at any
   /// check since it started, even when it changed back.
   bool seesChanged = false;
-
-  /// The listed method that runs now.
-  Calling? calling;
 
   /// Set by `RUN_FINISHED` and `RUN_ERROR`, so the end of the stream that
   /// follows does not count as a lost connection.
@@ -33,13 +36,27 @@ final class Run(final AgentListing listing) {
     return (shown: shown, grown: grown);
   }
 
+  /// The `tools` of AG-UI's `RunAgentInput`: the listed methods, then the
+  /// view's tool.
+  List<JsonObject> get tools => [...listing.tools, ?view?.tool];
+
+  /// Whether a call of [tool] goes to the app: a listed method, or the
+  /// view's tool.
+  bool offers(String tool) => listing.lists(tool) || viewOf(tool) != null;
+
+  /// The view that answers a call of [tool], null for a listed method.
+  AttachedView? viewOf(String tool) =>
+      tool == AttachedView.toolName ? view : null;
+
   void startCall(String id, String tool) {
     if (calls[id] case final call?) {
       if (call.tool != tool) {
         throw const FormatException('A tool call changed its method.');
       }
     } else {
-      calls[id] = ToolCall(id, tool, listing.description(tool));
+      // Only a call that needs approval shows its description.
+      final description = viewOf(tool) == null ? listing.description(tool) : '';
+      calls[id] = ToolCall(id, tool, description);
     }
   }
 

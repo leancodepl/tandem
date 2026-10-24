@@ -1,4 +1,3 @@
-import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/next_user_message.dart';
 import 'package:tandem/src/session/run.dart';
@@ -12,18 +11,23 @@ final class AgUiThread() {
   final _messages = <AgUiMessage>[];
   final _nextUserMessage = NextUserMessage();
 
-  /// The body of the next run, with what [listing] shares with the agent.
-  RunInput input(AgentListing listing) {
+  /// The body of [run], with what it shares with the agent.
+  RunInput input(Run run) {
     if (_nextUserMessage.take() case final message?) {
       _messages.add(message);
     }
-    return RunInput(threadId: _id, messages: [..._messages], listing: listing);
+    return RunInput(
+      threadId: _id,
+      messages: [..._messages],
+      tools: run.tools,
+      context: run.listing.context,
+    );
   }
 
-  /// What the agent said in [run], and the calls of its [turn].
-  void addTurn(Run run, Turn turn) => _messages.addAll([
+  /// What the agent said in [run], and its calls.
+  void addTurn(Run run) => _messages.addAll([
     ...run.assistantTexts,
-    for (final call in turn.calls)
+    for (final call in run.calls.values)
       AgUiMessage.assistantToolCall(call.id, call.tool, call.argumentsJson),
   ]);
 
@@ -39,8 +43,14 @@ final class AgUiThread() {
     }
   }
 
+  /// [text] goes to the agent with the next run, before the user's texts.
+  void addNote(String text) => _nextUserMessage.addNote(text);
+
+  /// The user's [text], without answers.
+  void addMessage(String text) => _nextUserMessage.add(text);
+
   /// A new thread without the earlier messages, for when what ADK kept of a
-  /// run is unknown.
+  /// run is unknown. The notes not sent yet stay.
   void startOver() {
     _id = const Uuid().v4();
     _messages.clear();

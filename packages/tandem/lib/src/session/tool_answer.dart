@@ -24,6 +24,9 @@ extension type const ToolStatus._(String value) implements String {
 
   /// What the agent sees changed after it asked.
   static const invalidated = ToolStatus._('invalidated');
+
+  /// A view shows what the agent drew.
+  static const shown = ToolStatus._('shown');
 }
 
 /// The answer to a call of a listed method: what the method returned, or why
@@ -32,24 +35,26 @@ sealed class const ToolAnswer() {
   /// Throws when JSON cannot encode [result].
   factory returned(Object? result) = _Returned;
 
-  factory refused(String reason) => _NotReturned(.refused, {'reason': reason});
+  factory refused(String reason) => _Status(.refused, {'reason': reason});
 
-  static const failed = _NotReturned(.failed, {
+  static const failed = _Status(.failed, {
     'error':
         'The method failed and may have changed the app. Do not retry '
         'automatically.',
   });
 
-  static const resultUnavailable = _NotReturned(.resultUnavailable, {
+  static const resultUnavailable = _Status(.resultUnavailable, {
     'reason':
         'The method returned; result encoding failed. Do not repeat the call.',
   });
 
-  static const rejected = _NotReturned(.rejectedByUser);
+  static const rejected = _Status(.rejectedByUser);
 
-  static const cancelled = _NotReturned(.cancelled);
+  static const cancelled = _Status(.cancelled);
 
-  static const invalidated = _NotReturned(.invalidated, {
+  static const shown = _Status(.shown);
+
+  static const invalidated = _Status(.invalidated, {
     'reason':
         'What you see changed after you asked, so this call did not run. Do '
         'not repeat calls that already returned. Read the current context and '
@@ -57,6 +62,12 @@ sealed class const ToolAnswer() {
   });
 
   ToolStatus get status;
+
+  /// Whether the method ran, so the app may have changed.
+  bool get ran => switch (status) {
+    .returned || .failed || .resultUnavailable => true,
+    _ => false,
+  };
 
   /// The answer with its `status`, as a coding agent gets it.
   JsonObject get json;
@@ -78,7 +89,7 @@ final class _Returned(final Object? _result) extends ToolAnswer {
   JsonObject get json => {'status': status, 'result': _result};
 }
 
-final class const _NotReturned(
+final class const _Status(
   @override final ToolStatus status, [
   final JsonObject _details = const {},
 ]) extends ToolAnswer {

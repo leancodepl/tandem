@@ -6,12 +6,12 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` | flutter, http, meta, uuid; FoundationModels on Apple systems |
+| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` | a2ui_core, flutter, http, meta, uuid; FoundationModels on Apple systems |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
 
-`tandem` has no widget the user sees. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
+`tandem` has one widget the user sees, `TandemView`, and it has no texts of its own: everything it shows comes from the agent and `.sees`. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
 
 The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed, so development and CI resolve the same versions. The workspace members have no lock of their own.
 
@@ -28,6 +28,8 @@ The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentS
 The README, `doc/examples.md` and both packages' `example/example.md` show only code from `example`, and `example/test/doc_snippets_test.dart` checks each Dart block against the file its comment names. The examples use bloc, Riverpod and provider, which only the example depends on.
 
 ## Session rules
+
+`TandemSession` keeps the AG-UI run, the thread and the queued messages. Every call of a listed method, from the in-app agent's turn or from a caller outside it, goes through one call pipeline (`session/call_pipeline.dart`), which runs the methods, shows the approval requests and invalidates them. A caller outside the run calls through `OutsideCalls`, and its answer goes only to it.
 
 - Every run reads the live list: `context` from `.sees`, `tools` from `.calls`. Every tool call checks the list again.
 - One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run.
@@ -69,6 +71,17 @@ A coding agent, such as Claude Code or Cursor, drives a debug build through the 
 - `TandemBridge.enable(autoApprove: true)` runs such a call at once without a request, also on a screen with `approvals: .none()`, for automation. Without it, a screen with `.none()` refuses the call with a reason that names the option.
 
 Every answer of `call` is a `ToolAnswer` as `json`: the tool answer of the in-app agent with its `status`, and `{"status":"returned","result":<result>}` when the method returned. No screen, an unknown `screen` or no front screen is `refused`, with the ids of the open screens. So is another call that needs approval while one waits, and one on a screen with `approvals: .none()`, with what to do.
+
+## Drawn view
+
+`TandemView` below a `TandemScope` lets the in-app agent draw a view for the user, in A2UI v0.9.1 with Tandem's own catalog: Text, Column, Row, List, Card, Divider and Button. `a2ui_core` parses and validates the messages. The session reaches the view only through `AttachedView` (`session/attached_view.dart`), so it imports no A2UI code, and a release build of an app without `TandemView` holds none.
+
+- Every run that starts while a view is attached offers its tool `show_view(messages)` after the listed methods. Its description teaches the catalog, because the backend writes the system prompt and passes `context` to the model only if its instructions do. The run keeps the view it started with.
+- A call of `show_view` is answered when the run finishes, as a method without approval, but with no `Calling` status and no `AgentCall`. The view checks the messages first (`genui/view_check.dart`): the version, `createSurface`, `updateComponents` and `deleteSurface` only, one surface, the catalog, `formatString` as the only function, actions only as events that name a listed method with its parameters, and paths that exist in `.sees`. A view that fits replaces the whole drawing and answers `{"status":"shown"}`; one that does not is refused with every problem, one per line, and the drawing stays. A view removed while its run was open refuses.
+- The data model of the drawing holds a copy of `.sees`, each value under `/<name>`, written again on every event of `changes`. Only the view writes it: the agent cannot send `updateDataModel`, and no component writes data.
+- A button calls the method its event names, with its context as the arguments, as the caller `view` of `OutsideCalls`: a method without approval runs at once, and `onEvent` hears an `AgentCall`; one with approval waits for the user as an `ApprovalRequest`, like a coding agent's, but never approved in advance. The call itself never goes to the in-app agent's history, because a call the model did not make breaks Gemini's history. When the method ran (it returned, failed or its result did not encode), the user's next message starts with a note that says which method the user's click called, with what, and its answer (`AgUiThread.addNote`). The note shares the user's message because ag-ui-adk passes on only the last user message of a run. A click the user rejected, or that was cancelled or invalidated, changed nothing and says nothing.
+- A button is off while its method is not listed now, and, for a method with approval, while the session is not `Idle` or the screen has `approvals: .none()`. So a click never meets an open run or another card. It is off too while its own call has no answer. The view shows no texts of its own, and a method that fails goes to `FlutterError.reportError`.
+- A new session of the scope starts with an empty view. The drawing stays after `startOver` and a broken run.
 
 ## Apple on-device connection
 
@@ -116,6 +129,7 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 | Situation | Content |
 |---|---|
 | executed | `jsonEncode(result)`, `null` for `void` |
+| `show_view` drew | `{"status":"shown"}` |
 | refused: not listed at call time, needs approval, the screen takes no approvals, bad arguments, or the method threw a `ToolCallRefused` | `{"status":"refused","reason":<message>}` |
 | the method threw anything else | `{"status":"failed","error":<fixed message>}` |
 | the method returned, but `jsonEncode` failed on its result | `{"status":"result_unavailable","reason":<fixed message>}` |
