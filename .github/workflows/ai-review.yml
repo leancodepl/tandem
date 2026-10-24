@@ -1,0 +1,36 @@
+name: ai-review
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  review:
+    name: Review with Claude
+
+    if: github.event.label.name == 'ai-review'
+
+    runs-on: ubuntu-latest
+
+    # The review comments as the Claude GitHub App, whose token it gets through OIDC.
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The action is in a private repository, which a public one cannot use directly.
+      - name: Checkout the review action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: leancodepl/lean-review-action
+          ssh-key: ${{ secrets.LEAN_REVIEW_DEPLOY_KEY }}
+          path: .lean-review
+
+      - name: Review
+        uses: ./.lean-review
+        with:
+          anthropic_api_key: ${{ secrets.LEAN_REVIEW_ANTHROPIC_API_KEY }}
