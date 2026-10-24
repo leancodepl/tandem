@@ -13,10 +13,12 @@ excessive indirection both add reading work.
    steps. Give parsing, rendering and diagnostics their own place when their
    detail obscures those steps. Keep an obvious operation inline.
 3. **Make decisions easy to follow.** Prefer early returns for stepwise checks.
-   Give a coherent condition a precise name when that removes work from the
-   caller. Keep distinct failures visible when they need different handling.
-   Prefer positive predicates and clear branches over a leading `!condition`,
-   which is easy to miss. Keep logical negation only when it makes the condition
+   A short guard fits on one line, such as `if (mixins.isEmpty) return null;`,
+   and often reads better than a ternary or a `switch` with a guard. Give a
+   coherent condition a precise name when that removes work from the caller.
+   Keep distinct failures visible when they need different handling. Prefer
+   positive predicates and clear branches over a leading `!condition`, which is
+   easy to miss. Keep logical negation only when it makes the condition
    substantially clearer. Rephrase the decision rather than adding `== false`.
 4. **Make names and call sites explain intent.** Name an operation for what it
    does and a predicate for what it actually guarantees. Use named arguments
@@ -24,8 +26,12 @@ excessive indirection both add reading work.
    call, with names that explain their purpose.
 5. **Keep detail with its owner.** Put related data and behavior together, and
    peer steps next to each other. Use types for real domain alternatives and
-   translate boundary strings once. A constant belongs where its meaning is
-   owned; a top-level declaration can be appropriate too.
+   translate boundary strings once. A value with meaning gets a narrow type,
+   not `Object`, a raw `List` or a `Map`. An app never types a protocol
+   string: a code is a constant on its type, next to what produces it. An
+   identity comes from one constructor, not from each caller. A constant
+   belongs where its meaning is owned; a top-level declaration can be
+   appropriate too.
 
 For top-down reading, start a file with imports and its main declaration, then
 private supporting types and local extensions. Within a class, start with
@@ -42,7 +48,7 @@ an operation.
 ## Examples of decisions
 
 The generator snippets below are design sketches, with helper responsibilities
-explained alongside them. The UI example links to a live implementation. The
+explained alongside them. The UI and session examples link to live code. The
 alternatives illustrate tradeoffs rather than syntax bans.
 
 ### One qualification, one failure
@@ -174,6 +180,13 @@ approval widget accepts its one request positionally. Flutter composition
 naturally nests widgets; an extra wrapper earns its place through a cohesive
 responsibility, rather than nesting depth alone.
 
+### Give a concept its own type
+
+In [turn.dart](../packages/tandem/lib/src/session/turn.dart), `Turn` holds the
+calls of one agent turn and the rules for approving them. `TandemSession` drives
+the runs and leaves those rules to `Turn`. When a class gathers conditions about
+one concept, that concept is the next type to extract.
+
 ## Readability review
 
 Before handoff, review the changed flow separately from correctness. Agent
@@ -181,8 +194,8 @@ findings are advisory.
 
 1. Establish the change's scope and intended behavior. Read the diff and the
    surrounding functions, types and direct callers needed to understand it.
-2. Apply the principles to the changed flow. Use the relevant generator or UI
-   example to resolve a tradeoff.
+2. Apply the principles to the changed flow. Use the relevant generator, UI or
+   session example to resolve a tradeoff.
 3. Look for inferred meaning, unnecessary jumps, misleading names, repeated
    decisions and misplaced responsibility. Check whether a proposed
    simplification moves the difficulty elsewhere.
