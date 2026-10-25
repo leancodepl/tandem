@@ -107,6 +107,76 @@ void main() {
     ]);
   });
 
+  test('calls go back in the message the server names, and its own calls with their results', () async {
+    final connection = _RawFirstRun(
+      Stream.fromIterable([
+        {
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'b1',
+          'toolCallName': 'find_customer',
+          'parentMessageId': 'm1',
+        },
+        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'b1', 'delta': '{"q":"A"}'},
+        {
+          'type': 'TOOL_CALL_RESULT',
+          'messageId': 'r1',
+          'toolCallId': 'b1',
+          'content': '[]',
+        },
+        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm2', 'delta': 'Adding.'},
+        {
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'c1',
+          'toolCallName': 'add',
+          'parentMessageId': 'm2',
+        },
+        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":"x"}'},
+        // No result: the server's call stays out.
+        {
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'b2',
+          'toolCallName': 'lookup',
+          'parentMessageId': 'm2',
+        },
+        {'type': 'RUN_FINISHED'},
+      ]),
+      ScriptedAgent([
+        (_) => const [AgentStep.say('Done.')],
+      ]),
+    );
+    open(connection).send('go');
+    await pumpEventQueue();
+
+    expect(shop.items, ['x']);
+    expect(messagesOf(connection.requests[1]).skip(1), [
+      {
+        'id': 'm1',
+        'role': 'assistant',
+        'toolCalls': [
+          {
+            'id': 'b1',
+            'type': 'function',
+            'function': {'name': 'find_customer', 'arguments': '{"q":"A"}'},
+          },
+        ],
+      },
+      {'id': 'r1', 'role': 'tool', 'toolCallId': 'b1', 'content': '[]'},
+      {
+        'id': 'm2',
+        'role': 'assistant',
+        'content': 'Adding.',
+        'toolCalls': [
+          {
+            'id': 'c1',
+            'type': 'function',
+            'function': {'name': 'add', 'arguments': '{"item":"x"}'},
+          },
+        ],
+      },
+      {'id': 'tool-c1', 'role': 'tool', 'toolCallId': 'c1', 'content': 'null'},
+    ]);
+  });
+
   test('a run is Thinking until it ends, then Idle', () async {
     final gate = Completer<void>();
     final agent = ScriptedAgent([
@@ -140,7 +210,12 @@ void main() {
         'toolCallId': 'c1',
         'toolCallName': 'search_catalog',
       },
-      {'type': 'TOOL_CALL_RESULT', 'toolCallId': 'c1', 'content': '[]'},
+      {
+        'type': 'TOOL_CALL_RESULT',
+        'messageId': 'r1',
+        'toolCallId': 'c1',
+        'content': '[]',
+      },
       {'type': 'TOOL_CALL_START', 'toolCallId': 'c2', 'toolCallName': 'lookup'},
       {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'None.'},
       {'type': 'TOOL_CALL_START', 'toolCallId': 'c3', 'toolCallName': 'add'},

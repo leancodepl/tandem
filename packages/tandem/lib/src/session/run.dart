@@ -15,6 +15,8 @@ final class Run(
 }) {
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
+
+  /// The calls that run in the app.
   final calls = <String, ToolCall>{};
   bool stopped = false;
 
@@ -25,13 +27,18 @@ final class Run(
   /// The listed method that runs now.
   Calling? calling;
 
-  /// The latest call of a tool that is not a listed method, until the
-  /// agent's next text or call, or its result.
-  ({String id, String tool})? _used;
-
   /// Set by `RUN_FINISHED` and `RUN_ERROR`, so the end of the stream that
   /// follows does not count as a lost connection.
   bool ended = false;
+
+  /// The ids of the agent's messages in the order they started, each with the
+  /// ids of its calls.
+  final _messages = <String, List<String>>{};
+  final _backendCalls = <String, _BackendCall>{};
+
+  /// The id of the latest call of a tool that is not a listed method, until
+  /// the agent's next text or call, or its result.
+  String? _used;
 
   /// Adds [delta] to the agent's message [messageId]. Returns the message as
   /// it grew and the one it replaces, null for a new message.
@@ -40,6 +47,7 @@ final class Run(
     String delta,
   ) {
     _used = null;
+    _messages.putIfAbsent(messageId, () => []);
     final shown = texts[messageId];
     final grown = texts[messageId] = AgentMessage('${shown?.text ?? ''}$delta');
     return (shown: shown, grown: grown);
@@ -52,19 +60,20 @@ final class Run(
   ];
 
   /// The tool of the backend that runs now, such as a search.
-  String? get backendTool => drawing ? null : _used?.tool;
+  String? get backendTool => _backendCalls[_used]?.tool;
 
   /// Whether the agent draws a view now.
-  bool get drawing => _used?.tool == ViewTool.name && view != null;
+  bool get drawing => calls[_used]?.tool == ViewTool.name;
 
   /// Whether a call of [tool] runs in the app, not on the backend.
   bool offers(String tool) =>
       listing.lists(tool) || (tool == ViewTool.name && view != null);
 
-  /// A call of [tool] starts. It becomes one of [calls] when it runs in the
-  /// app, as does a call the run already has.
-  void startTool(String id, String tool) {
-    _used = listing.lists(tool) ? null : (id: id, tool: tool);
+  /// A call of [tool] starts, in the agent's message [parentMessageId]. It
+  /// becomes one of [calls] when it runs in the app, as does a call the run
+  /// already has. The first start of a backend call counts.
+  void startTool(String id, String tool, String? parentMessageId) {
+    _used = listing.lists(tool) ? null : id;
     if (calls[id] case final call?) {
       if (call.tool != tool) {
         throw const FormatException('A tool call changed its method.');
@@ -74,18 +83,73 @@ final class Run(
       // description.
       final description = listing.lists(tool) ? listing.description(tool) : '';
       calls[id] = ToolCall(id, tool, description, caller: .inAppAgent);
+      _addToMessage(id, parentMessageId);
+    } else if (!_backendCalls.containsKey(id)) {
+      _backendCalls[id] = _BackendCall(tool);
+      _addToMessage(id, parentMessageId);
     }
   }
 
-  /// A tool of the backend returned [id]'s result.
-  void finishTool(String id) {
-    if (_used?.id == id) {
+  void addArguments(String id, String delta) {
+    if (calls[id] case final call?) {
+      call.arguments += delta;
+    } else if (_backendCalls[id] case final call?) {
+      call.arguments += delta;
+    }
+  }
+
+  /// A tool of the backend returned [content] for the call [id], as the
+  /// message [messageId].
+  void finishTool(String messageId, String id, String content) {
+    if (_used == id) {
       _used = null;
     }
+    _backendCalls[id]?.result = .toolResult(messageId, id, content);
   }
 
+  /// The run as the thread sends it back: each message of the agent with its
+  /// text and calls, then the results of its calls that ran on the backend. A
+  /// backend call without a result stays out.
+  List<AgUiMessage> get history => [
+    for (final MapEntry(key: id, value: callIds) in _messages.entries) ...[
+      ?_message(id, callIds),
+      for (final callId in callIds) ?_backendCalls[callId]?.result,
+    ],
+  ];
+
+  /// What the agent said, without its calls.
   List<AgUiMessage> get assistantTexts => [
     for (final MapEntry(key: id, value: message) in texts.entries)
-      AgUiMessage.assistantText(id, message.text),
+      AgUiMessage.assistant(id, text: message.text),
   ];
+
+  // Without a parent, never the bare call id: ag-ui-adk marks every message
+  // id it has seen as processed, and would swallow the answer that comes later.
+  void _addToMessage(String callId, String? parentMessageId) => _messages
+      .putIfAbsent(parentMessageId ?? 'asst-$callId', () => [])
+      .add(callId);
+
+  AgUiMessage? _message(String id, List<String> callIds) {
+    final toolCalls = [
+      for (final callId in callIds)
+        if (calls[callId] case final call?)
+          AgUiToolCall(callId, call.tool, call.argumentsJson)
+        else if (_backendCalls[callId] case final call?
+            when call.result != null)
+          AgUiToolCall(callId, call.tool, call.argumentsJson),
+    ];
+    final text = texts[id]?.text;
+    if (text == null && toolCalls.isEmpty) {
+      return null;
+    }
+    return .assistant(id, text: text, toolCalls: toolCalls);
+  }
+}
+
+final class _BackendCall(final String tool) {
+  String arguments = '';
+  AgUiMessage? result;
+
+  // As for a listed method: a call without arguments has no `TOOL_CALL_ARGS`.
+  String get argumentsJson => arguments.isEmpty ? '{}' : arguments;
 }

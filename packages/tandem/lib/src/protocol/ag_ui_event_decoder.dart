@@ -47,7 +47,11 @@ AgentEvent _decodeToolCallStarted(JsonObject json) {
     return const IgnoredEvent();
   }
 
-  return ToolCallStarted(toolCallId, name);
+  return ToolCallStarted(
+    toolCallId,
+    name,
+    _tryString(json[AgUiFields.parentMessageId]),
+  );
 }
 
 AgentEvent _decodeToolCallArgs(JsonObject json) {
@@ -61,9 +65,12 @@ AgentEvent _decodeToolCallArgs(JsonObject json) {
 }
 
 AgentEvent _decodeToolCallResult(JsonObject json) => switch (json) {
-  {AgUiFields.toolCallId: final String toolCallId} => ToolCallResult(
-    toolCallId,
-  ),
+  {
+    AgUiFields.messageId: final String messageId,
+    AgUiFields.toolCallId: final String toolCallId,
+    AgUiFields.content: final String content,
+  } =>
+    ToolCallResult(messageId, toolCallId, content),
   _ => const IgnoredEvent(),
 };
 
