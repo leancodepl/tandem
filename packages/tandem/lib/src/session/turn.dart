@@ -78,9 +78,9 @@ final class Turn(final List<ToolCall> calls) {
 
   /// Refuses every call that waits, for a screen that takes no approvals,
   /// and returns them.
-  List<ToolCall> refuseWaiting(String reason) => [
+  List<ToolCall> refuseWaiting() => [
     for (final call in calls.where(_waits).toList())
-      call..answer = .refused(reason),
+      call..answer = ToolAnswer.noApprovals,
   ];
 
   ToolCall? _decide(ApprovalRequest request, ApprovalStatus decision) {

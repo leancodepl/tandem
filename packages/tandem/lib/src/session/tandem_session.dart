@@ -248,6 +248,8 @@ final class TandemSession({
     JsonObject arguments, {
     bool autoApprove = false,
   }) {
+    // The in-app agent's calls come with its runs.
+    assert(caller != .inAppAgent, 'callFor is for callers outside a run.');
     final listing = AgentListing.of(_surface);
     final argumentsJson = jsonEncode(arguments);
     final needsApproval = listing.needsApproval(tool);
@@ -269,8 +271,7 @@ final class TandemSession({
     );
   }
 
-  // The refusals speak to a coding agent: a view disables the buttons that
-  // would get them.
+  // A view disables the buttons that would get these refusals.
   Future<ToolAnswer> _waitForUser(ToolCall call) async {
     if (_waiting.lastAsked(call.caller) case final waiting?
         when waiting.answer == null) {
@@ -283,11 +284,7 @@ final class TandemSession({
       );
     }
     if (!_asksForApproval()) {
-      return .refused(
-        "${call.tool} needs the user's approval, but this screen has "
-        'approvals: .none(). TandemBridge.enable(autoApprove: true) approves '
-        'the calls of a coding agent.',
-      );
+      return ToolAnswer.noApprovals;
     }
     _waiting.ask(call, _seesNow);
     if (status is Idle) {
@@ -495,10 +492,7 @@ final class TandemSession({
   }
 
   void _refuseApprovals(Turn turn) {
-    final refused = turn.refuseWaiting(
-      'The user cannot approve calls on this screen.',
-    );
-    for (final call in refused) {
+    for (final call in turn.refuseWaiting()) {
       if (kDebugMode) {
         report(
           StateError(

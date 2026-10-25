@@ -50,6 +50,11 @@ sealed class const ToolAnswer() {
     'reason': 'The arguments must be a JSON object.',
   });
 
+  /// The call needs approval, but the screen has `approvals: .none()`.
+  static const noApprovals = _Status(.refused, {
+    'reason': 'The user cannot approve calls on this screen.',
+  });
+
   static const shown = _Status(.shown);
 
   static const failed = _Status(.failed, {
