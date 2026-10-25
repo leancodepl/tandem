@@ -15,7 +15,7 @@ Ask the user two questions, unless the request already answers them:
 - **How the user talks to the agent.** A chat next to the screen, or a button that sends one prepared message, such as "Fill from e-mail" next to a pasted text. A button needs no chat.
 - **Which agent.**
   - An AG-UI backend: the user gives its address. Any AG-UI endpoint works, such as Google ADK, LangChain, CrewAI or Mastra. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK backend to copy from.
-  - Apple's on-device model, on iOS and macOS 26 with Apple Intelligence: no backend and no API key.
+  - Apple's on-device model, on iOS and macOS 26 with Apple Intelligence: no backend and no API key. It is experimental and small: offer it only for the simplest tasks, such as one sentence that becomes one call.
 
 **Done when** you know both answers, and the backend's address when there is one. Without an address, put none into the app: step 6 tests the screen with a script, and the address comes later.
 

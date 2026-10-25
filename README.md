@@ -21,7 +21,7 @@ Start with your coding agent: in 10 minutes, it fills a form of your running app
 Run `dart run skills@ add leancodepl/tandem --skill tandem --agent claude`, then read `.claude/skills/tandem/SKILL.md` and follow it.
 ```
 
-In Cursor, use `--agent cursor` and `.cursor/skills/tandem/SKILL.md`. In Codex, use `--agent codex` and `.agents/skills/tandem/SKILL.md`. In a new session, `/tandem` does the same.
+In a new session, `/tandem` does the same. Tandem is tested with Claude Code only. Cursor and Codex should work the same way, but you set them up on your own: use `--agent cursor` and `.cursor/skills/tandem/SKILL.md`, or `--agent codex` and `.agents/skills/tandem/SKILL.md`.
 
 Pick a screen. Its state class lists what an AI agent may see and which of its methods the agent may call. The agent then works on that screen together with the user, through the methods your buttons already call, and the important ones wait for the user's approval. The rest of the app stays as it is.
 
@@ -31,9 +31,9 @@ Pick a screen. Its state class lists what an AI agent may see and which of its m
 
 With a remote agent, your backend calls the model and keeps the API key. The app talks to it over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Google ADK, LangChain, CrewAI, Mastra and many other agent frameworks support it.
 
-On iOS and macOS 26, `OnDeviceAgent` can run [Apple's on-device model](#apples-on-device-model) instead, without a backend or an API key. The screen, its capabilities and approvals stay the same.
+On iOS and macOS 26, the experimental `OnDeviceAgent` can run [Apple's on-device model](#apples-on-device-model) instead, without a backend or an API key, for the simplest tasks. The screen, its capabilities and approvals stay the same.
 
-In a debug build, [your coding agent](#your-coding-agent), such as Claude Code, Cursor or Codex, calls the same methods through `TandemBridge`, with the same checks and approvals.
+In a debug build, [your coding agent](#your-coding-agent), such as Claude Code, calls the same methods through `TandemBridge`, with the same checks and approvals.
 
 Your state class lists what the agent may do:
 
@@ -151,7 +151,7 @@ A coding agent reaches them with the `vm_service` tool of the Dart MCP server (`
 - The coding agent sees what an in-app agent would see, and calls only the listed methods, with the same checks.
 - A call goes to the front screen: the only open `TandemScope`, or else the only one on the current route. When there are several, the call names one.
 - A `.callsWithApproval` method waits until the user approves it in the app, as `approvals:` of the scope asks. `TandemBridge.enable(autoApprove: true)` lets the coding agent approve its own calls, for a scripted run.
-- Claude Code waits up to 30 minutes for a call through the Dart MCP server, and the CLIs of Codex and Cursor 60 seconds. The request keeps waiting in the app, and `describe` shows its outcome in `lastApproval`, so the coding agent does not call the method twice.
+- Claude Code waits up to 30 minutes for a call through the Dart MCP server. The request keeps waiting in the app, and `describe` shows its outcome in `lastApproval`, so the coding agent does not call the method twice.
 
 ## An in-app agent
 
@@ -206,6 +206,9 @@ The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) 
 The order desk enables `TandemBridge`, so your coding agent can fill the order too. To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent`, as [the order desk](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) does.
 
 ## Apple's on-device model
+
+> [!WARNING]
+> Experimental. Apple's on-device model is small, so use it for the simplest tasks, such as one sentence that becomes one call. It is not part of what Tandem checks before a release.
 
 `OnDeviceAgent.apple()` runs Apple's system model on the device, with the same screen, capabilities, chat and approvals as a remote agent. Pass it to `TandemScope.connected`. It returns the same connection on every call, so `build` may call it.
 

@@ -90,7 +90,7 @@ Every answer has a `status`, and the `screens` as they are after the call:
 A call of a `.callsWithApproval` method waits until the user decides in the app, unless the bridge has `autoApprove: true`. The request shows once the in-app agent's own requests are decided. A screen with `approvals: .none()` refuses the call. Your call can time out first:
 
 - Claude Code waits up to 30 minutes for the Dart MCP server. In an interactive session it moves the call to the background after 2 minutes and tells you the result later.
-- Codex CLI stops after 60 seconds, unless `tool_timeout_sec` of the server in `config.toml` is longer. Cursor's CLI stops after 60 seconds.
+- Tandem is tested with Claude Code only. Another coding agent's MCP client may stop sooner, such as after 60 seconds.
 - A shell command stops at the timeout of your shell tool. Run the `curl` in the background, or give the command a longer timeout.
 
 The request keeps waiting in the app after your call timed out. Then:
