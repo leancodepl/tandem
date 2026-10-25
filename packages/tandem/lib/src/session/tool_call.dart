@@ -5,8 +5,9 @@ import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 
-/// A call of a listed method, from the moment it is made until it has its
-/// answer: the in-app agent's goes out with the next run.
+/// A call of a listed method or of the view's tool, from the moment it is
+/// made until it has its answer: the in-app agent's goes out with the next
+/// run.
 final class ToolCall(
   final String id,
   final String tool,
@@ -42,11 +43,15 @@ final class ToolCall(
   // ag-ui-adk sends no `TOOL_CALL_ARGS` for a call without arguments.
   String get argumentsJson => arguments.isEmpty ? '{}' : arguments;
 
-  bool get hasObjectArguments {
+  /// The arguments, or null when they are not a JSON object.
+  Map<String, Object?>? get objectArguments {
     try {
-      return jsonDecode(argumentsJson) is Map<String, Object?>;
+      return switch (jsonDecode(argumentsJson)) {
+        final Map<String, Object?> object => object,
+        _ => null,
+      };
     } on FormatException {
-      return false;
+      return null;
     }
   }
 

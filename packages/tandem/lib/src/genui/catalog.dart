@@ -18,72 +18,106 @@ const formatString = 'formatString';
 enum CatalogComponent(
   /// The component's name in A2UI messages.
   final String wireName,
-  final JsonObject _properties, {
-  final List<String> required = const [],
-}) {
-  text(
-    'Text',
-    {
-      A2uiFields.text: {r'$ref': '$_common/DynamicString'},
-      A2uiFields.variant: {
-        'type': 'string',
-        'enum': ['h1', 'h2', 'h3', 'h4', 'h5', 'caption', 'body'],
-      },
-    },
-    required: [A2uiFields.text],
-  ),
-  column('Column', _children, required: [A2uiFields.children]),
-  row('Row', _children, required: [A2uiFields.children]),
-  list('List', _children, required: [A2uiFields.children]),
-  card('Card', _child, required: [A2uiFields.child]),
-  divider('Divider', {}),
-  button(
-    'Button',
-    {
-      ..._child,
-      A2uiFields.variant: {
-        'type': 'string',
-        'enum': ['default', 'primary', 'borderless'],
-      },
-      A2uiFields.action: {r'$ref': '$_common/Action'},
-    },
-    required: [A2uiFields.child, A2uiFields.action],
-  );
+) {
+  text('Text'),
+  column('Column'),
+  row('Row'),
+  list('List'),
+  card('Card'),
+  divider('Divider'),
+  button('Button');
 
   /// The component named [wireName], or null for one outside the catalog.
   static CatalogComponent? named(String wireName) =>
       values.where((component) => component.wireName == wireName).firstOrNull;
 
-  JsonObject get _schema => {
-    'type': 'object',
-    'allOf': [
-      {r'$ref': '$_common/ComponentCommon'},
-      {
-        'type': 'object',
-        'properties': {
-          A2uiFields.component: {'const': wireName},
-          ..._properties,
+  JsonObject get _schema {
+    final (:properties, :required) = _definition;
+    return {
+      'type': 'object',
+      'allOf': [
+        {r'$ref': '$_common/ComponentCommon'},
+        {
+          'type': 'object',
+          'properties': {
+            A2uiFields.component: {'const': wireName},
+            ...properties,
+          },
+          'required': [A2uiFields.component, ...required],
         },
-        'required': [A2uiFields.component, ...required],
-      },
-    ],
-    'unevaluatedProperties': false,
-  };
+      ],
+      'unevaluatedProperties': false,
+    };
+  }
+
+  ({JsonObject properties, List<String> required}) get _definition =>
+      switch (this) {
+        text => (
+          properties: {
+            A2uiFields.text: {r'$ref': '$_common/DynamicString'},
+            A2uiFields.variant: _enum([
+              for (final variant in TextVariant.values) variant.name,
+            ]),
+          },
+          required: [A2uiFields.text],
+        ),
+        column || row || list => (
+          properties: {
+            A2uiFields.children: {r'$ref': '$_common/ChildList'},
+          },
+          required: [A2uiFields.children],
+        ),
+        card => (properties: _child, required: [A2uiFields.child]),
+        divider => (properties: {}, required: []),
+        button => (
+          properties: {
+            ..._child,
+            A2uiFields.variant: _enum([
+              for (final variant in ButtonVariant.values) variant.wireName,
+            ]),
+            A2uiFields.action: {r'$ref': '$_common/Action'},
+          },
+          required: [A2uiFields.child, A2uiFields.action],
+        ),
+      };
+}
+
+/// How a Text looks, by its `variant`, named as in A2UI.
+enum TextVariant() {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  caption,
+  body;
+
+  /// The variant named [wireName], or [body].
+  static TextVariant named(Object? wireName) =>
+      values.asNameMap()[wireName] ?? body;
+}
+
+/// How a Button looks, by its `variant`.
+enum ButtonVariant(final String wireName) {
+  outlined('default'),
+  primary('primary'),
+  borderless('borderless');
+
+  /// The variant named [wireName], or the default one.
+  static ButtonVariant named(Object? wireName) =>
+      values.where((variant) => variant.wireName == wireName).firstOrNull ??
+      outlined;
 }
 
 /// A processor that takes only `createSurface` and `updateComponents` of
-/// Tandem's catalog, and checks them strictly. [onAction] hears every press
-/// of a button.
-MessageProcessor<ComponentApi> tandemProcessor({
-  void Function(A2uiRendererAction action)? onAction,
-}) => MessageProcessor(
+/// Tandem's catalog, and checks them strictly.
+MessageProcessor<ComponentApi> tandemProcessor() => MessageProcessor(
   catalogs: [_catalog],
   defaultVersion: .v0_9_1,
   validationConfig: const ValidationConfig(
     targetVersion: .v0_9_1,
     allowedMessages: [A2uiFields.createSurface, A2uiFields.updateComponents],
   ),
-  onAction: onAction,
 );
 
 final _catalog = Catalog.fromJson({
@@ -102,6 +136,4 @@ const _child = {
   A2uiFields.child: {r'$ref': '$_common/ComponentId'},
 };
 
-const _children = {
-  A2uiFields.children: {r'$ref': '$_common/ChildList'},
-};
+JsonObject _enum(List<String> values) => {'type': 'string', 'enum': values};

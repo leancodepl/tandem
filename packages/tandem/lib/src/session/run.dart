@@ -1,11 +1,18 @@
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
+import 'package:tandem/src/session/view_tool.dart';
 
 /// What the session keeps of its open run.
-final class Run(final AgentListing listing) {
+final class Run(
+  final AgentListing listing, {
+
+  /// The view the run offers the agent to draw on.
+  final ViewTool? view,
+}) {
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
   final calls = <String, ToolCall>{};
@@ -18,9 +25,9 @@ final class Run(final AgentListing listing) {
   /// The listed method that runs now.
   Calling? calling;
 
-  /// The call of a tool of the backend that runs now, until its result or
-  /// the agent's next text.
-  ({String id, String tool})? backendCall;
+  /// The latest call of a tool that is not a listed method, until the
+  /// agent's next text or call, or its result.
+  ({String id, String tool})? _used;
 
   /// Set by `RUN_FINISHED` and `RUN_ERROR`, so the end of the stream that
   /// follows does not count as a lost connection.
@@ -32,24 +39,48 @@ final class Run(final AgentListing listing) {
     String messageId,
     String delta,
   ) {
-    backendCall = null;
+    _used = null;
     final shown = texts[messageId];
     final grown = texts[messageId] = AgentMessage('${shown?.text ?? ''}$delta');
     return (shown: shown, grown: grown);
   }
 
-  void startCall(String id, String tool) {
+  /// The tools of the run: the listed methods, then the view's tool.
+  List<JsonObject> get tools => [
+    ...listing.tools,
+    if (view case final view?) view.definition,
+  ];
+
+  /// The tool of the backend that runs now, such as a search.
+  String? get backendTool => drawing ? null : _used?.tool;
+
+  /// Whether the agent draws a view now.
+  bool get drawing => _used?.tool == ViewTool.name && view != null;
+
+  /// Whether a call of [tool] runs in the app, not on the backend.
+  bool offers(String tool) =>
+      listing.lists(tool) || (tool == ViewTool.name && view != null);
+
+  /// A call of [tool] starts. It becomes one of [calls] when it runs in the
+  /// app, as does a call the run already has.
+  void startTool(String id, String tool) {
+    _used = listing.lists(tool) ? null : (id: id, tool: tool);
     if (calls[id] case final call?) {
       if (call.tool != tool) {
         throw const FormatException('A tool call changed its method.');
       }
-    } else {
-      calls[id] = ToolCall(
-        id,
-        tool,
-        listing.description(tool),
-        caller: .inAppAgent,
-      );
+    } else if (offers(tool)) {
+      // A call of the view's tool never asks the user, so needs no
+      // description.
+      final description = listing.lists(tool) ? listing.description(tool) : '';
+      calls[id] = ToolCall(id, tool, description, caller: .inAppAgent);
+    }
+  }
+
+  /// A tool of the backend returned [id]'s result.
+  void finishTool(String id) {
+    if (_used?.id == id) {
+      _used = null;
     }
   }
 

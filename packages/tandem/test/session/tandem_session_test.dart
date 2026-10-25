@@ -128,7 +128,11 @@ void main() {
     final session = open(_RawFirstRun(stream.stream, ScriptedAgent([])))
       ..send('find a monitor');
     final statuses = <SessionStatus>[];
-    session.addListener(() => statuses.add(session.status));
+    session.addListener(() {
+      if (statuses.lastOrNull != session.status) {
+        statuses.add(session.status);
+      }
+    });
 
     for (final event in [
       {

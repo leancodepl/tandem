@@ -11,6 +11,7 @@ import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/ag_ui_event_decoder.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
+import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/ag_ui_thread.dart';
 import 'package:tandem/src/session/app_notes.dart';
 import 'package:tandem/src/session/caller.dart';
@@ -22,6 +23,7 @@ import 'package:tandem/src/session/tandem_event.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/turn.dart';
+import 'package:tandem/src/session/view_tool.dart';
 import 'package:tandem/src/session/waiting_turns.dart';
 import 'package:uuid/uuid.dart';
 
@@ -85,6 +87,9 @@ final class TandemSession({
 
   /// The approved method that runs now, outside any run.
   Calling? _approvedCall;
+
+  /// The view that the next run offers the agent to draw on.
+  ViewTool? _view;
   var _disposed = false;
 
   /// Oldest first.
@@ -93,7 +98,10 @@ final class TandemSession({
   SessionStatus get status => switch (_run) {
     Run(stopped: true) => const Stopping(),
     Run(:final calling?) => calling,
-    Run(:final backendCall) => Thinking(backendTool: backendCall?.tool),
+    Run(:final backendTool, :final drawing) => Thinking(
+      backendTool: backendTool,
+      drawing: drawing,
+    ),
     null => _approvedCall ?? _waitingStatus,
   };
 
@@ -206,6 +214,18 @@ final class TandemSession({
   /// The last call of [caller] that asked the user, null before the first.
   @internal
   ToolCall? lastAsked(Caller caller) => _waiting.lastAsked(caller);
+
+  /// Offers the agent [view] to draw on, from the next run on.
+  @internal
+  void attach(ViewTool view) => _view = view;
+
+  /// Stops offering [view], from the next run on.
+  @internal
+  void detach(ViewTool view) {
+    if (identical(view, _view)) {
+      _view = null;
+    }
+  }
 
   /// Calls [tool] for [caller], such as a coding agent through
   /// `TandemBridge`. The call stays out of the agent's history, and `onEvent`
@@ -329,9 +349,9 @@ final class TandemSession({
 
   void _open() {
     try {
-      final run = _run = Run(AgentListing.of(_surface));
+      final run = _run = Run(AgentListing.of(_surface), view: _view);
       final input = _thread.input(
-        tools: run.listing.tools,
+        tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
       );
       _runSubscription = _connection
@@ -345,7 +365,7 @@ final class TandemSession({
               }
             },
             onError: (Object err, StackTrace st) {
-              _report(err, st);
+              report(err, st);
               _connectionLost(run);
             },
             onDone: () => _connectionLost(run),
@@ -364,18 +384,14 @@ final class TandemSession({
     switch (event) {
       case TextDelta(:final messageId, :final delta) when !run.stopped:
         _showText(run.write(messageId, delta));
-      case ToolCallStarted(:final toolCallId, :final name)
-          when run.listing.lists(name) || run.calls.containsKey(toolCallId):
-        run.startCall(toolCallId, name);
-      // A call of a tool the listing does not list runs on the server.
+      // A call of a tool the run does not offer runs on the server.
       case ToolCallStarted(:final toolCallId, :final name):
-        run.backendCall = (id: toolCallId, tool: name);
+        run.startTool(toolCallId, name);
         notifyListeners();
       case ToolCallArgs(:final toolCallId, :final delta):
         run.calls[toolCallId]?.arguments += delta;
-      case ToolCallResult(:final toolCallId)
-          when run.backendCall?.id == toolCallId:
-        run.backendCall = null;
+      case ToolCallResult(:final toolCallId):
+        run.finishTool(toolCallId);
         notifyListeners();
       case RunFinished(outcome: .cancelled):
         run.ended = true;
@@ -431,8 +447,11 @@ final class TandemSession({
       if (run.stopped || _run != run) {
         return;
       }
-      if (!call.hasObjectArguments) {
+      final arguments = call.objectArguments;
+      if (arguments == null) {
         call.answer = .refused('The arguments must be a JSON object.');
+      } else if (run.view case final view? when call.tool == ViewTool.name) {
+        call.answer = view.show(arguments);
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
@@ -469,7 +488,7 @@ final class TandemSession({
     );
     for (final call in refused) {
       if (kDebugMode) {
-        _report(
+        report(
           StateError(
             '${call.tool} needs approval, but this screen has approvals: '
             '.none().',
@@ -484,7 +503,7 @@ final class TandemSession({
     try {
       await _onApprovalRequest?.call(request);
     } catch (err, st) {
-      _report(err, st);
+      report(err, st);
     }
   }
 
@@ -530,7 +549,7 @@ final class TandemSession({
       argumentsJson,
       caller: caller,
       approved: approved,
-      report: _report,
+      report: report,
     );
     if (returned case final agentCall? when !_disposed) {
       _emit(agentCall);
@@ -542,7 +561,7 @@ final class TandemSession({
     try {
       _onEvent?.call(event);
     } catch (err, st) {
-      _report(err, st);
+      report(err, st);
     }
   }
 
@@ -578,7 +597,7 @@ final class TandemSession({
     }
   }
 
-  SeesSnapshot get _seesNow => .read(_surface, report: _report);
+  SeesSnapshot get _seesNow => .read(_surface, report: report);
 
   /// A run is open, or an approved method runs.
   bool get _isBusy => _run != null || _approvedCall != null;
@@ -616,14 +635,14 @@ final class TandemSession({
       ..startOver()
       ..addUserTexts(_takeQueued());
     unawaited(_runSubscription?.cancel());
-    _report(error, stack);
+    report(error, stack);
     _items.add(const ChatNotice(.runFailed));
     _showNextRequest();
     _emit(RunFailed(code: _codeOf(error)));
   }
 
   void _runFailed(Object err, StackTrace st) {
-    _report(err, st);
+    report(err, st);
     _items.add(const ChatNotice(.runFailed));
     _startNextRun();
     _emit(RunFailed(code: _codeOf(err)));
@@ -677,10 +696,6 @@ final class TandemSession({
       unawaited(_ask(request));
     }
   }
-
-  void _report(Object err, StackTrace st) => FlutterError.reportError(
-    FlutterErrorDetails(exception: err, stack: st, library: 'tandem'),
-  );
 }
 
 bool _alwaysAsks() => true;

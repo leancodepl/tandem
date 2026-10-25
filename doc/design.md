@@ -6,12 +6,12 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` | a2ui_core, flutter, http, meta, uuid; FoundationModels on Apple systems |
+| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent`, `TandemView` | a2ui_core, flutter, http, meta, uuid; FoundationModels on Apple systems |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
 
-`tandem` has no widget the user sees. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
+`tandem` has one widget the user sees, `TandemView`, which shows a view the agent drew and has no texts of its own. The app builds its chat on `TandemSession`, which it reads with `TandemSessionScope.of`, so the texts, their language and the look are the app's. The example's `AgentChat` is one to copy.
 
 The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed, so development and CI resolve the same versions. The workspace members have no lock of their own.
 
@@ -33,7 +33,7 @@ The README and both packages' `example/example.md` show only code from `example`
 - One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run. Several go as one, the texts joined by a blank line.
 - `session.note(text)` keeps the latest five notes of the app, and every run gives them as the last `context` entry, `app_notes`: `{"new": [...], "earlier": [...]}`, new until a run that offered them finished. `context` does not stay in the history of every backend, so every run sends the earlier ones again. A note changes no status and no item, and does not count as a change of `.sees`.
 - `session.wake()` posts a `UserMessage` with `fromApp`, a fixed text that says the app sent it. It never decides for the user: it starts a run only once the session is idle and no request waits, and after a Stop it waits for the user's next message. Any run that starts before takes it along.
-- `status` follows from the open run: `Stopping` once the user stopped it, `Calling` while a listed method runs, else `Thinking`. `Thinking` names a tool of the backend from its `TOOL_CALL_START` until its `TOOL_CALL_RESULT` or the agent's next text, the latest one when several run. Without a run it is `AwaitingApproval` with the request that shows, or `Idle`.
+- `status` follows from the open run: `Stopping` once the user stopped it, `Calling` while a listed method runs, else `Thinking`. `Thinking` names a tool of the backend from its `TOOL_CALL_START` until its `TOOL_CALL_RESULT` or the agent's next text or call, the latest one when several run. Without a run it is `AwaitingApproval` with the request that shows, or `Idle`.
 - A call without approval runs at once, and its result goes in the next run.
 - The session tells `onEvent` what happened, as a sealed `TandemEvent`: an `AgentCall` after every call of a listed method that returned, including approved ones, with the name, arguments, result and caller; `RunStopped` on every Stop that stops a run, and when the backend cancels one; `RunFailed`, with the error's `RunErrorCode` when it has one, and `ConnectionLost`, which also add a `ChatNotice`. A Stop adds a notice too or marks the last message `stopped`. Each event comes once the session has settled and notified, so `onEvent` may send a message at once. `TandemScope` passes its own context and the session that sent the event, so an app can read what is provided above it, such as the surface, highlight the changed fields or show a snackbar. Approval requests are not events: they go to `approvals:`. The events need no context, so a `session.events` stream of the same types can come later.
 - A call that needs approval shows a card with a frozen copy of its arguments and keeps a snapshot of `.sees`, taken after the turn's calls without approval ran. Every event of the surface's `changes` compares `.sees` with the snapshot, and a difference invalidates the card for good. An event that comes late or changes nothing in `.sees` does no harm, so the card shows at once. A change undone before the session hears of it goes unseen (A, B, A). Approve compares again, for values `changes` does not report. When `.sees` changed after the run started, compared with what the run sent, the turn's requests are invalidated before they show, and the answers go at once. This covers a change while the agent thought and one made by a call of the same turn: the agent asks again in its next run. A `.sees` that cannot be read counts as changed, and the error is reported.
@@ -54,6 +54,16 @@ The README and both packages' `example/example.md` show only code from `example`
 - `TandemScope` opens one session, and an ordinary rebuild keeps it. A new session with a new thread replaces it when `agent` is another `Uri` (`==`) or `connected` gets another connection (`identical`). The old session is disposed first. Each new session calls `surface` again with the scope's context. Another object from the provider under the same scope opens no session. A scope without `agent` runs over a connection whose every run ends with `RUN_ERROR`, so `send` reports what is missing. A scope that leaves the tree disposes its session before the owner of the state object, such as a `BlocProvider`, closes it. A new `onEvent` or `approvals` takes effect at once.
 - `threadId` lives as long as its session and never comes back after it is gone: an orphaned ADK run would mix up the history.
 - A run error shows in the chat, and the next message works as usual. Its code and message, like every error the session catches, go to `FlutterError.reportError`, never to the chat.
+
+## Views
+
+`TandemView` attaches a `DrawnView` to the session of its scope. The session knows it only as a `ViewTool`, a tool definition and `show`, so an app without `TandemView` leaves `a2ui_core` out of its release build.
+
+- A run started while a view is attached offers `tandem_show_view` after the listed methods. The description of the tool is the catalog with one example; the description sends the model to `/<name>` for the screen's data and to `app_notes` for what a press answered.
+- `tandem_show_view` takes `messages`, A2UI `createSurface` and `updateComponents` of Tandem's catalog. Its call runs with the turn's calls without approval, in their order, and changes no status and emits no `AgentCall`. The answer is `{"status":"shown"}`, or `refused` with one problem per line: what `a2ui_core` refuses, a second surface, a button that calls no listed method or calls one with other parameters, a path that `.sees` does not have. Inside a list template a path reads from the first item, and in an empty list nothing is checked. A refusal keeps the last view.
+- The view holds a copy of `.sees` under `/<name>` in its data model and writes it again on every `changes` event, so the texts follow the screen. The agent's messages never write data: `updateDataModel` is refused.
+- From the `TOOL_CALL_START` of `tandem_show_view` until the agent's next text or call, the status is `Thinking(drawing: true)`.
+- A view lives with its session: a new session of the scope starts empty, `startOver` keeps it, and a `tandem_show_view` of a run whose view left the tree is refused.
 
 ## Coding agent
 
@@ -95,7 +105,7 @@ The copy relies on when Apple writes the batch to the transcript. That timing wa
 For ag-ui-adk 0.9.0. Its behaviour differs between versions.
 
 - POST with `Accept: text/event-stream` and `Content-Type: application/json`.
-- Body `{threadId, runId, state: {}, messages, tools, context, forwardedProps: {}}`. `tools` is always there, `[]` when empty. No `resume`, no `protocolVersion`.
+- Body `{threadId, runId, state: {}, messages, tools, context, forwardedProps: {}}`. `tools` is always there, `[]` when empty, with `tandem_show_view` last while a view is attached. No `resume`, no `protocolVersion`.
 - User message: `{id, role: 'user', content}`. What the user and `session.wake` sent since the last run went out goes as one message, the texts joined by a blank line: ag-ui-adk passes the model only the last new user message of a run.
 - Assistant text: `{id: <TEXT_MESSAGE_START messageId>, role: 'assistant', content: <visible text>}`.
 - App tool call: `{id: 'asst-<toolCallId>', role: 'assistant', toolCalls: [{id: <toolCallId>, type: 'function', function: {name, arguments}}]}`. `arguments` is the joined `TOOL_CALL_ARGS`, or `'{}'`: ag-ui-adk sends none for a call without arguments. The message id is never the bare call id, or ag-ui-adk would swallow the answer as processed.
@@ -118,6 +128,7 @@ The `content` of the tool message, built in `session/tool_answer.dart`.
 | Situation | Content |
 |---|---|
 | executed | `jsonEncode(result)`, `null` for `void` |
+| a view drawn by `tandem_show_view` | `{"status":"shown"}` |
 | refused: not listed at call time, needs approval, the screen takes no approvals, bad arguments, or the method threw a `ToolCallRefused` | `{"status":"refused","reason":<message>}` |
 | the method threw anything else | `{"status":"failed","error":<fixed message>}` |
 | the method returned, but `jsonEncode` failed on its result | `{"status":"result_unavailable","reason":<fixed message>}` |

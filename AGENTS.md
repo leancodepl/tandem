@@ -4,7 +4,7 @@ Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what the
 
 ## Layout
 
-- `packages/tandem`: the agent list, the AG-UI connection, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` and the Agent Skills in `skills/`. This is what apps depend on. It does not depend on bloc and has no chat widget.
+- `packages/tandem`: the agent list, the AG-UI connection, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent`, `TandemView` and the Agent Skills in `skills/`. This is what apps depend on. It does not depend on bloc and has no chat widget.
 - `skills/tandem`: the `/tandem` skill that apps install from this repository. It checks the app and hands the work to the package's skills.
 - `packages/tandem_generator`: the builder behind `@TandemAgent()`. It is not a workspace member, so it has its own `pubspec.lock`, which is not committed. The root `pubspec.lock` is committed.
 - `example`: one app with two examples. The order desk (`lib/desk`, run by `lib/main.dart`) is on bloc with a scripted agent, and talks to its Google ADK agent in `example/agent` (Python, uv). The invoice list (`lib/invoices`, run by `lib/main_apple.dart`) is on provider with Apple's on-device model. Also the order form of the README and of both packages' `example/example.md` (`lib/order.dart`, `lib/order_cubit.dart`, `lib/order_screen.dart`, `lib/order_messages.dart` and `lib/status_line.dart`), with its generated code and tests, and the chat that apps copy (`lib/agent_chat.dart`). `test/doc_snippets_test.dart` checks that every Dart block of the README and both packages' `example/example.md` is a verbatim part of the file its comment names. The state classes and fixtures that only tests use, such as the shopping list that holds a method open with `serverReply`, are in `test/`. How to run the examples: [example/README.md](example/README.md).
@@ -41,6 +41,7 @@ CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` a
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
 - Before writing a helper, look for it in Dart, Flutter or a maintained package. A new dependency of `packages/tandem` lands in every app. The PR says why it is worth that and what it pulls in.
 - Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`). A change to what the model reads, such as a tool description, an instruction or the schema, says in the PR how it was checked on a real model.
+- A tool that Tandem itself offers the agent, such as `tandem_show_view`, starts with `tandem_`. The app's methods name the other tools, so the prefix keeps the two apart.
 - When the API changes, change `README.md`, `packages/tandem/README.md` (a copy, except the media under "Try it without a key"), `packages/tandem/example/example.md`, the skills in `packages/tandem/skills` and `skills/tandem`, and the code in `example` that they quote. When a session rule changes, change `doc/design.md`.
 - Never read, print or create a `.env` file. No API keys in the repo.
 - Review notes, research and probe output stay out of the repo.
