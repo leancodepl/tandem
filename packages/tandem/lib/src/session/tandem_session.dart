@@ -330,7 +330,7 @@ final class TandemSession({
 
   void _closeTurn() {
     final turn = _waiting.closeAgentTurn();
-    turn.cancelWaiting().forEach(_showDecision);
+    turn.cancelUndecided().forEach(_showDecision);
     _thread.addAnswers(turn);
   }
 
@@ -443,21 +443,23 @@ final class TandemSession({
       }
       final arguments = call.objectArguments;
       if (arguments == null) {
-        call.answer = ToolAnswer.argumentsNotAnObject;
+        call.answerWith(ToolAnswer.argumentsNotAnObject);
       } else if (run.view case final view? when call.tool == ViewTool.name) {
-        call.answer = view.show(arguments);
+        call.answerWith(view.show(arguments));
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
         if (run.stopped) {
           return;
         }
-        call.answer = await _callMethod(
-          run.listing,
-          call.tool,
-          call.argumentsJson,
-          caller: call.caller,
-          approved: false,
+        call.answerWith(
+          await _callMethod(
+            run.listing,
+            call.tool,
+            call.argumentsJson,
+            caller: call.caller,
+            approved: false,
+          ),
         );
         run.calling = null;
         _invalidateIfSeesChanged();
@@ -470,14 +472,14 @@ final class TandemSession({
       _refuseApprovals(turn);
     } else if (seesChanged) {
       // The agent asked about what it has not seen.
-      turn.invalidateWaiting();
+      turn.invalidateUndecided();
     } else {
       turn.ask(_seesNow);
     }
   }
 
   void _refuseApprovals(Turn turn) {
-    for (final call in turn.refuseWaiting()) {
+    for (final call in turn.refuseUndecided()) {
       if (kDebugMode) {
         report(
           StateError(
@@ -503,12 +505,14 @@ final class TandemSession({
     final listing = AgentListing.of(_surface);
     _approvedCall = Calling(call.tool, approved: true);
     notifyListeners();
-    call.answer = await _callMethod(
-      listing,
-      call.tool,
-      call.argumentsJson,
-      caller: call.caller,
-      approved: true,
+    call.answerWith(
+      await _callMethod(
+        listing,
+        call.tool,
+        call.argumentsJson,
+        caller: call.caller,
+        approved: true,
+      ),
     );
     if (_disposed) {
       return;

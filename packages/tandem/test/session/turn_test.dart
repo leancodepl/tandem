@@ -50,13 +50,13 @@ void main() {
   });
 
   test('invalidating what waits leaves answered and approved calls alone', () {
-    final answered = call('call-1')..answer = .returned(null);
+    final answered = call('call-1')..answerWith(.returned(null));
     final approved = call('call-2');
     final waiting = call('call-3');
     final turn = Turn([answered, approved, waiting])..ask(seen);
     turn.approve(turn.next() ?? fail('Nothing shows.'));
 
-    expect(turn.invalidateWaiting(), [waiting]);
+    expect(turn.invalidateUndecided(), [waiting]);
     expect(waiting.answer, ToolAnswer.invalidated);
     expect(
       [answered.answer?.status, approved.answer],

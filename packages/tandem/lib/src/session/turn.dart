@@ -16,27 +16,31 @@ final class Turn(final List<ToolCall> calls) {
   /// approval ran. Null until the turn asks.
   SeesSnapshot? get seen => _seen;
 
-  /// The request that waits for the user.
-  ApprovalRequest? get awaited =>
+  /// The request that shows and waits for the user.
+  ApprovalRequest? get shown =>
       calls.where((call) => call.pending).firstOrNull?.request;
 
-  /// Whether a call waits for the user.
-  bool get waitsForUser => _seen != null && calls.any(_waits);
+  /// Whether a call waits for the user, shown or not.
+  bool get waitsForUser => _seen != null && calls.any(_undecided);
 
   /// Whether the turn has calls and every one has an answer, so the answers
   /// can go to the agent.
   bool get answered =>
       calls.isNotEmpty && calls.every((call) => call.answer != null);
 
-  /// The tool messages that answer the calls. A call without an answer is
-  /// `cancelled`.
-  List<AgUiMessage> get answers => [
-    for (final call in calls)
-      AgUiMessage.toolAnswer(
-        call.id,
-        (call.answer ?? ToolAnswer.cancelled).content,
-      ),
-  ];
+  /// The tool messages that answer the calls, once the undecided ones were
+  /// cancelled. Only an approved method that still runs has no answer then,
+  /// and the session sends none while one runs.
+  List<AgUiMessage> get answers {
+    assert(answered || calls.isEmpty, 'An approved method still runs.');
+    return [
+      for (final call in calls)
+        AgUiMessage.toolAnswer(
+          call.id,
+          (call.answer ?? ToolAnswer.cancelled).content,
+        ),
+    ];
+  }
 
   /// The calls without an answer wait for the user, one at a time through
   /// [next], and keep [seen].
@@ -45,10 +49,10 @@ final class Turn(final List<ToolCall> calls) {
   /// Shows the next call that waits, unless a request shows already, and
   /// returns its request.
   ApprovalRequest? next() {
-    if (!waitsForUser || awaited != null) {
+    if (!waitsForUser || shown != null) {
       return null;
     }
-    return calls.firstWhere(_waits).ask();
+    return calls.firstWhere(_undecided).ask();
   }
 
   bool isPending(ApprovalRequest request) => _pendingCall(request) != null;
@@ -64,23 +68,25 @@ final class Turn(final List<ToolCall> calls) {
   ToolCall? reject(ApprovalRequest request) {
     final call = _decide(request, .rejected);
     if (call != null) {
-      cancelWaiting();
+      cancelUndecided();
     }
     return call;
   }
 
-  /// Invalidates every call that waits for the user and returns them.
-  List<ToolCall> invalidateWaiting() => _decideWaiting(.invalidated);
+  /// Invalidates every call that has no answer and was not approved, and
+  /// returns them.
+  List<ToolCall> invalidateUndecided() => _decideUndecided(.invalidated);
 
-  /// Cancels every call that waits, as when the user writes instead of
-  /// deciding, and returns them.
-  List<ToolCall> cancelWaiting() => _decideWaiting(.cancelled);
+  /// Cancels every call that has no answer and was not approved, as when the
+  /// user writes instead of deciding or the run was stopped, and returns
+  /// them.
+  List<ToolCall> cancelUndecided() => _decideUndecided(.cancelled);
 
-  /// Refuses every call that waits, for a screen that takes no approvals,
-  /// and returns them.
-  List<ToolCall> refuseWaiting() => [
-    for (final call in calls.where(_waits).toList())
-      call..answer = ToolAnswer.noApprovals,
+  /// Refuses every call that has no answer and was not approved, for a
+  /// screen that takes no approvals, and returns them.
+  List<ToolCall> refuseUndecided() => [
+    for (final call in calls.where(_undecided).toList())
+      call..answerWith(ToolAnswer.noApprovals),
   ];
 
   ToolCall? _decide(ApprovalRequest request, ApprovalStatus decision) {
@@ -99,13 +105,14 @@ final class Turn(final List<ToolCall> calls) {
       .where((call) => call.pending && call.id == request.toolCallId)
       .firstOrNull;
 
-  List<ToolCall> _decideWaiting(ApprovalStatus status) {
-    final waiting = calls.where(_waits).toList();
-    for (final call in waiting) {
+  List<ToolCall> _decideUndecided(ApprovalStatus status) {
+    final undecided = calls.where(_undecided).toList();
+    for (final call in undecided) {
       call.decide(status);
     }
-    return waiting;
+    return undecided;
   }
 
-  static bool _waits(ToolCall call) => call.answer == null && !call.approved;
+  static bool _undecided(ToolCall call) =>
+      call.answer == null && !call.approved;
 }
