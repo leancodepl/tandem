@@ -24,18 +24,15 @@ final class ToolCall(
 
   /// Null while the call waits to run or for the user.
   ToolAnswer? get answer => _answer;
-  set answer(ToolAnswer? answer) {
-    _answer = answer;
-    if (answer == null || _answered.isCompleted) {
-      return;
-    }
-    _answered.complete(answer);
-  }
 
   /// Completes with the call's first answer. Dispose cancels a call whose
   /// method still runs, and the method's answer comes after it.
   Future<ToolAnswer> get answered => _answered.future;
-  ApprovalRequest? request;
+
+  ApprovalRequest? _request;
+
+  /// Null until the call showed to the user.
+  ApprovalRequest? get request => _request;
 
   bool get pending => request?.status == .pending;
   bool get approved => request?.status == .approved;
@@ -46,7 +43,14 @@ final class ToolCall(
   /// The arguments, or null when they are not a JSON object.
   JsonObject? get objectArguments => decodeJsonObject(argumentsJson);
 
-  ApprovalRequest ask() => request = ApprovalRequest(
+  void answerWith(ToolAnswer answer) {
+    _answer = answer;
+    if (!_answered.isCompleted) {
+      _answered.complete(answer);
+    }
+  }
+
+  ApprovalRequest ask() => _request = ApprovalRequest(
     toolCallId: id,
     tool: tool,
     description: description,
@@ -55,14 +59,18 @@ final class ToolCall(
   );
 
   /// Gives the call the answer that [status] means, and its request, when it
-  /// showed, that status.
+  /// showed, that status. A call that is pending or approved has no answer
+  /// yet.
   void decide(ApprovalStatus status) {
-    request = request?.withStatus(status);
-    answer = switch (status) {
+    _request = _request?.withStatus(status);
+    final answer = switch (status) {
       .rejected => ToolAnswer.rejected,
       .cancelled => ToolAnswer.cancelled,
       .invalidated => ToolAnswer.invalidated,
       .pending || .approved => null,
     };
+    if (answer != null) {
+      answerWith(answer);
+    }
   }
 }

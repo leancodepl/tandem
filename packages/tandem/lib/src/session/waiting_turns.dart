@@ -32,7 +32,7 @@ final class WaitingTurns() {
 
   /// The request that waits for the user now.
   ApprovalRequest? get shown =>
-      _turns.map((turn) => turn.awaited).nonNulls.firstOrNull;
+      _turns.map((turn) => turn.shown).nonNulls.firstOrNull;
 
   /// Whether a call waits for the user, shown or not.
   bool get waitsForUser => _turns.any((turn) => turn.waitsForUser);
@@ -61,7 +61,8 @@ final class WaitingTurns() {
     return null;
   }
 
-  /// The turn that [request] belongs to.
+  /// The turn that [request] belongs to. A request of no turn that waits gets
+  /// the agent's turn, which finds no pending call for it.
   Turn turnOf(ApprovalRequest request) => _others.values.firstWhere(
     (turn) => turn.calls.any((call) => call.id == request.toolCallId),
     orElse: () => _agent,
@@ -71,19 +72,19 @@ final class WaitingTurns() {
   /// and returns them.
   List<ToolCall> invalidateUnlike(SeesSnapshot seen) => [
     for (final turn in _turns)
-      if (turn.waitsForUser && turn.seen != seen) ...turn.invalidateWaiting(),
+      if (turn.waitsForUser && turn.seen != seen) ...turn.invalidateUndecided(),
   ];
 
   /// Cancels the request of another caller that shows, because the user
   /// wrote instead of deciding, and returns its call.
   List<ToolCall> cancelShownOfOthers() => [
     for (final turn in _others.values)
-      if (turn.awaited != null) ...turn.cancelWaiting(),
+      if (turn.shown != null) ...turn.cancelUndecided(),
   ];
 
   /// Cancels every call that waits and returns them.
   List<ToolCall> cancelAll() => [
-    for (final turn in _turns) ...turn.cancelWaiting(),
+    for (final turn in _turns) ...turn.cancelUndecided(),
   ];
 
   List<Turn> get _turns => [_agent, ..._others.values];
