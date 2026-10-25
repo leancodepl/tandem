@@ -55,6 +55,10 @@ For Gemini, copy `agent/.env.example` to `agent/.env`, set `GOOGLE_API_KEY` in i
 
 ## Smart invoice input with Apple's on-device model
 
+> [!WARNING]
+> Experimental. Apple's on-device model is small, so use it for the simplest tasks, such as one
+> sentence that becomes one call. It is not part of what Tandem checks before a release.
+
 <p align="center">
   <img src="../doc/imgs/examples/smart-input-film.gif" alt="Two invoices picked by hand, then one sentence finds all six from May on Apple's on-device model, and the app asks before it archives them." width="340">
 </p>

@@ -9,6 +9,8 @@ user-invocable: true
 
 Tandem lets an agent work on one screen of a Flutter app through the methods its state class lists, the same ones its widgets call, and the important ones wait for the user's approval. This skill checks the app, installs the skills of the `tandem` package that fit its version, and hands the work to them. Do the steps in order and check each "Done when" before the next. In a project with `.fvmrc`, run every `flutter` and `dart` command through `fvm`.
 
+Tandem is tested with Claude Code only. Another coding agent, such as Cursor or Codex, follows the same steps: tell the user once that Tandem is not tested with it.
+
 ## 1. Check the packages
 
 Read `pubspec.yaml`. Tandem needs `tandem` in `dependencies`, and `tandem_generator` and `build_runner` in `dev_dependencies`. Tell the user which are missing, then add them:
@@ -47,7 +49,7 @@ The last two came with `tandem` 0.2.1. When one is missing, tell the user that t
 Show the user both paths and ask which they want:
 
 - **A, start here: your coding agent fills a screen.** You fill in a screen of the running debug app, such as a form from an e-mail, through the methods its buttons call. Debug builds only. No backend, no API key, no chat.
-- **B: an in-app agent for the app's users.** The users talk to an agent through a chat, or a button such as "Fill from e-mail". It needs an AG-UI backend, or Apple's on-device model on iOS and macOS 26.
+- **B: an in-app agent for the app's users.** The users talk to an agent through a chat, or a button such as "Fill from e-mail". It needs an AG-UI backend, or Apple's on-device model on iOS and macOS 26, which is experimental and fits only the simplest tasks.
 
 Both need the same base, so B can come later. When the user wants both, do A first.
 
