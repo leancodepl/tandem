@@ -180,7 +180,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Oct 24, 2026'), findsOneWidget);
-    expect(_inChat('Delivery: $_address, Oct 24, 2026'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AgentChat),
+        matching: find.textContaining('Delivery:'),
+      ),
+      findsNothing,
+    );
     expect(
       find.text('What the agent saw changed. Ask it again.'),
       findsOneWidget,
