@@ -77,14 +77,21 @@ final class TandemBridge._() {
     if (target == null) {
       return _withScreens(.refused(OpenScreens.whyNotFound(screen)));
     }
-    return _withScreens(
-      await target.session.callFor(
-        .codingAgent,
-        tool,
-        arguments,
-        autoApprove: _autoApprove,
-      ),
+    final answer = await target.session.callFor(
+      .codingAgent,
+      tool,
+      arguments,
+      autoApprove: _autoApprove,
     );
+    return _withScreens(switch (answer) {
+      // The session cannot say how a coding agent gets approval.
+      ToolAnswer.noApprovals => .refused(
+        "$tool needs the user's approval, but this screen has approvals: "
+        '.none(). TandemBridge.enable(autoApprove: true) approves the calls '
+        'of a coding agent.',
+      ),
+      _ => answer,
+    });
   }
 
   static void _register() {
