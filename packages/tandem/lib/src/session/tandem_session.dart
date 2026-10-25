@@ -92,6 +92,12 @@ final class TandemSession({
 
   /// The view that the next run offers the agent to draw on.
   ViewTool? _view;
+
+  /// The views refused in a row since the last message, which stop the
+  /// drawing at [_maxRefusedViews].
+  var _refusedViews = 0;
+  static const _maxRefusedViews = 3;
+
   var _disposed = false;
 
   /// True until the first message, which checks the screen against the
@@ -363,6 +369,7 @@ final class TandemSession({
   }
 
   void _post(UserMessage message) {
+    _refusedViews = 0;
     if (_screenToCheck) {
       _screenToCheck = false;
       _startOverIfScreenChanged();
@@ -397,7 +404,7 @@ final class TandemSession({
 
   void _open() {
     try {
-      final run = _run = Run(AgentListing.of(_surface), view: _view);
+      final run = _run = Run(AgentListing.of(_surface), view: _offeredView);
       final input = _agUiThread.input(
         tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
@@ -520,7 +527,7 @@ final class TandemSession({
       if (arguments == null) {
         call.answerWith(ToolAnswer.argumentsNotAnObject);
       } else if (run.view case final view? when call.tool == ViewTool.name) {
-        call.answerWith(view.show(arguments));
+        call.answerWith(_show(view, arguments));
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
@@ -540,6 +547,15 @@ final class TandemSession({
         _invalidateIfSeesChanged();
       }
     }
+  }
+
+  // A model that never draws a view that fits would try again on every run.
+  ToolAnswer _show(ViewTool view, JsonObject arguments) {
+    final answer = view.show(arguments);
+    _refusedViews = answer.status == .shown ? 0 : _refusedViews + 1;
+    return _refusedViews < _maxRefusedViews
+        ? answer
+        : ToolAnswer.drawingStopped;
   }
 
   void _askUser(Turn turn, {required bool seesChanged}) {
@@ -688,6 +704,8 @@ final class TandemSession({
   }
 
   SeesSnapshot get _seesNow => .read(_surface, report: report);
+
+  ViewTool? get _offeredView => _refusedViews < _maxRefusedViews ? _view : null;
 
   bool get _isBusy => _run != null || _approvedCall != null;
 

@@ -57,6 +57,14 @@ sealed class const ToolAnswer() {
 
   static const shown = _Status(.shown);
 
+  /// The last of the views refused in a row that the session takes, after
+  /// which no run offers `tandem_show_view` until the next message.
+  static const drawingStopped = _Status(.refused, {
+    'reason':
+        'Your views were refused several times in a row, so tandem_show_view is off '
+        'until the user writes again. Answer the user in text.',
+  });
+
   static const failed = _Status(.failed, {
     'error':
         'The method failed and may have changed the app. Do not retry '
