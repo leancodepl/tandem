@@ -38,4 +38,10 @@ final class const ToolCallResult(
   final String content,
 ) extends AgentEvent;
 
+/// The agent's whole state, as JSON, which replaces the one the app has.
+final class const StateSnapshot(final Object? snapshot) extends AgentEvent;
+
+/// JSON Patch operations (RFC 6902) on the agent's state, as JSON.
+final class const StateDelta(final Object? delta) extends AgentEvent;
+
 final class const IgnoredEvent() extends AgentEvent;

@@ -355,6 +355,27 @@ void showOrderMessages(
 
 `session.wake()` lets the agent take a turn on it. It sends a short message that says it comes from the app: a `UserMessage` with `fromApp` set, which the chat above hides. It never decides for the user: while a run is open or a request waits, it waits, and after a Stop it goes with the user's next message.
 
+## Agent state
+
+`session.agentState` is the state that the agent's backend keeps of the thread, such as the step it works on, as AG-UI streams it: a `STATE_SNAPSHOT` replaces it and a `STATE_DELTA` patches it with JSON Patch. It changes during a run, so a widget that reads it can show what the agent does before it calls a method. From a test of the example:
+
+<!-- example/test/order_cubit_test.dart -->
+```dart
+final class const _AgentStep() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      switch (TandemSessionScope.of(context).agentState) {
+        {'step': final String step} => Text(step),
+        _ => const SizedBox.shrink(),
+      };
+}
+```
+
+- Its shape is the backend's. Google ADK sends the state of its session, with keys of its own that start with `_ag_ui_`. LangGraph sends the output keys of the graph, with the history in `messages`. Pydantic AI sends only what a tool returns as a `StateSnapshotEvent` or `StateDeltaEvent`, and reads it back with `StateDeps`.
+- Every run sends it back as the AG-UI `state`, as `@ag-ui/client` does, so a backend that keeps no state between runs has it again. The app only reads it: what happens in the app goes to the agent as a [note](#notes-from-the-app).
+- A new thread starts it empty. A snapshot that is not a JSON object, or a delta that does not apply, is reported and leaves it as it was, and the run goes on.
+- In a test, `AgentStep.stateSnapshot` and `AgentStep.stateDelta` of `ScriptedAgent` play it.
+
 ## Any state library
 
 Tandem reads the state object with `surface` and hears it change in `changes`, so a state library needs no adapter package. `changes` is a broadcast stream with an event for every change:

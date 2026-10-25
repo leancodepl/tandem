@@ -1,15 +1,17 @@
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
+import 'package:tandem/src/session/agent_state.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/turn.dart';
 import 'package:uuid/uuid.dart';
 
-/// The AG-UI thread of a session: its id and the messages that every run
-/// sends again.
+/// The AG-UI thread of a session: its id, and the messages and the agent's
+/// state that every run sends again.
 final class AgUiThread() {
   var _id = const Uuid().v4();
   final _messages = <AgUiMessage>[];
+  final agentState = AgentState();
 
   /// The user's message of the last [input], until its run goes out.
   AgUiMessage? _outgoing;
@@ -23,9 +25,11 @@ final class AgUiThread() {
     required String? userText,
   }) {
     _outgoing = userText == null ? null : .user(userText);
+    agentState.startRun();
     return RunInput(
       threadId: _id,
       messages: [..._messages, ?_outgoing],
+      state: agentState.value,
       tools: tools,
       context: context,
     );
@@ -82,10 +86,11 @@ final class AgUiThread() {
   /// The answers of [turn], for the next run.
   void addAnswers(Turn turn) => _messages.addAll(turn.answers);
 
-  /// A new thread without the earlier messages, for when what ADK kept of a
-  /// run is unknown.
+  /// A new thread without the earlier messages and state, for when what ADK
+  /// kept of a run is unknown.
   void startOver() {
     _id = const Uuid().v4();
     _messages.clear();
+    agentState.clear();
   }
 }

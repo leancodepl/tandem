@@ -40,6 +40,10 @@ _Avoid_: confirmation, interrupt
 The state of an approval request when a value listed with `.sees` changed after the call asked. It can no longer be approved, even when the value comes back.
 _Avoid_: stale, expired, outdated
 
+**Agent state**:
+What the agent's backend keeps of the thread and streams with `STATE_SNAPSHOT` and `STATE_DELTA`, as `session.agentState`. Every run sends it back. Not the surface's state.
+_Avoid_: state, shared state, session state
+
 **Note**:
 A line the app gives the agent about what happened outside the chat, with `session.note`. Every run gives the agent the latest five in one `context` entry. `session.wake()` lets the agent take a turn on them.
 _Avoid_: event, notification

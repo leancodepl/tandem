@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:example/agent_chat.dart';
 import 'package:example/order.dart';
 import 'package:example/order_cubit.dart';
@@ -102,6 +104,49 @@ void main() {
     expect(find.text('Done.'), findsOneWidget);
   });
 
+  testWidgets('a line follows the state of the agent while it works', (
+    tester,
+  ) async {
+    final history = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        const AgentStep.stateSnapshot({'step': 'Reading the order history'}),
+        AgentStep.waitFor(history.future),
+        const AgentStep.stateDelta([
+          {'op': 'replace', 'path': '/step', 'value': 'Filling the order'},
+        ]),
+        const AgentStep.say('Done.'),
+      ],
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider.value(
+          value: cubit,
+          child: TandemScope.connected(
+            surface: (context) => context.read<OrderCubit>(),
+            connection: agent,
+            approvals: const .fromState(),
+            child: const Column(
+              children: [
+                _AgentStep(),
+                Expanded(child: AgentChat()),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'same as last time');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    expect(find.text('Reading the order history'), findsOneWidget);
+
+    history.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Filling the order'), findsOneWidget);
+  });
+
   testWidgets('a coding agent fills the order screen', (tester) async {
     await tester.pumpWidget(
       RepositoryProvider.value(
@@ -158,4 +203,14 @@ void main() {
       expect(orders.placed, isEmpty);
     },
   );
+}
+
+/// The step that the agent's backend says it works on, from its state.
+final class const _AgentStep() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      switch (TandemSessionScope.of(context).agentState) {
+        {'step': final String step} => Text(step),
+        _ => const SizedBox.shrink(),
+      };
 }
