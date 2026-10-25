@@ -17,8 +17,12 @@ One item of the agent list: `.sees`, `.calls` or `.callsWithApproval`.
 _Avoid_: permission, grant
 
 **Session**:
-One conversation between a screen and the agent, from opening the screen to closing it. AG-UI calls it a thread, and a run that breaks off moves the session to a new one.
-_Avoid_: thread, conversation
+One screen's time with a thread, from opening the screen to closing it, as a `TandemSession`.
+_Avoid_: conversation
+
+**Thread**:
+The conversation of a screen with the agent, as a `TandemThread`: the chat, and the AG-UI thread with its messages and the agent state. The app can keep it and give it to the next session of the screen. A run that breaks off and `startOver` move it to a new AG-UI thread, and the chat stays.
+_Avoid_: history
 
 **Run**:
 One turn of the agent: a single request to the agent backend and the events it streams back.

@@ -43,5 +43,6 @@ export 'src/session/tandem_event.dart'
     show AgentCall, ConnectionLost, RunFailed, RunStopped, TandemEvent;
 export 'src/session/tandem_scope.dart' show TandemScope;
 export 'src/session/tandem_session.dart' show TandemSession;
+export 'src/session/tandem_thread.dart' show TandemThread;
 export 'src/tandem_agent.dart' show TandemAgent;
 export 'src/tool_args.dart' show ToolArgs;

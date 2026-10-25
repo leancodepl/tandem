@@ -3,15 +3,23 @@ import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/agent_state.dart';
 import 'package:tandem/src/session/run.dart';
+import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/turn.dart';
 import 'package:uuid/uuid.dart';
 
-/// The AG-UI thread of a session: its id, and the messages and the agent's
-/// state that every run sends again.
+/// The AG-UI thread of a `TandemThread`: its id, and the messages and the
+/// agent's state that every run sends again.
 final class AgUiThread() {
   var _id = const Uuid().v4();
   final _messages = <AgUiMessage>[];
   final agentState = AgentState();
+
+  /// What the screen gave the agent when the last session of the thread let
+  /// it go, null for a thread without history.
+  SeesSnapshot? get seenAtLeave => _seenAtLeave;
+  SeesSnapshot? _seenAtLeave;
+
+  String get id => _id;
 
   /// The user's message of the last [input], until its run goes out.
   AgUiMessage? _outgoing;
@@ -83,6 +91,11 @@ final class AgUiThread() {
       .assistant(id, text: message.text),
   ]);
 
+  /// The session that went on with the thread lets it go while the screen
+  /// gives the agent [seen].
+  void leave(SeesSnapshot seen) =>
+      _seenAtLeave = _messages.isEmpty ? null : seen;
+
   /// The answers of [turn], for the next run.
   void addAnswers(Turn turn) => _messages.addAll(turn.answers);
 
@@ -92,5 +105,6 @@ final class AgUiThread() {
     _id = const Uuid().v4();
     _messages.clear();
     agentState.clear();
+    _seenAtLeave = null;
   }
 }

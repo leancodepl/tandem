@@ -44,6 +44,8 @@ TandemScope(
 
 For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connected` as `connection`; calling it in `build` is fine. Offer it only when `await OnDeviceAgent.apple().availability()` is `available`. On `RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)`, call `session.startOver()`. [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).
 
+For a screen that opens again, such as a page the user leaves and comes back to, keep a `TandemThread` above it and pass it as `thread:`, so the chat and the agent's history go on. One screen at a time has it.
+
 `onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result` and `caller`, who called it), `RunStopped`, `RunFailed` and `ConnectionLost`. Without a chat, show `RunFailed` and `ConnectionLost` to the user, such as in a snackbar. To tell the agent what happened outside the chat, call `session.note(text)`; `session.wake()` lets it take a turn on it.
 
 **Done when** the scope has `agent:`, or `TandemScope.connected` with the connection, and the app builds.

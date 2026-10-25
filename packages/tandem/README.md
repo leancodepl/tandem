@@ -378,6 +378,16 @@ final class const _AgentStep() extends StatelessWidget {
 - A new thread starts it empty. A snapshot that is not a JSON object, or a delta that does not apply, is reported and leaves it as it was, and the run goes on.
 - In a test, `AgentStep.stateSnapshot` and `AgentStep.stateDelta` of `ScriptedAgent` play it.
 
+## Keep the conversation
+
+Each session starts a new conversation, unless the scope gets one. To go on with it when the screen opens again, keep a `TandemThread` above the screen, such as in the `State` of the page that pushes it, and pass it as `thread:` to `TandemScope`. The next session shows its chat, and the agent gets its history and its state. `session.thread.id` is the id of the AG-UI thread.
+
+- One session goes on with a thread at a time: the newest. A screen that still had it, such as one that animates out, lets it go as if it closed. A conversation across screens is not supported yet.
+- A thread goes on only with the screen it left. When what `.sees` lists differs from what it was when the screen closed, such as when the screen's state object was made anew, the session starts the thread over before its first message, with a `startedOver` notice. Keep the state object as long as the thread to keep both.
+- A screen closed while a run is open or an approved method runs starts the thread over too, since the backend may finish that run in a history that the app never sees. A screen closed while an approval waits cancels it, and the agent hears `cancelled` with the next message.
+- With another `agent`, the scope's next session takes the thread, its history and its agent state to that backend. Give it another `TandemThread` to start fresh.
+- The thread lives in memory. Tandem does not save it yet.
+
 ## Any state library
 
 Tandem reads the state object with `surface` and hears it change in `changes`, so a state library needs no adapter package. `changes` is a broadcast stream with an event for every change:
@@ -501,7 +511,7 @@ The model can still pick the wrong call, so keep the same validation and approva
 
 ## Project status
 
-Not supported yet: AG-UI interrupts, several state objects on one screen, and a conversation that goes on across screens. A run that ends with an interrupt fails, and the next message starts a new conversation.
+Not supported yet: AG-UI interrupts, several state objects on one screen, a conversation that goes on across screens, and saving a conversation. A run that ends with an interrupt fails, and the next message starts a new conversation.
 
 ## AI
 

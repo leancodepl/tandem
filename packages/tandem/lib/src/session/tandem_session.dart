@@ -21,6 +21,7 @@ import 'package:tandem/src/session/run_method.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tandem_event.dart';
+import 'package:tandem/src/session/tandem_thread.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/turn.dart';
@@ -39,7 +40,8 @@ import 'package:uuid/uuid.dart';
 ///
 /// One run is open at a time: a message sent meanwhile shows at once and
 /// goes with the next run, after the answers. A run that breaks off moves
-/// the chat to a new AG-UI thread.
+/// the chat to a new AG-UI thread. The chat and the history belong to a
+/// [TandemThread], which the next session of the screen can go on with.
 ///
 /// The app tells the agent what happened outside the chat with [note], and
 /// [wake] lets the agent take a turn on it.
@@ -60,10 +62,14 @@ final class TandemSession({
   /// asks, a call that needs approval is refused to the agent and reported in
   /// debug.
   final bool Function() _asksForApproval = _alwaysAsks,
+
+  /// The conversation the session goes on with, a new one when null.
+  TandemThread? thread,
 }) extends ChangeNotifier {
   // Apps get a session from TandemScope, the one way to say how to approve.
   @internal
   this {
+    _thread.claim(this);
     _stateChangesSubscription = _surface.changes.listen(
       (_) => _invalidateAndGoOn(),
     );
@@ -71,9 +77,10 @@ final class TandemSession({
 
   late final StreamSubscription<Object?> _stateChangesSubscription;
   StreamSubscription<JsonObject>? _runSubscription;
-  final _items = <ChatItem>[];
+  final TandemThread _thread = thread ?? TandemThread();
+  List<ChatItem> get _items => _thread.items;
+  AgUiThread get _agUiThread => _thread.agUiThread;
   final _queue = MessageQueue();
-  final _thread = AgUiThread();
   final _waiting = WaitingTurns();
   final _notes = AppNotes();
 
@@ -87,8 +94,16 @@ final class TandemSession({
   ViewTool? _view;
   var _disposed = false;
 
-  /// Oldest first.
+  /// True until the first message, which checks the screen against the
+  /// thread: not at the start, while the screen may still load its state.
+  var _screenToCheck = true;
+
+  /// Oldest first, also the items of the sessions before it in the thread.
   List<ChatItem> get items => UnmodifiableListView(_items);
+
+  /// The conversation the session goes on with: the `thread` of
+  /// `TandemScope`, or one of its own.
+  TandemThread get thread => _thread;
 
   SessionStatus get status => switch (_run) {
     Run(stopped: true) => const Stopping(),
@@ -106,7 +121,8 @@ final class TandemSession({
   /// Stop too. Every run sends it back. Empty until the backend sends one,
   /// and again in a new thread. A state event that does not fit is
   /// reported, and the state stays as it was.
-  JsonObject get agentState => UnmodifiableMapView(_thread.agentState.value);
+  JsonObject get agentState =>
+      UnmodifiableMapView(_agUiThread.agentState.value);
 
   /// Sends [text], trimmed; does nothing when it is empty or the session is
   /// disposed. The message shows at once, and its run starts when no other
@@ -223,21 +239,41 @@ final class TandemSession({
     _waiting.cancelAll().forEach(_showDecision);
     // The new thread has no calls to answer.
     _waiting.closeAgentTurn();
-    _thread.startOver();
-    _items.add(const ChatNotice(.startedOver));
+    _startThreadOver();
     notifyListeners();
   }
 
   /// Cancels the requests that wait, so a later decision throws. Nothing runs,
-  /// goes to the agent or notifies after it.
+  /// goes to the agent or notifies after it. The thread keeps the answers of
+  /// the agent's turn for the next session, or moves to a new AG-UI thread
+  /// when a run is open or an approved method runs.
   @override
   void dispose() {
+    letGoOfThread();
+    super.dispose();
+  }
+
+  /// Lets the thread go as [dispose] does, without disposing, such as when a
+  /// newer session takes it. Does nothing the second time.
+  @internal
+  void letGoOfThread() {
+    if (_disposed) {
+      return;
+    }
     _disposed = true;
     _waiting.cancelAll().forEach(_showDecision);
+    if (_isBusy) {
+      // The backend may finish the run, and the method its call, where the
+      // app never sees it.
+      _startThreadOver();
+    } else {
+      _closeTurn();
+      _agUiThread.leave(_seesNow);
+    }
+    _thread.release(this);
     _run = null;
     unawaited(_runSubscription?.cancel());
     unawaited(_stateChangesSubscription.cancel());
-    super.dispose();
   }
 
   /// What the agent works on.
@@ -327,6 +363,10 @@ final class TandemSession({
   }
 
   void _post(UserMessage message) {
+    if (_screenToCheck) {
+      _screenToCheck = false;
+      _startOverIfScreenChanged();
+    }
     _items.add(message);
     _queue.add(message);
   }
@@ -336,16 +376,29 @@ final class TandemSession({
     _open();
   }
 
+  // A thread goes on only with the screen it left, so the agent never works
+  // from a history that the screen no longer shows.
+  void _startOverIfScreenChanged() {
+    if (_agUiThread.seenAtLeave case final seen? when seen != _seesNow) {
+      _startThreadOver();
+    }
+  }
+
+  void _startThreadOver() {
+    _agUiThread.startOver();
+    _items.add(const ChatNotice(.startedOver));
+  }
+
   void _closeTurn() {
     final turn = _waiting.closeAgentTurn();
     turn.cancelUndecided().forEach(_showDecision);
-    _thread.addAnswers(turn);
+    _agUiThread.addAnswers(turn);
   }
 
   void _open() {
     try {
       final run = _run = Run(AgentListing.of(_surface), view: _view);
-      final input = _thread.input(
+      final input = _agUiThread.input(
         tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
         userText: _queue.text,
@@ -368,7 +421,7 @@ final class TandemSession({
             cancelOnError: true,
           );
       _queue.sent();
-      _thread.wentOut();
+      _agUiThread.wentOut();
     } catch (err, st) {
       // The run never went out, so its messages go with the next one.
       _queue.carry();
@@ -393,9 +446,9 @@ final class TandemSession({
         run.finishTool(result);
         notifyListeners();
       case StateSnapshot(:final snapshot):
-        _changeAgentState(() => _thread.agentState.replace(snapshot));
+        _changeAgentState(() => _agUiThread.agentState.replace(snapshot));
       case StateDelta(:final delta):
-        _changeAgentState(() => _thread.agentState.patch(delta));
+        _changeAgentState(() => _agUiThread.agentState.patch(delta));
       case RunFinished(outcome: .cancelled):
         run.ended = true;
         _notes.read();
@@ -420,7 +473,7 @@ final class TandemSession({
         unawaited(_finish(run));
       case RunError(:final code, :final message):
         run.ended = true;
-        _thread.addFailedRun(run);
+        _agUiThread.addFailedRun(run);
         _runFailed(AgentRunException(code, message), .current);
       case _:
     }
@@ -437,7 +490,7 @@ final class TandemSession({
   }
 
   Turn _recordRun(Run run) {
-    _thread.addRun(run);
+    _agUiThread.addRun(run);
     return _waiting.startAgentTurn(run.calls.values);
   }
 
@@ -666,7 +719,7 @@ final class TandemSession({
     }
     run.ended = true;
     _run = null;
-    _thread.startOver();
+    _agUiThread.startOver();
     _queue.carry();
     unawaited(_runSubscription?.cancel());
     report(error, stack);
@@ -687,7 +740,7 @@ final class TandemSession({
       return;
     }
     _items.add(const ChatNotice(.connectionLost));
-    _thread.startOver();
+    _agUiThread.startOver();
     _endRunAndGoOn();
     _emit(const ConnectionLost());
   }
