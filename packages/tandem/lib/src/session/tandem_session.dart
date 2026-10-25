@@ -15,6 +15,7 @@ import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/ag_ui_thread.dart';
 import 'package:tandem/src/session/app_notes.dart';
 import 'package:tandem/src/session/caller.dart';
+import 'package:tandem/src/session/message_queue.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/run_method.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
@@ -71,13 +72,7 @@ final class TandemSession({
   late final StreamSubscription<Object?> _stateChangesSubscription;
   StreamSubscription<JsonObject>? _runSubscription;
   final _items = <ChatItem>[];
-
-  /// The messages for the next run, of the user and the app.
-  final _queued = <UserMessage>[];
-
-  /// Whether the app's queued message waits for the user's next one, because
-  /// the user stopped the run it waited for.
-  var _appMessageHeld = false;
+  final _queue = MessageQueue();
   final _thread = AgUiThread();
   final _waiting = WaitingTurns();
   final _notes = AppNotes();
@@ -325,7 +320,7 @@ final class TandemSession({
 
   void _post(UserMessage message) {
     _items.add(message);
-    _queued.add(message);
+    _queue.add(message);
   }
 
   /// Starts a run with the answers of the agent's turn and the queued
@@ -338,17 +333,7 @@ final class TandemSession({
   void _closeTurn() {
     final turn = _waiting.closeAgentTurn();
     turn.cancelWaiting().forEach(_showDecision);
-    _thread
-      ..addAnswers(turn)
-      ..addUserTexts(_takeQueued());
-  }
-
-  /// The texts of the queued messages, which go with the run that starts.
-  List<String> _takeQueued() {
-    final texts = [for (final message in _queued) message.text];
-    _queued.clear();
-    _appMessageHeld = false;
-    return texts;
+    _thread.addAnswers(turn);
   }
 
   void _open() {
@@ -357,6 +342,7 @@ final class TandemSession({
       final input = _thread.input(
         tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
+        userText: _queue.text,
       );
       _runSubscription = _connection
           .run(input)
@@ -375,9 +361,11 @@ final class TandemSession({
             onDone: () => _connectionLost(run),
             cancelOnError: true,
           );
+      _queue.sent();
       _thread.wentOut();
     } catch (err, st) {
       // The run never went out, so its messages go with the next one.
+      _queue.carry();
       _runFailed(err, st);
     }
   }
@@ -646,9 +634,8 @@ final class TandemSession({
     }
     run.ended = true;
     _run = null;
-    _thread
-      ..startOver()
-      ..addUserTexts(_takeQueued());
+    _thread.startOver();
+    _queue.carry();
     unawaited(_runSubscription?.cancel());
     report(error, stack);
     _items.add(const ChatNotice(.runFailed));
@@ -681,19 +668,18 @@ final class TandemSession({
   void _startNextRun({bool withAnswers = true}) {
     final stopped = status is Stopping;
     final answersDue = withAnswers && !stopped && _waiting.agentAnswered;
-    final userWrote = _queued.any((message) => !message.fromApp);
-    _appMessageHeld = _appMessageHeld || (stopped && _queued.isNotEmpty);
+    if (stopped) {
+      _queue.holdAppMessages();
+    }
     _run = null;
-    if (answersDue || userWrote) {
+    if (answersDue || _queue.userWrote) {
       _start();
       notifyListeners();
       return;
     }
     _showNextRequest();
     // The approval callback may have approved the request that showed.
-    final appMessageWaits =
-        _queued.isNotEmpty && !_appMessageHeld && status is Idle;
-    if (appMessageWaits) {
+    if (_queue.appMessageWaits && status is Idle) {
       _start();
       notifyListeners();
     }
