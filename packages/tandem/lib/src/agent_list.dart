@@ -36,9 +36,7 @@ final class const _Calls(
 /// AG-UI sends it. A new run reads the list again.
 final class AgentListing._(
   final AgentSurface _surface,
-
-  /// The `context` of AG-UI's `RunAgentInput`: one entry for every `.sees`.
-  final List<Map<String, Object?>> context,
+  final List<_Seen> _seen,
   final Map<String, AgentTool> _tools,
 ) {
   /// Reads [surface]'s [AgentSurface.agentCapabilities] and names its items
@@ -77,12 +75,24 @@ final class AgentListing._(
     }
     return ._(surface, [
       for (final (index, view) in schema.sees.indexed)
-        {
-          AgUiFields.description: '${view.name}: ${view.description}',
-          AgUiFields.value: jsonEncode(view.write(visibleValues[index])),
-        },
+        (
+          name: view.name,
+          description: view.description,
+          json: jsonEncode(view.write(visibleValues[index])),
+        ),
     ], tools);
   }
+
+  /// The `context` of AG-UI's `RunAgentInput`: one entry for every `.sees`.
+  List<Map<String, Object?>> get context => [
+    for (final (:name, :description, :json) in _seen)
+      {AgUiFields.description: '$name: $description', AgUiFields.value: json},
+  ];
+
+  /// The value of every `.sees` by its name, as JSON.
+  late final Map<String, Object?> seen = {
+    for (final (:name, description: _, :json) in _seen) name: jsonDecode(json),
+  };
 
   /// The `tools` of AG-UI's `RunAgentInput`: the methods listed when this
   /// listing was read.
@@ -99,6 +109,10 @@ final class AgentListing._(
 
   /// The names of the tools this listing lists.
   Iterable<String> get toolNames => _tools.keys;
+
+  /// The JSON Schema of the arguments of [tool], or null for a tool this
+  /// listing does not list.
+  Map<String, Object?>? parameters(String tool) => _tools[tool]?.parameters;
 
   /// The doc comment of [tool], as the agent got it. Throws a [StateError] for
   /// a tool this listing does not list.
@@ -177,3 +191,5 @@ final class AgentListing._(
     }
   }
 }
+
+typedef _Seen = ({String name, String description, String json});
