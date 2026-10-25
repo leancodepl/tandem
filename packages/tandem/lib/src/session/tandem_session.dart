@@ -373,20 +373,16 @@ final class TandemSession({
       return;
     }
     switch (event) {
-      case TextDelta(:final messageId, :final delta) when !run.stopped:
-        _showText(run.write(messageId, delta));
+      case final TextDelta text when !run.stopped:
+        _showText(run.write(text));
       // A call of a tool the run does not offer runs on the server.
-      case ToolCallStarted(
-        :final toolCallId,
-        :final name,
-        :final parentMessageId,
-      ):
-        run.startTool(toolCallId, name, parentMessageId);
+      case final ToolCallStarted start:
+        run.startTool(start);
         notifyListeners();
-      case ToolCallArgs(:final toolCallId, :final delta):
-        run.addArguments(toolCallId, delta);
-      case ToolCallResult(:final messageId, :final toolCallId, :final content):
-        run.finishTool(messageId, toolCallId, content);
+      case final ToolCallArgs arguments:
+        run.addArguments(arguments);
+      case final ToolCallResult result:
+        run.finishTool(result);
         notifyListeners();
       case RunFinished(outcome: .cancelled):
         run.ended = true;

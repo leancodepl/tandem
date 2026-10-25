@@ -54,6 +54,11 @@ extension type AgUiMessage._(JsonObject json) implements JsonObject {
     AgUiFields.toolCallId: toolCallId,
     AgUiFields.content: content,
   });
+
+  /// The id of the agent's message for a call the server sent without one.
+  /// Never the bare call id: ag-ui-adk marks every message id it has seen as
+  /// processed, and would swallow the answer that comes later.
+  static String idOfCallWithoutMessage(String toolCallId) => 'asst-$toolCallId';
 }
 
 /// A call in a message of the agent.

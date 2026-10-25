@@ -1,6 +1,7 @@
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
@@ -40,12 +41,10 @@ final class Run(
   /// the agent's next text or call, or its result.
   String? _used;
 
-  /// Adds [delta] to the agent's message [messageId]. Returns the message as
-  /// it grew and the one it replaces, null for a new message.
-  ({AgentMessage? shown, AgentMessage grown}) write(
-    String messageId,
-    String delta,
-  ) {
+  /// Adds the [text] to the agent's message. Returns the message as it grew
+  /// and the one it replaces, null for a new message.
+  ({AgentMessage? shown, AgentMessage grown}) write(TextDelta text) {
+    final TextDelta(:messageId, :delta) = text;
     _used = null;
     _messages.putIfAbsent(messageId, () => []);
     final shown = texts[messageId];
@@ -69,10 +68,11 @@ final class Run(
   bool offers(String tool) =>
       listing.lists(tool) || (tool == ViewTool.name && view != null);
 
-  /// A call of [tool] starts, in the agent's message [parentMessageId]. It
-  /// becomes one of [calls] when it runs in the app, as does a call the run
-  /// already has. The first start of a backend call counts.
-  void startTool(String id, String tool, String? parentMessageId) {
+  /// A call starts, in the agent's message that the event names. It becomes
+  /// one of [calls] when it runs in the app, as does a call the run already
+  /// has. The first start of a backend call counts.
+  void startTool(ToolCallStarted start) {
+    final ToolCallStarted(toolCallId: id, name: tool, :parentMessageId) = start;
     _used = listing.lists(tool) ? null : id;
     if (calls[id] case final call?) {
       if (call.tool != tool) {
@@ -90,65 +90,79 @@ final class Run(
     }
   }
 
-  void addArguments(String id, String delta) {
-    if (calls[id] case final call?) {
+  void addArguments(ToolCallArgs arguments) {
+    final ToolCallArgs(:toolCallId, :delta) = arguments;
+    if (calls[toolCallId] case final call?) {
       call.arguments += delta;
-    } else if (_backendCalls[id] case final call?) {
+    } else if (_backendCalls[toolCallId] case final call?) {
       call.arguments += delta;
     }
   }
 
-  /// A tool of the backend returned [content] for the call [id], as the
-  /// message [messageId].
-  void finishTool(String messageId, String id, String content) {
-    if (_used == id) {
+  /// A tool of the backend returned its [result].
+  void finishTool(ToolCallResult result) {
+    if (_used == result.toolCallId) {
       _used = null;
     }
-    _backendCalls[id]?.result = .toolResult(messageId, id, content);
+    _backendCalls[result.toolCallId]?.result = result;
   }
 
-  /// The run as the thread sends it back: each message of the agent with its
-  /// text and calls, then the results of its calls that ran on the backend. A
-  /// backend call without a result stays out.
-  List<AgUiMessage> get history => [
-    for (final MapEntry(key: id, value: callIds) in _messages.entries) ...[
-      ?_message(id, callIds),
-      for (final callId in callIds) ?_backendCalls[callId]?.result,
-    ],
+  /// What the agent sent, in order: its messages with their text and the
+  /// calls they hold.
+  List<SentMessage> get sent => [
+    for (final MapEntry(key: id, value: callIds) in _messages.entries)
+      (
+        id: id,
+        text: texts[id]?.text,
+        calls: [for (final callId in callIds) ?_sentCall(callId)],
+      ),
   ];
 
-  /// What the agent said, without its calls.
-  List<AgUiMessage> get assistantTexts => [
-    for (final MapEntry(key: id, value: message) in texts.entries)
-      AgUiMessage.assistant(id, text: message.text),
-  ];
-
-  // Without a parent, never the bare call id: ag-ui-adk marks every message
-  // id it has seen as processed, and would swallow the answer that comes later.
   void _addToMessage(String callId, String? parentMessageId) => _messages
-      .putIfAbsent(parentMessageId ?? 'asst-$callId', () => [])
+      .putIfAbsent(
+        parentMessageId ?? AgUiMessage.idOfCallWithoutMessage(callId),
+        () => [],
+      )
       .add(callId);
 
-  AgUiMessage? _message(String id, List<String> callIds) {
-    final toolCalls = [
-      for (final callId in callIds)
-        if (calls[callId] case final call?)
-          AgUiToolCall(callId, call.tool, call.argumentsJson)
-        else if (_backendCalls[callId] case final call?
-            when call.result != null)
-          AgUiToolCall(callId, call.tool, call.argumentsJson),
-    ];
-    final text = texts[id]?.text;
-    if (text == null && toolCalls.isEmpty) {
-      return null;
-    }
-    return .assistant(id, text: text, toolCalls: toolCalls);
+  SentCall? _sentCall(String id) {
+    final result = _backendCalls[id]?.result;
+    return switch ((calls[id], _backendCalls[id])) {
+      (final call?, _) => (
+        id: id,
+        tool: call.tool,
+        arguments: call.argumentsJson,
+        inApp: true,
+        result: result,
+      ),
+      (null, final call?) => (
+        id: id,
+        tool: call.tool,
+        arguments: call.argumentsJson,
+        inApp: false,
+        result: result,
+      ),
+      (null, null) => null,
+    };
   }
 }
 
+/// A message of the agent in a run, with the calls it holds.
+typedef SentMessage = ({String id, String? text, List<SentCall> calls});
+
+/// A call in a [SentMessage]. A call of the backend has the `result` that
+/// its `TOOL_CALL_RESULT` brought, once it came.
+typedef SentCall = ({
+  String id,
+  String tool,
+  String arguments,
+  bool inApp,
+  ToolCallResult? result,
+});
+
 final class _BackendCall(final String tool) {
   String arguments = '';
-  AgUiMessage? result;
+  ToolCallResult? result;
 
   // As for a listed method: a call without arguments has no `TOOL_CALL_ARGS`.
   String get argumentsJson => arguments.isEmpty ? '{}' : arguments;

@@ -1,4 +1,5 @@
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/turn.dart';
@@ -37,13 +38,46 @@ final class AgUiThread() {
     }
   }
 
-  /// What the agent sent in [run]: its messages with their calls, and the
-  /// results of the calls that ran on the server.
-  void addRun(Run run) => _messages.addAll(run.history);
+  /// What the agent sent in [run]: each message with its text and calls,
+  /// then the results of its calls that ran on the backend. A backend call
+  /// without a result stays out.
+  void addRun(Run run) {
+    for (final message in run.sent) {
+      final calls = [
+        for (final call in message.calls)
+          if (call.inApp || call.result != null) call,
+      ];
+      if (message.text == null && calls.isEmpty) {
+        continue;
+      }
+      _messages
+        ..add(
+          .assistant(
+            message.id,
+            text: message.text,
+            toolCalls: [
+              for (final call in calls)
+                AgUiToolCall(call.id, call.tool, call.arguments),
+            ],
+          ),
+        )
+        ..addAll([
+          for (final call in calls)
+            if (call.result case ToolCallResult(
+              :final messageId,
+              :final content,
+            ))
+              .toolResult(messageId, call.id, content),
+        ]);
+    }
+  }
 
   /// What the agent said in a run that failed. ADK never saw its calls
   /// answered, so they stay out.
-  void addFailedRun(Run run) => _messages.addAll(run.assistantTexts);
+  void addFailedRun(Run run) => _messages.addAll([
+    for (final MapEntry(key: id, value: message) in run.texts.entries)
+      .assistant(id, text: message.text),
+  ]);
 
   /// The answers of [turn], for the next run.
   void addAnswers(Turn turn) => _messages.addAll(turn.answers);
