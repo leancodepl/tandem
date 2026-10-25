@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/tandem_event.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 
@@ -9,7 +10,7 @@ import 'package:tandem/src/session/tool_answer.dart';
 /// hears.
 typedef MethodOutcome = ({ToolAnswer answer, AgentCall? returned});
 
-/// Runs the method behind [tool] with the agent's [argumentsJson]. Never
+/// Runs the method behind [tool] with the [argumentsJson] of [caller]. Never
 /// throws: a refused call is refused, and any other error is reported and
 /// answered as failed, or as result_unavailable when only encoding the
 /// result failed.
@@ -17,6 +18,7 @@ Future<MethodOutcome> runMethod(
   AgentListing listing,
   String tool,
   String argumentsJson, {
+  required Caller caller,
   required bool approved,
   required void Function(Object error, StackTrace stack) report,
 }) async {
@@ -27,6 +29,7 @@ Future<MethodOutcome> runMethod(
       tool: tool,
       arguments: arguments,
       result: result,
+      caller: caller,
     );
     try {
       return (answer: ToolAnswer.returned(result), returned: returned);

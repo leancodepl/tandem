@@ -1,4 +1,5 @@
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/session/caller.dart';
 
 /// Something that happened in a session, for the app to react to, such as
 /// with a snackbar. Approval requests are not events: they go to
@@ -16,6 +17,9 @@ final class const AgentCall({
 
   /// What the method returned, as JSON.
   required final Object? result,
+
+  /// Who called the method.
+  final Caller caller = .inAppAgent,
 }) extends TandemEvent;
 
 /// The user or the backend stopped a run. Sent on every Stop that stops one,

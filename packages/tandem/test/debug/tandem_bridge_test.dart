@@ -109,7 +109,7 @@ void main() {
   });
 
   testWidgets('a call returns the result and the screens after it, and '
-      'onEvent hears it', (tester) async {
+      'onEvent hears it from the coding agent', (tester) async {
     final shop = newShop();
     final events = <TandemEvent>[];
     await tester.pumpWidget(
@@ -126,11 +126,10 @@ void main() {
       ],
     });
     expect(events, [
-      isA<AgentCall>().having((call) => call.tool, 'tool', 'add').having(
-        (call) => call.arguments,
-        'arguments',
-        {'item': 'milk'},
-      ),
+      isA<AgentCall>()
+          .having((call) => call.tool, 'tool', 'add')
+          .having((call) => call.arguments, 'arguments', {'item': 'milk'})
+          .having((call) => call.caller, 'caller', Caller.codingAgent),
     ]);
   });
 
@@ -165,6 +164,7 @@ void main() {
     final answer = TandemBridge.call('share');
     final request = lastRequest(tester);
     expect(sessionOf(tester).status, AwaitingApproval(request));
+    expect(request.caller, Caller.codingAgent);
     sessionOf(tester).approve(request);
 
     expect(await answer, containsPair('status', 'returned'));

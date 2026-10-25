@@ -23,11 +23,11 @@ final class WaitingTurns() {
   /// The last call of [caller] that asked the user, null before the first.
   ToolCall? lastAsked(Caller caller) => _others[caller]?.calls.singleOrNull;
 
-  /// [call] of [caller] waits for the user after the turns that wait
-  /// already, for what the agent sees as [seen].
-  void ask(Caller caller, ToolCall call, SeesSnapshot seen) {
-    _others.remove(caller);
-    _others[caller] = Turn([call])..ask(seen);
+  /// [call] of another caller than the in-app agent waits for the user after
+  /// the turns that wait already, for what the agent sees as [seen].
+  void ask(ToolCall call, SeesSnapshot seen) {
+    _others.remove(call.caller);
+    _others[call.caller] = Turn([call])..ask(seen);
   }
 
   /// Shows the next call that waits, unless a request shows already, and

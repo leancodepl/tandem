@@ -28,12 +28,16 @@ _Avoid_: request, call
 A method of the surface that the agent may call, listed with `.calls` or `.callsWithApproval`. It runs in the app, and `onEvent` reports it afterwards as an `AgentCall`.
 _Avoid_: client tool, action, command
 
+**Caller**:
+Who called a listed method: the in-app agent or a coding agent. `AgentCall` and `ApprovalRequest` name it as a `Caller`.
+_Avoid_: source, origin
+
 **Approval request**:
-A call of a `.callsWithApproval` method by the in-app agent or a coding agent, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
+A call of a `.callsWithApproval` method by any caller, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
 _Avoid_: confirmation, interrupt
 
 **Invalidated**:
-The state of an approval request when a value listed with `.sees` changed after the agent asked. It can no longer be approved, even when the value comes back.
+The state of an approval request when a value listed with `.sees` changed after the call asked. It can no longer be approved, even when the value comes back.
 _Avoid_: stale, expired, outdated
 
 **Event**:

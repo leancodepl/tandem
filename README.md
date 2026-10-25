@@ -296,7 +296,7 @@ The dialog shows the draft from the Cubit, because the approval covers what `.se
 - Several approvals of one turn show one at a time. A rejection cancels the rest, and the agent plans again.
 - `approve` and `reject` either decide or throw `ApprovalNotPending`. The same decision twice does nothing, so a double tap is harmless. `session.isPending(request)` tells whether a request still waits.
 - A message the user sends while a request waits cancels it. A request the callback leaves undecided waits until then.
-- A request of a [coding agent](#your-coding-agent) shows the same way, while the in-app agent does nothing.
+- A request of a [coding agent](#your-coding-agent) shows the same way, while the in-app agent does nothing. `request.caller` says who asked, so an invalidated card can say whom to ask again.
 
 ## Events
 
@@ -320,7 +320,7 @@ void showOrderMessages(
 }
 ```
 
-`AgentCall` comes after a listed method returned, with its `tool`, `arguments` and `result`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`.
+`AgentCall` comes after a listed method returned, with its `tool`, `arguments`, `result` and `caller`: `Caller.inAppAgent` or `Caller.codingAgent`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`.
 
 `RunFailed` has the error's `code` when it has one, a `RunErrorCode` that a pattern such as `RunFailed(code: .unsupportedOutcome)` matches. When the history no longer fits the model, `session.startOver()` sends the next message to a new thread without it. The chat keeps its items and adds a `startedOver` notice. It does nothing while a run is open.
 

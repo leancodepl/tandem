@@ -39,7 +39,12 @@ final class Run(final AgentListing listing) {
         throw const FormatException('A tool call changed its method.');
       }
     } else {
-      calls[id] = ToolCall(id, tool, listing.description(tool));
+      calls[id] = ToolCall(
+        id,
+        tool,
+        listing.description(tool),
+        caller: .inAppAgent,
+      );
     }
   }
 

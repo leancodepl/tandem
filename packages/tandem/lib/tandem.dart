@@ -34,6 +34,7 @@ export 'src/protocol/agent_connection.dart'
 export 'src/protocol/on_device_agent.dart'
     show OnDeviceAgent, OnDeviceAvailability, OnDeviceErrorCode;
 export 'src/session/approvals.dart' show ApprovalCallback, TandemApprovals;
+export 'src/session/caller.dart' show Caller;
 export 'src/session/session_scope.dart' show TandemSessionScope;
 export 'src/session/session_status.dart'
     show AwaitingApproval, Calling, Idle, SessionStatus, Stopping, Thinking;
