@@ -300,7 +300,8 @@ final class TandemSession({
   /// earlier history, such as after a [RunFailed] whose `code` says the
   /// history no longer fits the model. The items stay, with a
   /// [ChatNoticeKind.startedOver] notice, and requests that wait are
-  /// cancelled. Does nothing while a run is open, or once disposed.
+  /// cancelled. A message that never reached the agent goes with the next
+  /// one. Does nothing while a run is open, or once disposed.
   void startOver() {
     if (_isBusy || _disposed) {
       return;
@@ -377,6 +378,7 @@ final class TandemSession({
             onDone: () => _connectionLost(run),
             cancelOnError: true,
           );
+      _thread.wentOut();
     } catch (err, st) {
       // The run never went out, so its messages go with the next one.
       _runFailed(err, st);

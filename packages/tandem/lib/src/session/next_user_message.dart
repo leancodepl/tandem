@@ -14,16 +14,10 @@ final class NextUserMessage() {
     _texts.add(text);
   }
 
-  /// The message for the next run, or null when the user wrote nothing. A
-  /// text goes out with one run only.
-  AgUiMessage? take() {
-    if (_texts.isEmpty) {
-      return null;
-    }
-    final message = AgUiMessage.user(_texts.join('\n\n'));
-    _texts.clear();
-    return message;
-  }
+  /// The message for the next run, or null when the user wrote nothing.
+  AgUiMessage? get message =>
+      _texts.isEmpty ? null : AgUiMessage.user(_texts.join('\n\n'));
 
+  /// The message went out with a run.
   void clear() => _texts.clear();
 }

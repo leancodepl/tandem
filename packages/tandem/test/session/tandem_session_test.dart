@@ -341,6 +341,55 @@ void main() {
     ]);
   });
 
+  test('startOver keeps a message whose run never went out', () async {
+    _collectReports();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    shop.listThrows = true;
+    late final TandemSession session;
+    session = open(
+      agent,
+      onEvent: (event) {
+        if (event is RunFailed) {
+          shop.listThrows = false;
+          session.startOver();
+        }
+      },
+    );
+
+    session.send('hi');
+    await pumpEventQueue();
+    session.send('again');
+    await pumpEventQueue();
+
+    expect(_lines(agent.requests.single), ['user: hi\n\nagain']);
+  });
+
+  test('startOver keeps a message whose connection threw before the run went '
+      'out', () async {
+    _collectReports();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    late final TandemSession session;
+    session = open(
+      _ThrowsFirst(agent),
+      onEvent: (event) {
+        if (event is RunFailed) {
+          session.startOver();
+        }
+      },
+    );
+
+    session.send('hi');
+    await pumpEventQueue();
+    session.send('again');
+    await pumpEventQueue();
+
+    expect(_lines(agent.requests.single), ['user: hi\n\nagain']);
+  });
+
   test('startOver cancels a waiting request, and does nothing while a run is '
       'open', () async {
     final (session, agent) = await askToClear();
@@ -1451,6 +1500,21 @@ final class _RawFirstRun(
   Stream<Map<String, Object?>> run(Map<String, Object?> input) {
     requests.add(input);
     return requests.length == 1 ? _first : _agent.run(input);
+  }
+}
+
+/// Throws on its first run before any stream exists, as an adapter that
+/// checks its input can.
+final class _ThrowsFirst(final ScriptedAgent _agent)
+    implements AgentConnection {
+  var _runs = 0;
+
+  @override
+  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
+    if (_runs++ == 0) {
+      throw StateError('No token.');
+    }
+    return _agent.run(input);
   }
 }
 
