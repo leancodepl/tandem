@@ -108,12 +108,11 @@ final class DrawnView(final TandemSession session)
       notifyListeners();
       try {
         await session.callFor(.view, method, arguments);
-      } catch (err, st) {
-        report(err, st);
-      }
-      _pressed.remove(button.key);
-      if (!_disposed) {
-        notifyListeners();
+      } finally {
+        _pressed.remove(button.key);
+        if (!_disposed) {
+          notifyListeners();
+        }
       }
     }
   }
