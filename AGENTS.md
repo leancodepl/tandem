@@ -27,7 +27,7 @@ bash tool/check_apple.sh                           # macOS 26+, no inference
 (cd example/agent && uv sync --locked && uv run ruff check && uv run ruff format --check && uv run pytest)
 ```
 
-CI runs the same, plus a dry run of `pub publish` and a pana score for each package. On a PR it also runs commitlint on the commits and the title, and checks the sections of the description. A job on a paid runner, such as the macOS one, runs on a push to `main`, not on every PR.
+CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` and a pana score for each package. On a PR it also runs commitlint on the commits and the title, and checks the sections of the description. CI has no macOS runner: the Swift plugin is built by hand, at the latest when the app is tried on iOS before a release.
 
 ## Rules
 

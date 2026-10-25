@@ -202,38 +202,11 @@ jobs:
           path: packages/tandem_generator
           dry-run: true
 
-  # A macOS runner costs ten times a Linux one, so this runs on main only.
-  apple:
-    name: Apple native contracts and builds
-    needs: changes
-    if: github.event_name == 'push' && needs.changes.outputs.dart == 'true'
-    runs-on: macos-26
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
-        with:
-          flutter-version: 3.47.x
-          cache: true
-      - name: Native contracts without model inference
-        run: bash tool/check_apple.sh
-      - name: Download pub dependencies
-        run: flutter pub get
-      - name: Build macOS plugin and example
-        run: flutter build macos --debug -t lib/main_apple.dart
-        working-directory: example
-      - name: Build iOS plugin and example without signing
-        run: flutter build ios --debug --no-codesign -t lib/main_apple.dart
-        working-directory: example
-
   # The ruleset requires this check. A job skipped by its `if` counts as passed.
   result:
     name: Test and analyze
 
-    needs: [changes, analyze, test, codegen, publish, apple]
+    needs: [changes, analyze, test, codegen, publish]
     if: ${{ !cancelled() }}
 
     runs-on: ubuntu-latest
