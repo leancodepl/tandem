@@ -264,6 +264,7 @@ final class const _ApprovalCard(
                 .inAppAgent => 'What the agent saw changed. Ask it again.',
                 .codingAgent =>
                   'The screen changed. Ask the coding agent again.',
+                .view => 'The screen changed. Press the button again.',
               },
               .cancelled => 'Cancelled',
             }, style: context.textTheme.labelLarge),

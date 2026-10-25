@@ -26,7 +26,7 @@ final class _TandemViewState() extends State<TandemView> {
 
   /// Kept while the view stays, so that a change of the session rebuilds
   /// only what depends on it.
-  late Widget _drawing;
+  late Widget _content;
 
   @override
   void didChangeDependencies() {
@@ -37,9 +37,9 @@ final class _TandemViewState() extends State<TandemView> {
     }
     _view?.dispose();
     final view = _view = DrawnView(session);
-    _drawing = ListenableBuilder(
-      listenable: view,
-      builder: (context, _) => switch (view.surface) {
+    _content = ValueListenableBuilder(
+      valueListenable: view.surface,
+      builder: (context, surface, _) => switch (surface) {
         final surface? => DrawnSurface(view, surface),
         null => const SizedBox.shrink(),
       },
@@ -53,5 +53,5 @@ final class _TandemViewState() extends State<TandemView> {
   }
 
   @override
-  Widget build(BuildContext context) => _drawing;
+  Widget build(BuildContext context) => _content;
 }

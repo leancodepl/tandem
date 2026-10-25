@@ -6,29 +6,64 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
+import '../support/run_bodies.dart';
 import '../support/shop.dart';
 import '../support/views.dart';
 
 void main() {
   late Shop shop;
 
-  Widget screen(AgentConnection agent, {Widget view = const TandemView()}) =>
-      MaterialApp(
-        home: Scaffold(
-          body: TandemScope.connected(
-            surface: (context) => shop,
-            connection: agent,
-            approvals: const .fromState(),
-            child: Column(children: [view, const _Chat()]),
-          ),
-        ),
-      );
+  Widget screen(
+    AgentConnection agent, {
+    Widget view = const TandemView(),
+    TandemApprovals approvals = const .fromState(),
+    void Function(TandemEvent event)? onEvent,
+  }) => MaterialApp(
+    home: Scaffold(
+      body: TandemScope.connected(
+        surface: (context) => shop,
+        connection: agent,
+        approvals: approvals,
+        onEvent: (context, event, session) => onEvent?.call(event),
+        child: Column(children: [view, const _Chat()]),
+      ),
+    ),
+  );
 
   TandemSession sessionOf(WidgetTester tester) =>
       TandemSessionScope.of(tester.element(find.byType(_Chat)));
 
   AgentStep show(List<Map<String, Object?>> messages) =>
       AgentStep.callTool('tandem_show_view', {'messages': messages});
+
+  /// A script that draws [view] on the first message, then plays [turns].
+  ScriptedAgent drawingAgent(
+    List<Map<String, Object?>> view, [
+    List<AgentTurn> turns = const [],
+  ]) => ScriptedAgent([
+    (_) => [show(view)],
+    (_) => const [AgentStep.say('There it is.')],
+    ...turns,
+  ]);
+
+  Future<void> draw(WidgetTester tester) async {
+    sessionOf(tester).send('show it');
+    await tester.pumpAndSettle();
+  }
+
+  bool enabled(WidgetTester tester, String label, {int at = 0}) => tester
+      .widget<ButtonStyleButton>(
+        find
+            .ancestor(
+              of: find.text(label),
+              matching: find.bySubtype<ButtonStyleButton>(),
+            )
+            .at(at),
+      )
+      .enabled;
+
+  ApprovalRequest lastRequest(WidgetTester tester) =>
+      sessionOf(tester).items.whereType<ApprovalRequest>().last;
 
   testWidgets('a run offers tandem_show_view after the listed methods only '
       'while a TandemView is on the screen', (tester) async {
@@ -175,6 +210,231 @@ void main() {
       'reason': 'No view is on the screen now.',
     });
     expect(_toolNames(agent.requests[1]), isNot(contains('tandem_show_view')));
+  });
+
+  testWidgets('a press calls the method for the view, onEvent hears it, and '
+      'the next run reads in app_notes what it answered', (tester) async {
+    shop = _newShop();
+    final events = <TandemEvent>[];
+    final agent = drawingAgent(shoppingListView, [
+      (_) => const [AgentStep.say('You added milk.')],
+    ]);
+    await tester.pumpWidget(screen(agent, onEvent: events.add));
+    await draw(tester);
+
+    await tester.tap(find.text('again').first);
+    await tester.pumpAndSettle();
+    expect(shop.items, ['milk', 'bread', 'milk']);
+    expect(events, [
+      isA<AgentCall>()
+          .having((call) => call.tool, 'tool', 'add')
+          .having((call) => call.caller, 'caller', Caller.view),
+    ]);
+
+    sessionOf(tester).send('what did I do?');
+    await tester.pumpAndSettle();
+    expect(appNotesOf(agent.requests[2]), {
+      'new': [
+        {
+          'pressed': 'add',
+          'arguments': {'item': 'milk'},
+          'status': 'returned',
+          'result': null,
+        },
+      ],
+    });
+    expect(
+      jsonEncode(agent.requests[2]['messages']),
+      isNot(contains('pressed')),
+    );
+  });
+
+  testWidgets('a press on a method that needs approval asks the user for the '
+      'view; rejected, it runs nothing and tells the agent nothing', (
+    tester,
+  ) async {
+    shop = _newShop();
+    final events = <TandemEvent>[];
+    final agent = drawingAgent(shoppingListView, [
+      (_) => const [AgentStep.say('You shared it.')],
+    ]);
+    await tester.pumpWidget(screen(agent, onEvent: events.add));
+    await draw(tester);
+
+    await tester.tap(find.text('share'));
+    await tester.pump();
+    final request = lastRequest(tester);
+    expect(request.caller, Caller.view);
+    expect(sessionOf(tester).status, AwaitingApproval(request));
+    sessionOf(tester).reject(request);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('share'));
+    await tester.pump();
+    sessionOf(tester).approve(lastRequest(tester));
+    await tester.pumpAndSettle();
+    sessionOf(tester).send('did it go?');
+    await tester.pumpAndSettle();
+
+    expect(events, [
+      isA<AgentCall>()
+          .having((call) => call.tool, 'tool', 'share')
+          .having((call) => call.caller, 'caller', Caller.view),
+    ]);
+    expect(appNotesOf(agent.requests[2]), {
+      'new': [
+        {
+          'pressed': 'share',
+          'arguments': <String, Object?>{},
+          'status': 'returned',
+          'result': null,
+        },
+      ],
+    });
+  });
+
+  testWidgets('a button that needs approval is disabled while the session is '
+      'not idle', (tester) async {
+    shop = _newShop();
+    final gate = Completer<void>();
+    final agent = drawingAgent(shoppingListView, [
+      (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Hi.')],
+      (_) => const [AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Not shared.')],
+    ]);
+    await tester.pumpWidget(screen(agent));
+    await draw(tester);
+    expect(enabled(tester, 'share'), isTrue);
+
+    sessionOf(tester).send('hi');
+    await tester.pump();
+    expect(enabled(tester, 'share'), isFalse);
+    expect(enabled(tester, 'again'), isTrue);
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(enabled(tester, 'share'), isTrue);
+
+    sessionOf(tester).send('share it');
+    await tester.pumpAndSettle();
+    expect(enabled(tester, 'share'), isFalse);
+    sessionOf(tester).reject(lastRequest(tester));
+    await tester.pumpAndSettle();
+    expect(enabled(tester, 'share'), isTrue);
+  });
+
+  testWidgets('a button of a method the screen does not list now is disabled, '
+      'and so is one that needs approval on a screen that takes none', (
+    tester,
+  ) async {
+    shop = _newShop();
+    final view = drawing([
+      {
+        'id': 'root',
+        'component': 'Row',
+        'children': ['clear', 'share'],
+      },
+      ...button('clear', {'name': 'clear'}),
+      ...button('share', {'name': 'share'}),
+    ]);
+    await tester.pumpWidget(screen(drawingAgent(view)));
+    await draw(tester);
+    expect(enabled(tester, 'clear'), isTrue);
+
+    shop
+      ..removeAt(0)
+      ..removeAt(0);
+    await tester.pumpAndSettle();
+    expect(enabled(tester, 'clear'), isFalse);
+
+    shop.add('milk');
+    await tester.pumpWidget(
+      screen(drawingAgent(view), approvals: const .none()),
+    );
+    await draw(tester);
+    expect(enabled(tester, 'share'), isFalse);
+  });
+
+  testWidgets('a press keeps its own button pressed until its call answers, '
+      'not the other buttons of its list template', (tester) async {
+    shop = _newShop();
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final view = drawing([
+      {
+        'id': 'root',
+        'component': 'List',
+        'children': {'componentId': 'line', 'path': '/items'},
+      },
+      {
+        'id': 'line',
+        'component': 'Row',
+        'children': ['name', 'refresh'],
+      },
+      {
+        'id': 'name',
+        'component': 'Text',
+        'text': {'path': '.'},
+      },
+      ...button('refresh', {'name': 'refresh'}),
+    ]);
+    await tester.pumpWidget(screen(drawingAgent(view)));
+    await draw(tester);
+
+    await tester.tap(find.text('refresh').first);
+    await tester.pump();
+    expect(
+      [enabled(tester, 'refresh'), enabled(tester, 'refresh', at: 1)],
+      [isFalse, isTrue],
+    );
+    serverReply.complete();
+    await tester.pumpAndSettle();
+    expect(enabled(tester, 'refresh'), isTrue);
+  });
+
+  testWidgets('a message sent while the approved method of a press runs goes '
+      'after it, and its run reads the press in app_notes', (tester) async {
+    shop = _newShop();
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final agent = drawingAgent(shoppingListView, [
+      (_) => const [AgentStep.say('Yes, you shared it.')],
+    ]);
+    await tester.pumpWidget(screen(agent));
+    await draw(tester);
+
+    await tester.tap(find.text('share'));
+    await tester.pump();
+    sessionOf(tester)
+      ..approve(lastRequest(tester))
+      ..send('did it go?');
+    await tester.pump();
+    expect(agent.requests, hasLength(2));
+    serverReply.complete();
+    await tester.pumpAndSettle();
+
+    expect(messagesOf(agent.requests[2]).last['content'], 'did it go?');
+    expect(appNotesOf(agent.requests[2]), {
+      'new': [containsPair('pressed', 'share')],
+    });
+  });
+
+  testWidgets('a request of the coding agent waits while one of a press '
+      'shows, and shows once it is decided', (tester) async {
+    shop = _newShop();
+    await tester.pumpWidget(screen(drawingAgent(shoppingListView)));
+    await draw(tester);
+
+    await tester.tap(find.text('share'));
+    await tester.pump();
+    final answer = TandemBridge.call('clear');
+    await tester.pump();
+    expect(lastRequest(tester).caller, Caller.view);
+    sessionOf(tester).approve(lastRequest(tester));
+    await tester.pumpAndSettle();
+    expect(lastRequest(tester).caller, Caller.codingAgent);
+    sessionOf(tester).approve(lastRequest(tester));
+
+    expect(await answer, containsPair('status', 'returned'));
+    expect(shop.items, isEmpty);
   });
 
   testWidgets('a new session of the scope starts with an empty view', (
