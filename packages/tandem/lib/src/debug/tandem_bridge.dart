@@ -79,7 +79,8 @@ final class TandemBridge._() {
       return _withScreens(.refused(OpenScreens.whyNotFound(screen)));
     }
     return _withScreens(
-      await target.session.callForCodingAgent(
+      await target.session.callFor(
+        .codingAgent,
         tool,
         arguments,
         autoApprove: _autoApprove,
@@ -116,7 +117,7 @@ final class TandemBridge._() {
 
   static JsonObject _describe(OpenScreen screen, {required bool front}) {
     final listing = AgentListing.of(screen.session.surface);
-    final lastApproval = screen.session.codingAgentRequest;
+    final lastApproval = screen.session.lastAsked(.codingAgent);
     return {
       'id': screen.id,
       'front': front,

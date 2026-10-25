@@ -276,6 +276,32 @@ void main() {
     );
   });
 
+  testWidgets("a decision on the coding agent's request sends no answers of "
+      'the in-app agent, also after a stopped turn that has them all', (
+    tester,
+  ) async {
+    final shop = newShop();
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('refresh')],
+    ]);
+    await tester.pumpWidget(connected(shop, agent));
+    sessionOf(tester).send('refresh');
+    await tester.pump();
+    expect(sessionOf(tester).status, const Calling('refresh', approved: false));
+    sessionOf(tester).stop();
+    serverReply.complete();
+    await tester.pumpAndSettle();
+    expect(shop.refreshes, 1);
+
+    final answer = TandemBridge.call('share');
+    sessionOf(tester).approve(lastRequest(tester));
+
+    expect(await answer, containsPair('status', 'returned'));
+    expect(agent.requests, hasLength(1));
+  });
+
   testWidgets('a request of the coding agent shows once a run of the in-app '
       'agent breaks', (tester) async {
     final gate = Completer<void>();
@@ -311,6 +337,43 @@ void main() {
 
     expect(lastRequest(tester).tool, 'clear');
     expect(sessionOf(tester).status, AwaitingApproval(lastRequest(tester)));
+  });
+
+  testWidgets('a request of the coding agent waits for the run that takes '
+      'the answers of an approved method', (tester) async {
+    final shop = newShop();
+    final serverReply = Completer<void>();
+    // No change reaches the session: only Approve and the end of the
+    // approved method compare .sees.
+    shop
+      ..serverReply = serverReply.future
+      ..changesArrive = Completer<void>().future;
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
+      (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Shared.')],
+    ]);
+    await tester.pumpWidget(connected(shop, agent));
+    sessionOf(tester).send('share it twice');
+    await tester.pumpAndSettle();
+    sessionOf(tester).approve(lastRequest(tester));
+    await TandemBridge.call('add', arguments: {'item': 'milk'});
+    final answer = TandemBridge.call('clear');
+    serverReply.complete();
+    await tester.pump();
+
+    expect(sessionOf(tester).status, isA<Thinking>());
+    expect(lastRequest(tester).tool, 'share');
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(lastRequest(tester).tool, 'clear');
+    sessionOf(tester).approve(lastRequest(tester));
+    expect(await answer, containsPair('status', 'returned'));
+    expect(
+      sessionOf(tester).items.whereType<AgentMessage>().single.text,
+      'Shared.',
+    );
   });
 
   testWidgets('a message of the user cancels the request that shows', (

@@ -11,7 +11,8 @@ final class const Idle() extends SessionStatus;
 /// A run is open and the agent's answer streams in.
 final class const Thinking() extends SessionStatus;
 
-/// A listed method the agent called runs.
+/// A listed method runs: one the agent called in its run, or one the user
+/// approved for any caller.
 final class const Calling(
   /// The method's name in snake_case.
   final String tool, {
