@@ -100,6 +100,14 @@ final class TandemSession({
     null => _approvedCall ?? _waitingStatus,
   };
 
+  /// The state that the agent's backend keeps of the thread, such as the
+  /// steps of its plan, as the backend streams it: a `STATE_SNAPSHOT`
+  /// replaces it and a `STATE_DELTA` patches it, during a run and after a
+  /// Stop too. Every run sends it back. Empty until the backend sends one,
+  /// and again in a new thread. A state event that does not fit is
+  /// reported, and the state stays as it was.
+  JsonObject get agentState => UnmodifiableMapView(_thread.agentState.value);
+
   /// Sends [text], trimmed; does nothing when it is empty or the session is
   /// disposed. The message shows at once, and its run starts when no other
   /// run is open. A request that waits for the user is cancelled.
@@ -384,6 +392,10 @@ final class TandemSession({
       case final ToolCallResult result:
         run.finishTool(result);
         notifyListeners();
+      case StateSnapshot(:final snapshot):
+        _changeAgentState(() => _thread.agentState.replace(snapshot));
+      case StateDelta(:final delta):
+        _changeAgentState(() => _thread.agentState.patch(delta));
       case RunFinished(outcome: .cancelled):
         run.ended = true;
         _notes.read();
@@ -411,6 +423,16 @@ final class TandemSession({
         _thread.addFailedRun(run);
         _runFailed(AgentRunException(code, message), .current);
       case _:
+    }
+  }
+
+  // A backend's state that does not fit fails no run.
+  void _changeAgentState(void Function() change) {
+    try {
+      change();
+      notifyListeners();
+    } on FormatException catch (err, st) {
+      report(err, st);
     }
   }
 

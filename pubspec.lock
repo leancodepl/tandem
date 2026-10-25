@@ -467,6 +467,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.3"
+  rfc_6901:
+    dependency: transitive
+    description:
+      name: rfc_6901
+      sha256: "6a43b1858dca2febaf93e15639aa6b0c49ccdfd7647775f15a499f872b018154"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
+  rfc_6902:
+    dependency: transitive
+    description:
+      name: rfc_6902
+      sha256: "7223b88889dd9abf393ebcc0c8a4761314ad178a55e7ec2505fbdca7c37a7d00"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.1"
   shelf:
     dependency: transitive
     description:

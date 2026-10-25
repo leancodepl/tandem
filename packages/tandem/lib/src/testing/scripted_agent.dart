@@ -20,6 +20,14 @@ sealed class const AgentStep() {
   const factory callTool(String name, [Map<String, Object?> arguments]) =
       _CallTool;
 
+  /// Sends the agent's whole state, `session.agentState`, as
+  /// `STATE_SNAPSHOT`.
+  const factory stateSnapshot(Map<String, Object?> snapshot) = _StateSnapshot;
+
+  /// Changes the agent's state with the JSON Patch operations of [delta], as
+  /// `STATE_DELTA`.
+  const factory stateDelta(List<Map<String, Object?>> delta) = _StateDelta;
+
   /// Waits for [signal] before the next step, such as to keep a run open
   /// in a test.
   const factory waitFor(Future<void> signal) = _WaitFor;
@@ -34,6 +42,12 @@ final class const _CallTool(
   final String name, [
   final Map<String, Object?> arguments = const {},
 ]) extends AgentStep;
+
+final class const _StateSnapshot(final Map<String, Object?> snapshot)
+    extends AgentStep;
+
+final class const _StateDelta(final List<Map<String, Object?>> delta)
+    extends AgentStep;
 
 final class const _WaitFor(final Future<void> signal) extends AgentStep;
 
@@ -121,6 +135,16 @@ final class ScriptedAgent(final List<AgentTurn> turns)
           yield {
             AgUiFields.type: AgUiEventTypes.toolCallEnd,
             AgUiFields.toolCallId: toolCallId,
+          };
+        case _StateSnapshot(:final snapshot):
+          yield {
+            AgUiFields.type: AgUiEventTypes.stateSnapshot,
+            AgUiFields.snapshot: snapshot,
+          };
+        case _StateDelta(:final delta):
+          yield {
+            AgUiFields.type: AgUiEventTypes.stateDelta,
+            AgUiFields.delta: delta,
           };
         case _WaitFor(:final signal):
           await signal;

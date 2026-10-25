@@ -63,6 +63,7 @@ abstract final class AgUiFields() {
   static const subagentRunId = 'subagentRunId';
 
   static const state = 'state';
+  static const snapshot = 'snapshot';
   static const messages = 'messages';
   static const tools = 'tools';
   static const context = 'context';

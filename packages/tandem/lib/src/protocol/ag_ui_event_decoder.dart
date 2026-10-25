@@ -20,6 +20,8 @@ const _decoders = <String, AgentEvent Function(JsonObject)>{
   AgUiEventTypes.toolCallStart: _decodeToolCallStarted,
   AgUiEventTypes.toolCallArgs: _decodeToolCallArgs,
   AgUiEventTypes.toolCallResult: _decodeToolCallResult,
+  AgUiEventTypes.stateSnapshot: _decodeStateSnapshot,
+  AgUiEventTypes.stateDelta: _decodeStateDelta,
 };
 
 RunFinished _decodeRunFinished(JsonObject json) =>
@@ -73,6 +75,13 @@ AgentEvent _decodeToolCallResult(JsonObject json) => switch (json) {
     ToolCallResult(messageId, toolCallId, content),
   _ => const IgnoredEvent(),
 };
+
+// AgentState checks the shape, so a wrong one is reported, not dropped.
+StateSnapshot _decodeStateSnapshot(JsonObject json) =>
+    StateSnapshot(json[AgUiFields.snapshot]);
+
+StateDelta _decodeStateDelta(JsonObject json) =>
+    StateDelta(json[AgUiFields.delta]);
 
 RunOutcome _decodeOutcome(Object? json) => switch (json) {
   {AgUiFields.type: AgUiOutcomeTypes.cancelled} => .cancelled,

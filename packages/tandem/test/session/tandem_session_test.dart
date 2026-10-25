@@ -1055,6 +1055,115 @@ void main() {
     });
   });
 
+  test('the agent state follows its snapshots and deltas as they come, also '
+      'after a Stop, and the next run sends it back', () async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        const AgentStep.stateSnapshot({
+          'steps': ['Find the customer'],
+        }),
+        AgentStep.waitFor(gate.future),
+        const AgentStep.stateDelta([
+          {'op': 'add', 'path': '/steps/-', 'value': 'Read the history'},
+        ]),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+    ]);
+    final session = open(agent)..send('find Acme');
+    await pumpEventQueue();
+    expect(session.agentState, {
+      'steps': ['Find the customer'],
+    });
+
+    session.stop();
+    gate.complete();
+    await pumpEventQueue();
+    expect(session.agentState, {
+      'steps': ['Find the customer', 'Read the history'],
+    });
+
+    session.send('go on');
+    await pumpEventQueue();
+    expect(agent.requests.first['state'], isEmpty);
+    expect(agent.requests.last['state'], session.agentState);
+  });
+
+  test('a delta that does not apply is reported and keeps the state, and the '
+      'deltas after it wait for a snapshot', () async {
+    final reported = _collectReports();
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        const AgentStep.stateSnapshot({'step': 1}),
+        const AgentStep.stateDelta([
+          {'op': 'replace', 'path': '/missing', 'value': 2},
+        ]),
+        const AgentStep.stateDelta([
+          {'op': 'replace', 'path': '/step', 'value': 3},
+        ]),
+        AgentStep.waitFor(gate.future),
+        const AgentStep.stateSnapshot({'step': 4}),
+        const AgentStep.stateDelta([
+          {'op': 'replace', 'path': '/step', 'value': 5},
+        ]),
+        const AgentStep.say('Still here.'),
+      ],
+    ]);
+    final session = open(agent)..send('go');
+    await pumpEventQueue();
+    expect(session.agentState, {'step': 1});
+    expect(reported.single.exception, isFormatException);
+
+    gate.complete();
+    await pumpEventQueue();
+    expect(session.agentState, {'step': 5});
+    expect(_shown(session.items).last, ('agent', 'Still here.', false));
+  });
+
+  test('a snapshot that is not an object is reported and keeps the state, '
+      'and the deltas after it wait for a snapshot', () async {
+    final reported = _collectReports();
+    final connection = _RawFirstRun(
+      Stream.fromIterable([
+        {
+          'type': 'STATE_SNAPSHOT',
+          'snapshot': ['steps'],
+        },
+        {
+          'type': 'STATE_DELTA',
+          'delta': [
+            {'op': 'add', 'path': '/step', 'value': 1},
+          ],
+        },
+        {'type': 'RUN_FINISHED'},
+      ]),
+      ScriptedAgent([]),
+    );
+    final session = open(connection)..send('go');
+    await pumpEventQueue();
+
+    expect(session.agentState, isEmpty);
+    expect(reported.single.exception, isFormatException);
+  });
+
+  test('a new thread starts with an empty agent state', () async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.stateSnapshot({'step': 1}),
+      ],
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    final session = open(agent)..send('a');
+    await pumpEventQueue();
+
+    session.startOver();
+    expect(session.agentState, isEmpty);
+    session.send('b');
+    await pumpEventQueue();
+    expect(agent.requests.last['state'], isEmpty);
+  });
+
   test('wake starts a run with a message from the app, which waits while a '
       'request waits and goes with the run after the decision', () async {
     final agent = ScriptedAgent([

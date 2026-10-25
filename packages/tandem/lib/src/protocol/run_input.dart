@@ -4,16 +4,18 @@ import 'package:uuid/uuid.dart';
 /// The body of one AG-UI run.
 extension type RunInput._(JsonObject json) implements JsonObject {
   /// A new run of [threadId] with the whole conversation of the thread as
-  /// [messages], and the [tools] and [context] of this run.
+  /// [messages], the agent's [state], and the [tools] and [context] of this
+  /// run.
   factory({
     required String threadId,
     required List<AgUiMessage> messages,
+    required JsonObject state,
     required List<JsonObject> tools,
     required List<JsonObject> context,
   }) => ._({
     AgUiFields.threadId: threadId,
     AgUiFields.runId: const Uuid().v4(),
-    AgUiFields.state: <String, Object?>{},
+    AgUiFields.state: state,
     AgUiFields.messages: messages,
     AgUiFields.tools: tools,
     AgUiFields.context: context,
