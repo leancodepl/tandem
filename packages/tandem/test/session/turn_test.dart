@@ -17,7 +17,8 @@ void main() {
     seen = .of(AgentListing.of(shop));
   });
 
-  ToolCall call(String id) => ToolCall(id, 'clear', 'Empties the list.');
+  ToolCall call(String id) =>
+      ToolCall(id, 'clear', 'Empties the list.', caller: .inAppAgent);
 
   test('one request shows at a time, in order', () {
     final turn = Turn([call('call-1'), call('call-2')])..ask(seen);

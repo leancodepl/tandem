@@ -20,6 +20,7 @@ void main() {
         AgentListing.of(_Surface(() => throw error)),
         'execute',
         '{}',
+        caller: .inAppAgent,
         approved: false,
         report: (error, _) => reported.add(error),
       );
@@ -37,6 +38,7 @@ void main() {
       AgentListing.of(_Surface(() => double.nan)),
       'execute',
       '{}',
+      caller: .inAppAgent,
       approved: false,
       report: (error, _) => reported.add(error),
     );

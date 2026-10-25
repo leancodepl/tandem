@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:tandem/src/session/caller.dart';
+
 /// Immutable: the session replaces an item to change it.
 sealed class const ChatItem();
 
@@ -43,10 +45,11 @@ enum ApprovalStatus() {
   /// The user approved it, and its method runs or ran.
   approved,
 
-  /// The user rejected it, and the agent hears so.
+  /// The user rejected it. The in-app agent hears so with its next run, and
+  /// a coding agent in its answer.
   rejected,
 
-  /// A value listed with `.sees` changed after the agent asked, so it can no
+  /// A value listed with `.sees` changed after the call asked, so it can no
   /// longer be approved.
   invalidated,
 
@@ -56,8 +59,8 @@ enum ApprovalStatus() {
 
 /// A call of a method listed with `.callsWithApproval`.
 final class const ApprovalRequest({
-  /// The agent's id of the call. It stays the same when the status changes,
-  /// so a UI can key the request's card by it.
+  /// The id of the call. It stays the same when the status changes, so a UI
+  /// can key the request's card by it.
   required final String toolCallId,
 
   /// The method's name in snake_case.
@@ -68,6 +71,9 @@ final class const ApprovalRequest({
   required final String description,
   required final String _argumentsJson,
   final ApprovalStatus status = .pending,
+
+  /// Who asked, so the card can say what happens next.
+  final Caller caller = .inAppAgent,
 }) extends ChatItem {
   /// Decoded again on every read, so changing the map changes nothing the
   /// method gets.
@@ -82,5 +88,6 @@ final class const ApprovalRequest({
     description: description,
     argumentsJson: _argumentsJson,
     status: status,
+    caller: caller,
   );
 }

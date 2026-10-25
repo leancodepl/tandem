@@ -44,7 +44,7 @@ TandemScope(
 
 For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connected` as `connection`; calling it in `build` is fine. Offer it only when `await OnDeviceAgent.apple().availability()` is `available`. On `RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)`, call `session.startOver()`. [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).
 
-`onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result`), `RunStopped`, `RunFailed` and `ConnectionLost`. Without a chat, show `RunFailed` and `ConnectionLost` to the user, such as in a snackbar.
+`onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result` and `caller`, who called it), `RunStopped`, `RunFailed` and `ConnectionLost`. Without a chat, show `RunFailed` and `ConnectionLost` to the user, such as in a snackbar.
 
 **Done when** the scope has `agent:`, or `TandemScope.connected` with the connection, and the app builds.
 
@@ -78,7 +78,7 @@ final class const AgentChat() extends StatelessWidget {
 A screen with `.callsWithApproval` asks the user in one place. With a chat, that is a card in it, and the scope has `approvals: const .fromState()`. With a button, keep the dialog of `tandem-agent-aware-screen`, `approvals: .callback(...)`. Requests of a coding agent show in the same place.
 
 - A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. Both throw an `ApprovalNotPending` when the request changed as the user tapped, such as when what the agent sees changed: catch it, the card then shows the new `request.status`.
-- Every other `request.status` gets a line: `approved`, `rejected`, `invalidated` (what the agent sees changed, so the user asks the agent again) and `cancelled`.
+- Every other `request.status` gets a line: `approved`, `rejected`, `invalidated` (what the screen shows changed after the call asked) and `cancelled`. Its line names whom to ask again, by `request.caller`.
 - `request.description` and `request.arguments` are written for the agent. Show the user what the method will do in the app's words, chosen by `request.tool`.
 
 **Done when** every `.callsWithApproval` method shows to the user before it runs, as a card or in the dialog.

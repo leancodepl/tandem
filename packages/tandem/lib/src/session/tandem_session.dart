@@ -186,15 +186,25 @@ final class TandemSession({
     final argumentsJson = jsonEncode(arguments);
     final needsApproval = listing.needsApproval(tool);
     if (needsApproval && !autoApprove) {
-      final call = ToolCall(const Uuid().v4(), tool, listing.description(tool))
-        ..arguments = argumentsJson;
-      return _waitForUser(caller, call);
+      final call = ToolCall(
+        const Uuid().v4(),
+        tool,
+        listing.description(tool),
+        caller: caller,
+      )..arguments = argumentsJson;
+      return _waitForUser(call);
     }
-    return _callMethod(listing, tool, argumentsJson, approved: autoApprove);
+    return _callMethod(
+      listing,
+      tool,
+      argumentsJson,
+      caller: caller,
+      approved: autoApprove,
+    );
   }
 
-  Future<ToolAnswer> _waitForUser(Caller caller, ToolCall call) async {
-    if (_waiting.lastAsked(caller) case final waiting?
+  Future<ToolAnswer> _waitForUser(ToolCall call) async {
+    if (_waiting.lastAsked(call.caller) case final waiting?
         when waiting.answer == null) {
       if (waiting.tool == call.tool && waiting.arguments == call.arguments) {
         return await waiting.answered;
@@ -211,7 +221,7 @@ final class TandemSession({
         'the calls of a coding agent.',
       );
     }
-    _waiting.ask(caller, call, _seesNow);
+    _waiting.ask(call, _seesNow);
     if (status is Idle) {
       _showNextRequest();
     }
@@ -361,6 +371,7 @@ final class TandemSession({
           run.listing,
           call.tool,
           call.argumentsJson,
+          caller: call.caller,
           approved: false,
         );
         run.calling = null;
@@ -414,6 +425,7 @@ final class TandemSession({
       listing,
       call.tool,
       call.argumentsJson,
+      caller: call.caller,
       approved: true,
     );
     if (_disposed) {
@@ -431,18 +443,20 @@ final class TandemSession({
   void _continueAfter(Turn turn) =>
       _startNextRun(withAnswers: identical(turn, _waiting.agent));
 
-  /// Runs the method behind [tool]. `onEvent` hears of its return unless the
-  /// session is disposed by then.
+  /// Runs the method behind [tool] for [caller]. `onEvent` hears of its
+  /// return unless the session is disposed by then.
   Future<ToolAnswer> _callMethod(
     AgentListing listing,
     String tool,
     String argumentsJson, {
+    required Caller caller,
     required bool approved,
   }) async {
     final (:answer, :returned) = await runMethod(
       listing,
       tool,
       argumentsJson,
+      caller: caller,
       approved: approved,
       report: _report,
     );

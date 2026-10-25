@@ -257,7 +257,11 @@ final class const _ApprovalCard(
               .pending => 'Approval',
               .approved => 'Approved',
               .rejected => 'Rejected',
-              .invalidated => 'What the agent saw changed. Ask it again.',
+              .invalidated => switch (request.caller) {
+                .inAppAgent => 'What the agent saw changed. Ask it again.',
+                .codingAgent =>
+                  'The screen changed. Ask the coding agent again.',
+              },
               .cancelled => 'Cancelled',
             }, style: context.textTheme.labelLarge),
             builder?.call(context, request) ??

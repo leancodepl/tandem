@@ -499,8 +499,8 @@ void main() {
     final (session, agent) = await askToClear();
     final card = _card(session);
     expect(
-      [card.tool, card.arguments, card.status],
-      ['clear', <String, Object?>{}, ApprovalStatus.pending],
+      [card.tool, card.arguments, card.status, card.caller],
+      ['clear', <String, Object?>{}, ApprovalStatus.pending, Caller.inAppAgent],
     );
     expect(shop.items, ['x']);
 
@@ -517,8 +517,8 @@ void main() {
       'tool-call-1 null',
     ]);
     expect(_card(session).status, ApprovalStatus.approved);
-    final [AgentCall(:tool, :arguments, :result)] = agentCalls();
-    expect((tool, result), ('clear', null));
+    final [AgentCall(:tool, :arguments, :result, :caller)] = agentCalls();
+    expect((tool, result, caller), ('clear', null, Caller.inAppAgent));
     expect(arguments, isEmpty);
   });
 

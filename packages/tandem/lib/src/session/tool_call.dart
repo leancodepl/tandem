@@ -2,17 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 
-/// The agent's call of a listed method, from its run until its answer goes
-/// out with the next run.
+/// A call of a listed method, from the moment it is made until it has its
+/// answer: the in-app agent's goes out with the next run.
 final class ToolCall(
   final String id,
   final String tool,
 
   /// The method's doc comment, as the agent got it.
-  final String description,
-) {
+  final String description, {
+  required final Caller caller,
+}) {
   /// The JSON arguments, as streamed so far.
   String arguments = '';
 
@@ -53,6 +55,7 @@ final class ToolCall(
     tool: tool,
     description: description,
     argumentsJson: argumentsJson,
+    caller: caller,
   );
 
   /// Gives the call the answer that [status] means, and its request, when it
