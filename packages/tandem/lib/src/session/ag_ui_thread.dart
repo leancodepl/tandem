@@ -12,20 +12,30 @@ final class AgUiThread() {
   final _messages = <AgUiMessage>[];
   final _nextUserMessage = NextUserMessage();
 
-  /// The body of the next run, with its [tools] and [context].
+  /// The user's message of the last [input], until its run goes out.
+  AgUiMessage? _outgoing;
+
+  /// The body of the next run, with its [tools] and [context]. The user's
+  /// message joins the history only when the run goes out: [wentOut].
   RunInput input({
     required List<JsonObject> tools,
     required List<JsonObject> context,
   }) {
-    if (_nextUserMessage.take() case final message?) {
-      _messages.add(message);
-    }
+    _outgoing = _nextUserMessage.message;
     return RunInput(
       threadId: _id,
-      messages: [..._messages],
+      messages: [..._messages, ?_outgoing],
       tools: tools,
       context: context,
     );
+  }
+
+  /// The run of the last [input] went out, with the user's message.
+  void wentOut() {
+    if (_outgoing case final message?) {
+      _messages.add(message);
+      _nextUserMessage.clear();
+    }
   }
 
   /// What the agent said in [run], and the calls of its [turn].
@@ -48,10 +58,10 @@ final class AgUiThread() {
       texts.forEach(_nextUserMessage.add);
 
   /// A new thread without the earlier messages, for when what ADK kept of a
-  /// run is unknown.
+  /// run is unknown. What the user sent and no run took goes with the next
+  /// run.
   void startOver() {
     _id = const Uuid().v4();
     _messages.clear();
-    _nextUserMessage.clear();
   }
 }
