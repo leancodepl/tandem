@@ -1,6 +1,5 @@
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/run_input.dart';
-import 'package:tandem/src/session/next_user_message.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/turn.dart';
 import 'package:uuid/uuid.dart';
@@ -10,18 +9,19 @@ import 'package:uuid/uuid.dart';
 final class AgUiThread() {
   var _id = const Uuid().v4();
   final _messages = <AgUiMessage>[];
-  final _nextUserMessage = NextUserMessage();
 
   /// The user's message of the last [input], until its run goes out.
   AgUiMessage? _outgoing;
 
-  /// The body of the next run, with its [tools] and [context]. The user's
-  /// message joins the history only when the run goes out: [wentOut].
+  /// The body of the next run, with its [tools] and [context], and
+  /// [userText] after the answers. The user's message joins the history only
+  /// when the run goes out: [wentOut].
   RunInput input({
     required List<JsonObject> tools,
     required List<JsonObject> context,
+    required String? userText,
   }) {
-    _outgoing = _nextUserMessage.message;
+    _outgoing = userText == null ? null : .user(userText);
     return RunInput(
       threadId: _id,
       messages: [..._messages, ?_outgoing],
@@ -34,7 +34,6 @@ final class AgUiThread() {
   void wentOut() {
     if (_outgoing case final message?) {
       _messages.add(message);
-      _nextUserMessage.clear();
     }
   }
 
@@ -49,14 +48,8 @@ final class AgUiThread() {
   /// The answers of [turn], for the next run.
   void addAnswers(Turn turn) => _messages.addAll(turn.answers);
 
-  /// What the user and the app sent, which the next run sends as one message
-  /// after the answers.
-  void addUserTexts(Iterable<String> texts) =>
-      texts.forEach(_nextUserMessage.add);
-
   /// A new thread without the earlier messages, for when what ADK kept of a
-  /// run is unknown. What the user sent and no run took goes with the next
-  /// run.
+  /// run is unknown.
   void startOver() {
     _id = const Uuid().v4();
     _messages.clear();
