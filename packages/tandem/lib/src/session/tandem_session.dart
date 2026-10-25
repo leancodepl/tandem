@@ -393,13 +393,17 @@ final class TandemSession({
       case TextDelta(:final messageId, :final delta) when !run.stopped:
         _showText(run.write(messageId, delta));
       // A call of a tool the run does not offer runs on the server.
-      case ToolCallStarted(:final toolCallId, :final name):
-        run.startTool(toolCallId, name);
+      case ToolCallStarted(
+        :final toolCallId,
+        :final name,
+        :final parentMessageId,
+      ):
+        run.startTool(toolCallId, name, parentMessageId);
         notifyListeners();
       case ToolCallArgs(:final toolCallId, :final delta):
-        run.calls[toolCallId]?.arguments += delta;
-      case ToolCallResult(:final toolCallId):
-        run.finishTool(toolCallId);
+        run.addArguments(toolCallId, delta);
+      case ToolCallResult(:final messageId, :final toolCallId, :final content):
+        run.finishTool(messageId, toolCallId, content);
         notifyListeners();
       case RunFinished(outcome: .cancelled):
         run.ended = true;
@@ -408,8 +412,8 @@ final class TandemSession({
         if (_run != run) {
           return;
         }
-        final turn = _waiting.agent = Turn([...run.calls.values]);
-        _thread.addTurn(run, turn);
+        _waiting.agent = Turn([...run.calls.values]);
+        _thread.addRun(run);
         _startNextRun();
       case RunFinished(outcome: .unsupported):
         _abort(
@@ -434,7 +438,7 @@ final class TandemSession({
 
   Future<void> _finish(Run run) async {
     final turn = _waiting.agent = Turn([...run.calls.values]);
-    _thread.addTurn(run, turn);
+    _thread.addRun(run);
     try {
       _invalidateIfSeesChanged();
       await _answerCalls(run, turn);

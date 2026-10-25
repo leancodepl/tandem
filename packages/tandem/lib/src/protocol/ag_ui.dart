@@ -74,6 +74,7 @@ abstract final class AgUiFields() {
   static const role = 'role';
   static const content = 'content';
   static const messageId = 'messageId';
+  static const parentMessageId = 'parentMessageId';
   static const delta = 'delta';
 
   static const toolCalls = 'toolCalls';

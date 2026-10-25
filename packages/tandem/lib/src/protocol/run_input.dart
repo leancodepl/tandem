@@ -30,38 +30,40 @@ extension type AgUiMessage._(JsonObject json) implements JsonObject {
     AgUiFields.content: text,
   });
 
-  /// A text the agent said, under the id of its `TEXT_MESSAGE_START`.
-  factory assistantText(String id, String text) => ._({
+  /// A message of the agent under its id, with what it said and its calls.
+  factory assistant(
+    String id, {
+    String? text,
+    List<AgUiToolCall> toolCalls = const [],
+  }) => ._({
     AgUiFields.id: id,
     AgUiFields.role: AgUiMessageRoles.assistant,
-    AgUiFields.content: text,
+    AgUiFields.content: ?text,
+    if (toolCalls.isNotEmpty) AgUiFields.toolCalls: toolCalls,
   });
 
-  factory assistantToolCall(
-    String toolCallId,
-    String name,
-    String arguments,
-  ) => ._({
-    // Never the bare call id: ag-ui-adk marks every message id it has seen as
-    // processed, and would swallow the answer that comes later.
-    AgUiFields.id: 'asst-$toolCallId',
-    AgUiFields.role: AgUiMessageRoles.assistant,
-    AgUiFields.toolCalls: [
-      {
-        AgUiFields.id: toolCallId,
-        AgUiFields.type: AgUiToolCallTypes.function,
-        AgUiFields.function: {
-          AgUiFields.name: name,
-          AgUiFields.arguments: arguments,
-        },
-      },
-    ],
-  });
+  /// The app's answer to a call of a listed method.
+  factory toolAnswer(String toolCallId, String content) =>
+      AgUiMessage.toolResult('tool-$toolCallId', toolCallId, content);
 
-  factory toolAnswer(String toolCallId, String content) => ._({
-    AgUiFields.id: 'tool-$toolCallId',
+  /// The result of a call, under the id of its `TOOL_CALL_RESULT` for a call
+  /// that ran on the server.
+  factory toolResult(String id, String toolCallId, String content) => ._({
+    AgUiFields.id: id,
     AgUiFields.role: AgUiMessageRoles.tool,
     AgUiFields.toolCallId: toolCallId,
     AgUiFields.content: content,
+  });
+}
+
+/// A call in a message of the agent.
+extension type AgUiToolCall._(JsonObject json) implements JsonObject {
+  factory(String id, String name, String arguments) => ._({
+    AgUiFields.id: id,
+    AgUiFields.type: AgUiToolCallTypes.function,
+    AgUiFields.function: {
+      AgUiFields.name: name,
+      AgUiFields.arguments: arguments,
+    },
   });
 }

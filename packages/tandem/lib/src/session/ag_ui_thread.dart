@@ -38,12 +38,9 @@ final class AgUiThread() {
     }
   }
 
-  /// What the agent said in [run], and the calls of its [turn].
-  void addTurn(Run run, Turn turn) => _messages.addAll([
-    ...run.assistantTexts,
-    for (final call in turn.calls)
-      AgUiMessage.assistantToolCall(call.id, call.tool, call.argumentsJson),
-  ]);
+  /// What the agent sent in [run]: its messages with their calls, and the
+  /// results of the calls that ran on the server.
+  void addRun(Run run) => _messages.addAll(run.history);
 
   /// What the agent said in a run that failed. ADK never saw its calls
   /// answered, so they stay out.

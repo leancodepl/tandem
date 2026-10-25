@@ -105,17 +105,17 @@ The copy relies on when Apple writes the batch to the transcript. That timing wa
 
 ## Wire rules
 
-For ag-ui-adk 0.9.0. Its behaviour differs between versions.
+Checked with ag-ui-adk 0.11.0, ag-ui-langgraph 0.0.47 and Pydantic AI 2.61.0. The history follows the events, as `@ag-ui/client` keeps it, so that a backend that dedupes by message id and one that keeps no state both read the conversation they sent.
 
 - POST with `Accept: text/event-stream` and `Content-Type: application/json`.
 - Body `{threadId, runId, state: {}, messages, tools, context, forwardedProps: {}}`. `tools` is always there, `[]` when empty, with `tandem_show_view` last while a view is attached. No `resume`, no `protocolVersion`.
 - User message: `{id, role: 'user', content}`. What the user and `session.wake` sent since the last run went out goes as one message, the texts joined by a blank line: ag-ui-adk passes the model only the last new user message of a run.
-- Assistant text: `{id: <TEXT_MESSAGE_START messageId>, role: 'assistant', content: <visible text>}`.
-- App tool call: `{id: 'asst-<toolCallId>', role: 'assistant', toolCalls: [{id: <toolCallId>, type: 'function', function: {name, arguments}}]}`. `arguments` is the joined `TOOL_CALL_ARGS`, or `'{}'`: ag-ui-adk sends none for a call without arguments. The message id is never the bare call id, or ag-ui-adk would swallow the answer as processed.
+- Assistant message: `{id, role: 'assistant', content: <visible text>, toolCalls: [{id: <toolCallId>, type: 'function', function: {name, arguments}}]}`, without `content` when it said nothing and without `toolCalls` when it called nothing. Its id is the `messageId` of its text and the `parentMessageId` of its calls. A call without a parent gets a message of its own, `asst-<toolCallId>`: never the bare call id, or ag-ui-adk would swallow the answer as processed. `arguments` is the joined `TOOL_CALL_ARGS`, or `'{}'`: ag-ui-adk sends none for a call without arguments.
+- Backend tool result: `{id: <TOOL_CALL_RESULT messageId>, role: 'tool', toolCallId, content}`, right after the message with the call. A backend call without a result, such as one cut off by a failed run, stays out with its call.
 - Tool answer: `{id: 'tool-<toolCallId>', role: 'tool', toolCallId, content: <JSON string>}`, no `error` field.
-- Order inside one run: assistant text, the `asst-` messages of the turn, all tool answers, the user message last.
+- Order inside one run: the agent's messages in the order they started, each followed by the results of its backend calls, then the answers to the app's calls, the user message last.
 - `context`: one `{description: '<name>: <doc comment>', value: <JSON string>}` per `.sees`, then the `app_notes` entry once the app wrote a note.
-- A `TOOL_CALL_START` whose name is not in this run's `tools` is a backend tool. It is ignored, never executed, never echoed.
+- A `TOOL_CALL_START` whose name is not in this run's `tools` is a backend tool. It is never executed, and goes back in the history with its `TOOL_CALL_RESULT`.
 - A `TOOL_CALL_START` with the id of a call the run already has keeps the first start. With another name it fails the run.
 - A response may replay earlier runs before the requested one. Events before the `RUN_STARTED` of the requested `runId` and `threadId` are skipped. A `RUN_ERROR` before any `RUN_STARTED` still ends the stream, unless it names another thread or run.
 - `TEXT_MESSAGE_CHUNK` and `TOOL_CALL_CHUNK` are rewritten while decoding as the content, start and args events they abbreviate, so the session reads one form.
