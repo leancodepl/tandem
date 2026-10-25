@@ -60,11 +60,15 @@ final class OpenScreens._() {
       return 'No screen with a TandemScope is open.';
     }
     final ids = _screens.map((screen) => screen.id).join(', ');
+    final current = _screens.where((screen) => screen.isOnCurrentRoute);
     return switch (id) {
       final id? => 'No open screen has the id $id. Pass screen, one of: $ids.',
-      null =>
+      null when current.isEmpty =>
         'Several screens are open and none is in front. Pass screen, one '
             'of: $ids.',
+      null =>
+        'Several screens are on the current route, as tabs or side by side. '
+            'Pass screen, one of: $ids.',
     };
   }
 
