@@ -8,6 +8,7 @@ import 'package:tandem/src/session/approvals.dart';
 import 'package:tandem/src/session/session_scope.dart';
 import 'package:tandem/src/session/tandem_event.dart';
 import 'package:tandem/src/session/tandem_session.dart';
+import 'package:tandem/src/session/tandem_thread.dart';
 
 /// Makes the screen below it agent-aware: one [TandemSession] of the object
 /// that [surface] gives.
@@ -35,10 +36,10 @@ import 'package:tandem/src/session/tandem_session.dart';
 ///
 /// An ordinary rebuild keeps the session. A new session replaces the old one
 /// when `agent` is another [Uri] (compared with `==`), or when `connected`
-/// gets another connection (compared with `identical`: keep it in a field,
-/// not in `build`). A new [onEvent] or [approvals] takes effect at once. A
-/// scope that leaves the tree disposes its session before an ancestor that
-/// owns the surface closes it.
+/// gets another connection or [thread] another thread (compared with
+/// `identical`: keep them in a field, not in `build`). A new [onEvent] or
+/// [approvals] takes effect at once. A scope that leaves the tree disposes
+/// its session before an ancestor that owns the surface closes it.
 final class TandemScope extends StatefulWidget {
   /// A scope that talks to the AG-UI endpoint `agent`. Without one, only a
   /// coding agent drives the screen, through `TandemBridge`, and a run of
@@ -50,6 +51,7 @@ final class TandemScope extends StatefulWidget {
     required this.approvals,
     required this.child,
     this.onEvent,
+    this.thread,
   }) : _connection = null;
 
   /// A scope that talks over `connection`, such as `OnDeviceAgent.apple()`,
@@ -61,6 +63,7 @@ final class TandemScope extends StatefulWidget {
     required this.approvals,
     required this.child,
     this.onEvent,
+    this.thread,
   }) : _agent = null;
 
   /// Reads the object the agent works on, a class with `@TandemAgent()`,
@@ -90,6 +93,12 @@ final class TandemScope extends StatefulWidget {
   )?
   onEvent;
 
+  /// The conversation that every session of this scope goes on with, such
+  /// as one an earlier screen left, kept above the screen. Without it, each
+  /// session starts a new one. The newest scope goes on with a thread, and
+  /// an older one lets it go.
+  final TandemThread? thread;
+
   @override
   State<TandemScope> createState() => _TandemScopeState();
 }
@@ -111,7 +120,8 @@ final class _TandemScopeState() extends State<TandemScope> {
   void didUpdateWidget(TandemScope oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget._agent != oldWidget._agent ||
-        !identical(widget._connection, oldWidget._connection)) {
+        !identical(widget._connection, oldWidget._connection) ||
+        !identical(widget.thread, oldWidget.thread)) {
       _session.dispose();
       _session = _open();
     }
@@ -146,6 +156,7 @@ final class _TandemScopeState() extends State<TandemScope> {
         }
       },
       asksForApproval: () => widget.approvals is! NoApprovals,
+      thread: widget.thread,
     );
   }
 }

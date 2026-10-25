@@ -67,6 +67,34 @@ void main() {
     expect(sessionOf(tester), isNot(same(session)));
   });
 
+  testWidgets('a screen opened again goes on with the thread of its scope, '
+      'and another thread opens a new session', (tester) async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+    ]);
+    final thread = TandemThread();
+    Widget screen(TandemThread thread) => TandemScope.connected(
+      surface: readShop,
+      connection: agent,
+      approvals: const .fromState(),
+      thread: thread,
+      child: const SizedBox(),
+    );
+    await tester.pumpWidget(screen(thread));
+    sessionOf(tester).send('hi');
+    await tester.pump();
+    await tester.pumpWidget(const Placeholder());
+
+    await tester.pumpWidget(screen(thread));
+    final session = sessionOf(tester);
+    expect(session.thread, same(thread));
+    expect(session.items, hasLength(2));
+
+    await tester.pumpWidget(screen(TandemThread()));
+    expect(sessionOf(tester), isNot(same(session)));
+    expect(sessionOf(tester).items, isEmpty);
+  });
+
   testWidgets('onEvent gets the scope context, the session and the latest '
       'callback', (tester) async {
     final agent = ScriptedAgent([

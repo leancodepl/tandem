@@ -28,15 +28,21 @@ void main() {
   TandemSession open(
     AgentConnection connection, {
     void Function(TandemEvent event)? onEvent,
+    TandemThread? thread,
   }) {
     final session = TandemSession(
       surface: shop,
       connection: connection,
       onEvent: onEvent ?? events.add,
+      thread: thread,
     );
     addTearDown(session.dispose);
     return session;
   }
+
+  /// A session that the test disposes itself, as a screen that closes.
+  TandemSession openToClose(TandemThread thread, AgentConnection connection) =>
+      TandemSession(surface: shop, connection: connection, thread: thread);
 
   Future<(TandemSession, ScriptedAgent)> askToClear() async {
     shop.add('x');
@@ -1162,6 +1168,132 @@ void main() {
     session.send('b');
     await pumpEventQueue();
     expect(agent.requests.last['state'], isEmpty);
+  });
+
+  test('the next session goes on with the thread: its chat, its history and '
+      'the agent state', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.stateSnapshot({'step': 1}),
+        AgentStep.say('Hi.'),
+      ],
+      (_) => const [AgentStep.say('Again.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    first.dispose();
+    final next = open(agent, thread: thread);
+    expect(_shown(next.items), [('user', 'a'), ('agent', 'Hi.', false)]);
+
+    next.send('b');
+    await pumpEventQueue();
+    expect(agent.requests[1]['threadId'], agent.requests[0]['threadId']);
+    expect(_lines(agent.requests[1]), ['user: a', 'assistant: Hi.', 'user: b']);
+    expect(agent.requests[1]['state'], {'step': 1});
+  });
+
+  test('a thread whose screen changed while no session had it starts over '
+      'before the next message', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    first.dispose();
+    shop.add('milk');
+
+    final next = open(agent, thread: thread)..send('b');
+    await pumpEventQueue();
+    expect(agent.requests[1]['threadId'], isNot(agent.requests[0]['threadId']));
+    expect(_lines(agent.requests[1]), ['user: b']);
+    expect(_shown(next.items), [
+      ('user', 'a'),
+      ('agent', 'Hi.', false),
+      ChatNoticeKind.startedOver,
+      ('user', 'b'),
+      ('agent', 'Fresh.', false),
+    ]);
+  });
+
+  test('a session closed while a run is open leaves its thread to a new '
+      'AG-UI thread', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => [AgentStep.waitFor(Completer<void>().future)],
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    first.dispose();
+
+    open(agent, thread: thread).send('b');
+    await pumpEventQueue();
+    expect(agent.requests[1]['threadId'], isNot(agent.requests[0]['threadId']));
+    expect(_lines(agent.requests[1]), ['user: b']);
+  });
+
+  test('a session closed while a request waits leaves its cancelled answer '
+      'to the next one', () async {
+    final thread = TandemThread();
+    shop.add('x');
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('clear')],
+      (_) => const [AgentStep.say('Kept.')],
+    ]);
+    final first = openToClose(thread, agent)..send('clear it');
+    await pumpEventQueue();
+    first.dispose();
+
+    final next = open(agent, thread: thread)..send('keep it');
+    await pumpEventQueue();
+    expect(_card(next).status, ApprovalStatus.cancelled);
+    expect(_lines(agent.requests[1]), [
+      'user: clear it',
+      'asst-call-1 clear {}',
+      'tool-call-1 {"status":"cancelled"}',
+      'user: keep it',
+    ]);
+  });
+
+  test('a newer session takes the thread, and the older one lets it go as '
+      'if it closed', () async {
+    final thread = TandemThread();
+    shop.add('x');
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('clear')],
+      (_) => const [AgentStep.say('Kept.')],
+    ]);
+    final first = openToClose(thread, agent)..send('clear it');
+    await pumpEventQueue();
+
+    final next = open(agent, thread: thread);
+    first
+      ..send('ignored')
+      ..dispose();
+    next.send('keep it');
+    await pumpEventQueue();
+    expect(_card(next).status, ApprovalStatus.cancelled);
+    expect(_lines(agent.requests.last).last, 'user: keep it');
+    expect(agent.requests, hasLength(2));
+  });
+
+  test('a change on the screen before it closed keeps the thread', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Again.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    shop.add('milk');
+    first.dispose();
+
+    open(agent, thread: thread).send('b');
+    await pumpEventQueue();
+    expect(agent.requests[1]['threadId'], agent.requests[0]['threadId']);
   });
 
   test('wake starts a run with a message from the app, which waits while a '
