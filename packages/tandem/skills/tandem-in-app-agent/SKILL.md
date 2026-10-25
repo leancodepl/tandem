@@ -85,7 +85,7 @@ A screen with `.callsWithApproval` asks the user in one place. With a chat, that
 
 ## 5. Show the status
 
-When the screen has no chat, show what the agent does now, such as a progress line, by switching on `session.status`: `Idle`, `Thinking`, `Calling(:tool)`, `AwaitingApproval(:request)` and `Stopping`. A chat shows it in its button.
+When the screen has no chat, show what the agent does now, such as a progress line, by switching on `session.status`: `Idle`, `Thinking` (with the `backendTool` that runs now, if any), `Calling(:tool)`, `AwaitingApproval(:request)` and `Stopping`. A chat shows it in its button.
 
 **Done when** the user sees that the agent works, and when it waits for them.
 

@@ -26,4 +26,7 @@ final class const ToolCallStarted(final String toolCallId, final String name)
 final class const ToolCallArgs(final String toolCallId, final String delta)
     extends AgentEvent;
 
+/// The result of a tool that ran on the backend.
+final class const ToolCallResult(final String toolCallId) extends AgentEvent;
+
 final class const IgnoredEvent() extends AgentEvent;
