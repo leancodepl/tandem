@@ -141,6 +141,32 @@ void main() {
     expect(find.text('First: milk'), findsOneWidget);
   });
 
+  testWidgets('after three refused views in a row, the agent answers in text '
+      'and gets no tandem_show_view until the next message', (tester) async {
+    shop = _newShop();
+    final agent = ScriptedAgent([
+      (_) => [show(const [])],
+      (_) => [show(const [])],
+      (_) => [show(const [])],
+      (_) => const [AgentStep.say('I could not draw it.')],
+      (_) => const [AgentStep.say('Let me try again.')],
+    ]);
+    await tester.pumpWidget(screen(agent));
+    sessionOf(tester).send('show my list');
+    await tester.pumpAndSettle();
+
+    expect(_lastAnswer(agent.requests[2]), containsPair('status', 'refused'));
+    expect(
+      _lastAnswer(agent.requests[3]),
+      containsPair('reason', contains('Answer the user in text')),
+    );
+    expect(_toolNames(agent.requests[3]), isNot(contains('tandem_show_view')));
+
+    sessionOf(tester).send('try again');
+    await tester.pumpAndSettle();
+    expect(_toolNames(agent.requests[4]), contains('tandem_show_view'));
+  });
+
   testWidgets('a new view replaces the whole last one', (tester) async {
     shop = _newShop();
     final agent = ScriptedAgent([

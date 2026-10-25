@@ -234,7 +234,7 @@ While `TandemView` is on the screen, every run offers the agent the tool `tandem
 
 - The texts show only what `.sees` lists, by path, so the view follows the screen without the agent.
 - A button calls a method the screen lists, with the same checks and approvals as the agent's calls, and `caller: Caller.view` in `AgentCall` and `ApprovalRequest`. A button of a `.callsWithApproval` method is enabled only while the session is `Idle`, and a button waits for its own call to answer. A press wakes no agent: the agent reads what the method answered in `app_notes` with its next run, and `onEvent` may call [`session.wake()`](#notes-from-the-app).
-- A view that does not fit the screen, such as one with a path that `.sees` does not have, is refused with what to fix, and the agent fixes it in the same turn. The last view stays.
+- A view that does not fit the screen, such as one with a path that `.sees` does not have, is refused with what to fix, and the agent fixes it in the same turn. The last view stays. After three refused views in a row, the last refusal tells the agent to answer in text, and no run offers `tandem_show_view` until the next message.
 - While the agent draws, the status is `Thinking(drawing: true)`.
 - Drawing needs a strong remote model, such as Gemini, behind an AG-UI backend that puts `context` into the prompt. A small local model or Apple's on-device model rarely writes valid A2UI.
 - `TandemView` has no texts of its own, takes no space before the agent draws and does not scroll.
