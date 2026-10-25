@@ -40,7 +40,7 @@ TandemScope(
 
 - Read the address from the app's configuration, as the app reads its other servers.
 - The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement in both entitlement files.
-- For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field ([example](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#a-token-for-your-backend)).
+- For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field.
 
 For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connected` as `connection`; calling it in `build` is fine. Offer it only when `await OnDeviceAgent.apple().availability()` is `available`. On `RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)`, call `session.startOver()`. [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).
 
@@ -52,7 +52,7 @@ For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connec
 
 Tandem has no chat widget. `TandemSessionScope.of(context)` gives the session and rebuilds the widget when it changes. Write the texts as the rest of the app does: from its localization when it has one, inline when it has none.
 
-A button calls `session.send` with its message and shows `session.status`, as in [Fill from e-mail](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#fill-from-e-mail). It shows the agent's last `AgentMessage` from `session.items`.
+A button calls `session.send` with its message, such as the pasted text, and shows `session.status` while the agent works. It shows the agent's last `AgentMessage` from `session.items`.
 
 A chat:
 

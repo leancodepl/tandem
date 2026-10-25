@@ -29,8 +29,7 @@ jobs:
           fetch-depth: 0
 
       # Package docs count as Dart, because the dry run of pub publish reads
-      # them. So do the README and doc/examples.md, which a test of the
-      # example reads.
+      # them. So does the README, which a test of the example reads.
       - name: Detect changes
         id: changes
         env:
@@ -45,7 +44,7 @@ jobs:
               packages/*) dart=true ;;
               example/agent/*) agent=true ;;
               .github/workflows/test.yml) dart=true; agent=true ;;
-              README.md | doc/examples.md) dart=true ;;
+              README.md) dart=true ;;
               .github/* | doc/* | *.md | .commitlintrc.yml) ;;
               *) dart=true ;;
             esac
@@ -224,10 +223,10 @@ jobs:
       - name: Download pub dependencies
         run: flutter pub get
       - name: Build macOS plugin and example
-        run: flutter build macos --debug -t lib/recipes/on_device/apple.dart
+        run: flutter build macos --debug -t lib/main_apple.dart
         working-directory: example
       - name: Build iOS plugin and example without signing
-        run: flutter build ios --debug --no-codesign -t lib/recipes/on_device/apple.dart
+        run: flutter build ios --debug --no-codesign -t lib/main_apple.dart
         working-directory: example
 
   # The ruleset requires this check. A job skipped by its `if` counts as passed.

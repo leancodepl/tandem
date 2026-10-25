@@ -1,5 +1,4 @@
 import 'package:example/agent_chat.dart';
-import 'package:example/agent_workspace.dart';
 import 'package:example/desk/catalog.dart';
 import 'package:example/desk/customers.dart';
 import 'package:example/desk/data/customers.dart';
@@ -7,6 +6,7 @@ import 'package:example/desk/data/emails.dart';
 import 'package:example/desk/data/products.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
+import 'package:example/desk/ui/agent_workspace.dart';
 import 'package:example/desk/ui/order_form.dart';
 import 'package:example/desk/ui/order_summary.dart';
 import 'package:flutter/material.dart';

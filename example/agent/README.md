@@ -42,7 +42,7 @@ Sessions live in memory, so a restart forgets every thread.
 ## The script
 
 What the scripted model ([src/order_agent/scripted](src/order_agent/scripted)) plays when the
-order desk of the gallery ([example/README.md](../README.md)) sends it the sample e-mail.
+order desk ([example/README.md](../README.md)) sends it the sample e-mail.
 
 | # | You | The agent | The screen |
 |---|---|---|---|

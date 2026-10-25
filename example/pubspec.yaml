@@ -1,5 +1,5 @@
 name: example
-description: "The example app of Tandem: an order desk on bloc, and screens to copy on bloc, Riverpod and provider."
+description: "The examples of Tandem: an order desk on bloc with a scripted agent, and invoices on Apple's on-device model."
 version: 0.1.0
 publish_to: none
 
@@ -13,8 +13,6 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.0
-  flutter_riverpod: ^3.4.3
-  http: ^1.6.0
   provider: ^6.1.5
   tandem: ^0.2.2
 

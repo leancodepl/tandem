@@ -1,25 +1,35 @@
+import 'package:example/desk/order_desk_agent.dart';
+import 'package:example/desk/ui/backend_dialog.dart';
 import 'package:example/desk/ui/desk_theme.dart';
-import 'package:example/gallery/backend_dialog.dart';
-import 'package:example/gallery/demo.dart';
+import 'package:example/desk/ui/order_desk_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:tandem/tandem.dart';
 
-final class const ScenarioScreen(final Demo demo, {super.key})
-    extends StatefulWidget {
+final class const OrderDeskApp({super.key}) extends StatelessWidget {
   @override
-  State<ScenarioScreen> createState() => _ScenarioScreenState();
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Tandem order desk',
+    debugShowCheckedModeBanner: false,
+    theme: deskTheme,
+    home: const _OrderDesk(),
+  );
 }
 
-final class _ScenarioScreenState() extends State<ScenarioScreen> {
+final class const _OrderDesk() extends StatefulWidget {
+  @override
+  State<_OrderDesk> createState() => _OrderDeskState();
+}
+
+final class _OrderDeskState() extends State<_OrderDesk> {
   Uri? _backend;
-  late AgentConnection _connection = widget.demo.scriptedAgent();
+  AgentConnection _connection = orderDeskAgent();
   var _starts = 0;
 
   void _start(Uri? backend) => setState(() {
     _backend = backend;
     _connection = switch (backend) {
       final uri? => HttpAgentConnection(uri),
-      null => widget.demo.scriptedAgent(),
+      null => orderDeskAgent(),
     };
     _starts++;
   });
@@ -43,7 +53,7 @@ final class _ScenarioScreenState() extends State<ScenarioScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       scrolledUnderElevation: 0,
-      title: Text(widget.demo.title),
+      title: const Text('Order desk'),
       actions: [
         IconButton(
           tooltip: 'Reset example',
@@ -64,11 +74,11 @@ final class _ScenarioScreenState() extends State<ScenarioScreen> {
               crossAxisAlignment: .start,
               spacing: 8,
               children: [
-                _AgentSource(
-                  _backend,
-                  onSwitch: widget.demo.canUseBackend ? _switchAgent : null,
+                _AgentSource(_backend, onSwitch: _switchAgent),
+                const Text(
+                  'Fill the draft, edit a quantity, then ask to place the '
+                  'order.',
                 ),
-                Text(widget.demo.instruction),
               ],
             ),
           ),
@@ -77,7 +87,7 @@ final class _ScenarioScreenState() extends State<ScenarioScreen> {
         Expanded(
           child: KeyedSubtree(
             key: ValueKey(_starts),
-            child: widget.demo.screen(_connection),
+            child: OrderDeskScreen(connection: _connection),
           ),
         ),
       ],
@@ -87,7 +97,7 @@ final class _ScenarioScreenState() extends State<ScenarioScreen> {
 
 final class const _AgentSource(
   final Uri? backend, {
-  required final VoidCallback? onSwitch,
+  required final VoidCallback onSwitch,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
@@ -107,14 +117,13 @@ final class const _AgentSource(
           null => 'Scripted · fixed responses',
         }, style: context.textTheme.labelMedium),
       ),
-      if (onSwitch case final onPressed?)
-        TextButton(
-          onPressed: onPressed,
-          child: Text(switch (backend) {
-            _? => 'Use script',
-            null => 'Use backend',
-          }),
-        ),
+      TextButton(
+        onPressed: onSwitch,
+        child: Text(switch (backend) {
+          _? => 'Use script',
+          null => 'Use backend',
+        }),
+      ),
     ],
   );
 }

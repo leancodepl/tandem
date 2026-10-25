@@ -8,7 +8,6 @@ void main() {
   // indented, and its comment with it.
   for (final path in [
     'README.md',
-    'doc/examples.md',
     'packages/tandem/example/example.md',
     'packages/tandem_generator/example/example.md',
   ]) {

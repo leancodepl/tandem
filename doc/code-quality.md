@@ -170,13 +170,13 @@ it. Simple interpolation can stay inline.
 
 ### Follow the responsibility in UI code
 
-In [todo_screen.dart](../example/lib/recipes/change_notifier/todo_screen.dart),
-`TodoScreen` composes the provider, scope and workspace. `_Todos` reads list state
-and renders its content. `_ApprovalTitle` owns the approval wording. These widgets
-give each part a name a reader can use to skip its detail.
+In [order_desk_screen.dart](../example/lib/desk/ui/order_desk_screen.dart),
+`OrderDeskScreen` composes the Cubit and the scope, and `_OrderDeskView` the
+workspace with the chat. `OrderForm` reads the order and renders it.
+`OrderSummary` owns what the approval card shows. These widgets give each part a
+name a reader can use to skip its detail.
 
-The list's short switch stays next to the empty and populated views. The
-approval widget accepts its one request positionally. Flutter composition
+`OrderForm` keeps its empty view next to the filled one. Flutter composition
 naturally nests widgets; an extra wrapper earns its place through a cohesive
 responsibility, rather than nesting depth alone.
 
