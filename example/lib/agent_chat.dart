@@ -132,6 +132,7 @@ final class const _Progress(final SessionStatus status)
     final text = switch (status) {
       Idle() || AwaitingApproval() || Stopping() => null,
       Thinking(:final backendTool?) => 'Using $backendTool…',
+      Thinking(drawing: true) => 'Drawing a view…',
       Thinking() => 'Thinking…',
       Calling() => 'Applying the change…',
     };

@@ -9,6 +9,7 @@ final class const StatusLine({super.key}) extends StatelessWidget {
       switch (TandemSessionScope.of(context).status) {
         Idle() => const SizedBox.shrink(),
         Thinking(:final backendTool?) => Text('Using $backendTool…'),
+        Thinking(drawing: true) => const Text('Drawing a view…'),
         Thinking() => const LinearProgressIndicator(),
         Calling(:final tool) => Text('Running $tool…'),
         AwaitingApproval(:final request) => Text(
