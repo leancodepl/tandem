@@ -461,7 +461,7 @@ final class TandemSession({
       }
       final arguments = call.objectArguments;
       if (arguments == null) {
-        call.answer = .refused('The arguments must be a JSON object.');
+        call.answer = ToolAnswer.argumentsNotAnObject;
       } else if (run.view case final view? when call.tool == ViewTool.name) {
         call.answer = view.show(arguments);
       } else if (!run.listing.needsApproval(call.tool)) {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// AG-UI event names recognized or emitted by Tandem.
 abstract final class AgUiEventTypes() {
   static const runStarted = 'RUN_STARTED';
@@ -90,3 +92,15 @@ abstract final class AgUiFields() {
 }
 
 typedef JsonObject = Map<String, Object?>;
+
+/// [json] decoded, or null when it is not a JSON object.
+JsonObject? decodeJsonObject(String json) {
+  try {
+    return switch (jsonDecode(json)) {
+      final JsonObject object => object,
+      _ => null,
+    };
+  } on FormatException {
+    return null;
+  }
+}

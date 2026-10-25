@@ -2,8 +2,17 @@ import 'dart:convert';
 
 import 'package:tandem/src/protocol/ag_ui.dart';
 
-/// What came of a call, as the `status` of its answer.
+/// What came of a call, as the `status` of its answer, or where a call
+/// that waits for the user stands.
 extension type const ToolStatus._(String value) implements String {
+  /// The call waits for the user. Only `lastApproval` of `TandemBridge`
+  /// says it.
+  static const pending = ToolStatus._('pending');
+
+  /// The user approved the call and its method runs. Only `lastApproval` of
+  /// `TandemBridge` says it.
+  static const approved = ToolStatus._('approved');
+
   static const returned = ToolStatus._('returned');
 
   /// The view the agent sent is on the screen.
@@ -36,6 +45,10 @@ sealed class const ToolAnswer() {
   factory returned(Object? result) = _Returned;
 
   factory refused(String reason) => _Status(.refused, {'reason': reason});
+
+  static const argumentsNotAnObject = _Status(.refused, {
+    'reason': 'The arguments must be a JSON object.',
+  });
 
   static const shown = _Status(.shown);
 

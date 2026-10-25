@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 
@@ -44,16 +44,7 @@ final class ToolCall(
   String get argumentsJson => arguments.isEmpty ? '{}' : arguments;
 
   /// The arguments, or null when they are not a JSON object.
-  Map<String, Object?>? get objectArguments {
-    try {
-      return switch (jsonDecode(argumentsJson)) {
-        final Map<String, Object?> object => object,
-        _ => null,
-      };
-    } on FormatException {
-      return null;
-    }
-  }
+  JsonObject? get objectArguments => decodeJsonObject(argumentsJson);
 
   ApprovalRequest ask() => request = ApprovalRequest(
     toolCallId: id,

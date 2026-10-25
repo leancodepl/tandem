@@ -3,7 +3,6 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:tandem/src/agent_list.dart';
-import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/debug/open_screens.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/session/tool_answer.dart';
@@ -105,12 +104,12 @@ final class TandemBridge._() {
 
   static Future<JsonObject> _callWith(Map<String, String> parameters) async {
     final tool = parameters['tool'];
-    final arguments = _decodeObject(parameters['arguments'] ?? '{}');
+    final arguments = decodeJsonObject(parameters['arguments'] ?? '{}');
     if (tool == null) {
       return _withScreens(.refused('Pass the tool to call.'));
     }
     if (arguments == null) {
-      return _withScreens(.refused('The arguments must be a JSON object.'));
+      return _withScreens(ToolAnswer.argumentsNotAnObject);
     }
     return await call(tool, arguments: arguments, screen: parameters['screen']);
   }
@@ -135,24 +134,13 @@ final class TandemBridge._() {
     'tool': call.tool,
     'arguments': jsonDecode(call.argumentsJson),
     ...call.answer?.json ??
-        {'status': (call.request?.status ?? ApprovalStatus.pending).name},
+        {'status': call.approved ? ToolStatus.approved : ToolStatus.pending},
   };
 
   static JsonObject _withScreens(ToolAnswer answer) => {
     ...answer.json,
     ...describe(),
   };
-
-  static JsonObject? _decodeObject(String json) {
-    try {
-      return switch (jsonDecode(json)) {
-        final JsonObject object => object,
-        _ => null,
-      };
-    } on FormatException {
-      return null;
-    }
-  }
 
   static developer.ServiceExtensionResponse _respond(JsonObject answer) =>
       .result(jsonEncode(answer));
