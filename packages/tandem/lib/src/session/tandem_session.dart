@@ -215,6 +215,10 @@ final class TandemSession({
   @internal
   ToolCall? lastAsked(Caller caller) => _waiting.lastAsked(caller);
 
+  /// Whether the screen asks the user to approve, unlike `approvals: .none()`.
+  @internal
+  bool get asksForApproval => _asksForApproval();
+
   /// Offers the agent [view] to draw on, from the next run on.
   @internal
   void attach(ViewTool view) => _view = view;
@@ -265,6 +269,8 @@ final class TandemSession({
     );
   }
 
+  // The refusals speak to a coding agent: a view disables the buttons that
+  // would get them.
   Future<ToolAnswer> _waitForUser(ToolCall call) async {
     if (_waiting.lastAsked(call.caller) case final waiting?
         when waiting.answer == null) {
@@ -534,8 +540,9 @@ final class TandemSession({
   void _continueAfter(Turn turn) =>
       _startNextRun(withAnswers: identical(turn, _waiting.agent));
 
-  /// Runs the method behind [tool] for [caller]. `onEvent` hears of its
-  /// return unless the session is disposed by then.
+  /// Runs the method behind [tool] for [caller]. Unless the session is
+  /// disposed by then, the agent gets a note of a press in a view, and
+  /// `onEvent` hears of the return after it, so it may wake the agent.
   Future<ToolAnswer> _callMethod(
     AgentListing listing,
     String tool,
@@ -551,7 +558,13 @@ final class TandemSession({
       approved: approved,
       report: report,
     );
-    if (returned case final agentCall? when !_disposed) {
+    if (_disposed) {
+      return answer;
+    }
+    if (caller == .view) {
+      _notes.add(.press(tool, jsonDecode(argumentsJson), answer));
+    }
+    if (returned case final agentCall?) {
       _emit(agentCall);
     }
     return answer;

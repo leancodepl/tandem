@@ -29,7 +29,7 @@ A method of the surface that the agent may call, listed with `.calls` or `.calls
 _Avoid_: client tool, action, command
 
 **Caller**:
-Who called a listed method: the in-app agent or a coding agent. `AgentCall` and `ApprovalRequest` name it as a `Caller`.
+Who called a listed method: the in-app agent, a coding agent, or the user with a press on a button of a view. `AgentCall` and `ApprovalRequest` name it as a `Caller`.
 _Avoid_: source, origin
 
 **Approval request**:

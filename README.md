@@ -206,6 +206,7 @@ Tandem has no chat widget, so the chat has your app's texts, language and look. 
 `TandemView` shows what the in-app agent draws for the user, such as a card with the order and its total, or a table of its lines. Put it below the scope, next to the screen or in place of a part of it. While it is on the screen, every run offers the agent the tool `tandem_show_view`, whose description teaches it seven A2UI components: Text, Column, Row, List, Card, Divider and Button. There are no form fields.
 
 - The texts show only what `.sees` lists, by path, so the view follows the screen without the agent.
+- A button calls a method the screen lists, with the same checks and approvals as the agent's calls, and `caller: Caller.view` in `AgentCall` and `ApprovalRequest`. A button of a `.callsWithApproval` method is enabled only while the session is `Idle`, and a button waits for its own call to answer. A press wakes no agent: the agent reads what the method answered in `app_notes` with its next run, and `onEvent` may call [`session.wake()`](#notes-from-the-app).
 - A view that does not fit the screen, such as one with a path that `.sees` does not have, is refused with what to fix, and the agent fixes it in the same turn. The last view stays.
 - While the agent draws, the status is `Thinking(drawing: true)`.
 - Drawing needs a strong remote model, such as Gemini, behind an AG-UI backend that puts `context` into the prompt. A small local model or Apple's on-device model rarely writes valid A2UI.
@@ -337,7 +338,7 @@ void showOrderMessages(
 }
 ```
 
-`AgentCall` comes after a listed method returned, with its `tool`, `arguments`, `result` and `caller`: `Caller.inAppAgent` or `Caller.codingAgent`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`.
+`AgentCall` comes after a listed method returned, with its `tool`, `arguments`, `result` and `caller`: `Caller.inAppAgent`, `Caller.codingAgent` or `Caller.view`, a press on a button of a [drawn view](#views-the-agent-draws). `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`.
 
 `RunFailed` has the error's `code` when it has one, a `RunErrorCode` that a pattern such as `RunFailed(code: .unsupportedOutcome)` matches. When the history no longer fits the model, `session.startOver()` sends the next message to a new thread without it. The chat keeps its items and adds a `startedOver` notice. It does nothing while a run is open.
 

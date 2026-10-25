@@ -91,7 +91,7 @@ When the screen has no chat, show what the agent does now, such as a progress li
 
 ## 6. Let the agent draw, if the user wants it
 
-Only with an AG-UI backend and a strong remote model, such as Gemini: a small local model or Apple's on-device model rarely writes valid A2UI. Put `const TandemView()` below the scope where the drawn view goes, in a scroll view when it can be taller than its space. Every run then offers the agent the tool `tandem_show_view`, which teaches it seven components, without form fields. The view shows only what `.sees` lists, and a view that does not fit the screen is refused with what to fix. While the agent draws, the status is `Thinking(drawing: true)`.
+Only with an AG-UI backend and a strong remote model, such as Gemini: a small local model or Apple's on-device model rarely writes valid A2UI. Put `const TandemView()` below the scope where the drawn view goes, in a scroll view when it can be taller than its space. Every run then offers the agent the tool `tandem_show_view`, which teaches it seven components, without form fields. The view shows only what `.sees` lists, and a view that does not fit the screen is refused with what to fix. While the agent draws, the status is `Thinking(drawing: true)`. A button calls a listed method with the usual approvals, as `caller: Caller.view`; give the card of such a request its own text, since the user pressed it. The agent reads what a press answered in `app_notes` on its next run; to let it react at once, call `session.wake()` in `onEvent`.
 
 **Done when** `TandemView` is below the scope, or the user wants no drawn view.
 

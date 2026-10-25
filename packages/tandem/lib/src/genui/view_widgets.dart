@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:a2ui_core/a2ui_core.dart';
 import 'package:flutter/material.dart';
 import 'package:tandem/src/genui/a2ui.dart';
@@ -110,7 +112,10 @@ final class _NodeState() extends State<_Node> {
       _ => const SizedBox.shrink(),
     };
     return switch (CatalogComponent.named(widget.node.type)) {
-      .text => _Text(_props[A2uiFields.text], _props[A2uiFields.variant]),
+      .text => _Text(
+        _props[A2uiFields.text],
+        TextVariant.named(_props[A2uiFields.variant]),
+      ),
       .column || .list => Column(
         crossAxisAlignment: .stretch,
         spacing: 8,
@@ -132,7 +137,12 @@ final class _NodeState() extends State<_Node> {
         child: Padding(padding: const .all(12), child: child),
       ),
       .divider => const Divider(),
-      .button => _Button(_props[A2uiFields.variant], child: child),
+      .button => _Button(
+        view,
+        widget.node,
+        ButtonVariant.named(_props[A2uiFields.variant]),
+        child: child,
+      ),
       // The check refuses a component outside the catalog.
       null => const SizedBox.shrink(),
     };
@@ -148,7 +158,7 @@ final class _NodeState() extends State<_Node> {
   }
 }
 
-final class const _Text(final Object? _binding, final Object? _variant)
+final class const _Text(final Object? _binding, final TextVariant _variant)
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -159,25 +169,39 @@ final class const _Text(final Object? _binding, final Object? _variant)
         _ => '',
       },
       // A body text keeps the style around it, such as a button's.
-      style: switch (TextVariant.values.asNameMap()[_variant]) {
+      style: switch (_variant) {
         .h1 => styles.headlineSmall,
         .h2 => styles.titleLarge,
         .h3 => styles.titleMedium,
         .h4 => styles.titleSmall,
         .h5 => styles.labelLarge,
         .caption => styles.bodySmall,
-        .body || null => null,
+        .body => null,
       },
     );
   }
 }
 
-final class const _Button(final Object? _variant, {required final Widget child})
-    extends StatelessWidget {
+/// A button, enabled while [view] lets [node] be pressed: it changes with
+/// the view's presses and the session's status.
+final class const _Button(
+  final DrawnView view,
+  final ComponentNode<ComponentApi> node,
+  final ButtonVariant _variant, {
+  required final Widget child,
+}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => switch (ButtonVariant.named(_variant)) {
-    .primary => FilledButton(onPressed: null, child: child),
-    .borderless => TextButton(onPressed: null, child: child),
-    .outlined => OutlinedButton(onPressed: null, child: child),
-  };
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([view, view.session]),
+    builder: (context, _) {
+      final onPressed = view.canPress(node)
+          ? () => unawaited(view.press(node))
+          : null;
+      return switch (_variant) {
+        .primary => FilledButton(onPressed: onPressed, child: child),
+        .borderless => TextButton(onPressed: onPressed, child: child),
+        .outlined => OutlinedButton(onPressed: onPressed, child: child),
+      };
+    },
+  );
 }
