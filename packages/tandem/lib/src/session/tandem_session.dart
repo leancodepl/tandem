@@ -304,7 +304,8 @@ final class TandemSession({
       return;
     }
     _waiting.cancelAll().forEach(_showDecision);
-    _waiting.agent = Turn(const []);
+    // The new thread has no calls to answer.
+    _waiting.closeAgentTurn();
     _thread.startOver();
     _items.add(const ChatNotice(.startedOver));
     notifyListeners();
@@ -335,12 +336,11 @@ final class TandemSession({
   }
 
   void _closeTurn() {
-    final turn = _waiting.agent;
+    final turn = _waiting.closeAgentTurn();
     turn.cancelWaiting().forEach(_showDecision);
     _thread
       ..addAnswers(turn)
       ..addUserTexts(_takeQueued());
-    _waiting.agent = Turn(const []);
   }
 
   /// The texts of the queued messages, which go with the run that starts.
@@ -409,8 +409,7 @@ final class TandemSession({
         if (_run != run) {
           return;
         }
-        _waiting.agent = Turn([...run.calls.values]);
-        _thread.addRun(run);
+        _recordRun(run);
         _startNextRun();
       case RunFinished(outcome: .unsupported):
         _abort(
@@ -433,9 +432,13 @@ final class TandemSession({
     }
   }
 
-  Future<void> _finish(Run run) async {
-    final turn = _waiting.agent = Turn([...run.calls.values]);
+  Turn _recordRun(Run run) {
     _thread.addRun(run);
+    return _waiting.startAgentTurn(run.calls.values);
+  }
+
+  Future<void> _finish(Run run) async {
+    final turn = _recordRun(run);
     try {
       _invalidateIfSeesChanged();
       await _answerCalls(run, turn);
@@ -538,7 +541,7 @@ final class TandemSession({
   /// method returned. Another caller's request leaves the agent's turn as it
   /// was: its answers wait for the user's next message.
   void _continueAfter(Turn turn) =>
-      _startNextRun(withAnswers: identical(turn, _waiting.agent));
+      _startNextRun(withAnswers: _waiting.isAgentTurn(turn));
 
   /// Runs the method behind [tool] for [caller]. Unless the session is
   /// disposed by then, the agent gets a note of a press in a view, and
@@ -643,7 +646,6 @@ final class TandemSession({
     }
     run.ended = true;
     _run = null;
-    _waiting.agent = Turn(const []);
     _thread
       ..startOver()
       ..addUserTexts(_takeQueued());
@@ -678,7 +680,7 @@ final class TandemSession({
   /// stopped the run it waited for.
   void _startNextRun({bool withAnswers = true}) {
     final stopped = status is Stopping;
-    final answersDue = withAnswers && !stopped && _waiting.agent.answered;
+    final answersDue = withAnswers && !stopped && _waiting.agentAnswered;
     final userWrote = _queued.any((message) => !message.fromApp);
     _appMessageHeld = _appMessageHeld || (stopped && _queued.isNotEmpty);
     _run = null;
