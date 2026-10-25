@@ -1,134 +1,85 @@
-A shopping list the agent can read and change. It can empty the list only after the user approves, and only when there is something on it.
+An order form the agent can fill. It places the order only after the user approves, and only when the order has lines.
 
-<!-- example/lib/shopping_list/shopping_list.dart -->
+<!-- example/lib/order_cubit.dart -->
 ```dart
-import 'package:example/agent_chat.dart';
-import 'package:example/agent_workspace.dart';
-import 'package:example/item_input.dart';
-import 'package:flutter/material.dart';
+import 'package:example/order.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tandem/tandem.dart';
 
-part 'shopping_list.g.dart';
-
-class const ShoppingListState({final List<String> items = const []});
+part 'order_cubit.g.dart';
 
 @TandemAgent()
-class ShoppingListCubit()
-    extends Cubit<ShoppingListState>
-    with _$ShoppingListCubit {
-  this : super(const .new());
+class OrderCubit({required final Orders orders})
+    extends Cubit<OrderState>
+    with _$OrderCubit {
+  this : super(.new(draft: .empty));
 
   @override
   List<AgentCapability> get agentCapabilities => [
-    .sees(items),
-    .calls(add),
-    .calls(remove),
-    if (items.isNotEmpty) .callsWithApproval(clear),
+    .sees(draft),
+    .calls(setQuantity),
+    if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
   ];
 
   @override
   Stream<Object?> get changes => stream;
 
-  /// What is on the shopping list now.
-  List<String> get items => state.items;
+  /// The order as the user sees it on the screen.
+  OrderDraft get draft => state.draft;
 
-  /// Adds [item] to the list.
-  void add(String item) => emit(.new(items: [...items, item]));
+  /// Sets how many pieces of [sku] the order has.
+  void setQuantity(String sku, int quantity) =>
+      emit(.new(draft: draft.withQuantity(sku, quantity)));
 
-  /// Removes [item] from the list. Refuses names absent from the current list.
-  void remove(String item) {
-    if (items.contains(item)) {
-      emit(.new(items: [...items]..remove(item)));
-    } else {
-      throw ToolCallRefused(
-        '"$item" is not on the shopping list. '
-        'Use an exact item name from the current list.',
-      );
-    }
-  }
-
-  /// Empties the list.
-  void clear() => emit(const .new());
+  /// Places the order exactly as it is on the screen.
+  Future<OrderId> placeOrder() => orders.place(draft);
 }
+```
 
-void main() => runApp(
-  MaterialApp(
-    home: ShoppingListScreen(
-      connection: HttpAgentConnection(Uri.parse('http://localhost:8000/agent')),
-    ),
-  ),
-);
+Run `dart run build_runner build` to generate `order_cubit.g.dart`. `OrderDraft` and `Orders` are in [`order.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/order.dart).
 
-final class const ShoppingListScreen({
-  super.key,
-  required final AgentConnection connection,
-}) extends StatelessWidget {
+The screen puts the chat next to the form:
+
+<!-- example/lib/order_screen.dart -->
+```dart
+/// The order form with the in-app agent's chat beside it.
+final class const OrderChatScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider(
-    create: (context) => ShoppingListCubit(),
-    child: TandemScope.connected(
-      surface: (context) => context.read<ShoppingListCubit>(),
-      connection: connection,
+    create: (context) => OrderCubit(orders: context.read<Orders>()),
+    child: TandemScope(
+      surface: (context) => context.read<OrderCubit>(),
+      agent: Uri.parse('http://localhost:8000/agent'),
       approvals: const .fromState(),
-      child: const _ShoppingListView(),
-    ),
-  );
-}
-
-final class const _ShoppingListView() extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-    body: AgentWorkspace(
-      title: 'Shopping list',
-      chat: AgentChat(suggestion: 'Add milk and bread, then empty the list.'),
-      child: _Items(),
+      onEvent: showOrderMessages,
+      child: const Row(
+        children: [
+          Expanded(child: OrderForm()),
+          SizedBox(width: 360, child: AgentChat()),
+        ],
+      ),
     ),
   );
 }
 ```
 
-[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. [`AgentWorkspace`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_workspace.dart) puts the list and the chat side by side, or one above the other on a phone, and `_Items` is the list itself, with buttons to remove an item and a field to add one ([the whole file](https://github.com/leancodepl/tandem/blob/main/example/lib/shopping_list/shopping_list.dart)). `approvals: const .fromState()` lets the chat draw the card for `clear`. Run `dart run build_runner build` to generate `shopping_list.g.dart`, then start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
+[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. `approvals: const .fromState()` lets the chat draw the card for `place_order`, and [`showOrderMessages`](https://github.com/leancodepl/tandem/blob/main/example/lib/order_messages.dart) shows a snackbar when the order is placed or a run fails. Start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
 
-No agent yet? `ScriptedAgent` plays a script in its place, with no backend and no API key. Run this file with `flutter run -t` and its path:
+One line in `main()` lets your coding agent, such as Claude Code, fill the same screens while the app runs in debug, with the skill `tandem-coding-agent`:
 
-<!-- example/lib/shopping_list/try_it.dart -->
+<!-- example/lib/main.dart -->
 ```dart
-import 'package:example/shopping_list/shopping_list.dart';
-import 'package:flutter/material.dart';
-import 'package:tandem/tandem.dart';
-import 'package:tandem/testing.dart';
-
-// Plays these turns whatever the user writes. A run past the script fails.
-final _agent = ScriptedAgent([
-  (_) => const [
-    AgentStep.callTool('add', {'item': 'Milk'}),
-    AgentStep.callTool('add', {'item': 'Bread'}),
-  ],
-  (_) => const [
-    AgentStep.say('Added milk and bread. Shall I empty the list?'),
-    AgentStep.callTool('clear'),
-  ],
-  (_) => const [AgentStep.say('Done.')],
-]);
-
 void main() {
   TandemBridge.enable();
-  runApp(MaterialApp(home: ShoppingListScreen(connection: _agent)));
+  runApp(const OrderDeskApp());
 }
 ```
 
-`TandemBridge.enable()` lets your coding agent, such as Claude Code, change the same list while the app runs in debug, with the skill `tandem-coding-agent`. Its request to empty the list shows as a card in the chat, as the in-app agent's does.
+No agent yet? The [example app](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs a larger order desk with a scripted agent, without a backend or an API key. Its invoice list runs on Apple's on-device model:
 
-The [example gallery](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs this screen and five more with scripted agents. More screens to copy, with Riverpod, provider, a dialog for approvals and a button instead of a chat, are in [doc/examples.md](https://github.com/leancodepl/tandem/blob/main/doc/examples.md).
-
-The same screen can use Apple's on-device model instead of a backend:
-
-<!-- example/lib/recipes/on_device/apple.dart -->
+<!-- example/lib/main_apple.dart -->
 ```dart
-void main() => runApp(
-  MaterialApp(home: ShoppingListScreen(connection: OnDeviceAgent.apple())),
-);
+void main() => runApp(InvoiceApp(connection: OnDeviceAgent.apple()));
 ```
 
 [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).

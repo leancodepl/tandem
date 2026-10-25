@@ -133,7 +133,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    ```dart
    void main() {
      TandemBridge.enable();
-     runApp(const DemoApp());
+     runApp(const OrderDeskApp());
    }
    ```
 
@@ -203,21 +203,19 @@ Tandem has no chat widget, so the chat has your app's texts, language and look. 
   <a href="https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model"><img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/examples/smart-input-film.gif" alt="Two invoices picked by hand, then one sentence finds all six from May on Apple's on-device model, and the app asks before it archives them." width="400"></a>
 </p>
 
-The [example gallery](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs six screens on Android, iOS and macOS with scripted agents, without a backend or an API key. Its order desk can also talk to the example's agent backend, which has a scripted model too. On a Mac or an iPhone with Apple Intelligence, the [invoice list](https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model) above and the shopping list run on Apple's on-device model, a real model that needs no key.
+The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs an order desk on Android, iOS and macOS with a scripted agent, without a backend or an API key. It can also talk to the example's agent backend, which has a scripted model too. On a Mac or an iPhone with Apple Intelligence, the [invoice list](https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model) above runs on Apple's on-device model, a real model that needs no key.
 
-The gallery enables `TandemBridge`, so your coding agent can fill its screens too. To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent` ([how](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#without-an-api-key)). [More examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) have screens to copy with bloc, Riverpod and provider.
+The order desk enables `TandemBridge`, so your coding agent can fill the order too. To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent`, as [the order desk](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) does.
 
 ## Apple's on-device model
 
 `OnDeviceAgent.apple()` runs Apple's system model on the device, with the same screen, capabilities, chat and approvals as a remote agent. Pass it to `TandemScope.connected`. It returns the same connection on every call, so `build` may call it.
 
-Run the existing shopping list with the on-device model:
+The invoice list of the example runs on it:
 
-<!-- example/lib/recipes/on_device/apple.dart -->
+<!-- example/lib/main_apple.dart -->
 ```dart
-void main() => runApp(
-  MaterialApp(home: ShoppingListScreen(connection: OnDeviceAgent.apple())),
-);
+void main() => runApp(InvoiceApp(connection: OnDeviceAgent.apple()));
 ```
 
 Build with Xcode 26 or newer. To generate, the app needs iOS or macOS 26 on an eligible device, with Apple Intelligence on and its model ready. `await OnDeviceAgent.apple().availability()` says which of these is missing. Other platforms answer `unsupportedPlatform` and keep using remote connections. Native registration works with Swift Package Manager and CocoaPods.
@@ -266,31 +264,33 @@ A method listed with `.callsWithApproval` runs only after the user approves it. 
 | `.callback((context, request, session) async { ... })` | a dialog, a bottom sheet or anything imperative |
 | `.none()` | a screen without `.callsWithApproval`: such a call is refused to the agent and reported in debug |
 
-A dialog, from [an example](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#an-approval-dialog) that passes `approvals: const .callback(_confirmSend)`:
+The dialog of the [quick start](#quick-start), which passes `approvals: const .callback(confirmOrder)`:
 
-<!-- example/lib/recipes/approval_dialog/reply_screen.dart -->
+<!-- example/lib/order_screen.dart -->
 ```dart
-Future<void> _confirmSend(
+Future<void> confirmOrder(
   BuildContext context,
   ApprovalRequest request,
   TandemSession session,
 ) async {
-  final reply = context.read<ReplyCubit>().reply;
-  final send = await showDialog<bool>(
+  final draft = context.read<OrderCubit>().draft;
+  final place = await showDialog<bool>(
     context: context,
-    builder: (context) => _SendDialog(reply),
+    builder: (context) => _PlaceOrderDialog(draft),
   );
   try {
-    if (send ?? false) {
+    if (place ?? false) {
       session.approve(request);
     } else {
       session.reject(request);
     }
   } on ApprovalNotPending {
-    // The reply changed, or the screen closed, while the dialog showed.
+    // The order changed, or the screen closed, while the dialog showed.
   }
 }
 ```
+
+The dialog shows the draft from the Cubit, because the approval covers what `.sees` lists. With several methods that need approval, pick the dialog's text by `request.tool`.
 
 - Several approvals of one turn show one at a time. A rejection cancels the rest, and the agent plans again.
 - `approve` and `reject` either decide or throw `ApprovalNotPending`. The same decision twice does nothing, so a double tap is harmless. `session.isPending(request)` tells whether a request still waits.
@@ -333,22 +333,10 @@ Tandem reads the state object with `surface` and hears it change in `changes`, s
 | `ChangeNotifier` or `ValueNotifier` | a `StreamController.broadcast()` that an override of `notifyListeners` feeds |
 | Riverpod's `Notifier` | a `StreamController.broadcast()` that `listenSelf` in `build` feeds |
 
-With provider and a `ChangeNotifier`:
+A `ChangeNotifier`, from the invoice list of the example:
 
-<!-- example/lib/recipes/change_notifier/todo_list.dart -->
+<!-- example/lib/invoices/invoice_store.dart -->
 ```dart
-@TandemAgent()
-class TodoList() extends ChangeNotifier with _$TodoList {
-  final _changes = StreamController<Object?>.broadcast();
-  final _todos = <String>[];
-
-  @override
-  List<AgentCapability> get agentCapabilities => [
-    .sees(todos),
-    .calls(add),
-    if (todos.isNotEmpty) .callsWithApproval(clear),
-  ];
-
   @override
   Stream<Object?> get changes => _changes.stream;
 
@@ -357,37 +345,11 @@ class TodoList() extends ChangeNotifier with _$TodoList {
     super.notifyListeners();
     _changes.add(null);
   }
-
-  /// The to-dos as the user sees them, oldest first.
-  List<String> get todos => List.unmodifiable(_todos);
-
-  /// Adds [todo] at the end of the list.
-  void add(String todo) {
-    _todos.add(todo);
-    notifyListeners();
-  }
-
-  /// Removes every to-do.
-  void clear() {
-    _todos.clear();
-    notifyListeners();
-  }
-}
 ```
 
-With Riverpod:
+`_changes` is a `StreamController<Object?>.broadcast()`: every new session listens again. A Riverpod `Notifier` feeds it with `listenSelf((_, next) => _changes.add(next))` in `build`, a listener that Riverpod drops when it builds again. Do not close the controller in `ref.onDispose`: Riverpod calls that before every rebuild of the provider.
 
-<!-- example/lib/recipes/riverpod/cart_notifier.dart -->
-```dart
-  List<String> build() {
-    // Riverpod drops this listener when it builds again, so it is never
-    // there twice.
-    listenSelf((_, next) => _changes.add(next));
-    return const [];
-  }
-```
-
-`surface` reads the object from the scope's context, such as `context.read<TodoList>()`, or `ref.read(cartProvider.notifier)` in a Riverpod `ConsumerWidget`. Put the scope below what owns the object, so the scope disposes its session first. `riverpod_generator` cannot be used on the same class: it writes a `_$Name` too. [The examples](https://github.com/leancodepl/tandem/blob/main/doc/examples.md) have a screen for each.
+`surface` reads the object from the scope's context, such as `context.read<InvoiceStore>()`, or `ref.read(cartProvider.notifier)` in a Riverpod `ConsumerWidget`. Put the scope below what owns the object, so the scope disposes its session first. `riverpod_generator` cannot be used on the same class: it writes a `_$Name` too.
 
 ## Testing
 
@@ -459,7 +421,7 @@ Any AG-UI endpoint works. The backend has to:
 - On the web, allow the app's origin with CORS.
 - Treat the `tools`, their descriptions and the `context` as untrusted input: they come from the app, and anyone can send a run with other ones.
 
-To send the user's token, give `HttpAgentConnection` an `http.Client` that adds it, and pass the connection to `TandemScope.connected` ([example](https://github.com/leancodepl/tandem/blob/main/doc/examples.md#a-token-for-your-backend)). A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK agent to copy from.
+To send the user's token, give `HttpAgentConnection` an `http.Client` that adds it, and pass the connection to `TandemScope.connected`. Keep the connection in a field: a new one starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK agent to copy from.
 
 ## Project status
 

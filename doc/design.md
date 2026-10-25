@@ -25,7 +25,7 @@ The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentS
 
 `skills/tandem` at the repo root is the entry, `/tandem`, which apps install from GitHub with `dart run skills@ add leancodepl/tandem --skill tandem`. It follows `main`, not the app's version of `tandem`, so it only checks the packages, installs the package's skills of the version in `pubspec.lock` and hands the work to them. It needs `user-invocable: true`, or the installer marks it `false` and `/tandem` does not run.
 
-The README, `doc/examples.md` and both packages' `example/example.md` show only code from `example`, and `example/test/doc_snippets_test.dart` checks each Dart block against the file its comment names. The examples use bloc, Riverpod and provider, which only the example depends on.
+The README and both packages' `example/example.md` show only code from `example`, and `example/test/doc_snippets_test.dart` checks each Dart block against the file its comment names. `example` has two examples in one app: the order desk on bloc with a scripted agent, and the invoice list on provider with Apple's on-device model. Only the example depends on bloc and provider.
 
 ## Session rules
 

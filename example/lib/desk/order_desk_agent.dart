@@ -1,7 +1,56 @@
 import 'dart:convert';
 
-/// What the gallery's scripted agents read from the body of a run.
-extension DemoRequest on Map<String, Object?> {
+import 'package:tandem/tandem.dart';
+import 'package:tandem/testing.dart';
+
+AgentConnection orderDeskAgent() => _DemoAgent((request) {
+  if (!request.isUser) {
+    return [
+      AgentStep.say(switch ((request.problem, request.lastTool)) {
+        (final problem?, _) => problem,
+        (null, 'place_order') => 'Order ${request.lastResult} placed.',
+        _ =>
+          'The order is ready. Change quantities on the screen, '
+              'then ask me to place the order.',
+      }),
+    ];
+  }
+  if (!request.lists('set_quantity')) {
+    return const [AgentStep.say('This order is already placed.')];
+  }
+  if (request.view case {'lines': []}) {
+    return const [
+      AgentStep.callTool('set_customer', {'customerId': 'acme'}),
+      AgentStep.callTool('set_quantity', {'sku': 'VC-HDMI-2M', 'quantity': 40}),
+      AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 12}),
+      AgentStep.callTool('set_delivery', {
+        'address': 'Magazynowa 5, 61-001 Poznań',
+        'date': '2026-10-23',
+      }),
+    ];
+  }
+  return request.lists('place_order')
+      ? const [AgentStep.callTool('place_order')]
+      : const [
+          AgentStep.say('Choose a customer and delivery before placing it.'),
+        ];
+});
+
+/// Plays [turn] in every run, unlike a [ScriptedAgent], which fails past
+/// its script.
+final class _DemoAgent(final AgentTurn turn) implements AgentConnection {
+  final _turns = <AgentTurn>[];
+  late final _agent = ScriptedAgent(_turns);
+
+  @override
+  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
+    _turns.add(turn);
+    return _agent.run(input);
+  }
+}
+
+/// What the script reads from the body of a run.
+extension on Map<String, Object?> {
   List<Map<String, Object?>> get _messages => switch (this) {
     {'messages': final List<Object?> messages} => messages.cast(),
     _ => const [],

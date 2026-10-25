@@ -1,6 +1,6 @@
-import 'package:example/recipes/on_device/invoices/invoice_screen.dart';
-import 'package:example/recipes/on_device/invoices/invoice_store.dart';
-import 'package:example/recipes/on_device/invoices/invoice_style.dart';
+import 'package:example/invoices/invoice_screen.dart';
+import 'package:example/invoices/invoice_store.dart';
+import 'package:example/invoices/invoice_style.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tandem/tandem.dart';
