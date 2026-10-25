@@ -23,17 +23,19 @@ Run `dart run skills@ add leancodepl/tandem --skill tandem --agent claude`, then
 
 In a new session, `/tandem` does the same. Tandem is tested with Claude Code only. Cursor and Codex should work the same way, but you set them up on your own: use `--agent cursor` and `.cursor/skills/tandem/SKILL.md`, or `--agent codex` and `.agents/skills/tandem/SKILL.md`.
 
-Pick a screen. Its state class lists what an AI agent may see and which of its methods the agent may call. The agent then works on that screen together with the user, through the methods your buttons already call, and the important ones wait for the user's approval. The rest of the app stays as it is.
+Pick a screen. Its state class lists what an AI agent may see and which of its methods the agent may call. The agent then works on that screen together with the user, through the methods your buttons already call, and the important ones wait for the user's approval. Where you put a `TandemView`, the agent can also draw for the user, such as a summary of the order with a button that places it. The rest of the app stays as it is.
 
 ## How it works
 
-![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies and calls to the app's methods. On iOS and macOS 26, OnDeviceAgent does the same with Apple's on-device model, without a backend or an API key.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
+![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies, calls to the app's methods and views in A2UI, which TandemView draws. On iOS and macOS 26, OnDeviceAgent does the same with Apple's on-device model, without a backend or an API key.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
 
 With a remote agent, your backend calls the model and keeps the API key. The app talks to it over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Google ADK, LangChain, CrewAI, Mastra and many other agent frameworks support it.
 
 On iOS and macOS 26, the experimental `OnDeviceAgent` can run [Apple's on-device model](#apples-on-device-model) instead, without a backend or an API key, for the simplest tasks. The screen, its capabilities and approvals stay the same.
 
 In a debug build, [your coding agent](#your-coding-agent), such as Claude Code, calls the same methods through `TandemBridge`, with the same checks and approvals.
+
+The in-app agent can also draw a view for the user in [A2UI](https://a2ui.org), an open protocol for views that agents draw. The view comes as a call of Tandem's tool `tandem_show_view`, and [`TandemView`](#views-the-agent-draws) draws it from the screen's data, with buttons that call the screen's methods.
 
 Your state class lists what the agent may do:
 
@@ -199,6 +201,16 @@ Tandem has no chat widget, so the chat has your app's texts, language and look. 
 
 [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) in the example is the whole chat in one file, ready to copy. Its field calls `session.send(text)`, and its button switches on [the status](#session-status). The skill `tandem-in-app-agent` builds the chat, or a button, with your coding agent.
 
+## Views the agent draws
+
+`TandemView` shows what the in-app agent draws for the user, such as a card with the order and its total, or a table of its lines. Put it below the scope, next to the screen or in place of a part of it. While it is on the screen, every run offers the agent the tool `tandem_show_view`, whose description teaches it seven A2UI components: Text, Column, Row, List, Card, Divider and Button. There are no form fields.
+
+- The texts show only what `.sees` lists, by path, so the view follows the screen without the agent.
+- A view that does not fit the screen, such as one with a path that `.sees` does not have, is refused with what to fix, and the agent fixes it in the same turn. The last view stays.
+- While the agent draws, the status is `Thinking(drawing: true)`.
+- Drawing needs a strong remote model, such as Gemini, behind an AG-UI backend that puts `context` into the prompt. A small local model or Apple's on-device model rarely writes valid A2UI.
+- `TandemView` has no texts of its own, takes no space before the agent draws and does not scroll.
+
 ## Try it without a key
 
 <p align="center">
@@ -256,7 +268,7 @@ final class const StatusLine({super.key}) extends StatelessWidget {
 }
 ```
 
-`Thinking` names the tool of the agent's backend that runs now, such as `search_catalog`, from its `TOOL_CALL_START` until its result or the agent's next text, so a long turn can say what the agent does.
+`Thinking` names the tool of the agent's backend that runs now, such as `search_catalog`, from its `TOOL_CALL_START` until its result or the agent's next text or call, so a long turn can say what the agent does.
 
 Stop is available while the status is `Thinking`, or `Calling` a method the user did not approve. An approved method runs to its end.
 

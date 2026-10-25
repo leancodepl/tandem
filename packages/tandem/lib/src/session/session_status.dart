@@ -12,15 +12,21 @@ final class const Idle() extends SessionStatus;
 final class const Thinking({
   /// The tool of the agent's backend that runs now, such as
   /// `search_catalog`: from its `TOOL_CALL_START` until its
-  /// `TOOL_CALL_RESULT` or the agent's next text. Null otherwise.
+  /// `TOOL_CALL_RESULT`, or the agent's next text or call. Null otherwise.
   final String? backendTool,
+
+  /// The agent draws a view for `TandemView`: from the start of its call
+  /// until the agent's next text or call.
+  final bool drawing = false,
 }) extends SessionStatus {
   @override
   bool operator ==(Object other) =>
-      other is Thinking && other.backendTool == backendTool;
+      other is Thinking &&
+      other.backendTool == backendTool &&
+      other.drawing == drawing;
 
   @override
-  int get hashCode => backendTool.hashCode;
+  int get hashCode => Object.hash(backendTool, drawing);
 }
 
 /// A listed method runs: one the agent called in its run, or one the user
