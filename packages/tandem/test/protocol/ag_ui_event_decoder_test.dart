@@ -14,6 +14,7 @@ void main() {
       {'type': 'TOOL_CALL_START', 'toolCallId': false, 'toolCallName': 'add'},
       {'type': 'TOOL_CALL_ARGS', 'delta': '{}'},
       {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': []},
+      {'type': 'TOOL_CALL_RESULT', 'content': '[]'},
     ];
 
     for (final event in events) {

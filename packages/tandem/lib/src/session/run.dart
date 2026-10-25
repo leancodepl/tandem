@@ -18,6 +18,10 @@ final class Run(final AgentListing listing) {
   /// The listed method that runs now.
   Calling? calling;
 
+  /// The call of a tool of the backend that runs now, until its result or
+  /// the agent's next text.
+  ({String id, String tool})? backendCall;
+
   /// Set by `RUN_FINISHED` and `RUN_ERROR`, so the end of the stream that
   /// follows does not count as a lost connection.
   bool ended = false;
@@ -28,6 +32,7 @@ final class Run(final AgentListing listing) {
     String messageId,
     String delta,
   ) {
+    backendCall = null;
     final shown = texts[messageId];
     final grown = texts[messageId] = AgentMessage('${shown?.text ?? ''}$delta');
     return (shown: shown, grown: grown);

@@ -243,6 +243,7 @@ final class const StatusLine({super.key}) extends StatelessWidget {
   Widget build(BuildContext context) =>
       switch (TandemSessionScope.of(context).status) {
         Idle() => const SizedBox.shrink(),
+        Thinking(:final backendTool?) => Text('Using $backendTool…'),
         Thinking() => const LinearProgressIndicator(),
         Calling(:final tool) => Text('Running $tool…'),
         AwaitingApproval(:final request) => Text(
@@ -252,6 +253,8 @@ final class const StatusLine({super.key}) extends StatelessWidget {
       };
 }
 ```
+
+`Thinking` names the tool of the agent's backend that runs now, such as `search_catalog`, from its `TOOL_CALL_START` until its result or the agent's next text, so a long turn can say what the agent does.
 
 Stop is available while the status is `Thinking`, or `Calling` a method the user did not approve. An approved method runs to its end.
 

@@ -93,7 +93,7 @@ final class TandemSession({
   SessionStatus get status => switch (_run) {
     Run(stopped: true) => const Stopping(),
     Run(:final calling?) => calling,
-    Run() => const Thinking(),
+    Run(:final backendCall) => Thinking(backendTool: backendCall?.tool),
     null => _approvedCall ?? _waitingStatus,
   };
 
@@ -364,12 +364,19 @@ final class TandemSession({
     switch (event) {
       case TextDelta(:final messageId, :final delta) when !run.stopped:
         _showText(run.write(messageId, delta));
-      // A call of a tool the listing does not list runs on the server.
       case ToolCallStarted(:final toolCallId, :final name)
           when run.listing.lists(name) || run.calls.containsKey(toolCallId):
         run.startCall(toolCallId, name);
+      // A call of a tool the listing does not list runs on the server.
+      case ToolCallStarted(:final toolCallId, :final name):
+        run.backendCall = (id: toolCallId, tool: name);
+        notifyListeners();
       case ToolCallArgs(:final toolCallId, :final delta):
         run.calls[toolCallId]?.arguments += delta;
+      case ToolCallResult(:final toolCallId)
+          when run.backendCall?.id == toolCallId:
+        run.backendCall = null;
+        notifyListeners();
       case RunFinished(outcome: .cancelled):
         run.ended = true;
         _notes.read();

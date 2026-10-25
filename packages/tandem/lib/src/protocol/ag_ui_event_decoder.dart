@@ -19,6 +19,7 @@ const _decoders = <String, AgentEvent Function(JsonObject)>{
   AgUiEventTypes.textMessageContent: _decodeTextDelta,
   AgUiEventTypes.toolCallStart: _decodeToolCallStarted,
   AgUiEventTypes.toolCallArgs: _decodeToolCallArgs,
+  AgUiEventTypes.toolCallResult: _decodeToolCallResult,
 };
 
 RunFinished _decodeRunFinished(JsonObject json) =>
@@ -58,6 +59,13 @@ AgentEvent _decodeToolCallArgs(JsonObject json) {
 
   return ToolCallArgs(toolCallId, delta);
 }
+
+AgentEvent _decodeToolCallResult(JsonObject json) => switch (json) {
+  {AgUiFields.toolCallId: final String toolCallId} => ToolCallResult(
+    toolCallId,
+  ),
+  _ => const IgnoredEvent(),
+};
 
 RunOutcome _decodeOutcome(Object? json) => switch (json) {
   {AgUiFields.type: AgUiOutcomeTypes.cancelled} => .cancelled,

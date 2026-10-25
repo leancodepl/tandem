@@ -121,6 +121,38 @@ void main() {
     expect(session.status, isA<Idle>());
   });
 
+  test('Thinking names a tool of the backend from its start until its result '
+      'or the next text', () async {
+    final stream = StreamController<Map<String, Object?>>();
+    addTearDown(stream.close);
+    final session = open(_RawFirstRun(stream.stream, ScriptedAgent([])))
+      ..send('find a monitor');
+    final statuses = <SessionStatus>[];
+    session.addListener(() => statuses.add(session.status));
+
+    for (final event in [
+      {
+        'type': 'TOOL_CALL_START',
+        'toolCallId': 'c1',
+        'toolCallName': 'search_catalog',
+      },
+      {'type': 'TOOL_CALL_RESULT', 'toolCallId': 'c1', 'content': '[]'},
+      {'type': 'TOOL_CALL_START', 'toolCallId': 'c2', 'toolCallName': 'lookup'},
+      {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'None.'},
+      {'type': 'TOOL_CALL_START', 'toolCallId': 'c3', 'toolCallName': 'add'},
+    ]) {
+      stream.add(event);
+      await pumpEventQueue();
+    }
+
+    expect(statuses, const [
+      Thinking(backendTool: 'search_catalog'),
+      Thinking(),
+      Thinking(backendTool: 'lookup'),
+      Thinking(),
+    ]);
+  });
+
   test('a call without approval is Calling while it runs, then Idle', () async {
     final (session, _, serverReply) = await askToRefresh();
     expect(

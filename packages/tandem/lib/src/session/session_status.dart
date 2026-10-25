@@ -9,7 +9,19 @@ sealed class const SessionStatus();
 final class const Idle() extends SessionStatus;
 
 /// A run is open and the agent's answer streams in.
-final class const Thinking() extends SessionStatus;
+final class const Thinking({
+  /// The tool of the agent's backend that runs now, such as
+  /// `search_catalog`: from its `TOOL_CALL_START` until its
+  /// `TOOL_CALL_RESULT` or the agent's next text. Null otherwise.
+  final String? backendTool,
+}) extends SessionStatus {
+  @override
+  bool operator ==(Object other) =>
+      other is Thinking && other.backendTool == backendTool;
+
+  @override
+  int get hashCode => backendTool.hashCode;
+}
 
 /// A listed method runs: one the agent called in its run, or one the user
 /// approved for any caller.
