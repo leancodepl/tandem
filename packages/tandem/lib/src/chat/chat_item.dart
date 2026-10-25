@@ -5,8 +5,15 @@ import 'package:tandem/src/session/caller.dart';
 /// Immutable: the session replaces an item to change it.
 sealed class const ChatItem();
 
-/// A message the user wrote, or one the app sent with `session.send`.
-final class const UserMessage(final String text) extends ChatItem;
+/// A message the user wrote, or one the app sent with `session.send` or
+/// `session.wake`.
+final class const UserMessage(
+  final String text, {
+
+  /// `session.wake` sent it, for the agent rather than the user, so a chat
+  /// may hide it.
+  final bool fromApp = false,
+}) extends ChatItem;
 
 /// One message of the agent. While the run streams it, the session replaces
 /// it with a longer one in the same place.

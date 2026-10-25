@@ -152,6 +152,8 @@ final class const _Item(
 ) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (item) {
+    // A message of session.wake is for the agent, not the user.
+    UserMessage(fromApp: true) => const SizedBox.shrink(),
     UserMessage(:final text) => _Bubble(text, fromUser: true),
     AgentMessage(:final text, :final stopped) => _Bubble(
       text,

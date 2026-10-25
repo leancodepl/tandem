@@ -1,4 +1,4 @@
-import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/next_user_message.dart';
 import 'package:tandem/src/session/run.dart';
@@ -12,12 +12,20 @@ final class AgUiThread() {
   final _messages = <AgUiMessage>[];
   final _nextUserMessage = NextUserMessage();
 
-  /// The body of the next run, with what [listing] shares with the agent.
-  RunInput input(AgentListing listing) {
+  /// The body of the next run, with its [tools] and [context].
+  RunInput input({
+    required List<JsonObject> tools,
+    required List<JsonObject> context,
+  }) {
     if (_nextUserMessage.take() case final message?) {
       _messages.add(message);
     }
-    return RunInput(threadId: _id, messages: [..._messages], listing: listing);
+    return RunInput(
+      threadId: _id,
+      messages: [..._messages],
+      tools: tools,
+      context: context,
+    );
   }
 
   /// What the agent said in [run], and the calls of its [turn].
@@ -31,13 +39,13 @@ final class AgUiThread() {
   /// answered, so they stay out.
   void addFailedRun(Run run) => _messages.addAll(run.assistantTexts);
 
-  /// The answers of [turn], then the user's [text].
-  void addAnswers(Turn turn, String? text) {
-    _messages.addAll(turn.answers);
-    if (text case final message?) {
-      _nextUserMessage.add(message);
-    }
-  }
+  /// The answers of [turn], for the next run.
+  void addAnswers(Turn turn) => _messages.addAll(turn.answers);
+
+  /// What the user and the app sent, which the next run sends as one message
+  /// after the answers.
+  void addUserTexts(Iterable<String> texts) =>
+      texts.forEach(_nextUserMessage.add);
 
   /// A new thread without the earlier messages, for when what ADK kept of a
   /// run is unknown.

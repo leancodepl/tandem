@@ -40,6 +40,10 @@ _Avoid_: confirmation, interrupt
 The state of an approval request when a value listed with `.sees` changed after the call asked. It can no longer be approved, even when the value comes back.
 _Avoid_: stale, expired, outdated
 
+**Note**:
+A line the app gives the agent about what happened outside the chat, with `session.note`. Every run gives the agent the latest five in one `context` entry. `session.wake()` lets the agent take a turn on them.
+_Avoid_: event, notification
+
 **Event**:
 What happened in a session that the app may react to, as a `TandemEvent`: a call that returned, a stop, a failed run, a lost connection. Approval requests are not events.
 _Avoid_: notification, notice
