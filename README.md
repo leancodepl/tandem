@@ -203,7 +203,25 @@ Tandem has no chat widget, so the chat has your app's texts, language and look. 
 
 ## Views the agent draws
 
-`TandemView` shows what the in-app agent draws for the user, such as a card with the order and its total, or a table of its lines. Put it below the scope, next to the screen or in place of a part of it. While it is on the screen, every run offers the agent the tool `tandem_show_view`, whose description teaches it seven A2UI components: Text, Column, Row, List, Card, Divider and Button. There are no form fields.
+`TandemView` shows what the in-app agent draws for the user, such as a card with the order and its total, or a table of its lines. Put it below the scope, next to the screen or in place of a part of it. The order desk of the example puts it below its form, in at most half of the height:
+
+<!-- example/lib/desk/ui/order_desk_screen.dart -->
+```dart
+        const Expanded(child: OrderForm()),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: constraints.maxHeight / 2),
+          child: const SingleChildScrollView(
+            padding: .fromLTRB(12, 0, 12, 12),
+            child: TandemView(),
+          ),
+        ),
+```
+
+<p align="center">
+  <img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/examples/drawn-summary.png" alt="The order desk on an iPad: the order draft, and below it the summary that the agent drew, with its lines, a Remove button for each, the total and Place order." width="400">
+</p>
+
+While `TandemView` is on the screen, every run offers the agent the tool `tandem_show_view`, whose description teaches it seven A2UI components: Text, Column, Row, List, Card, Divider and Button. There are no form fields.
 
 - The texts show only what `.sees` lists, by path, so the view follows the screen without the agent.
 - A button calls a method the screen lists, with the same checks and approvals as the agent's calls, and `caller: Caller.view` in `AgentCall` and `ApprovalRequest`. A button of a `.callsWithApproval` method is enabled only while the session is `Idle`, and a button waits for its own call to answer. A press wakes no agent: the agent reads what the method answered in `app_notes` with its next run, and `onEvent` may call [`session.wake()`](#notes-from-the-app).
@@ -211,6 +229,21 @@ Tandem has no chat widget, so the chat has your app's texts, language and look. 
 - While the agent draws, the status is `Thinking(drawing: true)`.
 - Drawing needs a strong remote model, such as Gemini, behind an AG-UI backend that puts `context` into the prompt. A small local model or Apple's on-device model rarely writes valid A2UI.
 - `TandemView` has no texts of its own, takes no space before the agent draws and does not scroll.
+
+Once the user placed the order from the summary, the order desk's `onEvent` lets the agent answer:
+
+<!-- example/lib/desk/ui/order_desk_screen.dart -->
+```dart
+void wakeOnPlacedOrder(
+  BuildContext context,
+  TandemEvent event,
+  TandemSession session,
+) {
+  if (event case AgentCall(tool: 'place_order', caller: .view)) {
+    session.wake();
+  }
+}
+```
 
 ## Try it without a key
 

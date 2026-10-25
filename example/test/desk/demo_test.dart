@@ -146,7 +146,10 @@ void main() {
         _messagesOf(requests[4]).last,
         containsPair('content', '"ORD-1042"'),
       );
-      expect(_toolsOffered(requests[4]), ['search_catalog']);
+      expect(_toolsOffered(requests[4]), [
+        'search_catalog',
+        'tandem_show_view',
+      ]);
     },
   );
 

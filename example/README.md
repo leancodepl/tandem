@@ -20,8 +20,9 @@ fvm flutter run
 Choose an iOS simulator, an Android emulator or a connected device. For desktop, run
 `fvm flutter run -d macos`.
 
-Tap the sample e-mail in the chat, and the agent fills the order. Change a quantity, then ask it to
-place the order. Edit again while the approval is pending. **Reset example** starts over with a new
+Tap the sample e-mail in the chat, and the agent fills the order and draws a summary below it with
+`TandemView`. Change a quantity, then place the order from the summary or ask the agent to. Edit
+again while the approval is pending. **Reset example** starts over with a new
 order and a new session. The scripted agent follows the scenario and does not read what you write.
 
 The order desk is on bloc, in [lib/desk](lib/desk), and [`order_desk_agent.dart`](lib/desk/order_desk_agent.dart)
