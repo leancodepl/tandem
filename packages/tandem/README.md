@@ -29,7 +29,7 @@ Pick a screen. Its state class lists what an AI agent may see and which of its m
 
 ![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies, calls to the app's methods and views in A2UI, which TandemView draws. On iOS and macOS 26, OnDeviceAgent does the same with Apple's on-device model, without a backend or an API key.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
 
-With a remote agent, your backend calls the model and keeps the API key. The app talks to it over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Google ADK, LangChain, CrewAI, Mastra and many other agent frameworks support it.
+With a remote agent, your backend calls the model and keeps the API key. The app talks to it over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Tandem is checked with Google ADK, LangGraph and Pydantic AI, and works with any AG-UI backend.
 
 On iOS and macOS 26, the experimental `OnDeviceAgent` can run [Apple's on-device model](#apples-on-device-model) instead, without a backend or an API key, for the simplest tasks. The screen, its capabilities and approvals stay the same.
 
@@ -448,14 +448,15 @@ Every turn of the script is one run. `agent.requests` holds the body of every ru
 
 ## The agent backend
 
-Any AG-UI endpoint works. The backend has to:
+Any AG-UI endpoint works. [`example/agents`](https://github.com/leancodepl/tandem/tree/main/example/agents) has an agent to copy from on each framework that Tandem is checked with: Google ADK, LangGraph and Pydantic AI. The backend has to:
 
-- Put the AG-UI `context` into the model's prompt. ag-ui-adk does not, so its agent needs an instruction provider that adds it.
-- Accept `tools` on every run. Tandem always sends it, an empty list when no method is listed.
+- Put the AG-UI `context` into the model's prompt. None of the three does it on its own: the README of each agent shows how.
+- Accept `tools` on every run, and give the model only those. Tandem always sends it, an empty list when no method is listed.
+- Read the conversation from the messages that each run brings, or keep its own copy and add the messages it has not seen.
 - On the web, allow the app's origin with CORS.
 - Treat the `tools`, their descriptions and the `context` as untrusted input: they come from the app, and anyone can send a run with other ones.
 
-To send the user's token, give `HttpAgentConnection` an `http.Client` that adds it, and pass the connection to `TandemScope.connected`. Keep the connection in a field: a new one starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK agent to copy from.
+To send the user's token, give `HttpAgentConnection` an `http.Client` that adds it, and pass the connection to `TandemScope.connected`. Keep the connection in a field: a new one starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent.
 
 ## Apple's on-device model
 

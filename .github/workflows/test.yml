@@ -42,7 +42,7 @@ jobs:
           while IFS= read -r file; do
             case "$file" in
               packages/*) dart=true ;;
-              example/agent/*) agent=true ;;
+              example/agents/*) agent=true ;;
               .github/workflows/test.yml) dart=true; agent=true ;;
               README.md) dart=true ;;
               .github/* | doc/* | *.md | .commitlintrc.yml) ;;
@@ -202,11 +202,12 @@ jobs:
           path: packages/tandem_generator
           dry-run: true
 
-  # The ruleset requires this check. A job skipped by its `if` counts as passed.
+  # The ruleset requires only this check, so it waits for every job, the
+  # agents too. A job skipped by its `if` counts as passed.
   result:
     name: Test and analyze
 
-    needs: [changes, analyze, test, codegen, publish]
+    needs: [changes, analyze, test, codegen, publish, agent]
     if: ${{ !cancelled() }}
 
     runs-on: ubuntu-latest
@@ -219,7 +220,7 @@ jobs:
         run: exit 1
 
   agent:
-    name: Test and lint the example agent
+    name: Test and lint the ${{ matrix.agent }} agent
 
     needs: changes
     if: needs.changes.outputs.agent == 'true'
@@ -229,9 +230,14 @@ jobs:
     permissions:
       contents: read
 
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: [adk, lang-graph, pydantic-ai]
+
     defaults:
       run:
-        working-directory: example/agent
+        working-directory: example/agents/${{ matrix.agent }}
 
     steps:
       - name: Checkout
@@ -244,17 +250,18 @@ jobs:
         with:
           version: '0.12.23'
           python-version: '3.14'
-          working-directory: example/agent
+          working-directory: example/agents/${{ matrix.agent }}
 
       - name: Download Python dependencies
         run: uv sync --locked
 
+      # order-desk holds what the agents share, so each of them checks it too.
       - name: Run ruff
-        run: uv run ruff check
+        run: uv run ruff check . ../order-desk
 
       - name: Check Python formatting
-        run: uv run ruff format --check
+        run: uv run ruff format --check . ../order-desk
 
-      # The tests play the demo with the scripted model: no API key, no network.
+      # The tests play the order desk with the scripted model: no API key, no network.
       - name: Test the agent
         run: uv run pytest
