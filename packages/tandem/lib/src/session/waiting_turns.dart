@@ -9,9 +9,26 @@ import 'package:tandem/src/session/turn.dart';
 /// shows at a time, the in-app agent's first.
 final class WaitingTurns() {
   /// The calls of the in-app agent's last run, until their answers go out.
-  Turn agent = Turn(const []);
+  var _agent = Turn(const []);
 
   final _others = <Caller, Turn>{};
+
+  /// Whether the in-app agent's turn has calls and each has an answer.
+  bool get agentAnswered => _agent.answered;
+
+  /// Whether [turn] is the in-app agent's.
+  bool isAgentTurn(Turn turn) => identical(turn, _agent);
+
+  /// The calls of a run of the in-app agent become its turn.
+  Turn startAgentTurn(Iterable<ToolCall> calls) => _agent = Turn([...calls]);
+
+  /// Returns the in-app agent's turn, whose answers go out now, and leaves
+  /// it without calls.
+  Turn closeAgentTurn() {
+    final turn = _agent;
+    _agent = Turn(const []);
+    return turn;
+  }
 
   /// The request that waits for the user now.
   ApprovalRequest? get shown =>
@@ -47,7 +64,7 @@ final class WaitingTurns() {
   /// The turn that [request] belongs to.
   Turn turnOf(ApprovalRequest request) => _others.values.firstWhere(
     (turn) => turn.calls.any((call) => call.id == request.toolCallId),
-    orElse: () => agent,
+    orElse: () => _agent,
   );
 
   /// Invalidates the waiting calls of every turn that saw other than [seen],
@@ -69,5 +86,5 @@ final class WaitingTurns() {
     for (final turn in _turns) ...turn.cancelWaiting(),
   ];
 
-  List<Turn> get _turns => [agent, ..._others.values];
+  List<Turn> get _turns => [_agent, ..._others.values];
 }
