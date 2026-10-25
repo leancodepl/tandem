@@ -42,7 +42,12 @@ final class const _OrderDeskView() extends StatelessWidget {
       title: 'Order draft',
       chat: AgentChat(
         suggestion: orderEmail,
-        approvalBuilder: (context, request) => const OrderSummary(),
+        // Approve places the order as it is on the screen, which a decided
+        // card would show as it is now, not as it was asked.
+        approvalBuilder: (context, request) => switch (request.status) {
+          .pending => const OrderSummary(),
+          _ => const SizedBox.shrink(),
+        },
       ),
       child: const _FormAndView(),
     ),
