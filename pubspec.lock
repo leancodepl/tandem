@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "109.0.0"
+  a2ui_core:
+    dependency: transitive
+    description:
+      name: a2ui_core
+      sha256: "001b3a850a77232c92d936349d9b07ed626cb274ab52f1ae3b8a8cfcf88a3000"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0"
   analysis_server_plugin:
     dependency: transitive
     description:
@@ -177,6 +185,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.14"
+  decimal:
+    dependency: transitive
+    description:
+      name: decimal
+      sha256: "2c3c8b74f2948066d3f42585477aec9cfc48fefd7a723a4d4274a6c71a5c0df7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.6"
+  email_validator:
+    dependency: transitive
+    description:
+      name: email_validator
+      sha256: b19aa5d92fdd76fbc65112060c94d45ba855105a28bb6e462de7ff03b12fa1fb
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.0"
   fake_async:
     dependency: transitive
     description:
@@ -259,6 +283,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  intl:
+    dependency: transitive
+    description:
+      name: intl
+      sha256: "1ca20c894b1717686a2319b8548763d812bc0aabdac580420a44c5178c57a867"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.3"
   io:
     dependency: transitive
     description:
@@ -275,6 +307,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.12.0"
+  json_schema_builder:
+    dependency: transitive
+    description:
+      name: json_schema_builder
+      sha256: "657db3229ba10305c48e8686e8b3aca16e12e639c3a7b96687a6eeb7836b6e1b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.7"
   leak_tracker:
     dependency: transitive
     description:
@@ -387,6 +427,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.3"
+  preact_signals:
+    dependency: transitive
+    description:
+      name: preact_signals
+      sha256: "18f45e7f91a4dfad8bd0138efa6b85770bb25e13278b863fdaafd28a56579b16"
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.0"
   provider:
     dependency: transitive
     description:
@@ -411,6 +459,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
+  rational:
+    dependency: transitive
+    description:
+      name: rational
+      sha256: cb808fb6f1a839e6fc5f7d8cb3b0a10e1db48b3be102de73938c627f0b636336
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.3"
   shelf:
     dependency: transitive
     description:
