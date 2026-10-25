@@ -65,7 +65,7 @@ final class TandemSession({
   @internal
   this {
     _stateChangesSubscription = _surface.changes.listen(
-      (_) => _invalidateIfSeesChanged(),
+      (_) => _invalidateAndGoOn(),
     );
   }
 
@@ -178,7 +178,7 @@ final class TandemSession({
   /// asked, which invalidates it.
   void approve(ApprovalRequest request) {
     // `changes` may not report every value the agent sees.
-    _invalidateIfSeesChanged();
+    _invalidateAndGoOn();
     final turn = _waiting.turnOf(request);
     if (turn.approve(_latest(request)) case final call?) {
       _showDecision(call);
@@ -201,6 +201,36 @@ final class TandemSession({
   /// Whether [request] waits for the user to approve or reject it.
   bool isPending(ApprovalRequest request) =>
       _waiting.turnOf(request).isPending(request);
+
+  /// Moves the chat to a new AG-UI thread: the next message goes without the
+  /// earlier history, such as after a [RunFailed] whose `code` says the
+  /// history no longer fits the model. The items stay, with a
+  /// [ChatNoticeKind.startedOver] notice, and requests that wait are
+  /// cancelled. A message that never reached the agent goes with the next
+  /// one. Does nothing while a run is open, or once disposed.
+  void startOver() {
+    if (_isBusy || _disposed) {
+      return;
+    }
+    _waiting.cancelAll().forEach(_showDecision);
+    // The new thread has no calls to answer.
+    _waiting.closeAgentTurn();
+    _thread.startOver();
+    _items.add(const ChatNotice(.startedOver));
+    notifyListeners();
+  }
+
+  /// Cancels the requests that wait, so a later decision throws. Nothing runs,
+  /// goes to the agent or notifies after it.
+  @override
+  void dispose() {
+    _disposed = true;
+    _waiting.cancelAll().forEach(_showDecision);
+    _run = null;
+    unawaited(_runSubscription?.cancel());
+    unawaited(_stateChangesSubscription.cancel());
+    super.dispose();
+  }
 
   /// What the agent works on.
   @internal
@@ -288,43 +318,11 @@ final class TandemSession({
     return await call.answered;
   }
 
-  /// Moves the chat to a new AG-UI thread: the next message goes without the
-  /// earlier history, such as after a [RunFailed] whose `code` says the
-  /// history no longer fits the model. The items stay, with a
-  /// [ChatNoticeKind.startedOver] notice, and requests that wait are
-  /// cancelled. A message that never reached the agent goes with the next
-  /// one. Does nothing while a run is open, or once disposed.
-  void startOver() {
-    if (_isBusy || _disposed) {
-      return;
-    }
-    _waiting.cancelAll().forEach(_showDecision);
-    // The new thread has no calls to answer.
-    _waiting.closeAgentTurn();
-    _thread.startOver();
-    _items.add(const ChatNotice(.startedOver));
-    notifyListeners();
-  }
-
-  /// Cancels the requests that wait, so a later decision throws. Nothing runs,
-  /// goes to the agent or notifies after it.
-  @override
-  void dispose() {
-    _disposed = true;
-    _waiting.cancelAll().forEach(_showDecision);
-    _run = null;
-    unawaited(_runSubscription?.cancel());
-    unawaited(_stateChangesSubscription.cancel());
-    super.dispose();
-  }
-
   void _post(UserMessage message) {
     _items.add(message);
     _queue.add(message);
   }
 
-  /// Starts a run with the answers of the agent's turn and the queued
-  /// messages.
   void _start() {
     _closeTurn();
     _open();
@@ -398,7 +396,7 @@ final class TandemSession({
           return;
         }
         _recordRun(run);
-        _startNextRun();
+        _endRunAndGoOn();
       case RunFinished(outcome: .unsupported):
         _abort(
           run,
@@ -438,7 +436,7 @@ final class TandemSession({
       return;
     }
     if (_run == run) {
-      _startNextRun();
+      _endRunAndGoOn();
     }
   }
 
@@ -519,7 +517,6 @@ final class TandemSession({
     if (_disposed) {
       return;
     }
-    // Still Calling, so only _continueAfter decides what comes next.
     _invalidateIfSeesChanged();
     _approvedCall = null;
     _continueAfter(turn);
@@ -529,7 +526,7 @@ final class TandemSession({
   /// method returned. Another caller's request leaves the agent's turn as it
   /// was: its answers wait for the user's next message.
   void _continueAfter(Turn turn) =>
-      _startNextRun(withAnswers: _waiting.isAgentTurn(turn));
+      _goOn(withAnswers: _waiting.isAgentTurn(turn));
 
   /// Runs the method behind [tool] for [caller]. Unless the session is
   /// disposed by then, the agent gets a note of a press in a view, and
@@ -578,32 +575,45 @@ final class TandemSession({
     notifyListeners();
   }
 
+  /// For a change seen while a run is open or an approved method runs,
+  /// which go on by themselves.
   void _invalidateIfSeesChanged() {
-    final run = _run;
-    if (run == null && !_waiting.waitsForUser) {
+    if (_invalidateUnlikeNow()) {
+      notifyListeners();
+    }
+  }
+
+  /// For a change seen by `changes` or Approve: a request that no longer
+  /// shows uncovers the next one, or the app's message that waited for it.
+  void _invalidateAndGoOn() {
+    if (!_invalidateUnlikeNow()) {
       return;
     }
-    final seen = _seesNow;
-    if (run != null) {
-      run.seesChanged = run.seesChanged || seen != SeesSnapshot.of(run.listing);
-    }
-    final invalidated = _waiting.invalidateUnlike(seen);
-    if (invalidated.isEmpty) {
-      return;
-    }
-    invalidated.forEach(_showDecision);
-    // A request that no longer shows uncovers the next one, or the app's
-    // message that waited for it.
     if (status is Idle) {
-      _startNextRun(withAnswers: false);
+      _goOn(withAnswers: false);
     } else {
       notifyListeners();
     }
   }
 
+  /// Invalidates the requests that saw other than what the agent sees now,
+  /// and returns whether there were any. The open run notes whether it sent
+  /// other than that.
+  bool _invalidateUnlikeNow() {
+    final run = _run;
+    if (run == null && !_waiting.waitsForUser) {
+      return false;
+    }
+    final seen = _seesNow;
+    if (run != null) {
+      run.seesChanged = run.seesChanged || seen != SeesSnapshot.of(run.listing);
+    }
+    final invalidated = _waiting.invalidateUnlike(seen)..forEach(_showDecision);
+    return invalidated.isNotEmpty;
+  }
+
   SeesSnapshot get _seesNow => .read(_surface, report: report);
 
-  /// A run is open, or an approved method runs.
   bool get _isBusy => _run != null || _approvedCall != null;
 
   SessionStatus get _waitingStatus => switch (_waiting.shown) {
@@ -646,7 +656,7 @@ final class TandemSession({
   void _runFailed(Object err, StackTrace st) {
     report(err, st);
     _items.add(const ChatNotice(.runFailed));
-    _startNextRun();
+    _endRunAndGoOn();
     _emit(RunFailed(code: _codeOf(err)));
   }
 
@@ -656,23 +666,28 @@ final class TandemSession({
     }
     _items.add(const ChatNotice(.connectionLost));
     _thread.startOver();
-    _startNextRun();
+    _endRunAndGoOn();
     _emit(const ConnectionLost());
   }
 
-  /// Goes on once nothing runs. A run starts when the user wrote meanwhile
-  /// or, [withAnswers] and unless the user stopped, every call of the
-  /// agent's turn has an answer. Otherwise the next request shows, and once
-  /// the session is idle, the app's message starts a run, unless the user
-  /// stopped the run it waited for.
-  void _startNextRun({bool withAnswers = true}) {
-    final stopped = status is Stopping;
-    final answersDue = withAnswers && !stopped && _waiting.agentAnswered;
+  /// After a Stop, the agent's answers and the app's messages wait for the
+  /// user's next message.
+  void _endRunAndGoOn() {
+    final stopped = _run?.stopped ?? false;
     if (stopped) {
       _queue.holdAppMessages();
     }
     _run = null;
-    if (answersDue || _queue.userWrote) {
+    _goOn(withAnswers: !stopped);
+  }
+
+  /// Goes on once nothing runs. A run starts when the user wrote meanwhile
+  /// or, [withAnswers], every call of the agent's turn has an answer.
+  /// Otherwise the next request shows, and once the session is idle, a
+  /// message of the app starts a run.
+  void _goOn({required bool withAnswers}) {
+    assert(!_isBusy, 'Only a session where nothing runs goes on.');
+    if ((withAnswers && _waiting.agentAnswered) || _queue.userWrote) {
       _start();
       notifyListeners();
       return;
@@ -685,8 +700,6 @@ final class TandemSession({
     }
   }
 
-  /// Shows the next request that waits, the agent's first, and gives it to
-  /// `approvals:`.
   void _showNextRequest() {
     final request = _waiting.showNext();
     if (request != null) {
