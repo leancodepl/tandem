@@ -34,7 +34,7 @@ build-backend = "uv_build"
 module-name = "order_agent"
 
 [tool.pytest.ini_options]
-testpaths = ["../order-desk/tests"]
+testpaths = ["tests", "../order-desk/tests"]
 filterwarnings = ["ignore::DeprecationWarning:google.genai.types"]
 
 [tool.ruff]
