@@ -86,7 +86,7 @@ The copy relies on when Apple writes the batch to the transcript. That timing wa
 
 **Ending a run.** The text arrives whole when generation ends. Stop drains the run and runs none of its calls. Disposing the session cancels the native task and waits for it to end. Nothing retries, summarizes or shortens the history: an overflow fails with `OnDeviceErrorCode.contextWindowExceeded`, and the app may call `session.startOver()`. Other native failures keep their own `OnDeviceErrorCode`.
 
-`bash tool/check_apple.sh` runs the native contracts without inference. On `main`, CI also builds the plugin in the macOS and unsigned iOS examples. `tool/apple_smoke.swift --generate` asks the real model and stays manual.
+`bash tool/check_apple.sh` runs the native contracts without inference, by hand: CI has no macOS runner. `tool/apple_smoke.swift --generate` asks the real model and stays manual.
 
 ## Wire rules
 
