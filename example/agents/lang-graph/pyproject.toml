@@ -1,0 +1,50 @@
+[project]
+name = "order-agent-lang-graph"
+version = "0.1.0"
+description = "The order desk agent on LangGraph: a B2B order from an e-mail, over AG-UI."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "ag-ui-langgraph[fastapi]==0.0.47",
+    "fastapi",
+    "langchain-core>=1.7,<2",
+    "langchain-google-genai>=4.4,<5",
+    "langchain-ollama>=1.1,<2",
+    "langgraph>=1.2,<2",
+    "order-desk",
+    "pydantic-settings",
+    "python-dotenv",
+    "uvicorn",
+]
+
+[project.scripts]
+order-agent = "order_agent.server:main"
+
+[dependency-groups]
+dev = [
+    "httpx",
+    "pytest",
+    "ruff>=0.17.1",
+]
+
+[tool.uv.sources]
+order-desk = { path = "../order-desk", editable = true }
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "order_agent"
+
+[tool.pytest.ini_options]
+testpaths = ["../order-desk/tests"]
+filterwarnings = [
+    # ag-ui-langgraph 0.0.47 still calls it.
+    "ignore:`get_config_jsonschema` is deprecated",
+    "ignore::DeprecationWarning:google.genai.types",
+]
+
+[tool.ruff]
+line-length = 100

@@ -14,7 +14,7 @@ Ask the user two questions, unless the request already answers them:
 
 - **How the user talks to the agent.** A chat next to the screen, or a button that sends one prepared message, such as "Fill from e-mail" next to a pasted text. A button needs no chat.
 - **Which agent.**
-  - An AG-UI backend: the user gives its address. Any AG-UI endpoint works, such as Google ADK, LangChain, CrewAI or Mastra. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK backend to copy from.
+  - An AG-UI backend: the user gives its address. Any AG-UI endpoint works. Tandem is checked with Google ADK, LangGraph and Pydantic AI, and [`example/agents`](https://github.com/leancodepl/tandem/tree/main/example/agents) has an agent on each to copy from.
   - Apple's on-device model, on iOS and macOS 26 with Apple Intelligence: no backend and no API key. It is experimental and small: offer it only for the simplest tasks, such as one sentence that becomes one call.
 
 **Done when** you know both answers, and the backend's address when there is one. Without an address, put none into the app: step 7 tests the screen with a script, and the address comes later.
@@ -39,7 +39,7 @@ TandemScope(
 ```
 
 - Read the address from the app's configuration, as the app reads its other servers.
-- The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk does not, so add an instruction provider) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement in both entitlement files.
+- The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk, ag-ui-langgraph and Pydantic AI do not on their own; the agents in `example/agents` show how) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement in both entitlement files.
 - For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field.
 
 For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connected` as `connection`; calling it in `build` is fine. Offer it only when `await OnDeviceAgent.apple().availability()` is `available`. On `RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)`, call `session.startOver()`. [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).

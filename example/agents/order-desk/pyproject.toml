@@ -1,0 +1,14 @@
+[project]
+name = "order-desk"
+version = "0.1.0"
+description = "What the three order desk agents share: the customers, the tools, the instruction and the script of the scripted model."
+license = "Apache-2.0"
+requires-python = ">=3.11,<3.15"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100

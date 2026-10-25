@@ -33,8 +33,10 @@ own. The app enables `TandemBridge`, so your coding agent can fill the order too
 
 ## Connect the order desk to a backend
 
-In `example/agent`, with [uv](https://docs.astral.sh/uv/), start the Google ADK backend with its
-scripted model, which needs no API key:
+[`agents`](agents) holds an agent for the order desk on each framework that Tandem is checked
+with: Google ADK, LangGraph and Pydantic AI. In the folder of one, such as `agents/adk`, with
+[uv](https://docs.astral.sh/uv/), start it with its scripted model, which needs no model and no API
+key:
 
 ```sh
 TANDEM_FAKE_LLM=1 uv run order-agent
@@ -46,13 +48,12 @@ Tap **Use backend** and enter the agent's URL:
 - Android emulator: `http://10.0.2.2:8000/agent`.
 - Physical device: your computer's address on the local network. Start the backend with
   `TANDEM_HOST=0.0.0.0 TANDEM_FAKE_LLM=1 uv run order-agent` and allow port 8000 through your
-  firewall. See [the backend settings](agent/README.md#configuration).
+  firewall. See [the backend settings](agents/README.md#configuration).
 
 Then tap the sample e-mail. Connecting or resetting starts a new order. **Use script** goes back to
-the scripted agent. The rest of the script is in [agent/README.md](agent/README.md#the-script).
+the scripted agent. The rest of the script is in [agents/README.md](agents/README.md#the-script).
 
-For Gemini, copy `agent/.env.example` to `agent/.env`, set `GOOGLE_API_KEY` in it, and run
-`uv run order-agent` in `example/agent`.
+For a real model, Ollama or Gemini, see [agents/README.md](agents/README.md#run).
 
 ## Smart invoice input with Apple's on-device model
 

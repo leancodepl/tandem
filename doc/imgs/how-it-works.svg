@@ -42,7 +42,7 @@
 
   <rect class="box" x="556" y="30" width="220" height="120" rx="10"/>
   <text class="name" x="666" y="72">Agent backend</text>
-  <text class="note" x="666" y="96">Google ADK, LangChain, …</text>
+  <text class="note" x="666" y="96">ADK, LangGraph, Pydantic AI</text>
   <text class="note" x="666" y="118">keeps the API key</text>
 
   <line class="line" x1="784" y1="90" x2="828" y2="90" marker-start="url(#head)" marker-end="url(#head)"/>
