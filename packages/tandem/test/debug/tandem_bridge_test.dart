@@ -103,7 +103,13 @@ void main() {
     await TandemBridge.call('add', arguments: {'item': 'y'}, screen: 'Shop#2');
 
     expect(refused, containsPair('status', 'refused'));
-    expect(refused, containsPair('reason', contains('Shop, Shop#2')));
+    expect(
+      refused,
+      containsPair(
+        'reason',
+        allOf(contains('on the current route'), contains('Shop, Shop#2')),
+      ),
+    );
     expect(shop.items, isEmpty);
     expect(other.items, ['y']);
   });
