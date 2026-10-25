@@ -9,6 +9,7 @@ import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
+import '../support/run_bodies.dart';
 import '../support/shop.dart';
 
 void main() {
@@ -73,7 +74,7 @@ void main() {
 
     expect(shop.items, ['milk']);
     expect(agent.requests, hasLength(2));
-    final messages = _messages(agent.requests[1]);
+    final messages = messagesOf(agent.requests[1]);
     expect(messages.skip(messages.length - 2), [
       {
         'id': 'asst-call-2',
@@ -205,7 +206,7 @@ void main() {
       final session = open(agent)..send('a');
       await pumpEventQueue();
 
-      final messages = _messages(agent.requests[1]);
+      final messages = messagesOf(agent.requests[1]);
       final [..., {'content': refused as String}, _] = messages;
       final [..., {'content': failed as String}] = messages;
       expect(jsonDecode(refused), {
@@ -805,7 +806,7 @@ void main() {
     ]);
   });
 
-  test('a message sent during a run goes after the answers of its calls, in '
+  test('the messages sent during a run go after the answers of its calls, in '
       'the same run', () async {
     final gate = Completer<void>();
     final agent = ScriptedAgent([
@@ -817,7 +818,9 @@ void main() {
     ]);
     final session = open(agent)..send('add bread');
     await pumpEventQueue();
-    session.send('no bread after all');
+    session
+      ..send('no bread after all')
+      ..send('and no milk');
     gate.complete();
     await pumpEventQueue();
 
@@ -826,8 +829,170 @@ void main() {
       'user: add bread',
       'asst-call-1 add {"item":"bread"}',
       'tool-call-1 null',
-      'user: no bread after all',
+      'user: no bread after all\n\nand no milk',
     ]);
+  });
+
+  test('every run gives the agent the latest five notes, new until a run '
+      'took them, and the chat shows none', () async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Hi again.')],
+    ]);
+    final session = open(agent);
+    for (var i = 1; i <= 6; i++) {
+      session.note('note $i');
+    }
+    session.send('hi');
+    await pumpEventQueue();
+    session
+      ..note('note 7')
+      ..send('again');
+    await pumpEventQueue();
+
+    expect(
+      [for (final request in agent.requests) appNotesOf(request)],
+      [
+        {
+          'new': [
+            for (var i = 2; i <= 6; i++) {'note': 'note $i'},
+          ],
+        },
+        {
+          'new': [
+            {'note': 'note 7'},
+          ],
+          'earlier': [
+            for (var i = 3; i <= 6; i++) {'note': 'note $i'},
+          ],
+        },
+      ],
+    );
+    expect(_shown(session.items), [
+      ('user', 'hi'),
+      ('agent', 'Hi.', false),
+      ('user', 'again'),
+      ('agent', 'Hi again.', false),
+    ]);
+  });
+
+  test('the notes stay new when the run that offered them fails', () async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.fail('Out of tokens.')],
+      (_) => const [AgentStep.say('Hi.')],
+    ]);
+    final session = open(agent)
+      ..note('The user opened the cart.')
+      ..send('hi');
+    await pumpEventQueue();
+    session.send('hi again');
+    await pumpEventQueue();
+
+    expect(appNotesOf(agent.requests[1]), {
+      'new': [
+        {'note': 'The user opened the cart.'},
+      ],
+    });
+  });
+
+  test('wake starts a run with a message from the app, which waits while a '
+      'request waits and goes with the run after the decision', () async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Nothing new.')],
+      (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Shared twice.')],
+    ]);
+    final session = open(agent)..wake();
+    await pumpEventQueue();
+    expect(_lines(agent.requests.single).single, startsWith('user: The app'));
+    expect(
+      session.items.first,
+      isA<UserMessage>().having(
+        (message) => message.fromApp,
+        'fromApp',
+        isTrue,
+      ),
+    );
+
+    session.send('share it twice');
+    await pumpEventQueue();
+    session.wake();
+    await pumpEventQueue();
+    session.approve(_card(session));
+    await pumpEventQueue();
+    expect(_shown(session.items).last, ('share', ApprovalStatus.pending));
+    expect(agent.requests, hasLength(2));
+
+    session.approve(session.items.whereType<ApprovalRequest>().last);
+    await pumpEventQueue();
+    expect(_lines(agent.requests[2]).skip(3), [
+      'asst-call-1 share {}',
+      'asst-call-2 share {}',
+      'tool-call-1 null',
+      'tool-call-2 null',
+      startsWith('user: The app'),
+    ]);
+  });
+
+  test("after Stop, the app's message waits for the user's next one", () async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Hi again.')],
+    ]);
+    final session = open(agent)..send('hi');
+    await pumpEventQueue();
+    session
+      ..wake()
+      ..stop();
+    gate.complete();
+    await pumpEventQueue();
+    expect(agent.requests, hasLength(1));
+
+    session.send('again');
+    await pumpEventQueue();
+    expect(
+      _lines(agent.requests[1]).last,
+      allOf(startsWith('user: The app'), endsWith('\n\nagain')),
+    );
+  });
+
+  test("the app's message waits for a method that the approval callback "
+      'approved at once', () async {
+    final serverReply = Completer<void>();
+    shop.serverReply = serverReply.future;
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        AgentStep.waitFor(gate.future),
+        const AgentStep.callTool('share'),
+      ],
+      (_) => const [AgentStep.say('Shared.')],
+    ]);
+    late final TandemSession session;
+    session = TandemSession(
+      surface: shop,
+      connection: agent,
+      onEvent: events.add,
+      onApprovalRequest: (request) async => session.approve(request),
+    )..send('share it');
+    addTearDown(session.dispose);
+    await pumpEventQueue();
+    session.wake();
+    gate.complete();
+    await pumpEventQueue();
+
+    expect(session.status, const Calling('share', approved: true));
+    expect(agent.requests, hasLength(1));
+
+    serverReply.complete();
+    await pumpEventQueue();
+    expect(_lines(agent.requests[1]).skip(1), [
+      'asst-call-1 share {}',
+      'tool-call-1 null',
+      startsWith('user: The app'),
+    ]);
+    expect(_shown(session.items).last, ('agent', 'Shared.', false));
   });
 
   test('a call with arguments that are not an object is refused without a '
@@ -857,7 +1022,7 @@ void main() {
     expect(shop.items, ['x']);
     expect(reported, isEmpty);
     final [..., {'content': first as String}, {'content': second as String}] =
-        _messages(connection.requests[1]);
+        messagesOf(connection.requests[1]);
     for (final answer in [first, second]) {
       expect(jsonDecode(answer), {'status': 'refused', 'reason': isNotEmpty});
     }
@@ -1261,14 +1426,8 @@ List<FlutterErrorDetails> _collectReports() {
   return reported;
 }
 
-List<Map<String, Object?>> _messages(Map<String, Object?> request) {
-  final {'messages': messages as List<Object?>} = request;
-
-  return messages.cast();
-}
-
 List<String> _lines(Map<String, Object?> request) => [
-  for (final message in _messages(request))
+  for (final message in messagesOf(request))
     switch (message) {
       {'role': 'tool', 'id': final id, 'content': final content} =>
         '$id $content',

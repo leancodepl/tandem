@@ -12,6 +12,7 @@ import 'package:tandem/src/protocol/ag_ui_event_decoder.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/session/ag_ui_thread.dart';
+import 'package:tandem/src/session/app_notes.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/run_method.dart';
@@ -36,6 +37,9 @@ import 'package:uuid/uuid.dart';
 /// One run is open at a time: a message sent meanwhile shows at once and
 /// goes with the next run, after the answers. A run that breaks off moves
 /// the chat to a new AG-UI thread.
+///
+/// The app tells the agent what happened outside the chat with [note], and
+/// [wake] lets the agent take a turn on it.
 ///
 /// Another caller, such as a coding agent through `TandemBridge`, calls the
 /// same methods with the same checks. Its request shows once the agent's own
@@ -65,9 +69,16 @@ final class TandemSession({
   late final StreamSubscription<Object?> _stateChangesSubscription;
   StreamSubscription<JsonObject>? _runSubscription;
   final _items = <ChatItem>[];
-  final _queuedMessages = <String>[];
+
+  /// The messages for the next run, of the user and the app.
+  final _queued = <UserMessage>[];
+
+  /// Whether the app's queued message waits for the user's next one, because
+  /// the user stopped the run it waited for.
+  var _appMessageHeld = false;
   final _thread = AgUiThread();
   final _waiting = WaitingTurns();
+  final _notes = AppNotes();
 
   /// Null when no run is open, and once the session is disposed.
   Run? _run;
@@ -88,18 +99,49 @@ final class TandemSession({
 
   /// Sends [text], trimmed; does nothing when it is empty or the session is
   /// disposed. The message shows at once, and its run starts when no other
-  /// run is open.
+  /// run is open. A request that waits for the user is cancelled.
   void send(String text) {
     final message = text.trim();
     if (message.isEmpty || _disposed) {
       return;
     }
-    _items.add(UserMessage(message));
+    _post(UserMessage(message));
     _waiting.cancelShownOfOthers().forEach(_showDecision);
-    if (_isBusy) {
-      _queuedMessages.add(message);
-    } else {
-      _start(message);
+    if (!_isBusy) {
+      _start();
+    }
+    notifyListeners();
+  }
+
+  /// Tells the agent [text] about what happened in the app outside the
+  /// chat, such as what the user did on the screen. The agent reads the
+  /// latest notes with every run, without a message in the chat. Does
+  /// nothing once the session is disposed.
+  void note(String text) {
+    if (!_disposed) {
+      _notes.add(.text(text));
+    }
+  }
+
+  /// Lets the agent take a turn without the user, such as on a [note]. It
+  /// gets a short [UserMessage] that says the app sent it, with `fromApp`
+  /// set, so the chat can hide it. The message never decides for the user:
+  /// it waits while a run is open or a request waits, and goes with the next
+  /// run. When the user stops the run it waited for, it waits for the user's
+  /// next message. Does nothing once the session is disposed.
+  void wake() {
+    if (_disposed) {
+      return;
+    }
+    _post(
+      const UserMessage(
+        'The app sent this, not the user. Something happened in the app: '
+        'read app_notes in your context and act on it if it needs you.',
+        fromApp: true,
+      ),
+    );
+    if (status is Idle) {
+      _start();
     }
     notifyListeners();
   }
@@ -256,23 +298,44 @@ final class TandemSession({
     super.dispose();
   }
 
-  void _start([String? text]) {
-    _closeTurn(text);
+  void _post(UserMessage message) {
+    _items.add(message);
+    _queued.add(message);
+  }
+
+  /// Starts a run with the answers of the agent's turn and the queued
+  /// messages.
+  void _start() {
+    _closeTurn();
     _open();
   }
 
-  void _closeTurn(String? text) {
+  void _closeTurn() {
     final turn = _waiting.agent;
     turn.cancelWaiting().forEach(_showDecision);
-    _thread.addAnswers(turn, text);
+    _thread
+      ..addAnswers(turn)
+      ..addUserTexts(_takeQueued());
     _waiting.agent = Turn(const []);
+  }
+
+  /// The texts of the queued messages, which go with the run that starts.
+  List<String> _takeQueued() {
+    final texts = [for (final message in _queued) message.text];
+    _queued.clear();
+    _appMessageHeld = false;
+    return texts;
   }
 
   void _open() {
     try {
       final run = _run = Run(AgentListing.of(_surface));
+      final input = _thread.input(
+        tools: run.listing.tools,
+        context: [...run.listing.context, ?_notes.offer()],
+      );
       _runSubscription = _connection
-          .run(_thread.input(run.listing))
+          .run(input)
           .listen(
             (json) {
               try {
@@ -309,6 +372,7 @@ final class TandemSession({
         run.calls[toolCallId]?.arguments += delta;
       case RunFinished(outcome: .cancelled):
         run.ended = true;
+        _notes.read();
         stop();
         if (_run != run) {
           return;
@@ -327,6 +391,7 @@ final class TandemSession({
         );
       case RunFinished(outcome: .success):
         run.ended = true;
+        _notes.read();
         unawaited(_finish(run));
       case RunError(:final code, :final message):
         run.ended = true;
@@ -497,9 +562,10 @@ final class TandemSession({
       return;
     }
     invalidated.forEach(_showDecision);
-    // A request that no longer shows uncovers the next one.
+    // A request that no longer shows uncovers the next one, or the app's
+    // message that waited for it.
     if (status is Idle) {
-      _showNextRequest();
+      _startNextRun(withAnswers: false);
     } else {
       notifyListeners();
     }
@@ -539,11 +605,9 @@ final class TandemSession({
     run.ended = true;
     _run = null;
     _waiting.agent = Turn(const []);
-    _thread.startOver();
-    for (final message in _queuedMessages) {
-      _thread.addAnswers(_waiting.agent, message);
-    }
-    _queuedMessages.clear();
+    _thread
+      ..startOver()
+      ..addUserTexts(_takeQueued());
     unawaited(_runSubscription?.cancel());
     _report(error, stack);
     _items.add(const ChatNotice(.runFailed));
@@ -568,21 +632,29 @@ final class TandemSession({
     _emit(const ConnectionLost());
   }
 
-  /// Starts the run of the next queued message or, [withAnswers] and unless
-  /// the user stopped, a run with only the answers once every call of the
-  /// agent's turn has one. Otherwise shows the next request.
+  /// Goes on once nothing runs. A run starts when the user wrote meanwhile
+  /// or, [withAnswers] and unless the user stopped, every call of the
+  /// agent's turn has an answer. Otherwise the next request shows, and once
+  /// the session is idle, the app's message starts a run, unless the user
+  /// stopped the run it waited for.
   void _startNextRun({bool withAnswers = true}) {
-    final answersOnly =
-        withAnswers && status is! Stopping && _waiting.agent.answered;
+    final stopped = status is Stopping;
+    final answersDue = withAnswers && !stopped && _waiting.agent.answered;
+    final userWrote = _queued.any((message) => !message.fromApp);
+    _appMessageHeld = _appMessageHeld || (stopped && _queued.isNotEmpty);
     _run = null;
-    if (_queuedMessages.isNotEmpty) {
-      _start(_queuedMessages.removeAt(0));
-      notifyListeners();
-    } else if (answersOnly) {
+    if (answersDue || userWrote) {
       _start();
       notifyListeners();
-    } else {
-      _showNextRequest();
+      return;
+    }
+    _showNextRequest();
+    // The approval callback may have approved the request that showed.
+    final appMessageWaits =
+        _queued.isNotEmpty && !_appMessageHeld && status is Idle;
+    if (appMessageWaits) {
+      _start();
+      notifyListeners();
     }
   }
 

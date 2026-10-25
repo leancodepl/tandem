@@ -30,7 +30,9 @@ The README and both packages' `example/example.md` show only code from `example`
 ## Session rules
 
 - Every run reads the live list: `context` from `.sees`, `tools` from `.calls`. Every tool call checks the list again.
-- One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run.
+- One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run. Several go as one, the texts joined by a blank line.
+- `session.note(text)` keeps the latest five notes of the app, and every run gives them as the last `context` entry, `app_notes`: `{"new": [...], "earlier": [...]}`, new until a run that offered them finished. `context` does not stay in the history of every backend, so every run sends the earlier ones again. A note changes no status and no item, and does not count as a change of `.sees`.
+- `session.wake()` posts a `UserMessage` with `fromApp`, a fixed text that says the app sent it. It never decides for the user: it starts a run only once the session is idle and no request waits, and after a Stop it waits for the user's next message. Any run that starts before takes it along.
 - `status` follows from the open run: `Stopping` once the user stopped it, `Calling` while a listed method runs, else `Thinking`. Without a run it is `AwaitingApproval` with the request that shows, or `Idle`.
 - A call without approval runs at once, and its result goes in the next run.
 - The session tells `onEvent` what happened, as a sealed `TandemEvent`: an `AgentCall` after every call of a listed method that returned, including approved ones, with the name, arguments, result and caller; `RunStopped` on every Stop that stops a run, and when the backend cancels one; `RunFailed`, with the error's `RunErrorCode` when it has one, and `ConnectionLost`, which also add a `ChatNotice`. A Stop adds a notice too or marks the last message `stopped`. Each event comes once the session has settled and notified, so `onEvent` may send a message at once. `TandemScope` passes its own context and the session that sent the event, so an app can read what is provided above it, such as the surface, highlight the changed fields or show a snackbar. Approval requests are not events: they go to `approvals:`. The events need no context, so a `session.events` stream of the same types can come later.
@@ -94,12 +96,12 @@ For ag-ui-adk 0.9.0. Its behaviour differs between versions.
 
 - POST with `Accept: text/event-stream` and `Content-Type: application/json`.
 - Body `{threadId, runId, state: {}, messages, tools, context, forwardedProps: {}}`. `tools` is always there, `[]` when empty. No `resume`, no `protocolVersion`.
-- User message: `{id, role: 'user', content}`. What the user sent since the last run went out goes as one message, the texts joined by a blank line: ag-ui-adk passes the model only the last new user message of a run.
+- User message: `{id, role: 'user', content}`. What the user and `session.wake` sent since the last run went out goes as one message, the texts joined by a blank line: ag-ui-adk passes the model only the last new user message of a run.
 - Assistant text: `{id: <TEXT_MESSAGE_START messageId>, role: 'assistant', content: <visible text>}`.
 - App tool call: `{id: 'asst-<toolCallId>', role: 'assistant', toolCalls: [{id: <toolCallId>, type: 'function', function: {name, arguments}}]}`. `arguments` is the joined `TOOL_CALL_ARGS`, or `'{}'`: ag-ui-adk sends none for a call without arguments. The message id is never the bare call id, or ag-ui-adk would swallow the answer as processed.
 - Tool answer: `{id: 'tool-<toolCallId>', role: 'tool', toolCallId, content: <JSON string>}`, no `error` field.
 - Order inside one run: assistant text, the `asst-` messages of the turn, all tool answers, the user message last.
-- `context`: one `{description: '<name>: <doc comment>', value: <JSON string>}` per `.sees`.
+- `context`: one `{description: '<name>: <doc comment>', value: <JSON string>}` per `.sees`, then the `app_notes` entry once the app wrote a note.
 - A `TOOL_CALL_START` whose name is not in this run's `tools` is a backend tool. It is ignored, never executed, never echoed.
 - A `TOOL_CALL_START` with the id of a call the run already has keeps the first start. With another name it fails the run.
 - A response may replay earlier runs before the requested one. Events before the `RUN_STARTED` of the requested `runId` and `threadId` are skipped. A `RUN_ERROR` before any `RUN_STARTED` still ends the stream, unless it names another thread or run.
@@ -130,7 +132,7 @@ Only a `ToolCallRefused` gives the agent its message. Any other error of a metho
 ## Deferred
 
 - AG-UI interrupts.
-- Telling a message the app sent with `session.send` from one the user wrote. Both are a `UserMessage`, and the session does not record which one it was ([RFC 0001](rfc/0001-core-without-ui-and-state-libraries.md#events-and-status), decision 15).
+- Telling a message the app sent with `session.send` from one the user wrote. Both are a `UserMessage` without `fromApp`, which only `session.wake` sets ([RFC 0001](rfc/0001-core-without-ui-and-state-libraries.md#events-and-status), decision 15).
 - Several state objects per screen, a conversation across screens, and `session.events` ([RFC 0001](rfc/0001-core-without-ui-and-state-libraries.md#later-not-in-pre-v1)).
 - Resync of a broken run through the experimental `/agents/state`.
 - A loop guard, if a real model loops.

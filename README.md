@@ -180,6 +180,8 @@ Tandem has no chat widget, so the chat has your app's texts, language and look. 
 <!-- example/lib/agent_chat.dart -->
 ```dart
   Widget build(BuildContext context) => switch (item) {
+    // A message of session.wake is for the agent, not the user.
+    UserMessage(fromApp: true) => const SizedBox.shrink(),
     UserMessage(:final text) => _Bubble(text, fromUser: true),
     AgentMessage(:final text, :final stopped) => _Bubble(
       text,
@@ -323,6 +325,12 @@ void showOrderMessages(
 `AgentCall` comes after a listed method returned, with its `tool`, `arguments`, `result` and `caller`: `Caller.inAppAgent` or `Caller.codingAgent`. `RunFailed` and `ConnectionLost` also add a `ChatNotice` to `session.items`, and a stop adds one or marks the last message `stopped`.
 
 `RunFailed` has the error's `code` when it has one, a `RunErrorCode` that a pattern such as `RunFailed(code: .unsupportedOutcome)` matches. When the history no longer fits the model, `session.startOver()` sends the next message to a new thread without it. The chat keeps its items and adds a `startedOver` notice. It does nothing while a run is open.
+
+## Notes from the app
+
+`session.note(text)` tells the agent what happened in the app outside the chat, such as what the user did on the screen. Every run gives the agent the latest five notes in one `context` entry, `app_notes`, split into what is new since its last turn and what came earlier. The chat shows nothing.
+
+`session.wake()` lets the agent take a turn on it. It sends a short message that says it comes from the app: a `UserMessage` with `fromApp` set, which the chat above hides. It never decides for the user: while a run is open or a request waits, it waits, and after a Stop it goes with the user's next message.
 
 ## Any state library
 

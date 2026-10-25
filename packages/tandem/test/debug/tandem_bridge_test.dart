@@ -302,6 +302,27 @@ void main() {
     expect(agent.requests, hasLength(1));
   });
 
+  testWidgets("after Stop, a decision on the coding agent's request does not "
+      "send the app's message, which waits for the user's", (tester) async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Hi.')],
+    ]);
+    await tester.pumpWidget(connected(newShop(), agent));
+    sessionOf(tester)
+      ..send('hi')
+      ..wake()
+      ..stop();
+    gate.complete();
+    await tester.pumpAndSettle();
+
+    final answer = TandemBridge.call('share');
+    sessionOf(tester).approve(lastRequest(tester));
+
+    expect(await answer, containsPair('status', 'returned'));
+    expect(agent.requests, hasLength(1));
+  });
+
   testWidgets('a request of the coding agent shows once a run of the in-app '
       'agent breaks', (tester) async {
     final gate = Completer<void>();
