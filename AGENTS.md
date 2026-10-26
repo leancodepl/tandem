@@ -41,7 +41,7 @@ CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` a
 - build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
 - Before writing a helper, look for it in Dart, Flutter or a maintained package. A new dependency of `packages/tandem` lands in every app. The PR says why it is worth that and what it pulls in.
 - Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`). A change to what the model reads, such as a tool description, an instruction or the schema, says in the PR how it was checked on a real model.
-- When the API changes, change `README.md`, `packages/tandem/README.md` (a copy, except the media under "Try it without a key"), `packages/tandem/example/example.md`, the skills in `packages/tandem/skills` and `skills/tandem`, and the code in `example` that they quote. When a session rule changes, change `doc/design.md`. A CHANGELOG entry goes under the next version, never under a released one.
+- When the API changes, change `README.md`, `packages/tandem/README.md` (a copy, except the media under "Try it without a key"), `packages/tandem/example/example.md`, the skills in `packages/tandem/skills` and `skills/tandem`, and the code in `example` that they quote. When a session rule changes, change `doc/design.md`.
 - Never read, print or create a `.env` file. No API keys in the repo.
 - Review notes, research and probe output stay out of the repo.
 - Docs and comments: short sentences, plain words, no em dashes. Say what is true, not how it came to be. In prose the project is Tandem, and `tandem` is the package. A snippet in the docs shows only what is about Tandem.
@@ -51,6 +51,7 @@ CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` a
 - Commits follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/), with the types, scopes and length in [.commitlintrc.yml](.commitlintrc.yml). The scope is there only when the change stays in one package or `example`: `fix(tandem): keep Stop unavailable while an approved method runs`.
 - The subject is lowercase imperative. A body only for a why the diff cannot show, in a few lines.
 - A change to the public API of a package that breaks apps gets `!` and a `BREAKING CHANGE:` footer that says what an app changes. Before 1.0, only such a change raises the minor version. Features and fixes go into a patch release.
+- Only a release PR changes a CHANGELOG. It writes the entries of every change since the last release, from the commits and their PRs.
 - One commit per logical change that builds and passes the tests on its own, such as a refactor and then the fix that needs it. Its test, docs and generated code go in the same commit. Most PRs need one to three.
 - Review fixes go into the commit they fix: `git commit --fixup`, then `git rebase --autosquash`. A PR branch has no merge commits: rebase it onto `main`.
 - The PR title has the form of a commit subject. The description fills the sections of [.github/pull_request_template.md](.github/pull_request_template.md) and follows its hints.
