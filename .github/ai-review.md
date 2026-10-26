@@ -16,7 +16,7 @@ Review the pull request against `AGENTS.md` and `doc/code-quality.md` for how th
 
 ## Also check
 
-- A generator change that makes `.sees` send more of an object widens what the agent sees. The PR and the CHANGELOG say so.
+- A generator change that makes `.sees` send more of an object widens what the agent sees. The PR says so, for the CHANGELOG of the release.
 
 ## Do not flag
 
