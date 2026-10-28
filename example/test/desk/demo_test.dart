@@ -153,23 +153,21 @@ void main() {
     },
   );
 
-  testWidgets('a new delivery date from the picker invalidates the card', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      ScriptedAgent([
-        (_) => const [
-          AgentStep.callTool('set_customer', {'customerId': 'acme'}),
-          AgentStep.callTool('set_quantity', {'sku': _monitor, 'quantity': 2}),
-          AgentStep.callTool('set_delivery', {
-            'address': _address,
-            'date': '2026-10-23',
-          }),
-        ],
-        (_) => const [AgentStep.callTool('place_order')],
-      ]),
-    );
+  testWidgets('a new delivery date from the picker invalidates the card, and '
+      'a second later the agent asks again', (tester) async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('set_customer', {'customerId': 'acme'}),
+        AgentStep.callTool('set_quantity', {'sku': _monitor, 'quantity': 2}),
+        AgentStep.callTool('set_delivery', {
+          'address': _address,
+          'date': '2026-10-23',
+        }),
+      ],
+      (_) => const [AgentStep.callTool('place_order')],
+      (_) => const [AgentStep.callTool('place_order')],
+    ]);
+    await _pumpScreen(tester, agent);
     await _send(tester, 'Order two monitors');
     expect(find.text('Approve'), findsOneWidget);
 
@@ -192,6 +190,16 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Approve'), findsNothing);
+    expect(agent.requests, hasLength(2));
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(_inChat('Delivery: $_address, Oct 24, 2026'), findsOneWidget);
+    expect(find.text('Approve'), findsOneWidget);
+    final [..., invalidated, wake] = _messagesOf(agent.requests[2]);
+    expect(invalidated['content'], contains('"status":"invalidated"'));
+    expect(wake['content'], startsWith('The app sent this'));
   });
 
   testWidgets('the filled order fits an iPad held upright', (tester) async {

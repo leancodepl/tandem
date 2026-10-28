@@ -39,6 +39,11 @@ PROVIEW_27U = {
 FOUND = {"HDMI cable 2 m": [CABLES], "27-inch monitor": [PROVIEW_27U, PROVIEW_27Q]}
 EMPTY = {"customer": None, "lines": [], "delivery": None, "total": "0.00 PLN"}
 REJECTED = '{"status":"rejected_by_user"}'
+INVALIDATED = '{"status":"invalidated"}'
+WAKE = (
+    "The app sent this, not the user. Something happened in the app: read app_notes in your "
+    "context and act on it if it needs you."
+)
 TIER = "You changed the monitors to 15, which unlocks Acme's 15+ tier (17 % off monitors)."
 
 
@@ -156,6 +161,17 @@ def test_the_agent_accepts_a_rejection(asked_to_place: Thread) -> None:
 
     assert run.text == "OK, I won't place it."
     assert run.app_calls == []
+
+
+def test_the_agent_asks_again_once_the_app_wakes_it_after_an_edit(asked_to_place: Thread) -> None:
+    placing = asked_to_place.run(screen(12, "14 349.44 PLN"), "Place it")
+
+    run = asked_to_place.run(
+        screen(15, "16 710.05 PLN"), WAKE, answers={placing.app_calls[0].id: INVALIDATED}
+    )
+
+    assert run.text == TIER
+    assert calls(run) == [("place_order", {})]
 
 
 def test_the_agent_reports_an_order_it_did_not_fill(agent_url: str) -> None:

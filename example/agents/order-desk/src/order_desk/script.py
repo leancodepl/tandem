@@ -51,6 +51,8 @@ class _Turn:
         self.today = today
 
     def decide(self) -> list[str | Call]:
+        if self._just_invalidated("place_order") and "place_order" in self.tools:
+            return self._place()
         last = self.messages[-1]
         answered = {part.name for part in last if isinstance(part, Answer)}
         text = " ".join(part for part in last if isinstance(part, str))
@@ -140,6 +142,17 @@ class _Turn:
         if found is None:
             raise ValueError("The screen has no order.")
         return json.loads(found[1])
+
+    def _just_invalidated(self, tool: str) -> bool:
+        # Some frameworks keep the answers that come with a user message as a message of their own.
+        return any(
+            isinstance(part, Answer)
+            and part.name == tool
+            and isinstance(part.result, dict)
+            and part.result.get("status") == "invalidated"
+            for message in self.messages[-2:]
+            for part in message
+        )
 
     def _answers(self, tool: str) -> list[Any]:
         return [
