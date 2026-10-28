@@ -186,7 +186,7 @@ void main() {
       findsNothing,
     );
     expect(
-      find.text('What the agent saw changed. Ask it again.'),
+      find.text('The screen changed. The agent needs a new approval.'),
       findsOneWidget,
     );
     expect(find.text('Approve'), findsNothing);
