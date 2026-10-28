@@ -1794,7 +1794,7 @@ void main() {
   );
 
   test(
-    'a reopened tool preserves arguments and a changed method fails closed',
+    'repeated tool starts preserve arguments and their first history message',
     () async {
       final reported = _collectReports();
       final connection = _RawFirstRun(
@@ -1803,14 +1803,36 @@ void main() {
             'type': 'TOOL_CALL_START',
             'toolCallId': 'c1',
             'toolCallName': 'add',
+            'parentMessageId': 'm1',
           },
           {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":'},
           {
             'type': 'TOOL_CALL_START',
             'toolCallId': 'c1',
             'toolCallName': 'add',
+            'parentMessageId': 'ignored',
           },
           {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '"x"}'},
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'b1',
+            'toolCallName': 'lookup',
+            'parentMessageId': 'm2',
+          },
+          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'b1', 'delta': '{"q":'},
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'b1',
+            'toolCallName': 'lookup',
+            'parentMessageId': 'ignored',
+          },
+          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'b1', 'delta': '"x"}'},
+          {
+            'type': 'TOOL_CALL_RESULT',
+            'toolCallId': 'b1',
+            'messageId': 'r1',
+            'content': '[]',
+          },
           {'type': 'RUN_FINISHED'},
         ]),
         ScriptedAgent([
@@ -1821,14 +1843,38 @@ void main() {
       await pumpEventQueue();
       expect(shop.items, ['x']);
       expect(reported, isEmpty);
-      expect(_lines(connection.requests[1])[1], 'asst-c1 add {"item":"x"}');
+      expect(_lines(connection.requests[1]).skip(1), [
+        'm1 add {"item":"x"}',
+        'm2 lookup {"q":"x"}',
+        'r1 []',
+        'tool-c1 null',
+      ]);
+    },
+  );
 
-      final conflicting = _RawFirstRun(
+  test('a tool id cannot change name across app and backend calls', () async {
+    final reported = _collectReports();
+    for (final (first, second) in [
+      ('lookup', 'add'),
+      ('add', 'lookup'),
+      ('lookup', 'search'),
+    ]) {
+      final connection = _RawFirstRun(
         Stream.fromIterable([
           {
             'type': 'TOOL_CALL_START',
-            'toolCallId': 'c1',
+            'toolCallId': 'before',
             'toolCallName': 'add',
+          },
+          {
+            'type': 'TOOL_CALL_ARGS',
+            'toolCallId': 'before',
+            'delta': '{"item":"before"}',
+          },
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c1',
+            'toolCallName': first,
           },
           {
             'type': 'TOOL_CALL_ARGS',
@@ -1838,20 +1884,25 @@ void main() {
           {
             'type': 'TOOL_CALL_START',
             'toolCallId': 'c1',
-            'toolCallName': 'transfer_to_agent',
+            'toolCallName': second,
           },
           {'type': 'RUN_FINISHED'},
         ]),
         ScriptedAgent([]),
       );
-      final second = open(conflicting)..send('conflicting');
+      final session = open(connection)..send('conflicting');
       await pumpEventQueue();
-      expect(shop.items, ['x']);
-      expect(conflicting.requests, hasLength(1));
-      expect(_shown(second.items).last, ChatNoticeKind.runFailed);
-      expect(reported.single.exception, isFormatException);
-    },
-  );
+      expect(shop.items, isEmpty, reason: '$first → $second');
+      expect(connection.requests, hasLength(1));
+      expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+      expect(_shown(session.items).last, ChatNoticeKind.runFailed);
+    }
+    expect(reported, hasLength(3));
+    expect(
+      reported.map((report) => report.exception),
+      everyElement(isFormatException),
+    );
+  });
 }
 
 ApprovalRequest _card(TandemSession session) =>

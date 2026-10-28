@@ -73,18 +73,22 @@ final class Run(
   /// has. The first start of a backend call counts.
   void startTool(ToolCallStarted start) {
     final ToolCallStarted(toolCallId: id, name: tool, :parentMessageId) = start;
-    _used = listing.lists(tool) ? null : id;
-    if (calls[id] case final call?) {
-      if (call.tool != tool) {
+    final knownTool = calls[id]?.tool ?? _backendCalls[id]?.tool;
+    if (knownTool != null) {
+      if (knownTool != tool) {
         throw const FormatException('A tool call changed its method.');
       }
-    } else if (offers(tool)) {
+      return;
+    }
+
+    _used = listing.lists(tool) ? null : id;
+    if (offers(tool)) {
       // A call of the view's tool never asks the user, so needs no
       // description.
       final description = listing.lists(tool) ? listing.description(tool) : '';
       calls[id] = ToolCall(id, tool, description, caller: .inAppAgent);
       _addToMessage(id, parentMessageId);
-    } else if (!_backendCalls.containsKey(id)) {
+    } else {
       _backendCalls[id] = _BackendCall(tool);
       _addToMessage(id, parentMessageId);
     }
