@@ -1191,6 +1191,7 @@ void main() {
       (_) => [
         const AgentStep.stateSnapshot({'step': 1}),
         const AgentStep.stateDelta([
+          {'op': 'replace', 'path': '/step', 'value': 2},
           {'op': 'replace', 'path': '/missing', 'value': 2},
         ]),
         const AgentStep.stateDelta([
@@ -1213,6 +1214,78 @@ void main() {
     await pumpEventQueue();
     expect(session.agentState, {'step': 5});
     expect(_shown(session.items).last, ('agent', 'Still here.', false));
+  });
+
+  test('agent state owns a stable immutable snapshot, including nested '
+      'snapshot and patch values', () async {
+    final step = <String, Object?>{'name': 'Read'};
+    final steps = <Object?>[step];
+    final plan = <String, Object?>{'steps': steps};
+    final snapshot = <String, Object?>{'plan': plan};
+    final tags = <Object?>['new'];
+    final detail = <String, Object?>{'tags': tags};
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [
+        AgentStep.stateSnapshot(snapshot),
+        AgentStep.waitFor(gate.future),
+        AgentStep.stateDelta([
+          {'op': 'add', 'path': '/plan/detail', 'value': detail},
+        ]),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+    ]);
+    final session = open(agent)..send('go');
+    await pumpEventQueue();
+    final initial = session.agentState;
+    expect(session.agentState, same(initial));
+    final {'plan': frozenPlan as Map<String, Object?>} = initial;
+    final {'steps': frozenSteps as List<Object?>} = frozenPlan;
+    final [frozenStep as Map<String, Object?>] = frozenSteps;
+    expect(() => initial['other'] = true, throwsUnsupportedError);
+    expect(() => frozenPlan['other'] = true, throwsUnsupportedError);
+    expect(() => frozenStep['name'] = 'UI', throwsUnsupportedError);
+    expect(frozenSteps.clear, throwsUnsupportedError);
+
+    step['name'] = 'Adapter';
+    steps.clear();
+    plan.clear();
+    snapshot.clear();
+    expect(initial, {
+      'plan': {
+        'steps': [
+          {'name': 'Read'},
+        ],
+      },
+    });
+
+    gate.complete();
+    await pumpEventQueue();
+    final patched = session.agentState;
+    expect(patched, isNot(same(initial)));
+    expect(session.agentState, same(patched));
+    final {'plan': patchedPlan as Map<String, Object?>} = patched;
+    final {'detail': frozenDetail as Map<String, Object?>} = patchedPlan;
+    final {'tags': frozenTags as List<Object?>} = frozenDetail;
+    expect(frozenDetail.clear, throwsUnsupportedError);
+    expect(() => frozenTags.add('UI'), throwsUnsupportedError);
+    tags.add('Adapter');
+    detail.clear();
+    expect(frozenTags, ['new']);
+    expect(frozenPlan.containsKey('detail'), isFalse);
+
+    session.send('again');
+    await pumpEventQueue();
+    expect(agent.requests.last['state'], {
+      'plan': {
+        'steps': [
+          {'name': 'Read'},
+        ],
+        'detail': {
+          'tags': ['new'],
+        },
+      },
+    });
   });
 
   test('a snapshot that is not an object is reported and keeps the state, '

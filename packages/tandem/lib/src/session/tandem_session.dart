@@ -130,9 +130,9 @@ final class TandemSession({
   /// replaces it and a `STATE_DELTA` patches it, during a run and after a
   /// Stop too. Every run sends it back. Empty until the backend sends one,
   /// and again in a new thread. A state event that does not fit is
-  /// reported, and the state stays as it was.
-  JsonObject get agentState =>
-      UnmodifiableMapView(_agUiThread.agentState.value);
+  /// reported, and the state stays as it was. The snapshot and its nested
+  /// maps and lists are immutable, and stay the same until a state update.
+  JsonObject get agentState => _agUiThread.agentState.value;
 
   /// Sends [text], trimmed; does nothing when it is empty or the session is
   /// disposed. The message shows at once, and its run starts when no other
