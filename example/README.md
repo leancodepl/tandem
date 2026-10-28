@@ -27,8 +27,10 @@ last edit. **Reset example** starts over with a new
 order and a new session. The scripted agent follows the scenario and does not read what you write.
 
 The order desk is on bloc, in [lib/desk](lib/desk), and [`order_desk_agent.dart`](lib/desk/order_desk_agent.dart)
-holds its script. [`AgentChat`](lib/agent_chat.dart) is the chat to copy into your app and make your
-own. The app enables `TandemBridge`, so your coding agent can fill the order too. The code of the
+holds its script. It uses `ScriptedAgent.repeating` with `AgentRequest` to read the order, offered
+tools, answers and new notes from each run. [`AgentChat`](lib/agent_chat.dart) is the chat to copy
+into your app and make your own. The app enables `TandemBridge`, so your coding agent can fill the
+order too. The code of the
 [README](../README.md) is a smaller order form, in [`order_cubit.dart`](lib/order_cubit.dart) and
 [`order_screen.dart`](lib/order_screen.dart), with its tests.
 

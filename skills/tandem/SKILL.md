@@ -68,6 +68,8 @@ Read each skill's `SKILL.md` from the folder of step 2 and follow it, in this or
 1. `tandem-agent-aware-screen`, for the chosen screen.
 2. `tandem-coding-agent` for A, then `tandem-in-app-agent` for B.
 
+For a fixed demo without a backend, path B's testing step uses `ScriptedAgent`; `ScriptedAgent.repeating` handles every run with the same callback.
+
 Build only what the chosen path needs: path A gets no chat and no backend. Ask the user wherever a skill offers a choice.
 
 **Done when** the last step of the chosen path is done.

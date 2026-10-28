@@ -137,6 +137,8 @@ testWidgets('the agent sets a quantity from the chat', (tester) async {
 
 Every turn of the script is one run: the first calls the tool, the second comes after Tandem sent the answer. `agent.requests` holds every body sent, so a test can check what the agent saw in `context`. `find.text('Send')` stands for the chat's send button. To approve a call, tap the card's Approve. Keep a `ScriptedAgent` in a field or a test variable, never in `build`: a new connection starts a new session.
 
+The finite script ends with `RUN_ERROR` after its last turn. For a fixed demo that handles every run with the same callback, use `ScriptedAgent.repeating(turn)`. Inside the callback, `AgentRequest(raw)` reads named context, offered tools, trailing tool answers matched by call ID, and new app notes. Keep the app's decisions and wording in its script. Use raw `agent.requests` for wire assertions. [Testing API](https://github.com/leancodepl/tandem#testing).
+
 The same script in place of the backend runs the screen in the app, without a backend, such as with `flutter run -t lib/try_it.dart`.
 
 **Done when** the test passes and shows the state the method changed.

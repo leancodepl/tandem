@@ -66,10 +66,18 @@ extension type const ScriptedErrorCode._(String value) implements RunErrorCode {
 /// ag-ui-adk, for tests without a model.
 ///
 /// The n-th run plays `turns[n]`; a run beyond the script ends with a
-/// `RUN_ERROR`. Events arrive one at a time, asynchronously, so
+/// `RUN_ERROR`. [ScriptedAgent.repeating] reuses one turn for every run.
+/// Events arrive one at a time, asynchronously, so
 /// `await pumpEventQueue()` or `pumpAndSettle` plays a whole run.
-final class ScriptedAgent(final List<AgentTurn> turns)
-    implements AgentConnection {
+final class ScriptedAgent._(
+  final List<AgentTurn> turns,
+  final AgentTurn? _repeatedTurn,
+) implements AgentConnection {
+  new(List<AgentTurn> turns) : this._(turns, null);
+
+  /// Plays [turn] on every run, with that run's raw request body.
+  new repeating(AgentTurn turn) : this._(const [], turn);
+
   final _requests = <Map<String, Object?>>[];
   var _textMessages = 0;
   var _toolCalls = 0;
@@ -92,7 +100,8 @@ final class ScriptedAgent(final List<AgentTurn> turns)
       AgUiFields.runId: input[AgUiFields.runId],
     };
     yield {AgUiFields.type: AgUiEventTypes.runStarted, ...ids};
-    if (turn >= turns.length) {
+    final callback = _repeatedTurn ?? turns.elementAtOrNull(turn);
+    if (callback == null) {
       yield {
         AgUiFields.type: AgUiEventTypes.runError,
         AgUiFields.message: 'The script has no more turns.',
@@ -100,7 +109,7 @@ final class ScriptedAgent(final List<AgentTurn> turns)
       };
       return;
     }
-    for (final step in turns[turn](input)) {
+    for (final step in callback(input)) {
       switch (step) {
         case _Say(:final text):
           final messageId = 'msg-${++_textMessages}';
