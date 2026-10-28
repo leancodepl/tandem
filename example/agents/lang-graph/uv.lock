@@ -752,7 +752,6 @@ dependencies = [
     { name = "langchain-ollama" },
     { name = "langgraph" },
     { name = "order-desk" },
-    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -773,7 +772,6 @@ requires-dist = [
     { name = "langchain-ollama", specifier = ">=1.1,<2" },
     { name = "langgraph", specifier = ">=1.2,<2" },
     { name = "order-desk", editable = "../order-desk" },
-    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -789,6 +787,12 @@ dev = [
 name = "order-desk"
 version = "0.1.0"
 source = { editable = "../order-desk" }
+dependencies = [
+    { name = "pydantic-settings" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic-settings" }]
 
 [[package]]
 name = "orjson"

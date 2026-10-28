@@ -12,7 +12,6 @@ dependencies = [
     # For Ollama through LiteLlm. From 1.106, every call with tools fails without `mcp` installed.
     "litellm>=1.105,<1.106",
     "order-desk",
-    "pydantic-settings",
     "python-dotenv",
     "uvicorn",
 ]

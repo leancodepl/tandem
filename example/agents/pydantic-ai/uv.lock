@@ -622,7 +622,6 @@ source = { editable = "." }
 dependencies = [
     { name = "order-desk" },
     { name = "pydantic-ai-slim", extra = ["ag-ui", "google", "openai"] },
-    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -638,7 +637,6 @@ dev = [
 requires-dist = [
     { name = "order-desk", editable = "../order-desk" },
     { name = "pydantic-ai-slim", extras = ["ag-ui", "google", "openai"], specifier = ">=2.61,<3" },
-    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -654,6 +652,12 @@ dev = [
 name = "order-desk"
 version = "0.1.0"
 source = { editable = "../order-desk" }
+dependencies = [
+    { name = "pydantic-settings" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic-settings" }]
 
 [[package]]
 name = "packaging"
