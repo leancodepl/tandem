@@ -33,7 +33,7 @@ You need the VM service address of the app in debug mode, such as `http://127.0.
 
 - The user runs the app: ask for the address. After the change of step 1, the app needs a hot restart or a new start, since hot reload does not run `main()` again.
 - You start the app: run it in the background with `flutter run -d <device> --vmservice-out-file=build/tandem_vm_service.txt`, and wait until that file has the address. The first build takes a minute or two. `flutter devices` lists the devices. When the project has a folder for the host's desktop, such as `macos/` on a Mac, `-d macos` builds fastest; otherwise ask. The file has the WebSocket form of the address, such as `ws://127.0.0.1:50300/Xq3uEv7mT1c=/ws`.
-- When the address stops answering, the app has stopped, such as with the end of your session's turn: start it again.
+- When the address stops answering, the app has stopped, such as with the end of your session's turn: start it again. An app you started as a background command may stop with your turn, so do not tell the user it still runs.
 
 Call the extensions in one of two ways:
 
@@ -91,7 +91,7 @@ A call of a `.callsWithApproval` method waits until the user decides in the app,
 
 - Claude Code waits up to 30 minutes for the Dart MCP server. In an interactive session it moves the call to the background after 2 minutes and tells you the result later.
 - Tandem is tested with Claude Code only. Another coding agent's MCP client may stop sooner, such as after 60 seconds.
-- A shell command stops at the timeout of your shell tool. Run the `curl` in the background, or give the command a longer timeout.
+- A shell command stops at the timeout of your shell tool. Give the `curl` a timeout of 10 minutes, such as `curl -m 590`, and give your shell tool the same. Run it in the background only when your background commands outlive your turn. In a headless run, such as `claude -p`, they stop when your turn ends, and so does an app you started: start the app, fill the screen and wait for the approval in one turn.
 
 The request keeps waiting in the app after your call timed out. Then:
 
