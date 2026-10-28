@@ -67,14 +67,7 @@ final class _EnumHelper(final EnumElement _element) extends _TypeHelper {
     AgentTypes types, {
     required String value,
     required String path,
-  }) => '$value.name';
-
-  @override
-  String writeNullable(
-    AgentTypes types, {
-    required String value,
-    required String path,
-  }) => '$value?.name';
+  }) => 'EnumName($value).name';
 
   String get _values =>
       [for (final constant in _element.constants) '.${constant.name}']
