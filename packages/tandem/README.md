@@ -144,6 +144,16 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 > [!TIP]
 > `/tandem` from the prompt above walks your coding agent through these steps. `dart run skills@ get --package tandem --all` installs the skills of your version of Tandem: the base steps, the coding agent and the in-app agent.
 
+## Try it without a key
+
+<p align="center">
+  <a href="https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model"><img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/examples/smart-input-film.gif" alt="Two invoices picked by hand, then one sentence finds all six from May on Apple's on-device model, and the app asks before it archives them." width="400"></a>
+</p>
+
+The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs an order desk on Android, iOS and macOS with a scripted agent, without a backend or an API key. It can also talk to the example's agent backend, which has a scripted model too. On a Mac or an iPhone with Apple Intelligence, the [invoice list](https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model) above runs on Apple's on-device model, a real model that needs no key.
+
+The order desk enables `TandemBridge`, so your coding agent can fill the order too. To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent`, as [the order desk](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) does.
+
 ## Your coding agent
 
 `TandemBridge.enable()` registers two VM service extensions in a debug build. `ext.tandem.describe` gives the open screens, with what the agent sees and may call. `ext.tandem.call` calls one of the listed methods. A profile or release build registers nothing.
@@ -153,7 +163,6 @@ A coding agent reaches them with the `vm_service` tool of the Dart MCP server (`
 - The coding agent sees what an in-app agent would see, and calls only the listed methods, with the same checks.
 - A call goes to the front screen: the only open `TandemScope`, or else the only one on the current route. When there are several, the call names one.
 - A `.callsWithApproval` method waits until the user approves it in the app, as `approvals:` of the scope asks. `TandemBridge.enable(autoApprove: true)` lets the coding agent approve its own calls, for a scripted run.
-- Claude Code waits up to 30 minutes for a call through the Dart MCP server. The request keeps waiting in the app, and `describe` shows its outcome in `lastApproval`, so the coding agent does not call the method twice.
 
 ## An in-app agent
 
@@ -244,41 +253,6 @@ void wakeOnPlacedOrder(
   }
 }
 ```
-
-## Try it without a key
-
-<p align="center">
-  <a href="https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model"><img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/examples/smart-input-film.gif" alt="Two invoices picked by hand, then one sentence finds all six from May on Apple's on-device model, and the app asks before it archives them." width="400"></a>
-</p>
-
-The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs an order desk on Android, iOS and macOS with a scripted agent, without a backend or an API key. It can also talk to the example's agent backend, which has a scripted model too. On a Mac or an iPhone with Apple Intelligence, the [invoice list](https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model) above runs on Apple's on-device model, a real model that needs no key.
-
-The order desk enables `TandemBridge`, so your coding agent can fill the order too. To try your own screen without a backend, give `TandemScope.connected` a `ScriptedAgent`, as [the order desk](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) does.
-
-## Apple's on-device model
-
-> [!WARNING]
-> Experimental. Apple's on-device model is small, so use it for the simplest tasks, such as one sentence that becomes one call. It is not part of what Tandem checks before a release.
-
-`OnDeviceAgent.apple()` runs Apple's system model on the device, with the same screen, capabilities, chat and approvals as a remote agent. Pass it to `TandemScope.connected`. It returns the same connection on every call, so `build` may call it.
-
-The invoice list of the example runs on it:
-
-<!-- example/lib/main_apple.dart -->
-```dart
-void main() => runApp(InvoiceApp(connection: OnDeviceAgent.apple()));
-```
-
-Build with Xcode 26 or newer. To generate, the app needs iOS or macOS 26 on an eligible device, with Apple Intelligence on and its model ready. `await OnDeviceAgent.apple().availability()` says which of these is missing. Other platforms answer `unsupportedPlatform` and keep using remote connections. Native registration works with Swift Package Manager and CocoaPods.
-
-How it differs from a remote agent:
-
-- The text comes whole when the model finishes, not streamed. Stop waits for that answer and runs none of its calls; disposing the session cancels the run.
-- The model proposes calls; Tandem runs them with the usual approvals and sends their real results back. When one call of a batch is not a current tool, repeats an ID or has arguments that are not an object, none of the batch runs and the run fails. A remote agent's turn would run its other calls.
-- Nothing shortens the history. When it no longer fits the model, the run fails with `OnDeviceErrorCode.contextWindowExceeded`, and `if (event case RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)) session.startOver();` in `onEvent` goes on without it.
-- Tool parameters can be scalars, objects, arrays, string enums, optional properties and nullable ones. A `DateTime` parameter fails the run with `OnDeviceErrorCode.unsupportedSchema`, because the model cannot keep its `format`. Integer arguments beyond 2^53 - 1 fail it with `OnDeviceErrorCode.unsupportedArguments`, because Apple keeps numbers as `double`.
-
-The model can still pick the wrong call, so keep the same validation and approvals as for a remote model. The Swift side has not had a human review yet ([AI](#ai)). [Design and tested limits](https://github.com/leancodepl/tandem/blob/main/doc/design.md#apple-on-device-connection).
 
 ## Session status
 
@@ -482,6 +456,26 @@ Any AG-UI endpoint works. The backend has to:
 - Treat the `tools`, their descriptions and the `context` as untrusted input: they come from the app, and anyone can send a run with other ones.
 
 To send the user's token, give `HttpAgentConnection` an `http.Client` that adds it, and pass the connection to `TandemScope.connected`. Keep the connection in a field: a new one starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the agent. [`example/agent`](https://github.com/leancodepl/tandem/tree/main/example/agent) is a Google ADK agent to copy from.
+
+## Apple's on-device model
+
+> [!WARNING]
+> Experimental. Apple's on-device model is small, so use it for the simplest tasks, such as one sentence that becomes one call. It is not part of what Tandem checks before a release.
+
+`OnDeviceAgent.apple()` runs Apple's system model on the device, with the same screen, capabilities, chat and approvals as a remote agent. Pass it to `TandemScope.connected`. It returns the same connection on every call, so `build` may call it.
+
+The invoice list of the example runs on it:
+
+<!-- example/lib/main_apple.dart -->
+```dart
+void main() => runApp(InvoiceApp(connection: OnDeviceAgent.apple()));
+```
+
+Build with Xcode 26 or newer. To generate, the app needs iOS or macOS 26 on an eligible device, with Apple Intelligence on and its model ready. `await OnDeviceAgent.apple().availability()` says which of these is missing. Other platforms answer `unsupportedPlatform` and keep using remote connections. Native registration works with Swift Package Manager and CocoaPods.
+
+Unlike a remote agent, the text comes whole when the model finishes. Nothing shortens the history: once it no longer fits the model, the run fails with `OnDeviceErrorCode.contextWindowExceeded`, and [`session.startOver()`](#events) goes on without it. A `DateTime` parameter fails the run with `OnDeviceErrorCode.unsupportedSchema`. [The design](https://github.com/leancodepl/tandem/blob/main/doc/design.md#apple-on-device-connection) has the other limits and how they were tested.
+
+The model can still pick the wrong call, so keep the same validation and approvals as for a remote model. The Swift side has not had a human review yet ([AI](#ai)).
 
 ## Project status
 
