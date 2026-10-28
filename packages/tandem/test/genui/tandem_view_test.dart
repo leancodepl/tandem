@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tandem/src/genui/view_widgets.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
@@ -18,10 +19,11 @@ void main() {
     Widget view = const TandemView(),
     TandemApprovals approvals = const .fromState(),
     void Function(TandemEvent event)? onEvent,
+    AgentSurface? surface,
   }) => MaterialApp(
     home: Scaffold(
       body: TandemScope.connected(
-        surface: (context) => shop,
+        surface: (context) => surface ?? shop,
         connection: agent,
         approvals: approvals,
         onEvent: (context, event, session) => onEvent?.call(event),
@@ -106,6 +108,112 @@ void main() {
     shop.add('eggs');
     await tester.pumpAndSettle();
     expect(find.text('eggs'), findsOneWidget);
+  });
+
+  testWidgets('list growth hides an over-budget view and its old actions, '
+      'then recovery waits until the drawing fits the screen again', (
+    tester,
+  ) async {
+    shop = _newShop();
+    final agent = drawingAgent(shoppingListView);
+    await tester.pumpWidget(screen(agent));
+    await draw(tester);
+    final oldPress = tester
+        .widget<ButtonStyleButton>(find.bySubtype<ButtonStyleButton>().first)
+        .onPressed;
+
+    shop.items.addAll(List.filled(200, 'extra'));
+    shop.showTab(1);
+    await tester.pumpAndSettle();
+
+    expect(shop.items, hasLength(202));
+    expect(find.text('bread'), findsNothing);
+    expect(find.bySubtype<ButtonStyleButton>(), findsNothing);
+    expect(
+      find.text('This view is unavailable for the current screen data.'),
+      findsOneWidget,
+    );
+    oldPress?.call();
+    await tester.pumpAndSettle();
+    expect(shop.items, hasLength(202));
+
+    shop.items.clear();
+    shop.showTab(2);
+    await tester.pumpAndSettle();
+    expect(find.bySubtype<ButtonStyleButton>(), findsNothing);
+    expect(
+      find.text('This view is unavailable for the current screen data.'),
+      findsOneWidget,
+    );
+
+    shop.items.addAll(['milk', 'bread']);
+    shop.showTab(3);
+    await tester.pumpAndSettle();
+    expect(find.text('bread'), findsOneWidget);
+    expect(enabled(tester, 'again'), isTrue);
+    await tester.tap(find.text('again').first);
+    await tester.pumpAndSettle();
+    expect(shop.items, ['milk', 'bread', 'milk']);
+  });
+
+  testWidgets('complete snapshots retire the old resolver before updating '
+      'any data and stay bounded as multiple .sees change together', (
+    tester,
+  ) async {
+    final data = ViewData({
+      'outer': [0],
+      'inner': List.filled(200, 0),
+      'nullable': null,
+    });
+    addTearDown(data.close);
+    final messages = drawing([
+      {
+        'id': 'root',
+        'component': 'List',
+        'children': {'componentId': 'row', 'path': '/outer'},
+      },
+      {
+        'id': 'row',
+        'component': 'List',
+        'children': {'componentId': 'cell', 'path': '/inner'},
+      },
+      {'id': 'cell', 'component': 'Text', 'text': 'Cell'},
+    ]);
+    final agent = drawingAgent(messages);
+    await tester.pumpWidget(
+      screen(
+        agent,
+        surface: data,
+        view: const Expanded(child: SingleChildScrollView(child: TandemView())),
+      ),
+    );
+    await draw(tester);
+    final oldRoot = tester.widget<DrawnSurface>(find.byType(DrawnSurface)).root;
+    final oldData = oldRoot.context?.surface.dataModel;
+    var snapshots = 0;
+    final subscription = oldData?.subscribe<Object?>('/', (_) {
+      expect(oldRoot.disposed, isTrue);
+      snapshots++;
+    });
+
+    data.replace({
+      'outer': List.filled(200, 0),
+      'inner': [0],
+      'nullable': null,
+    });
+    await tester.pumpAndSettle();
+    expect(snapshots, 1);
+    expect(oldRoot.disposed, isTrue);
+    expect(find.text('Cell'), findsNWidgets(200));
+    final root = tester.widget<DrawnSurface>(find.byType(DrawnSurface)).root;
+    final current = root.context?.surface.dataModel.get('/');
+    expect(current, {
+      'outer': List.filled(200, 0),
+      'inner': [0],
+      'nullable': null,
+    });
+    subscription?.unsubscribe();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a view that does not fit is refused with what to fix, and the '
@@ -523,6 +631,72 @@ void main() {
     await tester.pumpWidget(screen(ScriptedAgent([])));
 
     expect(find.text('bread'), findsNothing);
+  });
+
+  testWidgets('a newly mounted owner retires mounted view buttons and their '
+      'cached callbacks without a build notification error', (tester) async {
+    shop = _newShop();
+    final thread = TandemThread();
+    final replacement = ValueNotifier(false);
+    addTearDown(replacement.dispose);
+    TandemSession? newSession;
+    final agent = drawingAgent(shoppingListView);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              TandemScope.connected(
+                surface: (context) => shop,
+                connection: agent,
+                thread: thread,
+                approvals: const .fromState(),
+                child: const Column(children: [TandemView(), _Chat()]),
+              ),
+              ValueListenableBuilder(
+                valueListenable: replacement,
+                builder: (context, replace, _) => replace
+                    ? TandemScope.connected(
+                        surface: (context) => shop,
+                        connection: ScriptedAgent([]),
+                        thread: thread,
+                        approvals: const .fromState(),
+                        child: Builder(
+                          builder: (context) {
+                            newSession = TandemSessionScope.of(context);
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await draw(tester);
+    final oldPress = tester
+        .widget<ButtonStyleButton>(find.bySubtype<ButtonStyleButton>().first)
+        .onPressed;
+    final oldView = tester.widget<DrawnSurface>(find.byType(DrawnSurface)).view;
+    replacement.value = true;
+    await tester.pumpAndSettle();
+
+    expect(enabled(tester, 'again'), isFalse);
+    expect(enabled(tester, 'share'), isFalse);
+    oldPress?.call();
+    await tester.pumpAndSettle();
+    expect(shop.items, ['milk', 'bread']);
+    expect(
+      oldView.show({'messages': shoppingListView}).json,
+      containsPair('status', 'refused'),
+    );
+    if (newSession case final active?) {
+      await active.callFor(.view, 'refresh', {});
+    }
+    expect(shop.refreshes, 1);
+    expect(tester.takeException(), isNull);
   });
 }
 

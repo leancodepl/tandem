@@ -14,7 +14,9 @@ import 'package:tandem/src/session/session_scope.dart';
 ///
 /// The widget takes no space before a view arrives and does not scroll.
 /// Wrap it in a scroll view when the content may exceed its space.
-/// A new session starts with an empty view.
+/// If changed screen data would exceed the component limit, it shows an
+/// unavailable message until its paths, methods and component count fit
+/// the screen again. A new session starts with an empty view.
 final class const TandemView({super.key}) extends StatefulWidget {
   @override
   State<TandemView> createState() => _TandemViewState();
@@ -37,9 +39,12 @@ final class _TandemViewState() extends State<TandemView> {
     _view?.dispose();
     final view = _view = DrawnView(session);
     _content = ValueListenableBuilder(
-      valueListenable: view.surface,
-      builder: (context, surface, _) => switch (surface) {
-        final surface? => DrawnSurface(view, surface),
+      valueListenable: view.root,
+      builder: (context, root, _) => switch (root) {
+        final root? => DrawnSurface(view, root),
+        null when view.isUnavailable => const Text(
+          'This view is unavailable for the current screen data.',
+        ),
         null => const SizedBox.shrink(),
       },
     );

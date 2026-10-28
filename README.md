@@ -265,6 +265,7 @@ While `TandemView` is attached, the agent can use `tandem_show_view`. Its descri
 - While the agent draws, the status is `Thinking(drawing: true)`.
 - Use a strong remote model through an AG-UI backend that puts `context` into the model's prompt.
 - `TandemView` provides no default content and takes no space before a view arrives. It does not scroll, so give it a scroll view when needed.
+- A view is limited to 500 components, including repeated list items. If screen data grow beyond that policy ceiling, the view and its actions become unavailable and an English message shows. They return automatically when the screen data and listed methods fit the drawing again.
 
 After the user places an order from the summary, the order desk's `onEvent` wakes the agent to respond:
 

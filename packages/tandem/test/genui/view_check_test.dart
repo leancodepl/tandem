@@ -228,6 +228,132 @@ void main() {
         'counting one for every place a component is drawn. Draw fewer.';
     expect(problems(columns), [tooMany]);
   });
+
+  test('runtime counting matches bounded resolver instances with relative, '
+      'absolute, reused and empty list positions', () {
+    final data = ViewData({
+      'groups': [
+        {
+          'items': [1, 2],
+        },
+        {'items': <Object?>[]},
+        {
+          'items': [3],
+        },
+      ],
+      'shared': [1, 2],
+      'a/b': [4],
+    });
+    addTearDown(data.close);
+    final listing = AgentListing.of(data);
+    final definitions = [
+      {
+        'id': 'root',
+        'component': 'Column',
+        'children': ['groups', 'groups', 'escaped'],
+      },
+      {
+        'id': 'groups',
+        'component': 'List',
+        'children': {'componentId': 'group', 'path': '/groups'},
+      },
+      {
+        'id': 'group',
+        'component': 'Row',
+        'children': ['items', 'shared'],
+      },
+      {
+        'id': 'items',
+        'component': 'List',
+        'children': {'componentId': 'cell', 'path': 'items'},
+      },
+      {
+        'id': 'shared',
+        'component': 'List',
+        'children': {'componentId': 'cell', 'path': '/shared'},
+      },
+      {
+        'id': 'escaped',
+        'component': 'List',
+        'children': {'componentId': 'cell', 'path': '/a~1b'},
+      },
+      {'id': 'cell', 'component': 'Text', 'text': 'Cell'},
+    ];
+    final messages = drawing(definitions);
+    expect(ViewCheck(listing).problems(messages), isEmpty);
+    final processor = tandemProcessor()..processMessages(messages);
+    final surface = processor.model.allSurfaces.single;
+    surface.dataModel.set('/', listing.seen);
+    final resolver = NodeResolver(surface);
+    expect(ViewCheck(listing).expandedComponents(surface), 41);
+    expect(resolver.activeNodeCount, 41);
+    resolver.dispose();
+    processor.dispose();
+
+    for (final size in [0, 1, 499, 500]) {
+      data.replace({'items': List.filled(size, 'item')});
+      final listing = AgentListing.of(data);
+      final messages = drawing([
+        {
+          'id': 'root',
+          'component': 'List',
+          'children': {'componentId': 'item', 'path': '/items'},
+        },
+        {
+          'id': 'item',
+          'component': 'Text',
+          'text': {'path': '.'},
+        },
+      ]);
+      final check = ViewCheck(listing);
+      final processor = tandemProcessor()..processMessages(messages);
+      final surface = processor.model.allSurfaces.single;
+      expect(check.expandedComponents(surface), size + 1);
+      if (size < ViewCheck.maxComponents) {
+        expect(check.problems(messages), isEmpty);
+        surface.dataModel.set('/', listing.seen);
+        final resolver = NodeResolver(surface);
+        expect(resolver.activeNodeCount, size + 1);
+        resolver.dispose();
+      } else {
+        expect(check.problems(messages), [contains('more than 500')]);
+      }
+      processor.dispose();
+    }
+
+    data.replace({'items': List.filled(10, 'item')});
+    final nested = drawing([
+      for (final (index, id) in ['root', 'middle', 'inner'].indexed)
+        {
+          'id': id,
+          'component': 'List',
+          'children': {
+            'componentId': ['middle', 'inner', 'cell'][index],
+            'path': '/items',
+          },
+        },
+      {'id': 'cell', 'component': 'Text', 'text': 'Cell'},
+    ]);
+    final partial = drawing([
+      {
+        'id': 'root',
+        'children': {'componentId': 'middle', 'path': '/items'},
+      },
+    ]).last;
+    final check = ViewCheck(AgentListing.of(data));
+    for (final messages in [
+      nested,
+      [...nested, partial],
+    ]) {
+      final processor = tandemProcessor()..processMessages(messages);
+      expect(
+        check.expandedComponents(processor.model.allSurfaces.single),
+        ViewCheck.maxComponents + 1,
+      );
+      expect(check.problems(messages), [contains('more than 500')]);
+      processor.dispose();
+    }
+  });
 }
 
 final class _AccessibilityAction() implements AgentSurface {

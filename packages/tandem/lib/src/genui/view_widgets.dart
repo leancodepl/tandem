@@ -6,62 +6,14 @@ import 'package:tandem/src/genui/a2ui.dart';
 import 'package:tandem/src/genui/catalog.dart';
 import 'package:tandem/src/genui/drawn_view.dart';
 
-/// [surface] of [view], drawn with the widgets of Tandem's catalog.
+/// The current bounded tree of [view], drawn with Tandem's catalog.
 final class const DrawnSurface(
   final DrawnView view,
-  final SurfaceModel<ComponentApi> surface, {
+  final ComponentNode<ComponentApi> root, {
   super.key,
-}) extends StatefulWidget {
+}) extends StatelessWidget {
   @override
-  State<DrawnSurface> createState() => _DrawnSurfaceState();
-}
-
-final class _DrawnSurfaceState() extends State<DrawnSurface> {
-  late NodeResolver<ComponentApi> _resolver;
-  late void Function() _unsubscribe;
-  ComponentNode<ComponentApi>? _root;
-
-  @override
-  void initState() {
-    super.initState();
-    _resolve();
-  }
-
-  @override
-  void didUpdateWidget(DrawnSurface oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(widget.surface, oldWidget.surface)) {
-      _release();
-      _resolve();
-    }
-  }
-
-  @override
-  void dispose() {
-    _release();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => switch (_root) {
-    final root? => _Node(widget.view, root),
-    null => const SizedBox.shrink(),
-  };
-
-  void _resolve() {
-    _resolver = NodeResolver(widget.surface);
-    _root = _resolver.rootNode.peek();
-    _unsubscribe = _resolver.rootNode.subscribe((root) {
-      if (!identical(root, _root)) {
-        setState(() => _root = root);
-      }
-    });
-  }
-
-  void _release() {
-    _unsubscribe();
-    _resolver.dispose();
-  }
+  Widget build(BuildContext context) => _Node(view, root);
 }
 
 /// One component, drawn again whenever its resolved properties change.

@@ -29,11 +29,14 @@ final class DrawnView(final TandemSession session)
     session.attach(this);
   }
 
-  /// What the agent drew last, or null before it drew.
-  final surface = ValueNotifier<SurfaceModel<ComponentApi>?>(null);
+  /// The current bounded tree, or null before drawing or while unavailable.
+  final root = ValueNotifier<ComponentNode<ComponentApi>?>(null);
+
+  bool get isUnavailable => _processor != null && root.value == null;
 
   late final StreamSubscription<Object?> _changes;
   MessageProcessor<ComponentApi>? _processor;
+  NodeResolver<ComponentApi>? _resolver;
 
   /// The agent list as the buttons read it, since the last change of the
   /// surface.
@@ -65,23 +68,10 @@ final class DrawnView(final TandemSession session)
     if (_disposed) {
       return .refused('No view is on the screen now.');
     }
-    final messages = arguments['messages'];
-    if (messages is! List<Object?>) {
-      return .refused('Pass "messages": a JSON array of A2UI messages.');
+    if (session.isActive) {
+      return _show(arguments);
     }
-    final listing = AgentListing.of(session.surface);
-    final problems = ViewCheck(listing).problems(messages);
-    if (problems.isNotEmpty) {
-      return .refused(problems.join('\n'));
-    }
-    final processor = tandemProcessor()..processMessages(messages);
-    _listing = listing;
-    final drawn = processor.model.allSurfaces.single;
-    _copy(listing, drawn);
-    surface.value = drawn;
-    _processor?.dispose();
-    _processor = processor;
-    return ToolAnswer.shown;
+    return .refused('The session is no longer active.');
   }
 
   /// Whether [button] may be pressed now: its last press has an answer, the
@@ -94,7 +84,7 @@ final class DrawnView(final TandemSession session)
     final method = _actionOf(button)?.method;
     final listing = _listing;
     if (session.isActive &&
-        surface.value != null &&
+        root.value != null &&
         method != null &&
         listing != null &&
         listing.lists(method)) {
@@ -130,28 +120,77 @@ final class DrawnView(final TandemSession session)
     _disposed = true;
     session.detach(this);
     unawaited(_changes.cancel());
-    surface.dispose();
+    _resolver?.dispose();
+    root.dispose();
     _processor?.dispose();
     super.dispose();
   }
 
+  ToolAnswer _show(JsonObject arguments) {
+    final messages = arguments['messages'];
+    if (messages is! List<Object?>) {
+      return .refused('Pass "messages": a JSON array of A2UI messages.');
+    }
+    final listing = AgentListing.of(session.surface);
+    final problems = ViewCheck(listing).problems(messages);
+    if (problems.isNotEmpty) {
+      return .refused(problems.join('\n'));
+    }
+    final processor = tandemProcessor()..processMessages(messages);
+    final drawn = processor.model.allSurfaces.single;
+    _copySnapshot(listing, drawn);
+    _resolver?.dispose();
+    _processor?.dispose();
+    _processor = processor;
+    _listing = listing;
+    _resolve(drawn);
+    return ToolAnswer.shown;
+  }
+
   void _seesChanged() {
+    if (_disposed) return;
+    if (session.isActive) {
+      _updateData();
+    }
+  }
+
+  void _updateData() {
     try {
       final listing = _listing = AgentListing.of(session.surface);
-      if (surface.value case final drawn?) {
-        _copy(listing, drawn);
+      if (_processor?.model.allSurfaces.single case final drawn?) {
+        final check = ViewCheck(listing);
+        final fits = isUnavailable
+            ? check.fitsScreen(drawn)
+            : check.fitsComponentBudget(drawn);
+        _resolver?.dispose();
+        _resolver = null;
+        if (fits) {
+          _copySnapshot(listing, drawn);
+          _resolve(drawn);
+        } else {
+          root.value = null;
+        }
       }
     } catch (err, st) {
       _listing = null;
+      _resolver?.dispose();
+      _resolver = null;
+      root.value = null;
       report(err, st);
     }
     notifyListeners();
   }
 
-  static void _copy(AgentListing listing, SurfaceModel<ComponentApi> drawn) {
-    for (final MapEntry(key: name, :value) in listing.seen.entries) {
-      drawn.dataModel.set('/$name', value);
-    }
+  static void _copySnapshot(
+    AgentListing listing,
+    SurfaceModel<ComponentApi> drawn,
+  ) {
+    drawn.dataModel.set('/', listing.seen);
+  }
+
+  void _resolve(SurfaceModel<ComponentApi> drawn) {
+    _resolver = NodeResolver(drawn);
+    root.value = _resolver?.rootNode.peek();
   }
 
   /// The method that [button] calls, with its arguments read from the data
