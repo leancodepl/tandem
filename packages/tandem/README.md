@@ -154,7 +154,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
 The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs an order desk on Android, iOS and macOS with scripted responses. It needs no backend or API key. The script fills an order, draws a summary and asks before placing it. It follows a fixed scenario rather than interpreting arbitrary messages.
 
-The app enables `TandemBridge`, so your coding agent can fill the order too. Its [scripted agent](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) wraps `ScriptedAgent` to handle repeated runs. The reference backends can also return scripted responses for testing their AG-UI integration without a model.
+The app enables `TandemBridge`, so your coding agent can fill the order too. Its [scripted agent](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) uses `ScriptedAgent.repeating` to handle every run with the same callback. The reference backends can also return scripted responses for testing their AG-UI integration without a model.
 
 ### Apple's on-device model
 
@@ -504,7 +504,11 @@ Use `surface` to read the state object, for example with `context.read<InvoiceSt
   });
 ```
 
-Each function in the script produces one run. `agent.requests` records every run's request body, so tests can inspect the data sent to the agent. Use `AgentListing.of(cubit)` to inspect a class's listed data and methods without opening a session.
+Each function in the script produces one run. A run past the finite script ends with `RUN_ERROR`. For a demo that handles each run with the same callback, use `ScriptedAgent.repeating(turn)`. `agent.requests` records every raw request body.
+
+Inside a callback, `AgentRequest(raw)` reads named JSON context with `context(name)`, offered tools with `offersTool(name)` and new app notes with `newNotes`, oldest first. Missing context returns null. `latestToolResults` contains consecutive tool answers at the end of the request, oldest first, matched to their calls by ID. Each result has a `toolCallId`, a `toolName` that is null when no named call matches, original `content` and JSON-decoded `value`. Reading malformed context JSON or a non-JSON result's `value` throws `FormatException`. Results keep application data as it is, including any `status` key.
+
+Use `AgentListing.of(cubit)` to inspect a class's listed data and methods without opening a session.
 
 `TandemBridge.call` calls a listed method through the coding agent's interface. A screen test can use it without connecting an agent:
 
