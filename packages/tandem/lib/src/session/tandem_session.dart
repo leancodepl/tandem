@@ -111,6 +111,10 @@ final class TandemSession({
   /// `TandemScope`, or one of its own.
   TandemThread get thread => _thread;
 
+  /// Whether this session still owns its thread and accepts calls.
+  @internal
+  bool get isActive => !_disposed;
+
   SessionStatus get status => switch (_run) {
     Run(stopped: true) => const Stopping(),
     Run(:final calling?) => calling,
@@ -280,6 +284,12 @@ final class TandemSession({
     _run = null;
     unawaited(_runSubscription?.cancel());
     unawaited(_stateChangesSubscription.cancel());
+    // A new scope can claim the thread while a sibling widget builds.
+    scheduleMicrotask(() {
+      if (hasListeners) {
+        notifyListeners();
+      }
+    });
   }
 
   /// What the agent works on.
@@ -325,6 +335,9 @@ final class TandemSession({
   }) {
     // The in-app agent's calls come with its runs.
     assert(caller != .inAppAgent, 'callFor is for callers outside a run.');
+    if (_disposed) {
+      return Future.value(.refused('This session no longer owns its thread.'));
+    }
     final listing = AgentListing.of(_surface);
     final argumentsJson = jsonEncode(arguments);
     final needsApproval = listing.needsApproval(tool);
