@@ -1516,7 +1516,6 @@ dependencies = [
     { name = "google-adk" },
     { name = "litellm" },
     { name = "order-desk" },
-    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -1535,7 +1534,6 @@ requires-dist = [
     { name = "google-adk", specifier = ">=2.13,<2.14" },
     { name = "litellm", specifier = ">=1.105,<1.106" },
     { name = "order-desk", editable = "../order-desk" },
-    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -1551,6 +1549,12 @@ dev = [
 name = "order-desk"
 version = "0.1.0"
 source = { editable = "../order-desk" }
+dependencies = [
+    { name = "pydantic-settings" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic-settings" }]
 
 [[package]]
 name = "packaging"

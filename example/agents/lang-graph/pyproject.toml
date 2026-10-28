@@ -13,7 +13,6 @@ dependencies = [
     "langchain-ollama>=1.1,<2",
     "langgraph>=1.2,<2",
     "order-desk",
-    "pydantic-settings",
     "python-dotenv",
     "uvicorn",
 ]
