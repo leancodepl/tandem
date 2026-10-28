@@ -220,6 +220,55 @@ void main() {
 
     expect(listenedOnClose, isFalse);
   });
+
+  testWidgets('a newer scope retires a mounted sibling and safely rebuilds '
+      'its session listeners', (tester) async {
+    final thread = TandemThread();
+    final showNext = ValueNotifier(false);
+    addTearDown(showNext.dispose);
+    late TandemSession first;
+    final activity = <bool>[];
+    await tester.pumpWidget(
+      Column(
+        children: [
+          TandemScope(
+            surface: readShop,
+            approvals: const .fromState(),
+            thread: thread,
+            child: Builder(
+              builder: (context) {
+                first = TandemSessionScope.of(context);
+                activity.add(first.isActive);
+                return const SizedBox();
+              },
+            ),
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: showNext,
+            builder: (context, show, child) => show
+                ? TandemScope(
+                    surface: readShop,
+                    approvals: const .fromState(),
+                    thread: thread,
+                    child: const SizedBox(),
+                  )
+                : const SizedBox(),
+          ),
+        ],
+      ),
+    );
+
+    showNext.value = true;
+    await tester.pump();
+    expect(first.isActive, isFalse);
+    expect(tester.takeException(), isNull);
+    await tester.pump();
+    expect(activity, [true, false]);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
 }
 
 final class const _Owner({required final void Function(Shop shop) onClose})

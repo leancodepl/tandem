@@ -24,12 +24,16 @@ final class OpenScreen._(
 final class OpenScreens._() {
   static final _screens = <OpenScreen>[];
 
-  static List<OpenScreen> get all => UnmodifiableListView(_screens);
+  static List<OpenScreen> get all => UnmodifiableListView([
+    for (final screen in _screens)
+      if (screen.session.isActive) screen,
+  ]);
 
   /// The only open screen, or else the only one on the current route.
-  static OpenScreen? get front => switch (_screens) {
+  static OpenScreen? get front => switch (all) {
     [final only] => only,
-    _ => _screens.where((screen) => screen.isOnCurrentRoute).singleOrNull,
+    final screens =>
+      screens.where((screen) => screen.isOnCurrentRoute).singleOrNull,
   };
 
   static OpenScreen open(
@@ -38,7 +42,7 @@ final class OpenScreens._() {
   ) {
     final name = '${session().surface.runtimeType}';
     var id = name;
-    for (var number = 2; _find(id) != null; number++) {
+    for (var number = 2; _screens.any((screen) => screen.id == id); number++) {
       id = '$name#$number';
     }
     final screen = OpenScreen._(id, context, session);
@@ -56,11 +60,12 @@ final class OpenScreens._() {
 
   /// Why [find] finds no screen for [id], for the coding agent.
   static String whyNotFound(String? id) {
-    if (_screens.isEmpty) {
+    final screens = all;
+    if (screens.isEmpty) {
       return 'No screen with a TandemScope is open.';
     }
-    final ids = _screens.map((screen) => screen.id).join(', ');
-    final current = _screens.where((screen) => screen.isOnCurrentRoute);
+    final ids = screens.map((screen) => screen.id).join(', ');
+    final current = screens.where((screen) => screen.isOnCurrentRoute);
     return switch (id) {
       final id? => 'No open screen has the id $id. Pass screen, one of: $ids.',
       null when current.isEmpty =>
@@ -73,5 +78,5 @@ final class OpenScreens._() {
   }
 
   static OpenScreen? _find(String id) =>
-      _screens.where((screen) => screen.id == id).singleOrNull;
+      all.where((screen) => screen.id == id).singleOrNull;
 }

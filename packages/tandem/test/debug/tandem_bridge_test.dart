@@ -139,6 +139,55 @@ void main() {
     ]);
   });
 
+  testWidgets('the bridge offers only the newest owner of a thread', (
+    tester,
+  ) async {
+    final first = newShop();
+    final next = newShop();
+    final thread = TandemThread();
+    Widget screen(Shop shop, Key key) => TandemScope(
+      key: key,
+      surface: (context) => shop,
+      thread: thread,
+      approvals: const .fromState(),
+      child: const SizedBox(),
+    );
+
+    await tester.pumpWidget(
+      Column(
+        children: [screen(first, const ValueKey('first')), const SizedBox()],
+      ),
+    );
+    await tester.pumpWidget(
+      Column(
+        children: [
+          screen(first, const ValueKey('first')),
+          screen(next, const ValueKey('next')),
+        ],
+      ),
+    );
+    first.listThrows = true;
+    final {'screens': screens as List<Object?>} = TandemBridge.describe();
+    expect(screens, hasLength(1));
+    expect(
+      screens.single,
+      allOf(containsPair('front', true), containsPair('id', 'Shop#2')),
+    );
+    for (final tool in ['add', 'share']) {
+      expect(
+        await TandemBridge.call(
+          tool,
+          arguments: {'item': 'tea'},
+          screen: 'Shop',
+        ),
+        containsPair('status', 'refused'),
+      );
+    }
+    await TandemBridge.call('add', arguments: {'item': 'milk'});
+    expect(first.items, isEmpty);
+    expect(next.items, ['milk']);
+  });
+
   testWidgets('a method not listed now, arguments of the wrong type and an '
       'unknown key are refused, and the method does not run', (tester) async {
     final shop = newShop();

@@ -1280,6 +1280,57 @@ void main() {
     expect(agent.requests, hasLength(2));
   });
 
+  test('a retired session refuses calls before reading the surface or '
+      'asking for approval, while the new owner accepts them', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([]);
+    final first = open(agent, thread: thread);
+    var retirements = 0;
+    first.addListener(() => retirements++);
+    final next = open(agent, thread: thread);
+
+    expect(first.isActive, isFalse);
+    expect(next.isActive, isTrue);
+    await pumpEventQueue();
+    expect(retirements, 1);
+    shop.listThrows = true;
+    for (final caller in [Caller.view, Caller.codingAgent]) {
+      for (final method in ['add', 'share']) {
+        final answer = await first.callFor(caller, method, {'item': 'milk'});
+        expect(answer.json, {
+          'status': 'refused',
+          'reason': 'This session no longer owns its thread.',
+        });
+      }
+    }
+    expect(first.items.whereType<ApprovalRequest>(), isEmpty);
+    shop.listThrows = false;
+    await next.callFor(.view, 'add', {'item': 'milk'});
+    expect(shop.items, ['milk']);
+  });
+
+  test('an approved method started before retirement finishes without '
+      'using the new owner', () async {
+    final gate = Completer<void>();
+    shop
+      ..add('milk')
+      ..serverReply = gate.future;
+    final thread = TandemThread();
+    final agent = ScriptedAgent([]);
+    final first = open(agent, thread: thread);
+    final answer = first.callFor(.view, 'clear', {});
+    first.approve(_card(first));
+    final next = open(agent, thread: thread);
+
+    gate.complete();
+    expect((await answer).status, ToolStatus.returned);
+    await pumpEventQueue();
+    expect(shop.items, isEmpty);
+    expect(next.status, isA<Idle>());
+    expect(events, isEmpty);
+    expect(agent.requests, isEmpty);
+  });
+
   test('a change on the screen before it closed keeps the thread', () async {
     final thread = TandemThread();
     final agent = ScriptedAgent([
