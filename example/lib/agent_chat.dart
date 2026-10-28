@@ -262,7 +262,8 @@ final class const _ApprovalCard(
               .approved => 'Approved',
               .rejected => 'Rejected',
               .invalidated => switch (request.caller) {
-                .inAppAgent => 'What the agent saw changed. Ask it again.',
+                .inAppAgent =>
+                  'The screen changed. The agent needs a new approval.',
                 .codingAgent =>
                   'The screen changed. Ask the coding agent again.',
                 .view => 'The screen changed. Press the button again.',
