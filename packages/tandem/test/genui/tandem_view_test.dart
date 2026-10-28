@@ -443,14 +443,21 @@ void main() {
     await draw(tester);
 
     await tester.tap(find.text('refresh').first);
+    await tester.tap(find.text('refresh').first);
+    expect(shop.refreshes, 1);
+    await tester.tap(find.text('refresh').last);
+    expect(shop.refreshes, 2);
     await tester.pump();
     expect(
       [enabled(tester, 'refresh'), enabled(tester, 'refresh', at: 1)],
-      [isFalse, isTrue],
+      [isFalse, isFalse],
     );
     serverReply.complete();
     await tester.pumpAndSettle();
     expect(enabled(tester, 'refresh'), isTrue);
+    await tester.tap(find.text('refresh').first);
+    await tester.pumpAndSettle();
+    expect(shop.refreshes, 3);
   });
 
   testWidgets('a message sent while the approved method of a press runs goes '
