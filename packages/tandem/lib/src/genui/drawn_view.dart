@@ -88,30 +88,36 @@ final class DrawnView(final TandemSession session)
   /// screen lists its method and, when the method needs approval, the screen
   /// asks and the session is idle.
   bool canPress(ComponentNode<ComponentApi> button) {
-    final method = _actionOf(button)?.method;
-    final listing = _listing;
-    if (method == null ||
-        listing == null ||
-        _pressed.contains(button.key) ||
-        !listing.lists(method)) {
+    if (_disposed || button.disposed || _pressed.contains(button.key)) {
       return false;
     }
-    return !listing.needsApproval(method) ||
-        (session.asksForApproval && session.status is Idle);
+    final method = _actionOf(button)?.method;
+    final listing = _listing;
+    if (session.isActive &&
+        surface.value != null &&
+        method != null &&
+        listing != null &&
+        listing.lists(method)) {
+      return !listing.needsApproval(method) ||
+          (session.asksForApproval && session.status is Idle);
+    }
+    return false;
   }
 
   /// Calls the method of [button] for the view, with the arguments its
   /// action names, and keeps it pressed until the call has an answer.
   Future<void> press(ComponentNode<ComponentApi> button) async {
-    if (_actionOf(button) case (:final method, :final arguments)) {
-      _pressed.add(button.key);
-      notifyListeners();
-      try {
-        await session.callFor(.view, method, arguments);
-      } finally {
-        _pressed.remove(button.key);
-        if (!_disposed) {
-          notifyListeners();
+    if (canPress(button)) {
+      if (_actionOf(button) case (:final method, :final arguments)) {
+        _pressed.add(button.key);
+        notifyListeners();
+        try {
+          await session.callFor(.view, method, arguments);
+        } finally {
+          _pressed.remove(button.key);
+          if (!_disposed) {
+            notifyListeners();
+          }
         }
       }
     }
