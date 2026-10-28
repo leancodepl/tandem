@@ -10,22 +10,26 @@ import 'package:tandem/src/protocol/ag_ui.dart';
 /// surface, the screen's data only by path into what it lists with `.sees`,
 /// and buttons only for the methods it lists now, with their parameters.
 final class ViewCheck(final AgentListing _listing) {
-  /// The most components a view may draw, counting one for every place a
-  /// component is drawn and a list template once.
+  /// The policy ceiling for both the static graph and its expanded instances.
   static const maxComponents = 500;
 
+  static const _tooMany =
+      'The view draws more than $maxComponents components, counting one '
+      'for every place a component is drawn. Draw fewer.';
+
   /// Why [messages] may not draw, written for the agent to fix them, or
-  /// nothing when they may. A message that A2UI itself refuses comes first
-  /// and alone. So does a view of more than [maxComponents], which would
-  /// take too long to check and to draw.
+  /// nothing when they may. Unsupported metadata, an A2UI error or a view
+  /// exceeding [maxComponents] is reported alone before the other checks.
   List<String> problems(List<Object?> messages) {
     if (_accessibilityProblem(messages) case final problem?) {
       return [problem];
     }
-    if (_a2uiProblem(messages) case final problem?) {
-      return [problem];
+    final _View view;
+    try {
+      view = _View.of(messages);
+    } on A2uiError catch (error) {
+      return ['$error'];
     }
-    final view = _View.of(messages);
     if (view.surfaceIds.length != 1 || !view.components.containsKey('root')) {
       const oneSurface =
           'Draw one surface: createSurface, then updateComponents with the '
@@ -33,27 +37,42 @@ final class ViewCheck(final AgentListing _listing) {
       return [oneSurface];
     }
     if (view.drawn(upTo: maxComponents) > maxComponents) {
-      const tooMany =
-          'The view draws more than $maxComponents components, counting one '
-          'for every place a component is drawn. Draw fewer.';
-      return [tooMany];
+      return [_tooMany];
     }
-    return [
-      for (final (:id, :component) in view.buttons)
-        ..._buttonProblems(id, component),
-      ..._PathCheck(DataModel(_listing.seen), view.components).problems(),
-    ];
+    return _screenProblems(view);
   }
 
-  static String? _a2uiProblem(List<Object?> messages) {
-    final processor = tandemProcessor();
+  /// Checks an accepted drawing against current paths, methods and node count.
+  bool fitsScreen(SurfaceModel<ComponentApi> drawn) =>
+      _screenProblems(_View.fromSurface(drawn)).isEmpty;
+
+  /// Checks the next complete screen snapshot before any live resolver sees it.
+  bool fitsComponentBudget(SurfaceModel<ComponentApi> drawn) =>
+      expandedComponents(drawn) <= maxComponents;
+
+  /// Counts resolver instances, stopping at [maxComponents] + 1.
+  int expandedComponents(SurfaceModel<ComponentApi> drawn) {
+    final data = DataModel(_listing.seen);
     try {
-      processor.processMessages(messages);
-      return null;
-    } on A2uiError catch (error) {
-      return '$error';
+      return _View.fromSurface(drawn).expanded(data, upTo: maxComponents);
     } finally {
-      processor.dispose();
+      data.dispose();
+    }
+  }
+
+  List<String> _screenProblems(_View view) {
+    final data = DataModel(_listing.seen);
+    try {
+      if (view.expanded(data, upTo: maxComponents) > maxComponents) {
+        return [_tooMany];
+      }
+      return [
+        for (final (:id, :component) in view.buttons)
+          ..._buttonProblems(id, component),
+        ..._PathCheck(data, view.components).problems(),
+      ];
+    } finally {
+      data.dispose();
     }
   }
 
@@ -113,28 +132,30 @@ final class _View._(
   final Set<Object?> surfaceIds,
 ) {
   factory of(List<Object?> messages) {
-    final components = <String, JsonObject>{};
-    final surfaceIds = <Object?>{};
-    for (final message in messages) {
-      switch (message) {
-        case {A2uiFields.createSurface: {A2uiFields.surfaceId: final id}}:
-          surfaceIds.add(id);
-        case {
-          A2uiFields.updateComponents: {
-            A2uiFields.surfaceId: final id,
-            A2uiFields.components: final List<Object?> drawn,
-          },
-        }:
-          surfaceIds.add(id);
-          for (final component in drawn.whereType<JsonObject>()) {
-            if (component[A2uiFields.id] case final String id) {
-              components[id] = component;
-            }
-          }
-      }
+    final processor = tandemProcessor();
+    try {
+      processor.processMessages(messages);
+      final surfaces = processor.model.allSurfaces;
+      return ._(
+        {
+          for (final surface in surfaces)
+            for (final component in surface.componentsModel.all)
+              component.id: component.toJson(),
+        },
+        {for (final surface in surfaces) surface.id},
+      );
+    } finally {
+      processor.dispose();
     }
-    return ._(components, surfaceIds);
   }
+
+  factory fromSurface(SurfaceModel<ComponentApi> drawn) => ._(
+    {
+      for (final component in drawn.componentsModel.all)
+        component.id: component.toJson(),
+    },
+    {drawn.id},
+  );
 
   /// How many components the view draws from its root, counting one for
   /// every place a component is drawn and a list template once, as far as
@@ -148,6 +169,45 @@ final class _View._(
       ].fold(1, (sum, drawn) => min(sum + drawn, upTo + 1)),
     };
     return count('root');
+  }
+
+  int expanded(DataModel data, {required int upTo}) {
+    var count = 0;
+    void visit(String id, String base) {
+      if (count > upTo) return;
+      count++;
+      final component = components[id];
+      if (component == null) return;
+
+      switch (component[A2uiFields.children]) {
+        case final List<Object?> children:
+          for (final child in children.whereType<String>()) {
+            visit(child, base);
+            if (count > upTo) return;
+          }
+        case {
+          A2uiFields.componentId: final String template,
+          A2uiFields.path: final String path,
+        }:
+          final listPath = DataModel.resolvePath(path, base);
+          try {
+            if (data.get(listPath) case final List<Object?> items) {
+              for (var index = 0; index < items.length; index++) {
+                visit(template, DataModel.resolvePath('$index', listPath));
+                if (count > upTo) return;
+              }
+            }
+          } on A2uiDataError {
+            // The resolver treats an unreadable template path as no children.
+          }
+      }
+      if (component[A2uiFields.child] case final String child) {
+        visit(child, base);
+      }
+    }
+
+    visit('root', '/');
+    return count;
   }
 
   Iterable<({String id, JsonObject component})> get buttons => [

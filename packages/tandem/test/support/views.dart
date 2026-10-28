@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:tandem/tandem.dart';
+
 /// The A2UI messages of a view of [components] on Tandem's catalog.
 List<Map<String, Object?>> drawing(List<Map<String, Object?>> components) => [
   {
@@ -68,3 +72,32 @@ final shoppingListView = drawing([
   {'id': 'line', 'component': 'Divider'},
   ...button('share', {'name': 'share'}),
 ]);
+
+final class ViewData(Map<String, Object?> values) implements AgentSurface {
+  var _values = values;
+  final _changes = StreamController<Object?>.broadcast();
+
+  void replace(Map<String, Object?> values) {
+    _values = values;
+    _changes.add(null);
+  }
+
+  Future<void> close() => _changes.close();
+
+  @override
+  Stream<Object?> get changes => _changes.stream;
+
+  @override
+  List<AgentCapability> get agentCapabilities => [
+    for (final value in _values.values) .sees(value),
+  ];
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [
+      for (final MapEntry(:key, :value) in _values.entries)
+        AgentView.of<Object?>(() => value, key, key, (value) => value),
+    ],
+    calls: [],
+  );
+}

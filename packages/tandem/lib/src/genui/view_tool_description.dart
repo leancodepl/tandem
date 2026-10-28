@@ -25,6 +25,7 @@ A "text" is a string, {"path": <path>}, or {"call": "formatString", "args": {"va
 Your context holds the screen's data: the entry "<name>: ..." is at the path /<name>.
 
 Rules:
+- Draw at most 500 components, counting every repeated list item and nested component.
 - Show the screen's data only by path, never as copied text, so that the view follows the screen.
 - A button calls one of the screen's methods, which are your other tools, with their parameter names; a value can be a path. When the user presses it, the method runs in the app, and app_notes in your context tells you what it answered.
 - Nothing else: no other components, properties, functions or message types.
