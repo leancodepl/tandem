@@ -10,9 +10,9 @@ final class const Idle() extends SessionStatus;
 
 /// A run is open and the agent's answer streams in.
 final class const Thinking({
-  /// The tool of the agent's backend that runs now, such as
-  /// `search_catalog`: from its `TOOL_CALL_START` until its
-  /// `TOOL_CALL_RESULT`, or the agent's next text or call. Null otherwise.
+  /// The latest backend tool call, such as `find_customer`, from its
+  /// `TOOL_CALL_START` until its result or the agent's next text or call.
+  /// Null when no backend tool is tracked.
   final String? backendTool,
 
   /// The agent draws a view for `TandemView`: from the start of its call
