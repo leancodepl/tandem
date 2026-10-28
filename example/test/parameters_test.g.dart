@@ -6,6 +6,105 @@ part of 'parameters_test.dart';
 // AgentGenerator
 // **************************************************************************
 
+mixin _$EnumShelf implements AgentSurface {
+  @override
+  AgentSchema get agentSchema {
+    final surface = this as EnumShelf;
+
+    return AgentSchema(
+      sees: [
+        AgentView.of(
+          () => surface.sample,
+          'sample',
+          "The shelf's current and previous statuses.",
+          (sample) => {
+            'size': EnumName(sample.size).name,
+            'status': EnumName(sample.status).name,
+            'optionalStatus': switch (sample.optionalStatus) {
+              null => null,
+              final optionalStatus => EnumName(optionalStatus).name,
+            },
+            'statuses': [
+              for (final item in sample.statuses) EnumName(item).name,
+            ],
+          },
+        ),
+      ],
+      calls: [
+        AgentTool(
+          surface.echo,
+          name: 'echo',
+          description: 'Stores and returns [sample].',
+          parameters: const {
+            'type': 'object',
+            'properties': {
+              'sample': {
+                'type': 'object',
+                'properties': {
+                  'size': {
+                    'type': 'string',
+                    'enum': ['s', 'm', 'l'],
+                  },
+                  'status': {
+                    'type': 'string',
+                    'enum': ['ready', 'sent'],
+                  },
+                  'optionalStatus': {
+                    'anyOf': [
+                      {
+                        'type': 'string',
+                        'enum': ['ready', 'sent'],
+                      },
+                      {'type': 'null'},
+                    ],
+                  },
+                  'statuses': {
+                    'type': 'array',
+                    'items': {
+                      'type': 'string',
+                      'enum': ['ready', 'sent'],
+                    },
+                  },
+                },
+                'required': ['size', 'status', 'statuses'],
+              },
+            },
+            'required': ['sample'],
+          },
+          invoke: (args) {
+            final result = surface.echo(
+              args.readObject(
+                'sample',
+                (sample) => .new(
+                  size: sample.read('size', oneOf: [.s, .m, .l]),
+                  status: sample.read('status', oneOf: [.ready, .sent]),
+                  optionalStatus: sample.read(
+                    'optionalStatus',
+                    oneOf: [.ready, .sent],
+                  ),
+                  statuses: sample.readList('statuses', oneOf: [.ready, .sent]),
+                ),
+              ),
+            );
+
+            return {
+              'size': EnumName(result.size).name,
+              'status': EnumName(result.status).name,
+              'optionalStatus': switch (result.optionalStatus) {
+                null => null,
+                final optionalStatus => EnumName(optionalStatus).name,
+              },
+              'statuses': [
+                for (final item in result.statuses) EnumName(item).name,
+              ],
+            };
+          },
+        ),
+      ],
+    );
+  }
+}
+
 mixin _$Shelf implements AgentSurface {
   @override
   AgentSchema get agentSchema {
@@ -85,7 +184,7 @@ mixin _$Dispatch implements AgentSurface {
                 'city': lastBooked.address.city,
               },
               'day': lastBooked.day.toIso8601String(),
-              'slot': lastBooked.slot.name,
+              'slot': EnumName(lastBooked.slot).name,
               'note': lastBooked.note,
             },
           },
@@ -188,7 +287,7 @@ mixin _$Dispatch implements AgentSurface {
                 'city': result.address.city,
               },
               'day': result.day.toIso8601String(),
-              'slot': result.slot.name,
+              'slot': EnumName(result.slot).name,
               'note': result.note,
             };
           },
@@ -278,7 +377,7 @@ mixin _$Dispatch implements AgentSurface {
                   'city': result.address.city,
                 },
                 'day': result.day.toIso8601String(),
-                'slot': result.slot.name,
+                'slot': EnumName(result.slot).name,
                 'note': result.note,
               },
             };

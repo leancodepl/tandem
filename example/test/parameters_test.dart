@@ -17,6 +17,38 @@ enum Size() {
   l,
 }
 
+enum StockStatus(final String name) {
+  ready('Ready to stock'),
+  sent('Already sent'),
+}
+
+class const EnumSample({
+  required final Size size,
+  required final StockStatus status,
+  required final StockStatus? optionalStatus,
+  required final List<StockStatus> statuses,
+});
+
+@TandemAgent()
+class EnumShelf() with _$EnumShelf {
+  @override
+  List<AgentCapability> get agentCapabilities => [.sees(sample), .calls(echo)];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  /// The shelf's current and previous statuses.
+  EnumSample sample = const .new(
+    size: .m,
+    status: .ready,
+    optionalStatus: .sent,
+    statuses: [.ready, .sent],
+  );
+
+  /// Stores and returns [sample].
+  EnumSample echo(EnumSample sample) => this.sample = sample;
+}
+
 extension type const Sku(String value);
 
 @TandemAgent()
@@ -89,6 +121,35 @@ const _delivery = {
 };
 
 void main() {
+  test(
+    'enum constant names survive views, results and argument round trips',
+    () async {
+      final shelf = EnumShelf();
+      final listing = AgentListing.of(shelf);
+
+      for (final optional in ['sent', null]) {
+        final expected = {
+          'size': 'm',
+          'status': 'ready',
+          'optionalStatus': optional,
+          'statuses': ['ready', 'sent'],
+        };
+        final result = await listing.call('echo', {'sample': expected});
+        expect(result, expected);
+
+        final visible = switch (AgentListing.of(shelf)
+            .context
+            .single['value']) {
+          final String value => jsonDecode(value),
+          _ => fail('The view did not contain JSON.'),
+        };
+        expect(visible, expected);
+        expect(await listing.call('echo', {'sample': visible}), expected);
+        expect(await listing.call('echo', {'sample': result}), expected);
+      }
+    },
+  );
+
   test('lists, enums, extension types, nullable and defaults', () async {
     final shelf = Shelf();
     final listing = AgentListing.of(shelf);
