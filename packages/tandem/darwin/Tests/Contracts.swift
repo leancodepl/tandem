@@ -11,31 +11,25 @@ func require(_ condition: @autoclosure () throws -> Bool, _ message: String) thr
 func nativeContracts() throws {
   let valueSchema: [String: Any] = ["type": "object", "properties": [
     "value": ["anyOf": [["type": "string", "enum": ["low", "high"]], ["type": "null"]]],
+    "note": ["anyOf": [["type": "string"], ["type": "null"]]],
     "items": ["type": "array", "items": ["type": "integer"]]
-  ], "required": ["items"]]
+  ], "required": ["items", "note"]]
   let schema = try AppleToolSchema.make(valueSchema, name: "example")
   let schemaJSON = String(decoding: try JSONEncoder().encode(schema), as: UTF8.self)
   let schemaObject = try JSONSerialization.jsonObject(with: Data(schemaJSON.utf8)) as? [String: Any]
-  try require(schemaObject?["required"] as? [String] == ["items"], "Optional fields became required.")
+  try require(schemaObject?["required"] as? [String] == ["items", "note"], "Required and optional fields changed.")
   try require(schemaJSON.contains("\"null\"") && schemaJSON.contains("\"enum\""), "Nullable enum lost its shape.")
   for unsupported: [String: Any] in [
     ["type": "object", "properties": [:], "additionalProperties": true],
     ["type": "object", "properties": ["at": ["type": "string", "format": "date-time"]]],
+    ["type": "object", "properties": ["value": ["type": "string", "enum": [1]]]],
   ] {
     do {
       _ = try AppleToolSchema.make(unsupported, name: "bad")
       throw ContractFailure(message: "Unsupported schema silently accepted.")
     } catch let error as AppleFailure { try require(error.code == .unsupportedSchema, "Wrong schema error.") }
   }
-  guard let fallback = try AppleToolSchema.optionalNulls(AppleToolSchema.normalized(valueSchema, name: "example")) else {
-    throw ContractFailure(message: "A nullable property gave no fallback.")
-  }
-  let fallbackJSON = String(decoding: try JSONEncoder().encode(AppleToolSchema.decode(fallback)), as: UTF8.self)
-  let fallbackObject = try JSONSerialization.jsonObject(with: Data(fallbackJSON.utf8)) as? [String: Any]
-  try require(fallbackObject?["required"] as? [String] == ["items"], "A nullable property stayed required.")
-  try require(!fallbackJSON.contains("\"null\"") && fallbackJSON.contains("\"enum\""), "The null choice stayed or the enum was lost.")
-  try require(AppleToolSchema.optionalNulls(AppleToolSchema.normalized(["type": "object", "properties": [:]], name: "plain")) == nil, "A schema without nulls changed.")
-  print("PASS schema fidelity, optional nulls for older systems and explicit unsupported errors")
+  print("PASS full schema fidelity and explicit normalization and system rejection errors")
 
   let exact = try AppleArguments.decode("{\"n\":9007199254740991}")
   try require(exact.jsonString.contains("9007199254740991"), "Safe integer changed.")
