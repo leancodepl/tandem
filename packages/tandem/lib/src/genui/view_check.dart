@@ -19,6 +19,9 @@ final class ViewCheck(final AgentListing _listing) {
   /// and alone. So does a view of more than [maxComponents], which would
   /// take too long to check and to draw.
   List<String> problems(List<Object?> messages) {
+    if (_accessibilityProblem(messages) case final problem?) {
+      return [problem];
+    }
     if (_a2uiProblem(messages) case final problem?) {
       return [problem];
     }
@@ -52,6 +55,24 @@ final class ViewCheck(final AgentListing _listing) {
     } finally {
       processor.dispose();
     }
+  }
+
+  static String? _accessibilityProblem(List<Object?> messages) {
+    for (final message in messages) {
+      if (message case {
+        A2uiFields.updateComponents: {
+          A2uiFields.components: final List<Object?> components,
+        },
+      }) {
+        for (final component in components.whereType<JsonObject>()) {
+          if (component.containsKey(A2uiFields.accessibility)) {
+            return '${component[A2uiFields.id]}: component accessibility metadata '
+                'is not supported. Omit accessibility.';
+          }
+        }
+      }
+    }
+    return null;
   }
 
   List<String> _buttonProblems(String id, JsonObject button) {

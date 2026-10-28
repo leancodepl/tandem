@@ -28,6 +28,7 @@ Rules:
 - Show the screen's data only by path, never as copied text, so that the view follows the screen.
 - A button calls one of the screen's methods, which are your other tools, with their parameter names; a value can be a path. When the user presses it, the method runs in the app, and app_notes in your context tells you what it answered.
 - Nothing else: no other components, properties, functions or message types.
+- Component accessibility metadata is not supported, including an empty accessibility object. Omit it; texts and buttons keep Flutter's default accessibility.
 
 Example. Context: cart: {"items": [{"name": "Milk", "price": "2.50"}], "total": "2.50"}. Tools: remove_item(name), check_out(). The user asks to see the cart and remove items from it, so you call tandem_show_view with these messages:
 [
