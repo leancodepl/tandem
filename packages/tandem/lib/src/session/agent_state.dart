@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:collection';
 
 import 'package:rfc_6902/rfc_6902.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
@@ -19,14 +19,18 @@ final class AgentState() {
   /// Replaces the state with [snapshot]. Throws a [FormatException] when it
   /// is not a JSON object, and keeps the state.
   void replace(Object? snapshot) {
-    if (snapshot is! JsonObject) {
+    try {
+      if (snapshot is! JsonObject) {
+        throw const FormatException(
+          'The agent sent a STATE_SNAPSHOT that is not a JSON object.',
+        );
+      }
+      _value = _freezeObject(snapshot);
+      _waitsForSnapshot = false;
+    } on FormatException {
       _waitsForSnapshot = true;
-      throw const FormatException(
-        'The agent sent a STATE_SNAPSHOT that is not a JSON object.',
-      );
+      rethrow;
     }
-    _value = snapshot;
-    _waitsForSnapshot = false;
   }
 
   /// Applies [delta], JSON Patch operations, unless an earlier delta did
@@ -68,12 +72,34 @@ final class AgentState() {
         'The agent sent a STATE_DELTA that fails: $failure',
       );
     }
-    // The patch copies maps untyped; the app reads what jsonDecode gives.
-    if (jsonDecode(jsonEncode(patched)) case final JsonObject value) {
-      return value;
+    if (patched is Map<Object?, Object?>) {
+      return _freezeObject(patched);
     }
     throw const FormatException(
       'The agent sent a STATE_DELTA that leaves no JSON object.',
     );
   }
 }
+
+JsonObject _freezeObject(Map<Object?, Object?> object) {
+  final owned = <String, Object?>{};
+  for (final MapEntry(:key, :value) in object.entries) {
+    if (key is! String) {
+      throw const FormatException('The agent state contains a non-JSON key.');
+    }
+    owned[key] = _freezeValue(value);
+  }
+  return UnmodifiableMapView(owned);
+}
+
+Object? _freezeValue(Object? value) => switch (value) {
+  null || String() || bool() => value,
+  final num number when number.isFinite => number,
+  final Map<Object?, Object?> object => _freezeObject(object),
+  final List<Object?> values => List<Object?>.unmodifiable(
+    values.map(_freezeValue),
+  ),
+  _ => throw const FormatException(
+    'The agent state contains a non-JSON value.',
+  ),
+};
