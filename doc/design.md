@@ -120,7 +120,7 @@ Checked with ag-ui-adk 0.11.0, ag-ui-langgraph 0.0.47 and Pydantic AI 2.61.0. Th
 - Order inside one run: the agent's messages in the order they started, each followed by the results of its backend calls, then the answers to the app's calls, the user message last.
 - `context`: one `{description: '<name>: <doc comment>', value: <JSON string>}` per `.sees`, then the `app_notes` entry once the app wrote a note.
 - A `TOOL_CALL_START` whose name is not in this run's `tools` is a backend tool. It is never executed, and goes back in the history with its `TOOL_CALL_RESULT`.
-- A `TOOL_CALL_START` with the id of a call the run already has keeps the first start. With another name it fails the run.
+- A `TOOL_CALL_START` with the id of an app or backend call the run already has keeps the first start, its arguments and its message. With another name it fails the run before any app method runs.
 - A response may replay earlier runs before the requested one. Events before the `RUN_STARTED` of the requested `runId` and `threadId` are skipped. A `RUN_ERROR` before any `RUN_STARTED` still ends the stream, unless it names another thread or run.
 - `TEXT_MESSAGE_CHUNK` and `TOOL_CALL_CHUNK` are rewritten while decoding as the content, start and args events they abbreviate, so the session reads one form.
   - As in AG-UI, a new id opens a message or call, and no id continues the open one of the chunk's sender: the subagent its `subagentRunId` names, or the parent.
