@@ -285,6 +285,19 @@ Stop is available while the status is `Thinking`, or `Calling` a method the user
 
 A method listed with `.callsWithApproval` runs only after the user approves it. The approval covers what the agent saw when it asked, so list everything the method depends on with `.sees`. When a value listed with `.sees` changes, Tandem invalidates the request for good and the agent has to ask again. This holds from the start of the agent's run: a change made by the agent's own calls of that turn invalidates the turn's requests before they show. A change outside `.sees`, such as a selected tab, leaves it pending.
 
+The agent hears of an invalidated request with its next run, which starts with the user's next message. For the agent to ask again on its own, call [`session.wake()`](#notes-from-the-app) once the screen is still. The order desk wakes it a second after the last edit, so a few taps on + end in one new request, and only while this holds:
+
+<!-- example/lib/desk/ui/order_desk_screen.dart -->
+```dart
+bool agentMustAskAgain(TandemSession session) => switch ([
+  for (final item in session.items)
+    if (item is ApprovalRequest || item is UserMessage) item,
+].lastOrNull) {
+  ApprovalRequest(status: .invalidated, caller: .inAppAgent) => true,
+  _ => false,
+};
+```
+
 `approvals:` on the scope says how the screen asks:
 
 | `approvals:` | For |

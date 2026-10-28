@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:example/agent_chat.dart';
 import 'package:example/desk/catalog.dart';
 import 'package:example/desk/customers.dart';
@@ -30,7 +32,7 @@ final class const OrderDeskScreen({
       connection: connection,
       approvals: const .fromState(),
       onEvent: wakeOnPlacedOrder,
-      child: const _OrderDeskView(),
+      child: const _AsksAgainAfterEdit(_OrderDeskView()),
     ),
   );
 }
@@ -63,6 +65,68 @@ void wakeOnPlacedOrder(
   if (event case AgentCall(tool: 'place_order', caller: .view)) {
     session.wake();
   }
+}
+
+/// Whether the in-app agent's latest request was invalidated and nobody wrote
+/// since, so the agent has not heard of it yet.
+bool agentMustAskAgain(TandemSession session) => switch ([
+  for (final item in session.items)
+    if (item is ApprovalRequest || item is UserMessage) item,
+].lastOrNull) {
+  ApprovalRequest(status: .invalidated, caller: .inAppAgent) => true,
+  _ => false,
+};
+
+/// Wakes the agent when [agentMustAskAgain] and the order has been still for
+/// a second, so that a few taps on + end in one new request.
+final class const _AsksAgainAfterEdit(final Widget child)
+    extends StatefulWidget {
+  @override
+  State<_AsksAgainAfterEdit> createState() => _AsksAgainAfterEditState();
+}
+
+final class _AsksAgainAfterEditState() extends State<_AsksAgainAfterEdit> {
+  late final StreamSubscription<Object?> _orderChanges;
+  late TandemSession _session;
+  Timer? _settle;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderChanges = context.read<OrderDeskCubit>().stream.listen(
+      (_) => _waitForStillOrder(),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _session = TandemSessionScope.of(context);
+    _waitForStillOrder();
+  }
+
+  @override
+  void dispose() {
+    _settle?.cancel();
+    unawaited(_orderChanges.cancel());
+    super.dispose();
+  }
+
+  void _waitForStillOrder() {
+    _settle?.cancel();
+    if (agentMustAskAgain(_session)) {
+      _settle = Timer(const Duration(seconds: 1), _askAgain);
+    }
+  }
+
+  void _askAgain() {
+    if (agentMustAskAgain(_session)) {
+      _session.wake();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// The form above what the agent draws, which takes at most half the height.

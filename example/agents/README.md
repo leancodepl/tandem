@@ -64,7 +64,7 @@ What the scripted model ([order-desk/src/order_desk/script.py](order-desk/src/or
 | 5 | Tap + on the monitors until 15, type `Looks good, place it` | "You changed the monitors to 15, which unlocks Acme's 15+ tier (17 % off monitors)." `place_order` | Prices update on each tap; an approval card |
 | 6 | Tap Approve | "Order ORD-1042 placed for 23 Oct." | The card shows Approved; the order stays, marked "Placed as ORD-1042", read-only for the user and the agent |
 
-Instead of 6, change the delivery date while the card is open: the card says the screen changed. Type `Place it` for a new card, and tap Reject: the agent answers "OK, I won't place it."
+Instead of 6, change the delivery date while the card is open: the card says the screen changed, and a second later the app wakes the agent, which asks again with the new date. Tap Reject: the agent answers "OK, I won't place it."
 
 ## Checks
 
