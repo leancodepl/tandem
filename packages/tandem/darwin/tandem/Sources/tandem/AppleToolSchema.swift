@@ -9,13 +9,7 @@ enum AppleToolSchema {
     do {
       return try decode(schema)
     } catch {
-      // iOS 26.2 rejects a union with null, which 26.6 takes. An omitted property reads as null too.
-      guard let optional = optionalNulls(schema) else { throw rejected(name, error) }
-      do {
-        return try decode(optional)
-      } catch {
-        throw rejected(name, error)
-      }
+      throw rejected(name, error)
     }
   }
 
@@ -28,43 +22,6 @@ enum AppleToolSchema {
   // The Codable schema supports explicit null unions that the 26 SDK's dynamic builder lacks.
   static func decode(_ schema: [String: Any]) throws -> GenerationSchema {
     try JSONDecoder().decode(GenerationSchema.self, from: JSONSerialization.data(withJSONObject: schema))
-  }
-
-  /// [schema] with every property that may be null made optional, without its
-  /// null choice, or nil when no property may be null.
-  static func optionalNulls(_ schema: [String: Any]) -> [String: Any]? {
-    var changed = false
-    func visit(_ node: [String: Any]) -> [String: Any] {
-      var result = node
-      if var properties = node["properties"] as? [String: [String: Any]] {
-        var required = node["required"] as? [String] ?? []
-        for (key, property) in properties {
-          if let nonNull = withoutNull(property) {
-            properties[key] = visit(nonNull)
-            required.removeAll { $0 == key }
-            changed = true
-          } else {
-            properties[key] = visit(property)
-          }
-        }
-        result["properties"] = properties
-        result["required"] = required
-      }
-      if let items = node["items"] as? [String: Any] { result["items"] = visit(items) }
-      if let choices = node["anyOf"] as? [[String: Any]] { result["anyOf"] = choices.map(visit) }
-      return result
-    }
-    let result = visit(schema)
-    return changed ? result : nil
-  }
-
-  /// The other choice of a union of one type with null; nil for any other schema.
-  private static func withoutNull(_ schema: [String: Any]) -> [String: Any]? {
-    let choices = schema["anyOf"] as? [[String: Any]] ?? []
-    let others = choices.filter { $0["type"] as? String != "null" }
-    guard choices.count == 2, others.count == 1, var only = others.first else { return nil }
-    if only["description"] == nil { only["description"] = schema["description"] }
-    return only
   }
 
   private static func rejected(_ name: String, _ error: Error) -> AppleFailure {
