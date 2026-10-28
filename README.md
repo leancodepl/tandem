@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/logo.png" alt="tandem: a robot and Dash riding a tandem bike" width="400">
+  <img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/logo.svg" alt="tandem: a pixel-art tandem bike, the agent pedalling behind and the user steering in front" width="400">
 </p>
 
 <br>
