@@ -92,6 +92,8 @@ final class ChunkExpander() {
         AgUiFields.type: AgUiEventTypes.toolCallStart,
         AgUiFields.toolCallId: toolCallId,
         AgUiFields.toolCallName: name,
+        if (chunk[AgUiFields.parentMessageId] case final String parentMessageId)
+          AgUiFields.parentMessageId: parentMessageId,
       });
     }
     if (chunk[AgUiFields.delta] case final String delta) {

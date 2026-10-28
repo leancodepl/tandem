@@ -197,6 +197,94 @@ void main() {
     expect(session.status, isA<Idle>());
   });
 
+  test('tool chunks and start/args events produce the same history, with '
+      'their named parent or the fallback message', () async {
+    Future<List<Map<String, Object?>>> history({
+      required bool chunks,
+      required bool parent,
+    }) async {
+      final requests = <Map<String, Object?>>[];
+      final client = MockClient.streaming((request, bodyStream) async {
+        final input = jsonDecode(
+          await bodyStream.bytesToString(),
+        ) as Map<String, Object?>;
+        requests.add(input);
+        final events = <Map<String, Object?>>[
+          {
+            'type': 'RUN_STARTED',
+            'runId': input['runId'],
+            'threadId': input['threadId'],
+          },
+          if (requests.length == 1) ...[
+            {
+              'type': 'TEXT_MESSAGE_CONTENT',
+              'messageId': 'm1',
+              'delta': 'Checking.',
+            },
+            {
+              'type': chunks ? 'TOOL_CALL_CHUNK' : 'TOOL_CALL_START',
+              'toolCallId': 'b1',
+              'toolCallName': 'lookup',
+              if (parent) 'parentMessageId': 'm1',
+              if (chunks) 'delta': '{"q":',
+            },
+            if (chunks)
+              {'type': 'TOOL_CALL_CHUNK', 'delta': '"x"}'}
+            else
+              {
+                'type': 'TOOL_CALL_ARGS',
+                'toolCallId': 'b1',
+                'delta': '{"q":"x"}',
+              },
+            {
+              'type': 'TOOL_CALL_RESULT',
+              'toolCallId': 'b1',
+              'messageId': 'r1',
+              'content': '[]',
+            },
+            {
+              'type': chunks ? 'TOOL_CALL_CHUNK' : 'TOOL_CALL_START',
+              'toolCallId': 'c1',
+              'toolCallName': 'refresh',
+              if (parent) 'parentMessageId': 'm1',
+            },
+          ],
+          {'type': 'RUN_FINISHED'},
+        ];
+        return http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              events.map((event) => 'data: ${jsonEncode(event)}\n\n').join(),
+            ),
+          ),
+          200,
+        );
+      });
+      addTearDown(client.close);
+      open(
+        HttpAgentConnection(
+          Uri.parse('http://localhost/agent'),
+          client: client,
+        ),
+      ).send('go');
+      await pumpEventQueue();
+      expect(requests, hasLength(2));
+      return messagesOf(requests[1]).skip(1).toList();
+    }
+
+    for (final parent in [true, false]) {
+      final expanded = await history(chunks: false, parent: parent);
+      final abbreviated = await history(chunks: true, parent: parent);
+      expect(abbreviated, expanded);
+      expect(abbreviated, hasLength(parent ? 3 : 5));
+      expect(abbreviated.first['id'], 'm1');
+      expect(
+        abbreviated[parent ? 0 : 3],
+        containsPair('toolCalls', contains(containsPair('id', 'c1'))),
+      );
+    }
+  });
+
   test('Thinking names a tool of the backend from its start until its result '
       'or the next text', () async {
     final stream = StreamController<Map<String, Object?>>();
