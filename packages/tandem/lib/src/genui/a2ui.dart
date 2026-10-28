@@ -15,6 +15,7 @@ abstract final class A2uiFields() {
   static const path = 'path';
   static const text = 'text';
   static const variant = 'variant';
+  static const accessibility = 'accessibility';
 
   static const action = 'action';
   static const event = 'event';

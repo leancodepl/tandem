@@ -1,6 +1,9 @@
+import 'package:a2ui_core/a2ui_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/genui/catalog.dart';
 import 'package:tandem/src/genui/view_check.dart';
+import 'package:tandem/tandem.dart';
 
 import '../support/shop.dart';
 import '../support/views.dart';
@@ -57,6 +60,45 @@ void main() {
       for (final view in [messages, <Map<String, Object?>>[]])
         ViewCheck(AgentListing.of(shop)).problems(view),
     ], everyElement([startsWith('Draw one surface')]));
+  });
+
+  test('component accessibility metadata is refused in every supplied '
+      'definition, including an overwritten or unused one', () {
+    for (final metadata in [
+      <String, Object?>{},
+      {'label': 'Other name'},
+    ]) {
+      final messages = [
+        ...drawing([
+          {'id': 'root', 'component': 'Text', 'text': 'Visible'},
+          {'id': 'unused', 'component': 'Divider', 'accessibility': metadata},
+        ]),
+        drawing([
+          {'id': 'unused', 'component': 'Divider'},
+        ]).last,
+      ];
+      expect(ViewCheck(AgentListing.of(shop)).problems(messages), [
+        contains('component accessibility metadata is not supported'),
+      ]);
+      final processor = tandemProcessor();
+      addTearDown(processor.dispose);
+      expect(
+        () => processor.processMessages(messages),
+        throwsA(isA<A2uiError>()),
+      );
+    }
+
+    expect(
+      ViewCheck(AgentListing.of(_AccessibilityAction())).problems(
+        drawing(
+          button('root', {
+            'name': 'describe',
+            'context': {'accessibility': 'A method argument'},
+          }),
+        ),
+      ),
+      isEmpty,
+    );
   });
 
   test('a button calls a method the screen lists now, with its parameters', () {
@@ -186,4 +228,34 @@ void main() {
         'counting one for every place a component is drawn. Draw fewer.';
     expect(problems(columns), [tooMany]);
   });
+}
+
+final class _AccessibilityAction() implements AgentSurface {
+  void describe(String accessibility) {}
+
+  @override
+  List<AgentCapability> get agentCapabilities => [.calls(describe)];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [],
+    calls: [
+      AgentTool(
+        describe,
+        name: 'describe',
+        description: 'Describes accessibility.',
+        parameters: {
+          'type': 'object',
+          'properties': {
+            'accessibility': {'type': 'string'},
+          },
+          'required': ['accessibility'],
+        },
+        invoke: (args) => describe(args.read('accessibility')),
+      ),
+    ],
+  );
 }

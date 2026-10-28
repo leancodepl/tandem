@@ -192,6 +192,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('refused accessibility metadata keeps the last view and its '
+      'default Flutter semantics', (tester) async {
+    shop = _newShop();
+    final semantics = tester.ensureSemantics();
+    final agent = drawingAgent(shoppingListView, [
+      (_) => [
+        show(
+          drawing([
+            {
+              'id': 'root',
+              'component': 'Text',
+              'text': 'Replacement',
+              'accessibility': <String, Object?>{},
+            },
+          ]),
+        ),
+      ],
+      (_) => const [AgentStep.say('I cannot.')],
+    ]);
+    await tester.pumpWidget(screen(agent));
+    await draw(tester);
+    expect(find.bySemanticsLabel(RegExp('bread')), findsWidgets);
+    expect(find.bySemanticsLabel('share'), findsOneWidget);
+
+    sessionOf(tester).send('replace it');
+    await tester.pumpAndSettle();
+
+    expect(_lastAnswer(agent.requests[3]), {
+      'status': 'refused',
+      'reason': contains('component accessibility metadata is not supported'),
+    });
+    expect(find.text('Replacement'), findsNothing);
+    expect(find.bySemanticsLabel(RegExp('bread')), findsWidgets);
+    expect(find.bySemanticsLabel('share'), findsOneWidget);
+    semantics.dispose();
+  });
+
   testWidgets('the status says the agent draws from the start of '
       'tandem_show_view until its next text', (tester) async {
     shop = _newShop();

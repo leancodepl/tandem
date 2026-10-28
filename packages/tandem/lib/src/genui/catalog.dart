@@ -35,6 +35,9 @@ enum CatalogComponent(
     final (:properties, :required) = _definition;
     return {
       'type': 'object',
+      'not': {
+        'required': [A2uiFields.accessibility],
+      },
       'allOf': [
         {r'$ref': '$_common/ComponentCommon'},
         {
