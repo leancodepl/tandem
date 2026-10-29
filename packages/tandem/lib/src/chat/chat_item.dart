@@ -77,10 +77,10 @@ final class const ApprovalRequest({
   /// own text, picked by [tool].
   required final String description,
   required final String _argumentsJson,
+  final ApprovalStatus status = .pending,
 
   /// Who asked, so the card can say what happens next.
-  required final Caller caller,
-  final ApprovalStatus status = .pending,
+  final Caller caller = .inAppAgent,
 }) extends ChatItem {
   /// Decoded again on every read, so changing the map changes nothing the
   /// method gets.
