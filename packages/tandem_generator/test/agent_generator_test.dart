@@ -107,7 +107,14 @@ class OrderCubit() {
   Future<Object> placeOrder() async => Object();
 }
 '''),
-      [contains('the result of placeOrder: Tandem has no form for Object.')],
+      [
+        allOf(
+          contains('the result of placeOrder: Tandem has no form for Object.'),
+          contains(
+            'A JsonConverter<Object, S> in converters: gives it a form.',
+          ),
+        ),
+      ],
     );
   });
 
@@ -252,6 +259,293 @@ class OrderCubit() {
     },
   );
 
+  test('a converter id has the configuration its superclass holds', () async {
+    final result = await _build('''
+enum Style { plain, bold }
+
+class Format {
+  const Format(this.style);
+
+  final Style style;
+}
+
+abstract class PrefixConverter {
+  const PrefixConverter(this.prefix, this.format);
+
+  final String prefix;
+  final Format format;
+}
+
+final class CodeConverter extends PrefixConverter
+    implements JsonConverter<Code, String> {
+  const CodeConverter(super.prefix, super.format);
+}
+
+final class const Code();
+
+@TandemAgent(converters: [CodeConverter('a:', Format(Style.bold))])
+class CodeCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(code)];
+
+  /// The code.
+  Code get code => const Code();
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      contains(
+        'package:app/screen.dart#CodeConverter(prefix: "a:", '
+        'format: package:app/screen.dart#Format(style: Style.bold))',
+      ),
+    );
+  });
+
+  test(
+    'a converter id has the fields its primary constructor declares',
+    () async {
+      final result = await _build('''
+final class const SlugConverter(final String separator)
+    implements JsonConverter<Slug, String>;
+
+final class const Slug();
+
+@TandemAgent(converters: [SlugConverter('-')])
+class SlugCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(slug)];
+
+  /// The slug.
+  Slug get slug => const Slug();
+}
+''');
+
+      expect(result.errors, isEmpty);
+      expect(
+        result.readerWriter.testing.readString(
+          .parse('app|lib/screen.tandem.g.part'),
+        ),
+        contains('package:app/screen.dart#SlugConverter(separator: "-")'),
+      );
+    },
+  );
+
+  test('a converter id has the content of its maps, sets, types, symbols, '
+      'records and functions', () async {
+    final result = await _build('''
+enum Style { plain, bold }
+
+final class const Format(final Style style);
+
+String shout(String text) => text;
+
+final class const CodeConverter(
+  final Map<String, Format?> labels,
+  final Set<Object> tags,
+  final Type kind,
+  final Symbol key,
+  final (int, {Format format}) layout,
+  final String Function(String) transform,
+) implements JsonConverter<Code, String>;
+
+final class const Code();
+
+@TandemAgent(
+  converters: [
+    CodeConverter(
+      {'k': Format(Style.bold), 'n': null},
+      {1, Style.plain},
+      Map<String, int>,
+      #key,
+      (1, format: Format(Style.plain)),
+      shout,
+    ),
+  ],
+)
+class CodeCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(code)];
+
+  /// The code.
+  Code get code => const Code();
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      contains(
+        'package:app/screen.dart#CodeConverter('
+        'labels: {"k": package:app/screen.dart#Format(style: Style.bold), '
+        '"n": null}, '
+        'tags: {1, Style.plain}, '
+        'kind: dart:core#Map<dart:core#String,dart:core#int>, '
+        'key: #key, '
+        'layout: (1, format: package:app/screen.dart#Format(style: '
+        'Style.plain)), '
+        'transform: package:app/screen.dart#shout)',
+      ),
+    );
+  });
+
+  test('a converter id quotes its strings, so that a string does not read as '
+      'another value', () async {
+    final result = await _build('''
+final class const CodeConverter(final List<Object?> parts)
+    implements JsonConverter<Code, String>;
+
+final class const Code();
+
+@TandemAgent(converters: [CodeConverter(['a, b', '1', 'null'])])
+class CodeCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(code)];
+
+  /// The code.
+  Code get code => const Code();
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      contains(
+        'package:app/screen.dart#CodeConverter(parts: ["a, b", "1", "null"])',
+      ),
+    );
+  });
+
+  test('a converter id has the type arguments of the converter and of its '
+      'configuration', () async {
+    final result = await _build('''
+final class const Prefix<T>();
+
+final class const CodeConverter<T>(final Prefix<Object> prefix)
+    implements JsonConverter<Code, String>;
+
+final class const Code();
+
+@TandemAgent(converters: [CodeConverter<int>(Prefix<String>())])
+class CodeCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(code)];
+
+  /// The code.
+  Code get code => const Code();
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      contains(
+        'package:app/screen.dart#CodeConverter<dart:core#int>(prefix: '
+        'package:app/screen.dart#Prefix<dart:core#String>())',
+      ),
+    );
+  });
+
+  test('a converter of a nullable type fails the build', () async {
+    expect(
+      await _buildErrors('''
+final class const LinkConverter() implements JsonConverter<Uri?, String?> {}
+
+@TandemAgent(converters: [LinkConverter()])
+class LinkCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(open)];
+
+  /// Opens the link.
+  void open(Uri? link) {}
+}
+'''),
+      [
+        contains(
+          'converters: LinkConverter converts Uri?, and a converter matches '
+          'the type without ?: Tandem handles null. Make it a '
+          'JsonConverter<Uri, String?>.',
+        ),
+      ],
+    );
+  });
+
+  test('a class with a converter that Tandem could build is an object, and '
+      'one with a private constructor a value', () async {
+    final result = await _build('''
+final class const Grower(final String code);
+final class const Ink._(final String name);
+
+final class const GrowerConverter() implements JsonConverter<Grower, String> {}
+final class const InkConverter() implements JsonConverter<Ink, String> {}
+
+@TandemAgent(converters: [GrowerConverter(), InkConverter()])
+class NurseryCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(assign)];
+
+  /// Assigns [grower] in [ink].
+  void assign(Grower grower, Ink ink) {}
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      allOf(
+        contains(RegExp(r"#GrowerConverter\(\)',\s*object: true")),
+        isNot(contains(RegExp(r"#InkConverter\(\)',\s*object: true"))),
+      ),
+    );
+  });
+
+  test('a class with a converter that Tandem cannot read is a value', () async {
+    final result = await _build('''
+final class const Version(final int major, final int minor);
+
+final class const VersionConverter()
+    implements JsonConverter<Version, String> {}
+
+@TandemAgent(converters: [VersionConverter()])
+class NurseryCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(pin)];
+
+  /// Pins [version].
+  void pin(Version version) {}
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      allOf(contains('#VersionConverter()'), isNot(contains('object:'))),
+    );
+  });
+
+  test('two converters for one type fail the build', () async {
+    expect(
+      await _buildErrors('''
+final class const HexIcon() implements JsonConverter<Icon, String> {}
+final class const NamedIcon() implements JsonConverter<Icon, String> {}
+
+@TandemAgent(converters: [HexIcon(), NamedIcon()])
+class IconCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(setIcon)];
+
+  /// Sets the icon.
+  void setIcon(Icon icon) {}
+}
+'''),
+      [contains('converters: has two for Icon, HexIcon and NamedIcon.')],
+    );
+  });
+
   test('a default with control characters becomes a valid literal', () async {
     final result = await _build(r'''
 @TandemAgent()
@@ -280,14 +574,24 @@ Future<TestBuilderResult> _build(String source) => testBuilder(
   tandemBuilder(BuilderOptions.empty),
   {
     'tandem|lib/tandem.dart': '''
-final class const TandemAgent();
+import 'package:json_annotation/json_annotation.dart';
+
+final class const TandemAgent({
+  final List<JsonConverter<Object?, Object?>> converters = const [],
+});
 
 sealed class AgentCapability {
   factory AgentCapability.sees(Object? value) => throw UnimplementedError();
   factory AgentCapability.calls(Function method) => throw UnimplementedError();
 }
 ''',
-    'app|lib/screen.dart': "import 'package:tandem/tandem.dart';\n\n$source",
+    'json_annotation|lib/json_annotation.dart': '''
+abstract interface class JsonConverter<T, S> {}
+''',
+    'app|lib/screen.dart':
+        "import 'package:json_annotation/json_annotation.dart';\n"
+        "import 'package:tandem/tandem.dart';\n\n"
+        'class Icon();\n\n$source',
   },
   rootPackage: 'app',
   generateFor: {'app|lib/screen.dart'},

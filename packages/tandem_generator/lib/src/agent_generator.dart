@@ -4,6 +4,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
+import 'package:tandem_generator/src/agent_converters.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
 import 'package:tandem_generator/src/agent_mixin.dart';
 import 'package:tandem_generator/src/tokens.dart';
@@ -25,7 +26,11 @@ class const AgentGenerator() extends Generator {
   Future<String?> generate(LibraryReader library, BuildStep buildStep) async {
     final mixins = [
       for (final annotated in library.annotatedWith(_tandemAgent))
-        await _generateMixin(annotated.element, buildStep),
+        await _generateMixin(
+          annotated.element,
+          annotated.annotation,
+          buildStep,
+        ),
     ];
 
     if (mixins.isEmpty) return null;
@@ -35,6 +40,7 @@ class const AgentGenerator() extends Generator {
 
   static Future<String> _generateMixin(
     Element type,
+    ConstantReader annotation,
     BuildStep buildStep,
   ) async {
     if (type is! ClassElement) {
@@ -43,14 +49,24 @@ class const AgentGenerator() extends Generator {
 
     final reader = _CapabilityReader(type);
     final capabilities = await reader.read(buildStep);
+    final converters = await AgentConverters.read(
+      annotation,
+      type,
+      listName: '_\$${type.displayName}Converters',
+      buildStep: buildStep,
+    );
 
     final mixin = AgentMixin(
       className: type.displayName,
       views: capabilities.views,
       methods: capabilities.methods,
+      converters: converters,
     );
 
-    return mixin.generate();
+    return [
+      mixin.generate(),
+      converters.declaration,
+    ].join(Tokens.doubleNewLine);
   }
 }
 

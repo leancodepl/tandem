@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/painting.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'package:tandem/src/converters.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 
@@ -9,8 +12,8 @@ import 'package:tandem/src/protocol/ag_ui.dart';
 /// a surface or a catalog uses; an app does not write them.
 ///
 /// Two descriptions of one Dart type, from separate builds, have the same
-/// [id]. Their [fingerprint] differs when they read or write it
-/// differently.
+/// [id]. Their [fingerprint] differs when they read or write it differently,
+/// such as with another `JsonConverter`.
 sealed class const AgentType<T>() {
   static const AgentType<String> string = _Scalar('string', 'String');
   static const AgentType<int> integer = _Scalar('integer', 'int');
@@ -19,6 +22,94 @@ sealed class const AgentType<T>() {
   static const AgentType<bool> boolean = _Scalar('boolean', 'bool');
   static const AgentType<DateTime> dateTime = _DateTime();
   static const AgentType<Uri> uri = _Uri();
+
+  static const AgentType<Color> color = _Converted(
+    'dart:ui#Color',
+    ColorConverter(),
+    string,
+    converterId: '$_converters#ColorConverter()',
+    description:
+        'A color as #RRGGBB, or #RRGGBBAA with its opacity, as in CSS.',
+  );
+
+  static const AgentType<EdgeInsetsGeometry> edgeInsetsGeometry = _Converted(
+    '$_edgeInsets#EdgeInsetsGeometry',
+    EdgeInsetsGeometryConverter(),
+    string,
+    converterId: '$_converters#EdgeInsetsGeometryConverter()',
+    description:
+        'Insets in logical pixels: one number for every side, as "16"; two '
+        'for top and bottom, then left and right, as "8 16"; or sides by '
+        'name, as "top 8 start 16 end 16". start and end follow the reading '
+        'direction, left and right do not, and one value names only one '
+        'kind.',
+  );
+
+  static const AgentType<EdgeInsets> edgeInsets = _Converted(
+    '$_edgeInsets#EdgeInsets',
+    EdgeInsetsConverter(),
+    string,
+    converterId: '$_converters#EdgeInsetsConverter()',
+    description:
+        'Insets in logical pixels: one number for every side, as "16"; two '
+        'for top and bottom, then left and right, as "8 16"; or sides by '
+        'name, as "top 8 left 16". Only left and right, which do not follow '
+        'the reading direction.',
+  );
+
+  static const AgentType<EdgeInsetsDirectional> edgeInsetsDirectional =
+      _Converted(
+        '$_edgeInsets#EdgeInsetsDirectional',
+        EdgeInsetsDirectionalConverter(),
+        string,
+        converterId: '$_converters#EdgeInsetsDirectionalConverter()',
+        description:
+            'Insets in logical pixels that follow the reading direction: one '
+            'number for every side, as "16"; two for top and bottom, then '
+            'start and end, as "8 16"; or sides by name, as "top 8 start 16".',
+      );
+
+  static const AgentType<AlignmentGeometry> alignmentGeometry = _Converted(
+    '$_alignment#AlignmentGeometry',
+    AlignmentGeometryConverter(),
+    string,
+    converterId: '$_converters#AlignmentGeometryConverter()',
+    description:
+        'A place in a box by name: topLeft, topCenter, topRight, centerLeft, '
+        'center, centerRight, bottomLeft, bottomCenter or bottomRight; or, to '
+        'follow the reading direction, topStart, topEnd, centerStart, '
+        'centerEnd, bottomStart or bottomEnd.',
+  );
+
+  static const AgentType<Alignment> alignment = _Converted(
+    '$_alignment#Alignment',
+    AlignmentConverter(),
+    string,
+    converterId: '$_converters#AlignmentConverter()',
+    description:
+        'A place in a box by name: topLeft, topCenter, topRight, centerLeft, '
+        'center, centerRight, bottomLeft, bottomCenter or bottomRight.',
+  );
+
+  static const AgentType<AlignmentDirectional> alignmentDirectional =
+      _Converted(
+        '$_alignment#AlignmentDirectional',
+        AlignmentDirectionalConverter(),
+        string,
+        converterId: '$_converters#AlignmentDirectionalConverter()',
+        description:
+            'A place in a box that follows the reading direction, by name: '
+            'topStart, topCenter, topEnd, centerStart, center, centerEnd, '
+            'bottomStart, bottomCenter or bottomEnd.',
+      );
+
+  static const _converters = 'package:tandem/src/converters.dart';
+  static const _edgeInsets = 'package:flutter/src/painting/edge_insets.dart';
+  static const _alignment = 'package:flutter/src/painting/alignment.dart';
+
+  /// Gives a description the type [T] when Dart cannot infer it, as for the
+  /// representation of a converter.
+  static AgentType<T> typed<T>(AgentType<T> type) => type;
 
   /// An enum, read and written by the names of [values].
   static AgentType<T> enumeration<T extends Enum>(
@@ -59,6 +150,26 @@ sealed class const AgentType<T>() {
     required T Function(AgentFieldValues values) build,
   }) =>
       _Object(id, fields(AgentFields<T>._()), build, description: description);
+
+  /// A type that [converter], a `JsonConverter<T, S>`, writes as [json].
+  /// [converter] names the converter and its configuration. With [object],
+  /// the type is a class that the agent points at by path, and writes as
+  /// [json] only where it writes the object.
+  static AgentType<T> converted<T, S>(
+    Object converter,
+    AgentType<S> json, {
+    required String id,
+    required String converterId,
+    String? description,
+    bool object = false,
+  }) => _Converted(
+    id,
+    converter as JsonConverter<T, S>,
+    json,
+    converterId: converterId,
+    description: description,
+    isObject: object,
+  );
 
   /// Names the Dart type across builds: the library's URI, `#` and the
   /// type's name, with the type arguments of a generic class.
@@ -117,6 +228,16 @@ sealed class const AgentType<T>() {
     _ => throw reading.refuse(
       'write a path to a $name in the data, as {"path": "/..."}, not an object',
     ),
+  };
+
+  /// The JSON Schema of a path to a value of this type.
+  JsonObject get _pathSchema => {
+    'type': 'object',
+    'description': 'The path of a $name in the data you see, such as /name/0.',
+    'properties': {
+      'path': {'type': 'string'},
+    },
+    'required': ['path'],
   };
 
   /// The Dart name in [id], with the names of its type arguments and
@@ -650,6 +771,46 @@ final class _Object<T>(
     }
     return _build(AgentFieldValues._(values));
   }
+}
+
+final class const _Converted<T, S>(
+  @override final String id,
+  final JsonConverter<T, S> _converter,
+  final AgentType<S> _json, {
+  required final String converterId,
+  @override final String? description,
+  @override final bool isObject = false,
+}) extends AgentType<T> {
+  @override
+  String get name => _declaredName;
+
+  @override
+  String get fingerprint => '$id via $converterId as ${_json.fingerprint}';
+
+  @override
+  Object? write(T value) => _json.write(_converter.toJson(value));
+
+  // A converter refuses a value with a FormatException; anything else it
+  // throws is a bug of the app, not the agent's mistake.
+  @override
+  T read(Object? json, AgentReading reading) {
+    if (isObject && reading.objects != .fields) return _resolve(json, reading);
+    final value = _json.read(json, reading.constructing);
+    try {
+      return _converter.fromJson(value);
+    } on FormatException catch (error) {
+      throw reading.refuse(error.message);
+    }
+  }
+
+  @override
+  JsonObject schema(AgentObjects objects) => switch (objects) {
+    .paths || .refused when isObject => _pathSchema,
+    _ => {..._json.schema(.fields), 'description': ?description},
+  };
+
+  @override
+  Iterable<AgentType<Object?>> get parts => _json.parts;
 }
 
 extension AgentTypeDetails on AgentType<Object?> {

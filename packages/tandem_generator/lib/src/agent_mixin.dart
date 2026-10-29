@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:tandem_generator/src/agent_converters.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
 import 'package:tandem_generator/src/agent_type_error.dart';
 import 'package:tandem_generator/src/agent_types.dart';
@@ -15,6 +16,7 @@ final class const AgentMixin({
   required final String className,
   required final List<GetterElement> views,
   required final List<AgentMethod> methods,
+  required final AgentConverters converters,
 }) {
   String generate() {
     final viewCode = _generateList(views.map(_generateView));
@@ -35,9 +37,12 @@ $surfaceDeclaration
 }''';
   }
 
-  static String _generateView(GetterElement getter) {
+  String _generateView(GetterElement getter) {
     final name = getter.displayName;
-    final type = AgentTypes(getter).describe(getter.returnType, path: name);
+    final type = AgentTypes(
+      getter,
+      converters: converters,
+    ).describe(getter.returnType, path: name);
     final agentName = DartLiteral.json(_snakeCase(name));
     final description = DartLiteral.json(_documentation(getter));
 
@@ -49,10 +54,10 @@ AgentView.of(() => surface.$name).as(
 ),''';
   }
 
-  static String _generateTool(AgentMethod item) {
+  String _generateTool(AgentMethod item) {
     final (:method, :parameterTypes) = item;
     final name = method.displayName;
-    final types = AgentTypes(method);
+    final types = AgentTypes(method, converters: converters);
     final parameters = method.formalParameters;
     final parameterCode = [
       for (final (index, parameter) in parameters.indexed)
