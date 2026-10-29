@@ -30,15 +30,12 @@
   <rect class="box" x="24" y="30" width="220" height="260" rx="10"/>
   <text class="name" x="134" y="124">Flutter app</text>
   <text class="note" x="134" y="148">with tandem</text>
-  <rect class="box" x="54" y="170" width="160" height="44" rx="8"/>
-  <text class="wire" x="134" y="197">TandemView</text>
 
   <text class="wire" x="400" y="56">message, what the agent sees and may call</text>
   <line class="line" x1="252" y1="72" x2="548" y2="72" marker-end="url(#head)"/>
   <text class="protocol" x="400" y="96">AG-UI</text>
   <line class="line" x1="548" y1="110" x2="252" y2="110" marker-end="url(#head)"/>
-  <text class="wire" x="400" y="136">replies and calls to your methods,</text>
-  <text class="wire" x="400" y="156">and views in <tspan class="protocol">A2UI</tspan> for TandemView</text>
+  <text class="wire" x="400" y="136">replies and calls to your methods</text>
 
   <rect class="box" x="556" y="30" width="220" height="120" rx="10"/>
   <text class="name" x="666" y="72">Agent backend</text>

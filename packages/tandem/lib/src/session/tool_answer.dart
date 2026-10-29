@@ -15,9 +15,6 @@ extension type const ToolStatus._(String value) implements String {
 
   static const returned = ToolStatus._('returned');
 
-  /// The view the agent sent is on the screen.
-  static const shown = ToolStatus._('shown');
-
   /// The method did not run, or threw a `ToolCallRefused`.
   static const refused = ToolStatus._('refused');
 
@@ -39,7 +36,7 @@ extension type const ToolStatus._(String value) implements String {
 }
 
 /// The answer to a call of a listed method: what the method returned, or why
-/// it did not return. A call of the view's tool gets [shown] or `refused`.
+/// it did not return.
 sealed class const ToolAnswer() {
   /// Throws when JSON cannot encode [result].
   factory returned(Object? result) = _Returned;
@@ -53,16 +50,6 @@ sealed class const ToolAnswer() {
   /// The call needs approval, but the screen has `approvals: .none()`.
   static const noApprovals = _Status(.refused, {
     'reason': 'The user cannot approve calls on this screen.',
-  });
-
-  static const shown = _Status(.shown);
-
-  /// The last of the views refused in a row that the session takes, after
-  /// which no run offers `tandem_show_view` until the next message.
-  static const drawingStopped = _Status(.refused, {
-    'reason':
-        'Your views were refused several times in a row, so tandem_show_view is off '
-        'until the user writes again. Answer the user in text.',
   });
 
   static const failed = _Status(.failed, {

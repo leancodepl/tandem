@@ -5,15 +5,9 @@ import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
-import 'package:tandem/src/session/view_tool.dart';
 
 /// What the session keeps of its open run.
-final class Run(
-  final AgentListing listing, {
-
-  /// The view the run offers the agent to draw on.
-  final ViewTool? view,
-}) {
+final class Run(final AgentListing listing) {
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
 
@@ -52,21 +46,11 @@ final class Run(
     return (shown: shown, grown: grown);
   }
 
-  /// The tools of the run: the listed methods, then the view's tool.
-  List<JsonObject> get tools => [
-    ...listing.tools,
-    if (view case final view?) view.definition,
-  ];
+  /// The tools of the run: the listed methods.
+  List<JsonObject> get tools => listing.tools;
 
   /// The tool of the backend that runs now, such as a search.
   String? get backendTool => _backendCalls[_used]?.tool;
-
-  /// Whether the agent draws a view now.
-  bool get drawing => calls[_used]?.tool == ViewTool.name;
-
-  /// Whether a call of [tool] runs in the app, not on the backend.
-  bool offers(String tool) =>
-      listing.lists(tool) || (tool == ViewTool.name && view != null);
 
   /// A call starts, in the agent's message that the event names. It becomes
   /// one of [calls] when it runs in the app, as does a call the run already
@@ -82,11 +66,13 @@ final class Run(
     }
 
     _used = listing.lists(tool) ? null : id;
-    if (offers(tool)) {
-      // A call of the view's tool never asks the user, so needs no
-      // description.
-      final description = listing.lists(tool) ? listing.description(tool) : '';
-      calls[id] = ToolCall(id, tool, description, caller: .inAppAgent);
+    if (listing.lists(tool)) {
+      calls[id] = ToolCall(
+        id,
+        tool,
+        listing.description(tool),
+        caller: .inAppAgent,
+      );
       _addToMessage(id, parentMessageId);
     } else {
       _backendCalls[id] = _BackendCall(tool);

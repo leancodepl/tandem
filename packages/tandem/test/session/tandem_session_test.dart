@@ -1455,18 +1455,18 @@ void main() {
     await pumpEventQueue();
     expect(retirements, 1);
     shop.listThrows = true;
-    for (final caller in [Caller.view, Caller.codingAgent]) {
-      for (final method in ['add', 'share']) {
-        final answer = await first.callFor(caller, method, {'item': 'milk'});
-        expect(answer.json, {
-          'status': 'refused',
-          'reason': 'This session no longer owns its thread.',
-        });
-      }
+    for (final method in ['add', 'share']) {
+      final answer = await first.callFor(.codingAgent, method, {
+        'item': 'milk',
+      });
+      expect(answer.json, {
+        'status': 'refused',
+        'reason': 'This session no longer owns its thread.',
+      });
     }
     expect(first.items.whereType<ApprovalRequest>(), isEmpty);
     shop.listThrows = false;
-    await next.callFor(.view, 'add', {'item': 'milk'});
+    await next.callFor(.codingAgent, 'add', {'item': 'milk'});
     expect(shop.items, ['milk']);
   });
 
@@ -1479,7 +1479,7 @@ void main() {
     final thread = TandemThread();
     final agent = ScriptedAgent([]);
     final first = open(agent, thread: thread);
-    final answer = first.callFor(.view, 'clear', {});
+    final answer = first.callFor(.codingAgent, 'clear', {});
     first.approve(_card(first));
     final next = open(agent, thread: thread);
 

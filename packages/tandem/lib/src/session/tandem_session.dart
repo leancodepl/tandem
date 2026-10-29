@@ -25,7 +25,6 @@ import 'package:tandem/src/session/tandem_thread.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/turn.dart';
-import 'package:tandem/src/session/view_tool.dart';
 import 'package:tandem/src/session/waiting_turns.dart';
 import 'package:uuid/uuid.dart';
 
@@ -90,14 +89,6 @@ final class TandemSession({
   /// The approved method that runs now, outside any run.
   Calling? _approvedCall;
 
-  /// The view that the next run offers the agent to draw on.
-  ViewTool? _view;
-
-  /// The views refused in a row since the last message, which stop the
-  /// drawing at [_maxRefusedViews].
-  var _refusedViews = 0;
-  static const _maxRefusedViews = 3;
-
   var _disposed = false;
 
   /// True until the first message, which checks the screen against the
@@ -118,10 +109,7 @@ final class TandemSession({
   SessionStatus get status => switch (_run) {
     Run(stopped: true) => const Stopping(),
     Run(:final calling?) => calling,
-    Run(:final backendTool, :final drawing) => Thinking(
-      backendTool: backendTool,
-      drawing: drawing,
-    ),
+    Run(:final backendTool) => Thinking(backendTool: backendTool),
     null => _approvedCall ?? _waitingStatus,
   };
 
@@ -304,18 +292,6 @@ final class TandemSession({
   @internal
   bool get asksForApproval => _asksForApproval();
 
-  /// Offers the agent [view] to draw on, from the next run on.
-  @internal
-  void attach(ViewTool view) => _view = view;
-
-  /// Stops offering [view], from the next run on.
-  @internal
-  void detach(ViewTool view) {
-    if (identical(view, _view)) {
-      _view = null;
-    }
-  }
-
   /// Calls [tool] for [caller], such as a coding agent through
   /// `TandemBridge`. The call stays out of the agent's history, and `onEvent`
   /// hears of its return as of the agent's own calls. Throws a [StateError]
@@ -359,7 +335,6 @@ final class TandemSession({
     );
   }
 
-  // A view disables the buttons that would get these refusals.
   Future<ToolAnswer> _waitForUser(ToolCall call) async {
     if (_waiting.lastAsked(call.caller) case final waiting?
         when waiting.answer == null) {
@@ -382,7 +357,6 @@ final class TandemSession({
   }
 
   void _post(UserMessage message) {
-    _refusedViews = 0;
     if (_screenToCheck) {
       _screenToCheck = false;
       _startOverIfScreenChanged();
@@ -417,7 +391,7 @@ final class TandemSession({
 
   void _open() {
     try {
-      final run = _run = Run(AgentListing.of(_surface), view: _offeredView);
+      final run = _run = Run(AgentListing.of(_surface));
       final input = _agUiThread.input(
         tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
@@ -539,8 +513,6 @@ final class TandemSession({
       final arguments = call.objectArguments;
       if (arguments == null) {
         call.answerWith(ToolAnswer.argumentsNotAnObject);
-      } else if (run.view case final view? when call.tool == ViewTool.name) {
-        call.answerWith(_show(view, arguments));
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
@@ -560,15 +532,6 @@ final class TandemSession({
         _invalidateIfSeesChanged();
       }
     }
-  }
-
-  // A model that never draws a view that fits would try again on every run.
-  ToolAnswer _show(ViewTool view, JsonObject arguments) {
-    final answer = view.show(arguments);
-    _refusedViews = answer.status == .shown ? 0 : _refusedViews + 1;
-    return _refusedViews < _maxRefusedViews
-        ? answer
-        : ToolAnswer.drawingStopped;
   }
 
   void _askUser(Turn turn, {required bool seesChanged}) {
@@ -633,8 +596,7 @@ final class TandemSession({
       _goOn(withAnswers: _waiting.isAgentTurn(turn));
 
   /// Runs the method behind [tool] for [caller]. Unless the session is
-  /// disposed by then, the agent gets a note of a press in a view, and
-  /// `onEvent` hears of the return after it, so it may wake the agent.
+  /// disposed by then, `onEvent` hears of the return.
   Future<ToolAnswer> _callMethod(
     AgentListing listing,
     String tool,
@@ -652,9 +614,6 @@ final class TandemSession({
     );
     if (_disposed) {
       return answer;
-    }
-    if (caller == .view) {
-      _notes.add(.press(tool, jsonDecode(argumentsJson), answer));
     }
     if (returned case final agentCall?) {
       _emit(agentCall);
@@ -717,8 +676,6 @@ final class TandemSession({
   }
 
   SeesSnapshot get _seesNow => .read(_surface, report: report);
-
-  ViewTool? get _offeredView => _refusedViews < _maxRefusedViews ? _view : null;
 
   bool get _isBusy => _run != null || _approvedCall != null;
 
