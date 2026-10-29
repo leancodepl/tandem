@@ -36,24 +36,26 @@ class OrderCubit() {
     expect(result.outputs, isEmpty);
   });
 
-  test('.sees inside if fails the build', () async {
-    expect(
-      await _buildErrors('''
+  test('the list is copied with each .sees named by its getter', () async {
+    final result = await _build('''
 @TandemAgent()
 class AuditCubit() {
-  bool get isAdmin => true;
+  static const admin = 'admin';
+  String role = admin;
 
   /// The audit log.
   List<String> get log => [];
 
-  List<AgentCapability> get agentCapabilities => [if (isAdmin) .sees(log)];
+  List<AgentCapability> get agentCapabilities => [if (role == admin) .sees(log)];
 }
-'''),
-      [
-        contains(
-          '.sees must be an item of the list after get agentCapabilities =>',
-        ),
-      ],
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      contains("if (role == AuditCubit.admin) .seesAs('log', log),"),
     );
   });
 
@@ -582,6 +584,8 @@ final class const TandemAgent({
 
 sealed class AgentCapability {
   factory AgentCapability.sees(Object? value) => throw UnimplementedError();
+  factory AgentCapability.seesAs(String name, Object? value) =>
+      throw UnimplementedError();
   factory AgentCapability.calls(Function method) => throw UnimplementedError();
 }
 ''',

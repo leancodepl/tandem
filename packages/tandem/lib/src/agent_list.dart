@@ -11,6 +11,11 @@ sealed class const AgentCapability() {
   /// in `.sees(draft)`: its name and doc comment tell the agent what it is.
   factory sees(Object? value) => _Sees(value);
 
+  /// [value] of the getter that the agent knows as [name]. The generated
+  /// code writes it for each `.sees`, so that Tandem tells two values apart
+  /// by their getters.
+  factory seesAs(String name, Object? value) => _Sees(value, name: name);
+
   /// The agent may call [method], a method of the surface, as in
   /// `.calls(setQuantity)`. Its name, doc comment and parameters tell the
   /// agent what it does and what to send.
@@ -24,7 +29,8 @@ sealed class const AgentCapability() {
       _Calls(method, needsApproval: true);
 }
 
-final class const _Sees(final Object? value) extends AgentCapability;
+final class const _Sees(final Object? value, {final String? name})
+    extends AgentCapability;
 
 final class const _Calls(
   final Function method, {
@@ -45,17 +51,8 @@ final class AgentListing._(
   /// which means the code was not generated again after the list changed.
   factory of(AgentSurface surface) {
     final schema = surface.agentSchema;
-    final capabilities = surface.agentCapabilities;
-    final visibleValues = [
-      for (final item in capabilities)
-        if (item case _Sees(:final value)) value,
-    ];
-    if (visibleValues.length != schema.sees.length) {
-      throw StateError(
-        'The agent list has ${visibleValues.length} .sees, the generated code '
-        '${schema.sees.length}. Run build_runner again.',
-      );
-    }
+    final capabilities = _read(surface, schema);
+    final seen = _pairViews(capabilities, schema);
     final tools = <String, AgentTool>{};
     for (final item in capabilities) {
       if (item case _Calls(:final method)) {
@@ -72,14 +69,74 @@ final class AgentListing._(
         tools[tool.name] = tool;
       }
     }
-    return ._(surface, [
-      for (final (index, view) in schema.sees.indexed)
-        (
-          view: view,
-          value: visibleValues[index],
-          json: jsonEncode(view.write(visibleValues[index])),
-        ),
-    ], tools);
+    return ._(surface, seen, tools);
+  }
+
+  /// The agent list through the generated copy that names each `.sees`, or
+  /// the list itself for a schema written by hand.
+  static List<AgentCapability> _read(AgentSurface surface, AgentSchema schema) {
+    final capabilities = schema.capabilities;
+    if (capabilities == null) {
+      return surface.agentCapabilities;
+    }
+    final named = capabilities();
+    assert(
+      _sameShape(named, surface.agentCapabilities),
+      'The agent list and its generated copy differ. Run build_runner again.',
+    );
+    return named;
+  }
+
+  // The values can differ: a getter may build a new object on every read.
+  static bool _sameShape(
+    List<AgentCapability> copy,
+    List<AgentCapability> list,
+  ) =>
+      copy.length == list.length &&
+      [
+        for (final (index, item) in copy.indexed)
+          switch ((item, list[index])) {
+            (_Sees(), _Sees()) => true,
+            (_Calls(:final method, :final needsApproval), final _Calls other) =>
+              method == other.method && needsApproval == other.needsApproval,
+            _ => false,
+          },
+      ].every((same) => same);
+
+  /// Each `.sees` with its view: by its getter's name when the generated code
+  /// names it, else by place.
+  static List<_Seen> _pairViews(
+    List<AgentCapability> capabilities,
+    AgentSchema schema,
+  ) {
+    final sees = [
+      for (final item in capabilities)
+        if (item case final _Sees sees) sees,
+    ];
+    final byName = {for (final view in schema.sees) view.name: view};
+    if (schema.capabilities == null && sees.length != schema.sees.length) {
+      throw StateError(
+        'The agent list has ${sees.length} .sees, the generated code '
+        '${schema.sees.length}. Run build_runner again.',
+      );
+    }
+    final seen = <_Seen>[];
+    for (final (index, _Sees(:value, :name)) in sees.indexed) {
+      final view = switch (name) {
+        final name? =>
+          byName[name] ??
+              (throw StateError(
+                'The generated code does not know the .sees $name. Run '
+                'build_runner again.',
+              )),
+        null => schema.sees[index],
+      };
+      if (seen.any((item) => item.view.name == view.name)) {
+        throw StateError('The agent list sees ${view.name} twice.');
+      }
+      seen.add((view: view, value: value, json: jsonEncode(view.write(value))));
+    }
+    return seen;
   }
 
   /// The `context` of AG-UI's `RunAgentInput`: one entry for every `.sees`.
@@ -156,7 +213,7 @@ final class AgentListing._(
 
   _Calls? _currentCapabilityFor(String tool) {
     final method = _tools[tool]?.method;
-    for (final item in _surface.agentCapabilities) {
+    for (final item in _read(_surface, _surface.agentSchema)) {
       if (item case final _Calls capability when capability.method == method) {
         return capability;
       }

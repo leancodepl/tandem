@@ -28,12 +28,19 @@ abstract interface class AgentSurface {
 
 /// What `tandem_generator` read from a class's agent list.
 final class const AgentSchema({
-  /// One item for every `.sees` of the list, in the same order.
+  /// One item for every getter the list mentions in `.sees`. Without
+  /// [capabilities], one for every `.sees` of the list, in the same order.
   required final List<AgentView<Object?>> sees,
 
   /// One item for every method the list mentions in `.calls` or
   /// `.callsWithApproval`, listed now or not.
   required final List<AgentTool> calls,
+
+  /// The agent list as the generated code copies it, with each `.sees`
+  /// written as `.seesAs` with its getter's name. Tandem reads the list
+  /// through it, once, so the values, their getters and the methods come
+  /// from one read. Null for a schema written by hand.
+  final List<AgentCapability> Function()? capabilities,
 });
 
 /// One `.sees` of the agent list, as the generated code describes it.

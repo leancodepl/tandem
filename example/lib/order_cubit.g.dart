@@ -79,6 +79,15 @@ mixin _$OrderCubit implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on OrderCubit {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('draft', draft),
+    .calls(setQuantity),
+    if (draft.lines.isNotEmpty) .callsWithApproval(placeOrder),
+  ];
 }

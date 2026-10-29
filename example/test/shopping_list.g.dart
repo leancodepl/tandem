@@ -48,6 +48,16 @@ mixin _$ShoppingListCubit implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on ShoppingListCubit {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('items', items),
+    .calls(add),
+    .calls(remove),
+    if (items.isNotEmpty) .callsWithApproval(clear),
+  ];
 }

@@ -168,8 +168,16 @@ mixin _$EnumShelf implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on EnumShelf {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('sample', sample),
+    .calls(echo),
+  ];
 }
 
 mixin _$Shelf implements AgentSurface {
@@ -234,8 +242,13 @@ mixin _$Shelf implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on Shelf {
+  List<AgentCapability> get _$agentCapabilities => [.calls(stock)];
 }
 
 mixin _$Dispatch implements AgentSurface {
@@ -569,6 +582,17 @@ mixin _$Dispatch implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on Dispatch {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('last_booked', lastBooked),
+    .calls(book),
+    .calls(setDelivery),
+    .calls(findDelivery),
+    .calls(deliveryDay),
+  ];
 }
