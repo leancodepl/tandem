@@ -187,6 +187,7 @@ Keep validation in the app's methods and approvals for changes that need the use
 A coding agent reaches the extensions through the `vm_service` tool of the Dart MCP server (`dart mcp-server`), or over HTTP at the VM service address printed by `flutter run`. The `tandem-coding-agent` skill describes both routes.
 
 - The coding agent sees what an in-app agent would see, and calls only the listed methods, with the same checks.
+- An argument that points at an object of the screen, `{"path": ...}`, needs the `context` that `ext.tandem.describe` gave for the screen, so the path reads what the coding agent saw. A call without it, or whose object changed since, is refused.
 - A call targets the front screen. This is the only open `TandemScope`, or the only one on the current route. If several screens match, the call must identify the screen.
 - A `.callsWithApproval` call waits for the user to approve it in the app. The scope's `approvals:` setting controls how the request is shown. For scripted runs, `TandemBridge.enable(autoApprove: true)` lets the coding agent approve its own calls.
 

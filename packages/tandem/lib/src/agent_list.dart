@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:tandem/src/agent_paths.dart';
 import 'package:tandem/src/agent_schema.dart';
+import 'package:tandem/src/agent_type.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/tool_args.dart';
@@ -46,8 +47,9 @@ final class AgentListing._(
   final AgentSurface _surface,
   final List<AgentCapability> _capabilities,
   final List<_Seen> _seen,
-  final Map<String, AgentTool> _tools,
-) {
+  final Map<String, AgentTool> _tools, [
+  final String? _unseen,
+]) {
   /// Reads [surface]'s agent list, through the copy in its generated
   /// [AgentSurface.agentSchema] when it has one, and names its items.
   ///
@@ -258,13 +260,20 @@ final class AgentListing._(
     }
     final args = target.read(
       arguments.json,
-      paths: switch (arguments) {
-        WrittenArguments() => ListingPaths(seen: this, now: now),
-        FrozenArguments() => null,
+      paths: switch ((arguments, _unseen)) {
+        (WrittenArguments(), null) => ListingPaths(seen: this, now: now),
+        (WrittenArguments(), final reason?) => _UnseenPaths(reason),
+        (FrozenArguments(), _) => null,
       },
     );
     return (target: target, args: args);
   }
+
+  /// This listing for a caller that did not see it: a `{"path": ...}` in
+  /// the arguments is refused with [reason].
+  @internal
+  AgentListing unseen(String reason) =>
+      ._(_surface, _capabilities, _seen, _tools, reason);
 
   /// The type and the value of each `.sees` by its name, for paths.
   @internal
@@ -294,6 +303,12 @@ final class AgentListing._(
 }
 
 typedef _Seen = ({AgentView<Object?> view, Object? value, String json});
+
+final class const _UnseenPaths(final String _reason) implements AgentPaths {
+  @override
+  T resolve<T>(String path, AgentType<T> type, {required String at}) =>
+      throw ToolCallRefused(_reason);
+}
 
 /// The JSON arguments of a call, as its method reads them.
 @internal
