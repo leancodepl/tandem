@@ -18,3 +18,18 @@ final class const TandemAgent({
 /// `{"path": ...}`, so it cannot make one up. A converter does not change
 /// that.
 final class const TandemInput();
+
+/// Marks a class whose `_$Name` mixin `tandem_generator` writes as an
+/// `AgentCatalog` of [components], widget classes the agent may draw a view
+/// with. Tandem reads each widget's constructor and the first paragraph of
+/// its doc comment. The class's doc comment gives the agent its guidelines
+/// and one example view, a JSON block of `components`.
+final class const TandemCatalog(
+  /// The widget classes. A design system exports its own as a
+  /// `static const` list, which the app spreads here.
+  final List<Type> components, {
+
+  /// The forms of types that Tandem cannot read from their declaration, as
+  /// for `@TandemAgent()`.
+  final List<JsonConverter<Object?, Object?>> converters = const [],
+});

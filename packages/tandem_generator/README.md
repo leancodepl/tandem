@@ -1,6 +1,6 @@
 # tandem_generator
 
-Generates the code behind the `agentCapabilities` of a class marked `@TandemAgent()`: what the agent sees and which methods it may call. Run it with `dart run build_runner build`.
+Generates the code behind the `agentCapabilities` of a class marked `@TandemAgent()`, what the agent sees and which methods it may call, and behind a catalog marked `@TandemCatalog([...])`, the widgets the agent may draw a view with. Run it with `dart run build_runner build`.
 
 Apps depend on [`tandem`](https://pub.dev/packages/tandem) and add this package as a dev dependency. See the [main README](https://github.com/leancodepl/tandem#readme) for how to use it.
 
@@ -40,6 +40,25 @@ Tandem has its own converters, which a converter of the app for the same type re
 
 A converter matches its type exactly: a parameter of type `EdgeInsets` takes the converter of `EdgeInsets`, not the one of `EdgeInsetsGeometry`. Tandem handles null itself, so a converter converts a type without `?`, and one such as `JsonConverter<Uri?, String?>` fails the build. Two converters for one type fail the build.
 
+## Catalogs
+
+`@TandemCatalog([...])` on a class lists widget classes, and the class's `_$Name` mixin describes each as a component: its name, the first paragraph of its doc comment, and its constructor's parameters as properties.
+
+| Parameter | The agent writes |
+| --- | --- |
+| `Widget`, `Widget?` | the id of another component |
+| `List<Widget>` | ids, or one component for every item of a list in the data |
+| `VoidCallback`, `VoidCallback?` | an action that calls a listed method |
+| `ValueChanged<T>`, `ValueChanged<T>?` | a field: an action whose method gets what the user enters, a `T` |
+| `Key`, `FocusNode`, a `ChangeNotifier` such as a controller | nothing: the widget keeps its default |
+| any other type | a value by the rule above, or a path into the data |
+
+A widget without a doc comment fails the build. A required parameter of a type without a form fails the build and names the converter to add; an optional one keeps the widget's default, with one line in the build. A default that is not a literal, an enum value or a static const member of its own class, such as `Alignment.center`, also keeps the widget's default. The widget's class must be visible where the catalog is, and Tandem reads a parameter's type from the widget's getter of the same name; without one, the type must be visible there too.
+
+The catalog's doc comment gives the agent its guidelines and one example view, a ```json block of `components`. The build checks the example's component and property names.
+
+A catalog belongs to one screen, because its guidelines and example name that screen's data and methods. Another screen that draws with the same widgets declares its own catalog from the same list, as `@TandemCatalog([...DesignSystem.components])`, with its own guidelines and example.
+
 ## Missing, null and default
 
 | The agent | `int count = 1` | `String? note = 'new'` | `String? note` |
@@ -47,7 +66,7 @@ A converter matches its type exactly: a parameter of type `EdgeInsets` takes the
 | leaves it out | `1` | `'new'` | `null` |
 | sends `null` | refused | `null` | `null` |
 
-The schema of a nullable parameter is `anyOf` the schema of its type and `{"type": "null"}`, so the agent knows it may send `null`. That is plain JSON Schema, which ag-ui-adk 0.9.0 converts for Gemini. A list of types, the shorter form, fails in ag-ui-adk 0.9.0. A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, a `static const` member of a token class, or `null`.
+The schema of a nullable parameter is `anyOf` the schema of its type and `{"type": "null"}`, so the agent knows it may send `null`. That is plain JSON Schema, which ag-ui-adk 0.9.0 converts for Gemini. A list of types, the shorter form, fails in ag-ui-adk 0.9.0. A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, a `static const` member of its own class, such as `Alignment.center`, or `null`.
 
 A refused call does not run the method. The agent gets a message that names the argument, also for a wrong type or a key the schema does not have.
 

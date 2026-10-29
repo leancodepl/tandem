@@ -235,9 +235,9 @@ mixin _$Shelf implements AgentSurface {
             surface.stock(
               args.read('skus'),
               args.read('size'),
-              count: args.has('count') ? args.read('count') : 1,
-              fit: args.has('fit') ? args.read('fit') : .m,
-              note: args.has('note') ? args.read('note') : 'new',
+              count: args.readOr('count', 1),
+              fit: args.readOr('fit', .m),
+              note: args.readOr('note', 'new'),
             );
             return null;
           },
@@ -304,7 +304,7 @@ mixin _$Dispatch implements AgentSurface {
               build: (values) => .new(
                 address: values('address'),
                 day: values('day'),
-                slot: values.has('slot') ? values('slot') : .morning,
+                slot: values.or('slot', .morning),
                 note: values('note'),
               ),
             ),
@@ -386,7 +386,7 @@ mixin _$Dispatch implements AgentSurface {
                 build: (values) => .new(
                   address: values('address'),
                   day: values('day'),
-                  slot: values.has('slot') ? values('slot') : .morning,
+                  slot: values.or('slot', .morning),
                   note: values('note'),
                 ),
               ),
@@ -441,7 +441,7 @@ mixin _$Dispatch implements AgentSurface {
                 build: (values) => .new(
                   address: values('address'),
                   day: values('day'),
-                  slot: values.has('slot') ? values('slot') : .morning,
+                  slot: values.or('slot', .morning),
                   note: values('note'),
                 ),
               ),
@@ -499,7 +499,7 @@ mixin _$Dispatch implements AgentSurface {
                   build: (values) => .new(
                     address: values('address'),
                     day: values('day'),
-                    slot: values.has('slot') ? values('slot') : .morning,
+                    slot: values.or('slot', .morning),
                     note: values('note'),
                   ),
                 ),
@@ -566,7 +566,7 @@ mixin _$Dispatch implements AgentSurface {
                   build: (values) => .new(
                     address: values('address'),
                     day: values('day'),
-                    slot: values.has('slot') ? values('slot') : .morning,
+                    slot: values.or('slot', .morning),
                     note: values('note'),
                   ),
                 ),

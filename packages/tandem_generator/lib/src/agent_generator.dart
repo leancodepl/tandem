@@ -10,6 +10,7 @@ import 'package:tandem_generator/src/agent_mixin.dart';
 import 'package:tandem_generator/src/agent_names.dart';
 import 'package:tandem_generator/src/capability_copy.dart';
 import 'package:tandem_generator/src/tokens.dart';
+import 'package:tandem_generator/src/type_names.dart';
 
 /// Writes the `_$Name` mixin of every class with `@TandemAgent()`, from its
 /// `agentCapabilities` getter.
@@ -60,6 +61,7 @@ class const AgentGenerator() extends Generator {
 
     final mixin = AgentMixin(
       className: type.displayName,
+      library: type.library,
       views: capabilities.views,
       methods: capabilities.methods,
       converters: converters,
@@ -180,12 +182,19 @@ class _CapabilityReader(final ClassElement _type)
     return method;
   }
 
-  /// The type of each parameter of [method] as its declaration writes it,
-  /// which names it in this library.
-  static Future<List<String>> _parameterTypes(
+  /// The type of each parameter of [method] as code of the class's library:
+  /// as the declaration writes it when the method is in that library, which
+  /// also covers types that [TypeNames] cannot name, such as function types.
+  /// The types of a method of a generic superclass are named too, since they
+  /// hold type arguments where the declaration writes type parameters.
+  Future<List<String>> _parameterTypes(
     MethodElement method,
     BuildStep buildStep,
   ) async {
+    if (method.library != _type.library || method.hasSubstitutedParameters) {
+      return _namedParameterTypes(method);
+    }
+
     final source = await buildStep.resolver.astNodeFor(method.firstFragment);
 
     if (source is! MethodDeclaration) {
@@ -199,6 +208,22 @@ class _CapabilityReader(final ClassElement _type)
           FormalParameter(:final type?, functionTypedSuffix: null) =>
             type.toSource(),
           _ => throw AgentGenerationError.untypedParameter(parameter),
+        },
+    ];
+  }
+
+  List<String> _namedParameterTypes(MethodElement method) {
+    final names = TypeNames(_type.library);
+
+    return [
+      for (final parameter in method.formalParameters)
+        switch (names.name(parameter.type)) {
+          final name? => name,
+          null => throw AgentGenerationError.unnamedParameterType(
+            _type,
+            method: method,
+            parameter: parameter,
+          ),
         },
     ];
   }
@@ -261,4 +286,8 @@ extension on GetterElement {
 
 extension on MethodElement {
   bool get isNonGenericInstanceMethod => !isStatic && typeParameters.isEmpty;
+
+  bool get hasSubstitutedParameters => formalParameters.any(
+    (parameter) => parameter.type != parameter.baseElement.type,
+  );
 }

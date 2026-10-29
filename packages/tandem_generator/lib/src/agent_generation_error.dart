@@ -37,6 +37,17 @@ final class AgentGenerationError extends InvalidGenerationSource {
         node: parameter,
       );
 
+  new unnamedParameterType(
+    ClassElement type, {
+    required MethodElement method,
+    required FormalParameterElement parameter,
+  }) : super(
+         '${method.displayName}.${parameter.displayName}: import '
+         '${parameter.type.getDisplayString()} where ${type.displayName} is, '
+         'so that the generated code can name it.',
+         element: type,
+       );
+
   new superInCapabilities(SuperExpression node)
     : super(
         'agentCapabilities cannot use super: Tandem reads the list through a '
