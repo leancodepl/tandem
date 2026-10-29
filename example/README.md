@@ -20,9 +20,8 @@ fvm flutter run
 Choose an iOS simulator, an Android emulator or a connected device. For desktop, run
 `fvm flutter run -d macos`.
 
-Tap the sample e-mail in the chat, and the agent fills the order and draws a summary below it with
-`TandemView`. Change a quantity, then place the order from the summary or ask the agent to. Edit
-again while the approval is pending: when the agent asked, it asks again a second after your
+Tap the sample e-mail in the chat, and the agent fills the order. Change a quantity, then ask the
+agent to place the order. Edit again while the approval is pending: when the agent asked, it asks again a second after your
 last edit. **Reset example** starts over with a new
 order and a new session. The scripted agent follows the scenario and does not read what you write.
 

@@ -17,7 +17,7 @@ Ask the user two questions, unless the request already answers them:
   - An AG-UI backend: the user gives its address. Any AG-UI endpoint works. Tandem is checked with Google ADK, LangGraph and Pydantic AI, and [`example/agents`](https://github.com/leancodepl/tandem/tree/main/example/agents) has an agent on each to copy from.
   - Apple's on-device model, on iOS and macOS 26 with Apple Intelligence: no backend and no API key. It is experimental and small: offer it only for the simplest tasks, such as one sentence that becomes one call.
 
-**Done when** you know both answers, and the backend's address when there is one. Without an address, put none into the app: step 7 tests the screen with a script, and the address comes later.
+**Done when** you know both answers, and the backend's address when there is one. Without an address, put none into the app: step 6 tests the screen with a script, and the address comes later.
 
 ## 2. Connect the agent
 
@@ -91,13 +91,7 @@ When the screen has no chat, show what the agent does now, such as a progress li
 
 **Done when** the user sees that the agent works, and when it waits for them.
 
-## 6. Let the agent draw, if the user wants it
-
-Only with an AG-UI backend and a strong remote model, such as Gemini: a small local model or Apple's on-device model rarely writes valid A2UI. Put `const TandemView()` below the scope where the drawn view goes, in a scroll view when it can be taller than its space. Every run then offers the agent the tool `tandem_show_view`, which teaches it seven components, without form fields. The view shows only what `.sees` lists, and a view that does not fit the screen is refused with what to fix; after three refusals in a row the agent answers in text until the next message. While the agent draws, the status is `Thinking(drawing: true)`. A button calls a listed method with the usual approvals, as `caller: Caller.view`; give the card of such a request its own text, since the user pressed it. The agent reads what a press answered in `app_notes` on its next run; to let it react at once, call `session.wake()` in `onEvent`.
-
-**Done when** `TandemView` is below the scope, or the user wants no drawn view.
-
-## 7. Test it with a script
+## 6. Test it with a script
 
 `ScriptedAgent` plays a script instead of a model, so the test needs no network and no key:
 

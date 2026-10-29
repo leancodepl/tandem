@@ -5,8 +5,4 @@ enum Caller() {
 
   /// A coding agent, through `TandemBridge`.
   codingAgent,
-
-  /// The user, with a press on a button of a view the in-app agent drew in a
-  /// `TandemView`.
-  view,
 }

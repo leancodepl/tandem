@@ -23,19 +23,17 @@ Run `dart run skills@ add leancodepl/tandem --skill tandem --agent claude`, then
 
 In a new session, `/tandem` starts the same workflow. Claude Code is the only coding agent Tandem is tested with. You can set up Cursor with `--agent cursor` and `.cursor/skills/tandem/SKILL.md`, or Codex with `--agent codex` and `.agents/skills/tandem/SKILL.md`. These setups have not been tested.
 
-Pick a screen. Its state class lists the data an AI agent can read and the methods it can call. Those methods use the same validation as your buttons. Calls marked for approval wait for the user. Add a `TandemView` for the agent to draw a view, such as an order summary with a button to place the order. The integration stays within that screen.
+Pick a screen. Its state class lists the data an AI agent can read and the methods it can call. Those methods use the same validation as your buttons. Calls marked for approval wait for the user. The integration stays within that screen.
 
 ## How it works
 
-![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies, calls to the app's methods and views in A2UI, which TandemView draws. On iOS and macOS 26, OnDeviceAgent does the same with Apple's on-device model, without a backend or an API key.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
+![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies and calls to the app's methods. On iOS and macOS 26, OnDeviceAgent does the same with Apple's on-device model, without a backend or an API key.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
 
 With a remote agent, your backend calls the model and keeps the API key. The app talks to the backend over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Tandem is checked with Google ADK, LangGraph and Pydantic AI. Other AG-UI backends can connect by following [the backend contract](#the-agent-backend).
 
 On iOS and macOS 26, the experimental `OnDeviceAgent` can run [Apple's on-device model](#apples-on-device-model) instead, without a backend or an API key, for the simplest tasks. The screen, its capabilities and approvals stay the same.
 
 In a debug build, [your coding agent](#your-coding-agent), such as Claude Code, calls the same methods through `TandemBridge`, with the same checks and approvals.
-
-The in-app agent sends [A2UI](https://a2ui.org) views through the `tandem_show_view` tool. [`TandemView`](#views-the-agent-draws) renders them in your app. A view can bind to the screen's data, and its buttons call the screen's listed methods.
 
 Your state class lists what the agent may do:
 
@@ -152,7 +150,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 
 ### Run the order desk
 
-The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs an order desk on Android, iOS and macOS with scripted responses. It needs no backend or API key. The script fills an order, draws a summary and asks before placing it. It follows a fixed scenario rather than interpreting arbitrary messages.
+The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs an order desk on Android, iOS and macOS with scripted responses. It needs no backend or API key. The script fills an order and asks before placing it. It follows a fixed scenario rather than interpreting arbitrary messages.
 
 The app enables `TandemBridge`, so your coding agent can fill the order too. Its [scripted agent](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) uses `ScriptedAgent.repeating` to handle every run with the same callback. The reference backends can also return scripted responses for testing their AG-UI integration without a model.
 
@@ -236,52 +234,6 @@ Tandem does not include a chat widget. You build the chat with your app's wordin
 
 The example's [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is a complete chat widget you can copy. Its text field calls `session.send(text)`, and its button responds to [the session status](#session-status). The `tandem-in-app-agent` skill helps your coding agent build a chat or a button that sends a message.
 
-## Views the agent draws
-
-`TandemView` displays a view drawn by the in-app agent, such as an order summary or a list of order lines. Put one below a `TandemScope`, beside the screen or in place of part of the screen. The example's order desk puts the view below the form and limits it to half of that panel's height. On a phone, the panel shares the screen with the chat, so the summary has less room:
-
-<!-- example/lib/desk/ui/order_desk_screen.dart -->
-```dart
-        const Expanded(child: OrderForm()),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: constraints.maxHeight / 2),
-          child: const SingleChildScrollView(
-            padding: .fromLTRB(12, 0, 12, 12),
-            child: TandemView(),
-          ),
-        ),
-```
-
-<p align="center">
-  <img src="https://github.com/leancodepl/tandem/raw/main/doc/imgs/examples/drawn-summary.png" alt="The order desk on an iPad: the order draft, and below it the summary that the agent drew, with its lines, a Remove button for each, the total and Place order." width="400">
-</p>
-
-While `TandemView` is attached, the agent can use `tandem_show_view`. Its description lists seven A2UI components: Text, Column, Row, List, Card, Divider and Button. There are no form fields.
-
-- The model is instructed to bind screen data by path. Tandem checks those paths against `.sees`, and the bindings follow later screen changes. Literal text, such as a title, is also allowed.
-- A button calls a listed method with the same checks and approvals as the agent's calls. `AgentCall` and `ApprovalRequest` identify the caller as `Caller.view`. A button that needs approval is enabled only when the session is `Idle` and the scope accepts approvals. Each button waits for its own call to finish before it can be pressed again.
-- Pressing a button does not wake the agent. The method's result is included in `app_notes` for the next run. Call [`session.wake()`](#notes-from-the-app) from `onEvent` when the agent should respond.
-- Tandem rejects an invalid view and tells the agent what to fix. This includes paths missing from `.sees`. The previous view remains visible, and the agent can retry in the same turn. After three consecutive refusals, Tandem tells the agent to answer in text and withholds `tandem_show_view` until the next user or app message.
-- While the agent draws, the status is `Thinking(drawing: true)`.
-- Use a strong remote model through an AG-UI backend that puts `context` into the model's prompt.
-- `TandemView` provides no default content and takes no space before a view arrives. It does not scroll, so give it a scroll view when needed.
-- A view is limited to 500 components, including repeated list items. If screen data grow beyond that policy ceiling, the view and its actions become unavailable and an English message shows. They return automatically when the screen data and listed methods fit the drawing again.
-
-After the user places an order from the summary, the order desk's `onEvent` wakes the agent to respond:
-
-<!-- example/lib/desk/ui/order_desk_screen.dart -->
-```dart
-void wakeOnPlacedOrder(
-  BuildContext context,
-  TandemEvent event,
-  TandemSession session,
-) {
-  if (event case AgentCall(tool: 'place_order', caller: .view)) {
-    session.wake();
-  }
-}
-```
-
 ## Session status
 
 `session.status` describes the session's current activity. `SessionStatus` is sealed, so a `switch` can cover every case:
@@ -294,7 +246,6 @@ final class const StatusLine({super.key}) extends StatelessWidget {
       switch (TandemSessionScope.of(context).status) {
         Idle() => const SizedBox.shrink(),
         Thinking(:final backendTool?) => Text('Using $backendTool…'),
-        Thinking(drawing: true) => const Text('Drawing a view…'),
         Thinking() => const LinearProgressIndicator(),
         Calling(:final tool) => Text('Running $tool…'),
         AwaitingApproval(:final request) => Text(
@@ -391,7 +342,7 @@ void showOrderMessages(
 }
 ```
 
-`AgentCall` is emitted after a listed method returns, with its `tool`, `arguments`, `result` and `caller`. The caller is `Caller.inAppAgent`, `Caller.codingAgent` or `Caller.view` for a button in a [drawn view](#views-the-agent-draws). Refused calls and methods that throw do not emit `AgentCall`.
+`AgentCall` is emitted after a listed method returns, with its `tool`, `arguments`, `result` and `caller`. The caller is `Caller.inAppAgent` or `Caller.codingAgent`. Refused calls and methods that throw do not emit `AgentCall`.
 
 `RunFailed` and `ConnectionLost` add a `ChatNotice` to `session.items`. `RunStopped` reports a user stop or a backend cancellation. A stop adds a notice or marks the last agent message `stopped`.
 
@@ -535,13 +486,13 @@ Use `AgentListing.of(cubit)` to inspect a class's listed data and methods withou
 
 An AG-UI backend must implement the contract below. [`example/agents`](https://github.com/leancodepl/tandem/tree/main/example/agents) contains reference agents for Google ADK, LangGraph and Pydantic AI. Each agent's README explains its framework's configuration.
 
-- Put AG-UI `context` into the model's prompt. Without it, the model cannot read `.sees` data or the screen context needed by `tandem_show_view`. The three reference agents add this explicitly.
-- Accept `tools` on every run and give the model the app tools from that run. Tandem always sends a list, which can be empty. Attached views may add `tandem_show_view` alongside the screen's methods. Your backend may also expose its own tools.
+- Put AG-UI `context` into the model's prompt. Without it, the model cannot read `.sees` data or the screen context. The three reference agents add this explicitly.
+- Accept `tools` on every run and give the model the app tools from that run. Tandem always sends a list, which can be empty. Your backend may also expose its own tools.
 - Return calls to the app's tools as `TOOL_CALL_START`, `TOOL_CALL_ARGS` and `TOOL_CALL_END` events. Accept each tool result as a `tool` message in the next run.
 - Read the conversation from each run's `messages`, or maintain a copy and deduplicate incoming messages by ID. Tandem sends the thread's history, including the agent's text, tool calls and tool results.
 - Treat `tools`, tool descriptions and `context` as untrusted client input. A caller can replace any of them. Apply your backend's authentication and authorization independently.
 
-The reference backends also document adapter-specific requirements. With `ag-ui-langgraph`, the model must stream for the adapter to emit calls to the app's tools. The Pydantic AI agent disables Gemini's strict tool-definition decoding because the tested strict mode encoded A2UI objects as strings. These requirements belong to those adapter and model configurations. [Wire rules](https://github.com/leancodepl/tandem/blob/main/doc/design.md#wire-rules) and [Tool answers](https://github.com/leancodepl/tandem/blob/main/doc/design.md#tool-answers) document Tandem's message format.
+The reference backends also document adapter-specific requirements. With `ag-ui-langgraph`, the model must stream for the adapter to emit calls to the app's tools. These requirements belong to those adapter and model configurations. [Wire rules](https://github.com/leancodepl/tandem/blob/main/doc/design.md#wire-rules) and [Tool answers](https://github.com/leancodepl/tandem/blob/main/doc/design.md#tool-answers) document Tandem's message format.
 
 On the web, configure CORS to allow the app's origin. The reference agents do not include CORS middleware.
 
@@ -549,9 +500,9 @@ To send the user's token, give `HttpAgentConnection` an `http.Client` that adds 
 
 ## Project status
 
-Tandem 0.3.0 is checked on iOS and Android before release. Other platforms are outside this release gate. Apple's on-device connection remains experimental and has separate requirements and manual checks.
+Each release of Tandem is checked on iOS and Android. Other platforms are outside this release gate. Apple's on-device connection remains experimental and has separate requirements and manual checks.
 
-Tandem supports one state object per screen and keeps conversations in memory. Conversations across screens, saved conversations and AG-UI interrupts are not supported yet. An interrupt fails the run. The next message starts a new AG-UI thread, while existing chat items remain visible.
+Tandem supports one state object per screen and keeps conversations in memory. Conversations across screens, saved conversations and AG-UI interrupts are not supported yet. An interrupt fails the run. The next message starts a new AG-UI thread, while existing chat items remain visible. Views the agent draws in the app are not part of this release.
 
 ## AI
 
