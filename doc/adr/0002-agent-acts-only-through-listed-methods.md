@@ -15,5 +15,5 @@ The list is read again before every run and before every call. A method that lef
 ## Consequences
 
 - Whatever the agent should change needs a listed method. Whatever a method with approval depends on must be in `.sees`, or the approval does not cover it.
-- The list is read by generated code, so `.sees` must stand directly in the list and the code must be generated again after the list changes.
+- The list is read through generated code, which copies it and names each `.sees` by its getter ([ADR 0003](0003-the-app-defines-the-catalog.md)), so the code must be generated again after the list changes.
 - The backend has to put `context` into the model's prompt itself.
