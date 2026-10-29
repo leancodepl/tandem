@@ -54,7 +54,7 @@ Take the isolate named `main` from `getVM`.
 
 ## 3. Fill in the screen
 
-`ext.tandem.describe` gives every open screen with its `id`, whether it is `front`, what it `sees`, the `tools` it lists with their JSON Schemas, and which of them `needsApproval`.
+`ext.tandem.describe` gives every open screen with its `id`, whether it is `front`, its `context`, what it `sees`, the `tools` it lists with their JSON Schemas, and which of them `needsApproval`.
 
 `ext.tandem.call` calls one tool. Its parameters are `tool`, `arguments` as a JSON object in a string, and `screen` with an id when more than one screen is open:
 
@@ -66,6 +66,8 @@ curl -s -G "${VM}ext.tandem.call" \
 ```
 
 With the MCP tool, the same call has `"arguments": {"tool": "set_quantity", "arguments": "{\"sku\": \"VM-27Q\", \"quantity\": 15}"}`.
+
+A parameter whose schema says "A path to a Customer in the data you see, never the object." takes a path to an object the screen lists, such as `{"customer": {"path": "/customers/1"}}`. When the schema asks for an object or a form, write it in the call. A call with a path needs `context`, the one `describe` gave for the screen, so the path reads what you saw: `--data-urlencode 'context=context-7'`. A call without it, with an old one, or whose object changed since is refused: describe the screen again and use the new `context`.
 
 - Fill only what the source text states. Leave a field as it is when the text does not say, and never invent a value, an id or a date to fill a gap.
 - Call only the listed tools, with arguments that fit their schemas. Read the `screens` of every answer: the tools change with the state, so a method can appear once the form is complete.

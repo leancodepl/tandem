@@ -52,6 +52,7 @@ void main() {
     expect(screens.single, {
       'id': 'Shop',
       'front': true,
+      'context': isA<String>(),
       'sees': [
         {
           'description': 'items: What is on the shopping list now.',
@@ -499,6 +500,109 @@ void main() {
     expect(sessionOf(tester).status, isA<AwaitingApproval>());
   });
 
+  testWidgets('a path reads what describe showed: a jar moved since is '
+      'refused, and a call without its context too', (tester) async {
+    final pantry = _Pantry();
+    await tester.pumpWidget(
+      TandemScope(
+        surface: (context) => pantry,
+        approvals: const .fromState(),
+        child: const SizedBox(),
+      ),
+    );
+    final context = switch (TandemBridge.describe()) {
+      {'screens': [{'context': final String context}]} => context,
+      final other => throw StateError('No context in $other.'),
+    };
+    const second = {
+      'jar': {'path': '/jars/1'},
+    };
+
+    pantry.jars = [...pantry.jars.reversed];
+    final moved = await TandemBridge.call(
+      'open',
+      arguments: second,
+      context: context,
+    );
+    final missing = await TandemBridge.call('open', arguments: second);
+    final unknown = await TandemBridge.call(
+      'open',
+      arguments: second,
+      context: 'context-0',
+    );
+
+    expect(
+      moved['reason'],
+      'jar: /jars/1 changed since the agent read it. '
+      'Read jars again.',
+    );
+    expect(
+      missing['reason'],
+      'The arguments point at values with "path". Pass the context that '
+      'ext.tandem.describe gave for this screen, so that the paths read what '
+      'you saw.',
+    );
+    expect(unknown['reason'], contains('unknown or too old'));
+    expect(pantry.opened, isNull);
+  });
+
+  testWidgets('an object the agent writes needs no context, also one with a '
+      'field named path', (tester) async {
+    final pantry = _Pantry();
+    await tester.pumpWidget(
+      TandemScope(
+        surface: (context) => pantry,
+        approvals: const .fromState(),
+        child: const SizedBox(),
+      ),
+    );
+
+    final answer = await TandemBridge.call(
+      'stick',
+      arguments: {
+        'label': {'path': 'labels/jam.png'},
+      },
+    );
+
+    expect(answer['status'], 'returned');
+    expect(pantry.label?.path, 'labels/jam.png');
+  });
+
+  testWidgets('a context of a session that the scope replaced is refused', (
+    tester,
+  ) async {
+    final before = _Pantry();
+    final after = _Pantry();
+    Widget pantry(_Pantry pantry) => TandemScope.connected(
+      surface: (context) => pantry,
+      connection: ScriptedAgent(const []),
+      approvals: const .fromState(),
+      child: const SizedBox(),
+    );
+    await tester.pumpWidget(pantry(before));
+    final context = switch (TandemBridge.describe()) {
+      {'screens': [{'context': final String context}]} => context,
+      final other => throw StateError('No context in $other.'),
+    };
+
+    await tester.pumpWidget(pantry(after));
+    final answer = await TandemBridge.call(
+      'open',
+      arguments: {
+        'jar': {'path': '/jars/0'},
+      },
+      context: context,
+    );
+
+    expect(
+      answer['reason'],
+      'The context $context is of an earlier session of this screen. '
+      'Describe the screen again and pass its new context.',
+    );
+    expect(before.opened, isNull);
+    expect(after.opened, isNull);
+  });
+
   testWidgets('once the user decided, describe shows the last approval with '
       'its answer', (tester) async {
     final shop = newShop();
@@ -533,6 +637,75 @@ final class _Interrupted(final Future<void> _gate) implements AgentConnection {
       'outcome': {'type': 'interrupt'},
     };
   }
+}
+
+/// A jar of the pantry, which the agent points at by path.
+final class const _Jar(final String name);
+
+/// A label the agent writes, at the path of its image.
+final class const _Label(final String path);
+
+/// A screen whose method takes an object the screen lists, and one whose
+/// method takes an object the agent writes.
+final class _Pantry() implements AgentSurface {
+  List<_Jar> jars = const [_Jar('jam'), _Jar('honey')];
+  _Jar? opened;
+  _Label? label;
+
+  @override
+  List<AgentCapability> get agentCapabilities => [
+    .sees(jars),
+    .calls(open),
+    .calls(stick),
+  ];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  /// Opens [jar].
+  void open(_Jar jar) => opened = jar;
+
+  /// Sticks [label] on the pantry.
+  void stick(_Label label) => this.label = label;
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [AgentView.of(() => jars).as('jars', 'The jars.', .list(_jarType))],
+    calls: [
+      AgentTool(
+        open,
+        name: 'open',
+        description: 'Opens jar.',
+        parameters: [AgentParameter<_Jar>('jar', _jarType)],
+        invoke: (args) {
+          open(args.read('jar'));
+          return null;
+        },
+      ),
+      AgentTool(
+        stick,
+        name: 'stick',
+        description: 'Sticks label on the pantry.',
+        parameters: [AgentParameter<_Label>('label', _labelType, input: true)],
+        invoke: (args) {
+          stick(args.read('label'));
+          return null;
+        },
+      ),
+    ],
+  );
+
+  static final AgentType<_Jar> _jarType = .object(
+    id: 'test#Jar',
+    fields: (field) => [field('name', (value) => value.name).as(.string)],
+    build: (values) => .new(values('name')),
+  );
+
+  static final AgentType<_Label> _labelType = .object(
+    id: 'test#Label',
+    fields: (field) => [field('path', (value) => value.path).as(.string)],
+    build: (values) => .new(values('path')),
+  );
 }
 
 PageRouteBuilder<void> _route(Widget screen) =>
