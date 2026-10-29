@@ -1,3 +1,8 @@
+## 0.2.1
+
+- An enum with its own `name` field reaches the agent by the name of its constant. Before, the generated code sent the field's value.
+- The example shows the order form of Tandem's example app.
+
 ## 0.2.0
 
 - A description joins the wrapped lines of its doc comment and keeps its paragraphs, so the agent reads whole sentences.

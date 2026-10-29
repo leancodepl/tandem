@@ -1,3 +1,22 @@
+## 0.2.3
+
+- `TandemScope(thread:)` goes on with a `TandemThread` that the app keeps: the chat, the history and the agent state. The newest session goes on with it, and an older one refuses calls.
+- `session.agentState` follows the backend's `STATE_SNAPSHOT` and `STATE_DELTA`, and every run sends it back as the AG-UI `state`. `tandem` depends on `rfc_6902` for it.
+- `session.note(text)` tells the agent on its next run what happened in the app. `session.wake()` starts that run with a `UserMessage` whose `fromApp` lets a chat hide it.
+- `AgentCall.caller` and `ApprovalRequest.caller` say who called the method: `Caller.inAppAgent` or `Caller.codingAgent`.
+- `Thinking(backendTool:)` names the tool of the agent's backend that runs now, such as `search_catalog`.
+- Every run sends back the history as `@ag-ui/client` builds it, so LangGraph no longer reruns a turn and Pydantic AI keeps the results of its own tools.
+- The messages sent during a run go with the next run as one message. Before, each had a run of its own.
+- `session.startOver()` keeps the messages that never reached the agent and sends them with the next message. Before, it dropped them.
+- A run fails before any method runs when the backend reuses a tool call id under another name. Before, the call ran under the new name.
+- The first `TOOL_CALL_CHUNK` of a call keeps its `parentMessageId`, as `TOOL_CALL_START` does.
+- `TandemBridge` refuses a call without `screen` while several screens are on the current route, such as tabs, and says so. Before, it said that no screen was in front.
+- `OnDeviceAgent` fails a run with `OnDeviceErrorCode.unsupportedSchema` when the system rejects a tool's schema, such as a nullable parameter on some iOS 26 versions. Before, Tandem made nullable parameters optional and tried again.
+- `ScriptedAgent.repeating` plays one turn on every run, and `AgentRequest` reads a run's request in a script: its context, tools, app notes and tool results.
+- `AgentListing.seen` gives the `.sees` values by name, and `AgentListing.parameters(tool)` a method's JSON Schema.
+- The README names Claude Code as the coding agent Tandem is checked with and marks `OnDeviceAgent` experimental. It lists what an AG-UI backend must do, with reference agents on Google ADK, LangGraph and Pydantic AI.
+- The Agent Skills say which names reach the agent in snake_case, and keep a headless coding agent's wait for approval in one turn.
+
 ## 0.2.2
 
 - When the user sends several messages before a run goes out, the agent gets them as one user message, the texts joined by a blank line: ag-ui-adk passes the model only the last new user message of a run. This covers the messages queued during a run that ends with an `interrupt` or an outcome of the wrong shape, and a message whose run failed before it went out, such as when `agentCapabilities` throws.
