@@ -315,7 +315,6 @@ final class TandemSession({
       return Future.value(.refused('This session no longer owns its thread.'));
     }
     final listing = AgentListing.of(_surface);
-    final argumentsJson = jsonEncode(arguments);
     final needsApproval = listing.needsApproval(tool);
     if (needsApproval && !autoApprove) {
       final call = ToolCall(
@@ -323,13 +322,16 @@ final class TandemSession({
         tool,
         listing.description(tool),
         caller: caller,
-      )..arguments = argumentsJson;
+      )..arguments = jsonEncode(arguments);
+      if (_freeze(call, listing) case final answer?) {
+        return Future.value(answer);
+      }
       return _waitForUser(call);
     }
     return _callMethod(
       listing,
       tool,
-      argumentsJson,
+      WrittenArguments(arguments),
       caller: caller,
       approved: autoApprove,
     );
@@ -494,7 +496,7 @@ final class TandemSession({
       _invalidateIfSeesChanged();
       await _answerCalls(run, turn);
       if (!run.stopped && _run == run) {
-        _askUser(turn, seesChanged: run.seesChanged);
+        _askUser(turn, seen: run.listing, seesChanged: run.seesChanged);
       }
     } catch (err, st) {
       _runFailed(err, st);
@@ -523,7 +525,7 @@ final class TandemSession({
           await _callMethod(
             run.listing,
             call.tool,
-            call.argumentsJson,
+            WrittenArguments(arguments),
             caller: call.caller,
             approved: false,
           ),
@@ -534,14 +536,44 @@ final class TandemSession({
     }
   }
 
-  void _askUser(Turn turn, {required bool seesChanged}) {
+  void _askUser(
+    Turn turn, {
+    required AgentListing seen,
+    required bool seesChanged,
+  }) {
     if (!_asksForApproval()) {
       _refuseApprovals(turn);
     } else if (seesChanged) {
       // The agent asked about what it has not seen.
       turn.invalidateUndecided();
     } else {
+      for (final call in turn.undecided) {
+        if (_freeze(call, seen) case final answer?) {
+          call.answerWith(answer);
+        }
+      }
       turn.ask(_seesNow);
+    }
+  }
+
+  /// Reads the arguments of [call] before it asks the user, every path at
+  /// the value it points at in [seen] and still holds, so the user approves
+  /// what the method gets. Returns the refusal of arguments that do not fit,
+  /// or, for another error, such as a converter's bug, the failed call.
+  ToolAnswer? _freeze(ToolCall call, AgentListing seen) {
+    try {
+      final (:args, target: _) = seen.prepare(
+        call.tool,
+        WrittenArguments(call.objectArguments ?? const {}),
+        approved: true,
+      );
+      call.frozen = FrozenArguments(args.json);
+      return null;
+    } on ToolCallRefused catch (refusal) {
+      return .refused(refusal.message);
+    } catch (err, st) {
+      report(err, st);
+      return ToolAnswer.failed;
     }
   }
 
@@ -576,7 +608,7 @@ final class TandemSession({
       await _callMethod(
         listing,
         call.tool,
-        call.argumentsJson,
+        call.frozen ?? WrittenArguments(call.objectArguments ?? const {}),
         caller: call.caller,
         approved: true,
       ),
@@ -600,14 +632,14 @@ final class TandemSession({
   Future<ToolAnswer> _callMethod(
     AgentListing listing,
     String tool,
-    String argumentsJson, {
+    CallArguments arguments, {
     required Caller caller,
     required bool approved,
   }) async {
     final (:answer, :returned) = await runMethod(
       listing,
       tool,
-      argumentsJson,
+      arguments,
       caller: caller,
       approved: approved,
       report: report,

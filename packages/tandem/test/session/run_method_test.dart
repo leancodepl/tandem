@@ -19,7 +19,7 @@ void main() {
       final outcome = await runMethod(
         AgentListing.of(_Surface(() => throw error)),
         'execute',
-        '{}',
+        const WrittenArguments({}),
         caller: .inAppAgent,
         approved: false,
         report: (error, _) => reported.add(error),
@@ -37,7 +37,7 @@ void main() {
     final outcome = await runMethod(
       AgentListing.of(_Surface(() => double.nan)),
       'execute',
-      '{}',
+      const WrittenArguments({}),
       caller: .inAppAgent,
       approved: false,
       report: (error, _) => reported.add(error),

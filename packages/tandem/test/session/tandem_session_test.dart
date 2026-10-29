@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
@@ -2064,10 +2065,81 @@ void main() {
       everyElement(isFormatException),
     );
   });
+
+  test("a converter's bug fails the call, also before it asks for approval, "
+      'and only the report gets it', () async {
+    final reported = _collectReports();
+    final session = TandemSession(
+      surface: _Palette(),
+      connection: ScriptedAgent([]),
+    );
+    addTearDown(session.dispose);
+
+    for (final tool in ['paint', 'order']) {
+      expect(
+        await session.callFor(.codingAgent, tool, {'color': 'red'}),
+        ToolAnswer.failed,
+      );
+    }
+    expect(reported.map((report) => report.exception), [
+      isStateError,
+      isStateError,
+    ]);
+    expect(session.items, isEmpty);
+  });
 }
 
 ApprovalRequest _card(TandemSession session) =>
     session.items.whereType<ApprovalRequest>().single;
+
+/// A screen whose color converter has a bug.
+final class _Palette() implements AgentSurface {
+  static final AgentType<int> _color = .converted(
+    const _BrokenConverter(),
+    AgentType.string,
+    id: 'test#Color',
+    converterId: 'test#BrokenConverter()',
+  );
+
+  void paint(int color) {}
+
+  void order(int color) {}
+
+  @override
+  List<AgentCapability> get agentCapabilities => [
+    .calls(paint),
+    .callsWithApproval(order),
+  ];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [],
+    calls: [
+      for (final (name, method) in [('paint', paint), ('order', order)])
+        AgentTool(
+          method,
+          name: name,
+          description: 'Uses [color].',
+          parameters: [AgentParameter<int>('color', _color)],
+          invoke: (args) {
+            method(args.read('color'));
+            return null;
+          },
+        ),
+    ],
+  );
+}
+
+final class const _BrokenConverter() implements JsonConverter<int, String> {
+  @override
+  int fromJson(String json) => throw StateError('A bug of the app.');
+
+  @override
+  String toJson(int object) => '$object';
+}
 
 final class _RawFirstRun(
   final Stream<Map<String, Object?>> _first,
