@@ -46,7 +46,7 @@ class EnumShelf() with _$EnumShelf {
   );
 
   /// Stores and returns [sample].
-  EnumSample echo(EnumSample sample) => this.sample = sample;
+  EnumSample echo(@TandemInput() EnumSample sample) => this.sample = sample;
 }
 
 extension type const Sku(String value);
@@ -91,7 +91,7 @@ class Dispatch() with _$Dispatch {
   Delivery? lastBooked;
 
   /// Replaces or clears the delivery.
-  void setDelivery(Delivery? delivery) => lastBooked = delivery;
+  void setDelivery(@TandemInput() Delivery? delivery) => lastBooked = delivery;
 
   /// Finds the last booked delivery, if any.
   Future<Delivery>? findDelivery() {
@@ -106,7 +106,10 @@ class Dispatch() with _$Dispatch {
   FutureOr<DateTime>? deliveryDay() => lastBooked?.day;
 
   /// Books a courier for [lines] and returns the delivery as booked.
-  Future<Delivery> book(List<OrderLine> lines, Delivery delivery) async {
+  Future<Delivery> book(
+    @TandemInput() List<OrderLine> lines,
+    @TandemInput() Delivery delivery,
+  ) async {
     final what = [for (final line in lines) '${line.quantity} x ${line.sku}'];
     final Delivery(:address, :day, :slot) = delivery;
     final date = day.toIso8601String().substring(0, 10);

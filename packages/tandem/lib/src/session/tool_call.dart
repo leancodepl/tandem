@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/session/caller.dart';
@@ -18,6 +20,9 @@ final class ToolCall(
 }) {
   /// The JSON arguments, as streamed so far.
   String arguments = '';
+
+  /// The arguments of a call that waits for the user, frozen when it asked.
+  FrozenArguments? frozen;
 
   ToolAnswer? _answer;
   final _answered = Completer<ToolAnswer>();
@@ -54,7 +59,10 @@ final class ToolCall(
     toolCallId: id,
     tool: tool,
     description: description,
-    argumentsJson: argumentsJson,
+    argumentsJson: switch (frozen) {
+      final frozen? => jsonEncode(frozen.json),
+      null => argumentsJson,
+    },
     caller: caller,
   );
 

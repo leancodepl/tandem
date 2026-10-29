@@ -1,5 +1,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:build/build.dart';
+import 'package:source_gen/source_gen.dart';
 import 'package:tandem_generator/src/agent_converters.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
 import 'package:tandem_generator/src/agent_names.dart';
@@ -13,6 +15,11 @@ import 'package:tandem_generator/src/tokens.dart';
 /// the library writes them.
 typedef AgentMethod = ({MethodElement method, List<String> parameterTypes});
 
+const _tandemInput = TypeChecker.typeNamedLiterally(
+  'TandemInput',
+  inPackage: 'tandem',
+);
+
 final class const AgentMixin({
   required final String className,
   required final List<GetterElement> views,
@@ -20,6 +27,7 @@ final class const AgentMixin({
   required final AgentConverters converters,
 }) {
   String generate() {
+    _warnOfUnseenObjects();
     final viewCode = _generateList(views.map(_generateView));
     final toolCode = _generateList(methods.map(_generateTool));
     final surfaceDeclaration = _generateSurfaceDeclaration();
@@ -102,15 +110,52 @@ AgentTool(
     }
 
     final typeCode = types.describe(type, path: name);
+    final input = _tandemInput.hasAnnotationOf(parameter);
+
+    if (input && !AgentTypes.holdsObjects(type)) {
+      throw AgentTypeError.inputWithoutObject(parameter, path: name);
+    }
     final description = switch (documentationOf(parameter)) {
       final text? => ', description: ${DartLiteral.json(text)}',
       null => '',
     };
     final optional = parameter.isOptionalForAgent ? ', required: false' : '';
     final constant = AgentTypes.isConstant(typeCode) ? 'const ' : '';
+    final inputCode = input ? ', input: true' : '';
 
     return "${constant}AgentParameter<$typeSource>('$name', "
-        '$typeCode$description$optional),';
+        '$typeCode$description$optional$inputCode),';
+  }
+
+  /// A parameter of a class that no `.sees` holds can only be refused,
+  /// unless the agent writes it.
+  void _warnOfUnseenObjects() {
+    final seen = {
+      for (final getter in views)
+        ...AgentTypes.classesIn(getter.returnType, converters: converters).keys,
+    };
+
+    for (final (:method, parameterTypes: _) in methods) {
+      for (final parameter in method.formalParameters) {
+        if (_tandemInput.hasAnnotationOf(parameter)) continue;
+
+        final classes = AgentTypes.classesIn(
+          parameter.type,
+          converters: converters,
+        );
+
+        for (final MapEntry(key: id, value: type) in classes.entries) {
+          if (seen.contains(id)) continue;
+
+          log.warning(
+            '${method.displayName}.${parameter.displayName}: the agent points '
+            'at a ${type.getDisplayString()} that .sees lists, and no .sees '
+            'lists one. Mark the parameter @TandemInput() if the agent writes '
+            'it.',
+          );
+        }
+      }
+    }
   }
 
   String _generateSurfaceDeclaration() =>

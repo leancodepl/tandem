@@ -210,8 +210,9 @@ sealed class const AgentType<T>() {
   /// Whether this is a class that the agent points at by path.
   bool get isObject => false;
 
-  /// Whether a value of [other] can stand where this type is expected.
-  bool accepts(AgentType<Object?> other) => other.id == id;
+  /// Whether a value of [other], or a non-null value of it, can stand where
+  /// this type is expected.
+  bool accepts(AgentType<Object?> other) => _nonNull(other).id == id;
 
   /// No value: past the end of a list, or below a null.
   static const Object absent = _Absent();
@@ -386,8 +387,8 @@ final class const _Scalar<T>(final String _jsonType, final String _dartName)
   JsonObject schema(AgentObjects objects) => {'type': _jsonType};
 
   @override
-  bool accepts(AgentType<Object?> other) => switch ((this, other)) {
-    _ when other.id == id => true,
+  bool accepts(AgentType<Object?> other) => switch ((this, _nonNull(other))) {
+    (_, final other) when other.id == id => true,
     (AgentType<num>(), AgentType<num>()) when 0.5 is T => true,
     _ => false,
   };
@@ -621,8 +622,10 @@ final class const _List<T>(final AgentType<T> _item)
   Iterable<AgentType<Object?>> get parts => [_item];
 
   @override
-  bool accepts(AgentType<Object?> other) =>
-      other is _List && _item.accepts(other._item);
+  bool accepts(AgentType<Object?> other) => switch (_nonNull(other)) {
+    _List(:final _item) => this._item.accepts(_item),
+    _ => false,
+  };
 
   /// The type of each item.
   AgentType<T> get item => _item;
@@ -674,8 +677,10 @@ final class const _Set<T>(final AgentType<T> _item) extends AgentType<Set<T>> {
   Iterable<AgentType<Object?>> get parts => [_item];
 
   @override
-  bool accepts(AgentType<Object?> other) =>
-      other is _Set && _item.accepts(other._item);
+  bool accepts(AgentType<Object?> other) => switch (_nonNull(other)) {
+    _Set(:final _item) => this._item.accepts(_item),
+    _ => false,
+  };
 }
 
 final class _Object<T>(
@@ -820,10 +825,23 @@ extension AgentTypeDetails on AgentType<Object?> {
     final type => type.name,
   };
 
+  /// [name], or the id without `package:` when [other] is another type of
+  /// that name, so that a refusal tells the two apart.
+  String nameBeside(AgentType<Object?> other) =>
+      name == other.name && id != other.id
+      ? id.replaceAll('package:', '')
+      : name;
+
   /// The names an enum or a token class takes, or null for another type.
   Iterable<String>? get choices => switch (this) {
     final _Choice<Object?> choice => choice.names,
     _ => null,
+  };
+
+  /// The names of the fields of a class, empty for another type.
+  Iterable<String> get fieldNames => switch (_nonNull(this)) {
+    final _Object<Object?> object => object._byName.keys,
+    _ => const [],
   };
 
   /// The type of an item of a list or a set, or null for another type.

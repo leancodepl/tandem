@@ -80,6 +80,13 @@ final class AgentTypeError extends InvalidGenerationSource {
          element: element,
        );
 
+  new inputWithoutObject(Element element, {required String path})
+    : super(
+        '$path: @TandemInput() lets the agent write an object of a class, and '
+        'this parameter takes none.',
+        element: element,
+      );
+
   new missingConstructor(
     Element element, {
     required String className,

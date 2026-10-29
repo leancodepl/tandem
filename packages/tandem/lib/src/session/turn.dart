@@ -42,6 +42,9 @@ final class Turn(final List<ToolCall> calls) {
     ];
   }
 
+  /// The calls that have no answer and were not approved.
+  Iterable<ToolCall> get undecided => calls.where(_undecided);
+
   /// The calls without an answer wait for the user, one at a time through
   /// [next], and keep [seen].
   void ask(SeesSnapshot seen) => _seen = seen;

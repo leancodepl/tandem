@@ -114,6 +114,7 @@ mixin _$EnumShelf implements AgentSurface {
                   statuses: values('statuses'),
                 ),
               ),
+              input: true,
             ),
           ],
           invoke: (args) {
@@ -340,6 +341,7 @@ mixin _$Dispatch implements AgentSurface {
                       .new(sku: values('sku'), quantity: values('quantity')),
                 ),
               ),
+              input: true,
             ),
             AgentParameter<Delivery>(
               'delivery',
@@ -388,6 +390,7 @@ mixin _$Dispatch implements AgentSurface {
                   note: values('note'),
                 ),
               ),
+              input: true,
             ),
           ],
           invoke: (args) async {
@@ -502,6 +505,7 @@ mixin _$Dispatch implements AgentSurface {
                 ),
               ),
               required: false,
+              input: true,
             ),
           ],
           invoke: (args) {

@@ -1,8 +1,11 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
+import 'package:tandem/src/agent_paths.dart';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/tool_args.dart';
 
 /// One item of the agent list: a value the agent sees or a method it may
 /// call. Write it as `.sees`, `.calls` or `.callsWithApproval`.
@@ -41,6 +44,7 @@ final class const _Calls(
 /// AG-UI sends it. A new run reads the list again.
 final class AgentListing._(
   final AgentSurface _surface,
+  final List<AgentCapability> _capabilities,
   final List<_Seen> _seen,
   final Map<String, AgentTool> _tools,
 ) {
@@ -69,7 +73,7 @@ final class AgentListing._(
         tools[tool.name] = tool;
       }
     }
-    return ._(surface, seen, tools);
+    return ._(surface, capabilities, seen, tools);
   }
 
   /// The agent list through the generated copy that names each `.sees`, or
@@ -189,18 +193,45 @@ final class AgentListing._(
   /// returns its result as JSON.
   ///
   /// The agent list is read again first, because an earlier call of the same
-  /// run may have changed it. Throws a [ToolCallRefused] for a tool that is
-  /// not listed now, that needs approval when [approved] is false, and for
-  /// arguments of the wrong type or with a key the schema does not have. The
-  /// method runs in none of these cases.
+  /// run may have changed it. An argument of a class is a `{"path": ...}` to
+  /// a value of this listing, and the method gets the value at that path
+  /// now. Throws a [ToolCallRefused] for a tool that is not listed now, that
+  /// needs approval when [approved] is false, for arguments of the wrong type
+  /// or with a key the schema does not have, and for a path whose value
+  /// changed since this listing was read. The method runs in none of these
+  /// cases.
   Future<Object?> call(
     String tool,
     Map<String, Object?> arguments, {
     bool approved = false,
+  }) async =>
+      (await run(tool, WrittenArguments(arguments), approved: approved)).result;
+
+  /// Like [call], and gives the arguments too, as JSON with every path
+  /// replaced by the value it points at.
+  @internal
+  Future<({Object? result, JsonObject arguments})> run(
+    String tool,
+    CallArguments arguments, {
+    required bool approved,
   }) async {
+    final (:target, :args) = prepare(tool, arguments, approved: approved);
+    return (result: await target.invoke(args), arguments: args.json);
+  }
+
+  /// The method behind [tool] and its [arguments] read as its parameter
+  /// types, a path as the value it points at now. Throws a
+  /// [ToolCallRefused] as [call] does.
+  @internal
+  ({AgentTool target, ToolArgs args}) prepare(
+    String tool,
+    CallArguments arguments, {
+    required bool approved,
+  }) {
+    final now = AgentListing.of(_surface);
     final (target, capability) = switch ((
       _tools[tool],
-      _currentCapabilityFor(tool),
+      now._capabilityOf(_tools[tool]?.method),
     )) {
       (final target?, final capability?) => (target, capability),
       _ => throw ToolCallRefused('The agent cannot call $tool now.'),
@@ -208,7 +239,30 @@ final class AgentListing._(
     if (capability.needsApproval && !approved) {
       throw ToolCallRefused('$tool runs only after the user approves it.');
     }
-    return await target.invoke(target.read(arguments));
+    final args = target.read(
+      arguments.json,
+      paths: switch (arguments) {
+        WrittenArguments() => ListingPaths(seen: this, now: now),
+        FrozenArguments() => null,
+      },
+    );
+    return (target: target, args: args);
+  }
+
+  /// The type and the value of each `.sees` by its name, for paths.
+  @internal
+  Map<String, PathValue> get roots => {
+    for (final (:view, :value, json: _) in _seen)
+      view.name: PathValue(view.type, value, seen[view.name]),
+  };
+
+  _Calls? _capabilityOf(Function? method) {
+    for (final item in _capabilities) {
+      if (item case final _Calls capability when capability.method == method) {
+        return capability;
+      }
+    }
+    return null;
   }
 
   _Calls? _currentCapabilityFor(String tool) {
@@ -223,3 +277,18 @@ final class AgentListing._(
 }
 
 typedef _Seen = ({AgentView<Object?> view, Object? value, String json});
+
+/// The JSON arguments of a call, as its method reads them.
+@internal
+sealed class const CallArguments(final JsonObject json);
+
+/// Arguments as the caller wrote them: a path points at a value the caller
+/// saw, and the method gets the value at that path now.
+@internal
+final class const WrittenArguments(super.json) extends CallArguments;
+
+/// Arguments read before an approval request asked, with every path replaced
+/// by the value it pointed at. The request shows them, and the approved
+/// method gets new objects built from them.
+@internal
+final class const FrozenArguments(super.json) extends CallArguments;

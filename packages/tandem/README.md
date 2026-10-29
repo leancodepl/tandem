@@ -50,6 +50,8 @@ Your state class lists what the agent may do:
 - `.calls(setQuantity)`: the agent calls the same method as a button. The same validation runs, and the screen updates as it would after a tap.
 - `.callsWithApproval(placeOrder)`: the method runs only after the user approves the call.
 
+A method's parameter of one of your classes, such as `setCustomer(Customer customer)`, takes an object the screen lists: the agent points at it with a path, `{"path": "/customers/1"}`, and the method gets that `Customer`. A path whose value changed since the agent read it is refused. Mark a parameter `@TandemInput()` when the agent writes the object itself, such as a delivery that does not exist yet.
+
 > [!NOTE]
 > Tandem is experimental. Its API can change before 1.0.
 
@@ -267,6 +269,8 @@ Call `session.stop()` while the status is `Thinking` or `Calling(approved: false
 A method listed with `.callsWithApproval` runs only after the user approves it. Approval is tied to the screen's `.sees` values, so list every value the method depends on. Changing a listed value permanently invalidates the request. A change outside `.sees`, such as a selected tab, leaves the request pending.
 
 For an in-app agent, approval uses the `.sees` values from the start of the run. A change made by the agent's earlier calls invalidates that turn's requests, even before they appear. The agent must ask again after the change.
+
+A request shows its arguments with every path replaced by the object it points at, as JSON. The approved method gets new objects built from that JSON, so what the user approved is what runs, even when the screen's object changes in place.
 
 The agent receives the invalidation result in its next run, which starts with the user's next message. To have the agent ask again without another user message, call [`session.wake()`](#notes-from-the-app) after editing stops. The order desk waits one second after the last edit and wakes the agent only when this check returns `true`:
 

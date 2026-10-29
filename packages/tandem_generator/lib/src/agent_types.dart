@@ -352,6 +352,60 @@ final class AgentTypes(
     ];
   }
 
+  /// Whether a value of [type] holds an object of a class, which the agent
+  /// points at by path or, with `@TandemInput()`, writes.
+  static bool holdsObjects(DartType type) => switch (type) {
+    InterfaceType(isDartCoreList: true, :final typeArguments) ||
+    InterfaceType(
+      isDartCoreSet: true,
+      :final typeArguments,
+    ) => holdsObjects(typeArguments.single),
+    InterfaceType(:final ClassElement element) =>
+      _tokenNames(element).isEmpty &&
+          element.library.uri.scheme != 'dart' &&
+          !(element.library.uri.isScheme('package') &&
+              element.library.uri.pathSegments.first == 'flutter'),
+    _ => false,
+  };
+
+  /// The classes that a value of [type] holds, by id, the ones inside other
+  /// classes too, which the agent can point at by path. A class with a
+  /// converter is written in its converter's form, which has no paths below.
+  static Map<String, DartType> classesIn(
+    DartType type, {
+    required AgentConverters converters,
+  }) {
+    final classes = <String, DartType>{};
+
+    void visit(DartType type) {
+      if (type is! InterfaceType) return;
+
+      if (type.isDartCoreList || type.isDartCoreSet) {
+        visit(type.typeArguments.single);
+        return;
+      }
+
+      if (!type.isAgentClass) return;
+
+      final nonNull = type.element.library.typeSystem.promoteToNonNull(type);
+      final id = idOf(nonNull);
+
+      if (classes.containsKey(id)) return;
+
+      classes[id] = nonNull;
+
+      if (converters[nonNull] != null) return;
+
+      final object = AgentClass.read(type, source: type.element, path: '');
+      for (final field in object.fields) {
+        visit(field.parameter.type);
+      }
+    }
+
+    visit(type);
+    return classes;
+  }
+
   /// Whether [code], an expression of [describe], is a constant.
   static bool isConstant(String code) =>
       _scalars.containsValue(code) || _builtIns.containsValue(code);

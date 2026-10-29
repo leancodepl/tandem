@@ -94,6 +94,11 @@ final class const AgentParameter<T>(
   /// Whether the agent must send it: it is neither nullable nor has a
   /// default value.
   final bool required = true,
+
+  /// Whether the agent writes an object of a class here, field by field or
+  /// in its converter's form, as `@TandemInput()` marks it. Otherwise it
+  /// points at one of the values it sees with `{"path": ...}`.
+  final bool input = false,
 });
 
 /// One method of the agent list, as the generated code describes it.
@@ -121,7 +126,7 @@ final class const AgentTool(
     'properties': {
       for (final parameter in parameters)
         parameter.name: {
-          ...parameter.type.schema(.fields),
+          ...parameter.type.schema(parameter.input ? .fields : .paths),
           'description': ?parameter.description,
         },
     },
@@ -131,9 +136,11 @@ final class const AgentTool(
     ],
   };
 
-  /// The agent's JSON [arguments] read as the method's parameter types.
-  /// Throws a [ToolCallRefused] for a missing, unknown or wrong argument.
-  ToolArgs read(JsonObject arguments) {
+  /// The agent's JSON [arguments] read as the method's parameter types, a
+  /// `{"path": ...}` as what [paths] gives for it. Without [paths], every
+  /// object is read field by field. Throws a [ToolCallRefused] for a
+  /// missing, unknown or wrong argument.
+  ToolArgs read(JsonObject arguments, {AgentPaths? paths}) {
     final byName = {for (final parameter in parameters) parameter.name: null};
     for (final key in arguments.keys) {
       if (!byName.containsKey(key)) {
@@ -144,8 +151,10 @@ final class const AgentTool(
     }
     final values = <String, Object?>{};
     final json = <String, Object?>{};
-    for (final AgentParameter(:name, :type, :required) in parameters) {
-      final reading = AgentReading(name, objects: .fields);
+    for (final AgentParameter(:name, :type, :required, :input) in parameters) {
+      final reading = input || paths == null
+          ? AgentReading(name, objects: .fields)
+          : AgentReading(name, objects: .paths, paths: paths);
       if (arguments.containsKey(name)) {
         final value = values[name] = type.read(arguments[name], reading);
         json[name] = type.write(value);

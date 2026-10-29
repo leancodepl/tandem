@@ -11,3 +11,10 @@ final class const TandemAgent({
   /// `static const` list, which the app spreads here.
   final List<JsonConverter<Object?, Object?>> converters = const [],
 });
+
+/// Marks a parameter of a listed method whose object the agent writes,
+/// field by field or in its converter's form, such as a delivery that does
+/// not exist yet. Without it, the agent points at an object it sees, with
+/// `{"path": ...}`, so it cannot make one up. A converter does not change
+/// that.
+final class const TandemInput();
