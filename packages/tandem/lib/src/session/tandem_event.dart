@@ -19,7 +19,7 @@ final class const AgentCall({
   required final Object? result,
 
   /// Who called the method.
-  required final Caller caller,
+  final Caller caller = .inAppAgent,
 }) extends TandemEvent;
 
 /// The user or the backend stopped a run. Sent on every Stop that stops one,
