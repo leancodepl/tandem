@@ -42,7 +42,7 @@ jobs:
           while IFS= read -r file; do
             case "$file" in
               packages/*) dart=true ;;
-              example/agents/*) agent=true ;;
+              example/agents/* | showcase/agent/*) agent=true ;;
               .github/workflows/test.yml) dart=true; agent=true ;;
               README.md) dart=true ;;
               .github/* | doc/* | *.md | .commitlintrc.yml) ;;
@@ -136,6 +136,14 @@ jobs:
         run: flutter test
         working-directory: fixtures/greenhouse_app
 
+      - name: Test the showcase travel domain
+        run: flutter test
+        working-directory: showcase/packages/waypoint_travel
+
+      - name: Test showcase
+        run: flutter test
+        working-directory: showcase/app
+
   codegen:
     name: Check the generated code
 
@@ -172,6 +180,12 @@ jobs:
         run: |
           (cd fixtures/kit_ds && dart run build_runner build)
           (cd fixtures/greenhouse_app && dart run build_runner build)
+
+      - name: Generate the showcase code
+        run: |
+          (cd showcase/packages/waypoint_design_system && flutter gen-l10n)
+          (cd showcase/packages/waypoint_travel && dart run build_runner build)
+          (cd showcase/app && flutter gen-l10n && dart run build_runner build)
 
       - name: Generate the Swift bridge API
         run: dart run pigeon --input pigeons/apple_api.dart && dart format lib test
@@ -218,7 +232,7 @@ jobs:
   result:
     name: Test and analyze
 
-    needs: [changes, analyze, test, codegen, publish, agent]
+    needs: [changes, analyze, test, codegen, publish, agent, showcase-agent]
     if: ${{ !cancelled() }}
 
     runs-on: ubuntu-latest
@@ -280,5 +294,44 @@ jobs:
         run: uv run ruff format --check . ${{ matrix.shared }}
 
       # The tests play the order desk with the scripted model: no API key, no network.
+      - name: Test the agent
+        run: uv run pytest
+
+  showcase-agent:
+    name: Test and lint the showcase agent
+
+    needs: changes
+    if: needs.changes.outputs.agent == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: showcase/agent
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: '0.12.23'
+          python-version: '3.14'
+          working-directory: showcase/agent
+
+      - name: Download Python dependencies
+        run: uv sync --locked
+
+      - name: Run ruff
+        run: uv run ruff check .
+
+      - name: Check Python formatting
+        run: uv run ruff format --check .
+
+      # The tests play the trip with the scripted model: no API key, no network.
       - name: Test the agent
         run: uv run pytest

@@ -1,0 +1,9 @@
+targets:
+  $default:
+    builders:
+      source_gen:combining_builder:
+        options:
+          ignore_for_file:
+            - document_ignores
+            - unnecessary_type_name_in_constructor
+            - use_primary_constructors

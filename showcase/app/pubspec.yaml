@@ -1,0 +1,46 @@
+name: waypoint
+description: "Waypoint, a business travel app with an assistant: the showcase of Tandem."
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  advanced_forms: ^0.3.0
+  auto_route: ^11.2.0
+  bloc_presentation: ^1.1.2
+  copy_with_extension: ^18.0.0
+  equatable: ^3.0.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.0
+  flutter_hooks: ^0.21.3
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  logging: ^1.3.0
+  provider: ^6.1.5
+  tandem: ^0.2.3
+  waypoint_design_system:
+    path: ../packages/waypoint_design_system
+  waypoint_scripted_agent:
+    path: ../packages/waypoint_scripted_agent
+  waypoint_travel:
+    path: ../packages/waypoint_travel
+
+dev_dependencies:
+  auto_route_generator: ^10.6.0
+  build_runner: ^2.16.0
+  copy_with_extension_gen: ^18.0.0
+  flutter_test:
+    sdk: flutter
+  tandem_generator:
+    path: ../../packages/tandem_generator
+
+flutter:
+  generate: true
+  uses-material-design: true
