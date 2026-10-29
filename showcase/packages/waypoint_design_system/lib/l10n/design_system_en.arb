@@ -1,0 +1,22 @@
+{
+  "@@locale": "en",
+  "back": "Back",
+  "@back": {
+    "description": "Tooltip of the button that goes back to the page before."
+  },
+  "close": "Close",
+  "@close": {
+    "description": "Tooltip of the button that closes a sheet."
+  },
+  "send": "Send",
+  "@send": {
+    "description": "Tooltip of the composer's button that sends the message to the assistant."
+  },
+  "stop": "Stop",
+  "@stop": {
+    "description": "Tooltip of the composer's button that stops the assistant at work."
+  },
+  "tryAgain": "Try again",
+  "reject": "Reject",
+  "approve": "Approve"
+}

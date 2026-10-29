@@ -12,6 +12,10 @@ workspace:
   - example
   - fixtures/kit_ds
   - fixtures/greenhouse_app
+  - showcase/app
+  - showcase/packages/waypoint_design_system
+  - showcase/packages/waypoint_scripted_agent
+  - showcase/packages/waypoint_travel
 
 dev_dependencies:
   leancode_lint: ^27.0.0
