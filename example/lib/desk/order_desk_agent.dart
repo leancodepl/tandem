@@ -1,21 +1,34 @@
+import 'package:example/desk/desk_catalog.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
 AgentConnection orderDeskAgent() => ScriptedAgent.repeating((raw) {
   final request = AgentRequest(raw);
+  if (request.newNotes.lastOrNull case {
+    'pressed': 'place_order',
+    'result': final id,
+  }) {
+    return [AgentStep.say('You placed order $id from the summary.')];
+  }
   if (request.isUserMessage) {
     if (request.offersTool('set_quantity')) {
       if (request.context('order') case {'lines': []}) {
-        return const [
-          AgentStep.callTool('set_customer', {'customerId': 'acme'}),
-          AgentStep.callTool('set_quantity', {
+        return [
+          const AgentStep.callTool('set_customer', {'customerId': 'acme'}),
+          const AgentStep.callTool('set_quantity', {
             'sku': 'VC-HDMI-2M',
             'quantity': 40,
           }),
-          AgentStep.callTool('set_quantity', {'sku': 'VM-27Q', 'quantity': 12}),
-          AgentStep.callTool('set_delivery', {
+          const AgentStep.callTool('set_quantity', {
+            'sku': 'VM-27Q',
+            'quantity': 12,
+          }),
+          const AgentStep.callTool('set_delivery', {
             'address': 'Magazynowa 5, 61-001 Poznań',
             'date': '2026-10-23',
+          }),
+          AgentStep.callTool('tandem_show_view', {
+            'components': const DeskCatalog().example,
           }),
         ];
       }
@@ -36,8 +49,8 @@ AgentConnection orderDeskAgent() => ScriptedAgent.repeating((raw) {
       (final problem?, _) => problem,
       (null, 'place_order') => 'Order ${last?.value} placed.',
       _ =>
-        'The order is ready. Change quantities on the screen, '
-            'then ask me to place the order.',
+        'The order is ready, with a summary below it. Change quantities '
+            'there or on the screen, then place the order.',
     }),
   ];
 });
@@ -45,7 +58,8 @@ AgentConnection orderDeskAgent() => ScriptedAgent.repeating((raw) {
 String? _problem(List<AgentToolResult> results) {
   // This script's app calls return null or an id; objects are control answers.
   for (final result in results.reversed) {
-    if (result.value case {'status': final String status}) {
+    if (result.value case {'status': final String status}
+        when status != 'shown') {
       return switch (status) {
         'rejected_by_user' => 'You rejected the action. It did not run.',
         'invalidated' =>

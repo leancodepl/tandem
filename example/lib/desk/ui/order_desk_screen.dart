@@ -6,6 +6,7 @@ import 'package:example/desk/customers.dart';
 import 'package:example/desk/data/customers.dart';
 import 'package:example/desk/data/emails.dart';
 import 'package:example/desk/data/products.dart';
+import 'package:example/desk/desk_catalog.dart';
 import 'package:example/desk/order_desk_cubit.dart';
 import 'package:example/desk/orders.dart';
 import 'package:example/desk/ui/agent_workspace.dart';
@@ -31,6 +32,7 @@ final class const OrderDeskScreen({
       surface: (context) => context.read<OrderDeskCubit>(),
       connection: connection,
       approvals: const .fromState(),
+      onEvent: wakeOnPlacedOrder,
       child: const _AsksAgainAfterEdit(_OrderDeskView()),
     ),
   );
@@ -50,7 +52,38 @@ final class const _OrderDeskView() extends StatelessWidget {
           _ => const SizedBox.shrink(),
         },
       ),
-      child: const OrderForm(),
+      child: const _FormAndView(),
+    ),
+  );
+}
+
+/// Lets the agent answer once the user placed the order from its view.
+void wakeOnPlacedOrder(
+  BuildContext context,
+  TandemEvent event,
+  TandemSession session,
+) {
+  if (event case AgentCall(tool: 'place_order', caller: .view)) {
+    session.wake();
+  }
+}
+
+/// The form above what the agent draws, which takes at most half the height.
+final class const _FormAndView() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => Column(
+      crossAxisAlignment: .stretch,
+      children: [
+        const Expanded(child: OrderForm()),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: constraints.maxHeight / 2),
+          child: const SingleChildScrollView(
+            padding: .fromLTRB(12, 0, 12, 12),
+            child: TandemView(catalog: DeskCatalog()),
+          ),
+        ),
+      ],
     ),
   );
 }
