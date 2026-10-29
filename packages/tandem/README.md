@@ -106,7 +106,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
    dart run build_runner build
    ```
 
-   Every class with `@TandemAgent()` gets a `_$Name` mixin. Each `.sees` entry must appear directly in the list. Putting it inside an `if`, a `for`, a `?:` or a spread fails the build. An outdated `.g.dart` is not always caught at runtime, so check the generated code in CI:
+   Every class with `@TandemAgent()` gets a `_$Name` mixin. The list may depend on the state, with `if`, `switch` or a spread: the mixin copies it and names each `.sees` by its getter, so two values of one type stay apart. An outdated `.g.dart` is not always caught at runtime, so check the generated code in CI:
 
    ```sh
    dart run build_runner build && git diff --exit-code

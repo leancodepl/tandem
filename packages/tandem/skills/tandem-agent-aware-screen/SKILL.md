@@ -66,7 +66,7 @@ class OrderCubit extends Cubit<OrderState> with _$OrderCubit {
 - Reject the agent's bad input with a `ToolCallRefused`, before the method changes any state: the agent gets its message and tries again. Its message goes to the agent: put nothing in it the agent must not see. Any other exception, an `ArgumentError` too, is a bug: Tandem reports it and tells the agent the call failed and may have changed the app.
 - After an `await`, check that the object is still alive before you change it: `isClosed` in a Cubit, `ref.mounted` in a `Notifier`, a flag that `dispose` sets in a `ChangeNotifier`.
 
-**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, `changes` reports every change, every `.sees` stands directly in the list, not inside an `if`, a `for`, a `?:` or a spread, and everything a `.callsWithApproval` method depends on is listed with `.sees`.
+**Done when** every `.sees` is a getter and every `.calls` a method of this class, each has a doc comment, `changes` reports every change, `agentCapabilities` does not use `super`, and everything a `.callsWithApproval` method depends on is listed with `.sees`.
 
 ## 3. Generate the code
 

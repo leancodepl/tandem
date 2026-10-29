@@ -185,6 +185,20 @@ mixin _$OrderDeskCubit implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on OrderDeskCubit {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('order', order),
+    .calls(searchCatalog),
+    if (canEdit) ...[
+      .calls(setCustomer),
+      .calls(setQuantity),
+      .calls(setDelivery),
+    ],
+    if (canPlace) .callsWithApproval(placeOrder),
+  ];
 }

@@ -205,6 +205,17 @@ mixin _$StockCubit implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on StockCubit {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('plants', plants),
+    .seesAs('page', page),
+    .seesAs('title_style', titleStyle),
+    .calls(restock),
+    .calls(group),
+  ];
 }

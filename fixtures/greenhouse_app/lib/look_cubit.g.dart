@@ -82,8 +82,18 @@ mixin _$LookCubit implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on LookCubit {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('accent', accent),
+    .calls(setPadding),
+    .calls(setIcon),
+    .calls(setInk),
+  ];
 }
 
 const List<Object> _$LookCubitConverters = [

@@ -37,13 +37,11 @@ final class AgentGenerationError extends InvalidGenerationSource {
         node: parameter,
       );
 
-  new nestedView(Expression item)
+  new superInCapabilities(SuperExpression node)
     : super(
-        '.sees must be an item of the list after get agentCapabilities =>, '
-        'not inside if, for, ?: or a spread. Tandem tells the values apart by '
-        'their place in the list. Keep it listed and let the getter return '
-        'null when there is nothing to see.',
-        node: item,
+        'agentCapabilities cannot use super: Tandem reads the list through a '
+        'copy of it in an extension. Call a method of the class instead.',
+        node: node,
       );
 
   new invalidView(Expression item, ClassElement type)

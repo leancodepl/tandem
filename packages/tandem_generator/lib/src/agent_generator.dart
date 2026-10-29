@@ -7,6 +7,8 @@ import 'package:source_gen/source_gen.dart';
 import 'package:tandem_generator/src/agent_converters.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
 import 'package:tandem_generator/src/agent_mixin.dart';
+import 'package:tandem_generator/src/agent_names.dart';
+import 'package:tandem_generator/src/capability_copy.dart';
 import 'package:tandem_generator/src/tokens.dart';
 
 /// Writes the `_$Name` mixin of every class with `@TandemAgent()`, from its
@@ -65,6 +67,7 @@ class const AgentGenerator() extends Generator {
 
     return [
       mixin.generate(),
+      capabilities.copy,
       converters.declaration,
     ].join(Tokens.doubleNewLine);
   }
@@ -77,7 +80,6 @@ class _CapabilityReader(final ClassElement _type)
     inPackage: 'tandem',
   );
 
-  // In source order: the agent list pairs .sees values with views by place.
   final _viewExpressions = <Expression>[];
   final _methodExpressions = <Expression>[];
 
@@ -99,11 +101,24 @@ class _CapabilityReader(final ClassElement _type)
 
     source.accept(this);
 
-    final views = [for (final item in _viewExpressions) _readView(item)];
+    final copy = CapabilityCopy(_type);
+    final views = <GetterElement>{};
+
+    for (final item in _viewExpressions) {
+      final getter = _readView(item);
+      views.add(getter);
+      copy.nameView(item, agentName: agentName(getter.displayName));
+    }
+
     final methods = {for (final item in _methodExpressions) _readMethod(item)};
+    final body = switch (source) {
+      MethodDeclaration(:final body) => body,
+      _ => throw AgentGenerationError.missingSource(getter),
+    };
 
     return _AgentCapabilities(
-      views: views,
+      views: [...views],
+      copy: copy.generate(body),
       methods: [
         for (final method in methods)
           (
@@ -138,10 +153,6 @@ class _CapabilityReader(final ClassElement _type)
   }
 
   GetterElement _readView(Expression item) {
-    if (!_isDirectListItem(item)) {
-      throw AgentGenerationError.nestedView(item);
-    }
-
     if (item is! SimpleIdentifier) {
       throw AgentGenerationError.invalidView(item, _type);
     }
@@ -192,19 +203,6 @@ class _CapabilityReader(final ClassElement _type)
     ];
   }
 
-  static bool _isDirectListItem(Expression item) {
-    final arguments = item.parent;
-
-    if (arguments is! ArgumentList) return false;
-
-    final capability = arguments.parent;
-    final list = capability?.parent;
-
-    if (list is! ListLiteral) return false;
-
-    return list.parent is ExpressionFunctionBody;
-  }
-
   void _collectCapability(ArgumentList node) {
     if (node.arguments.length != 1) return;
 
@@ -235,6 +233,9 @@ class _CapabilityReader(final ClassElement _type)
 
 final class const _AgentCapabilities({
   required final List<GetterElement> views,
+
+  /// The extension with the copy of the list that names each `.sees`.
+  required final String copy,
   required final List<AgentMethod> methods,
 });
 

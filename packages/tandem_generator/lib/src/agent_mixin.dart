@@ -2,6 +2,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:tandem_generator/src/agent_converters.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
+import 'package:tandem_generator/src/agent_names.dart';
 import 'package:tandem_generator/src/agent_type_error.dart';
 import 'package:tandem_generator/src/agent_types.dart';
 import 'package:tandem_generator/src/dart_literal.dart';
@@ -32,6 +33,7 @@ $surfaceDeclaration
     return AgentSchema(
       sees: $viewCode,
       calls: $toolCode,
+      capabilities: () => surface._\$agentCapabilities,
     );
   }
 }''';
@@ -43,12 +45,12 @@ $surfaceDeclaration
       getter,
       converters: converters,
     ).describe(getter.returnType, path: name);
-    final agentName = DartLiteral.json(_snakeCase(name));
+    final wireName = DartLiteral.json(agentName(name));
     final description = DartLiteral.json(_documentation(getter));
 
     return '''
 AgentView.of(() => surface.$name).as(
-  $agentName,
+  $wireName,
   $description,
   $type,
 ),''';
@@ -73,14 +75,14 @@ AgentView.of(() => surface.$name).as(
       read: (name) => "args.read('$name')",
     );
     final call = 'surface.$name($arguments)';
-    final agentName = DartLiteral.json(_snakeCase(name));
+    final wireName = DartLiteral.json(agentName(name));
     final description = DartLiteral.json(_documentation(method));
     final invoke = _generateInvocation(method, types: types, call: call);
 
     return '''
 AgentTool(
   surface.$name,
-  name: $agentName,
+  name: $wireName,
   description: $description,
   parameters: [$parameterCode],
   invoke: $invoke,
@@ -111,11 +113,8 @@ AgentTool(
         '$typeCode$description$optional),';
   }
 
-  String _generateSurfaceDeclaration() {
-    if (views.isEmpty && methods.isEmpty) return '';
-
-    return '    final surface = this as $className;';
-  }
+  String _generateSurfaceDeclaration() =>
+      '    final surface = this as $className;';
 
   static String _generateInvocation(
     MethodElement method, {
@@ -173,9 +172,4 @@ AgentTool(
 
     throw AgentGenerationError.missingDocumentation(element);
   }
-
-  static String _snakeCase(String name) => name
-      .replaceFirst(RegExp('^_+'), '')
-      .replaceAllMapped(RegExp('(?<=[a-z0-9])[A-Z]'), (match) => '_${match[0]}')
-      .toLowerCase();
 }

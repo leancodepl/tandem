@@ -29,7 +29,7 @@ The README and both packages' `example/example.md` show only code from `example`
 
 ## Session rules
 
-- Every run reads the live list: `context` from `.sees`, `tools` from `.calls`. Every tool call checks the list again.
+- Every run reads the live list: `context` from `.sees`, `tools` from `.calls`. Every tool call checks the list again. Tandem reads the list through the copy that the generated mixin makes of `agentCapabilities`, in which each `.sees` carries its getter's name, so one read gives the values, their getters and the methods, also when the list depends on the route. In debug, the copy and the list must name the same methods in the same order.
 - One run at a time in a thread. A message sent meanwhile shows at once and goes with the next run. Several go as one, the texts joined by a blank line.
 - `session.note(text)` keeps the latest five notes of the app, and every run gives them as the last `context` entry, `app_notes`: `{"new": [...], "earlier": [...]}`, new until a run that offered them finished. `context` does not stay in the history of every backend, so every run sends the earlier ones again. A note changes no status and no item, and does not count as a change of `.sees`.
 - `session.wake()` posts a `UserMessage` with `fromApp`, a fixed text that says the app sent it. It never decides for the user: it starts a run only once the session is idle and no request waits, and after a Stop it waits for the user's next message. Any run that starts before takes it along.

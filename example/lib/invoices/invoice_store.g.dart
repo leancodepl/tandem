@@ -104,6 +104,14 @@ mixin _$InvoiceStore implements AgentSurface {
           },
         ),
       ],
+      capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+extension on InvoiceStore {
+  List<AgentCapability> get _$agentCapabilities => [
+    .seesAs('selected_year', selectedYear),
+    .callsWithApproval(interpretInvoiceInput),
+  ];
 }
