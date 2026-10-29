@@ -9,7 +9,7 @@ final class TypeNames(final LibraryElement _library) {
   String? name(DartType type) {
     if (type is! InterfaceType) return null;
 
-    final base = _visibleName(type.element);
+    final base = visibleName(type.element);
 
     if (base == null) return null;
 
@@ -29,18 +29,20 @@ final class TypeNames(final LibraryElement _library) {
     return '$base$list$suffix';
   }
 
-  String? _visibleName(InterfaceElement element) {
+  /// The name of [element] in the code of the library, without type
+  /// arguments, or null when the library does not see it.
+  String? visibleName(InterfaceElement element) {
     final name = element.displayName;
 
     if (element.library == _library) return name;
 
     for (final import in _library.firstFragment.libraryImports) {
-      if (import.namespace.get2(name) != element) continue;
-
-      return switch (import.prefix?.element.displayName) {
+      final visibleName = switch (import.prefix?.element.displayName) {
         final prefix? => '$prefix.$name',
         null => name,
       };
+
+      if (import.namespace.get2(visibleName) == element) return visibleName;
     }
 
     return null;

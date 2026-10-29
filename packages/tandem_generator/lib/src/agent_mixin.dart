@@ -11,8 +11,8 @@ import 'package:tandem_generator/src/dart_literal.dart';
 import 'package:tandem_generator/src/source_documentation.dart';
 import 'package:tandem_generator/src/tokens.dart';
 
-/// A method of the agent list with the source of its parameters' types, as
-/// the library writes them.
+/// A method of the agent list with its parameters' types as code of the
+/// library of the generated code.
 typedef AgentMethod = ({MethodElement method, List<String> parameterTypes});
 
 const _tandemInput = TypeChecker.typeNamedLiterally(
@@ -22,6 +22,9 @@ const _tandemInput = TypeChecker.typeNamedLiterally(
 
 final class const AgentMixin({
   required final String className,
+
+  /// The library of the generated code, which names the types in it.
+  required final LibraryElement library,
   required final List<GetterElement> views,
   required final List<AgentMethod> methods,
   required final AgentConverters converters,
@@ -51,6 +54,7 @@ $surfaceDeclaration
     final name = getter.displayName;
     final type = AgentTypes(
       getter,
+      library: library,
       converters: converters,
     ).describe(getter.returnType, path: name);
     final wireName = DartLiteral.json(agentName(name));
@@ -67,7 +71,7 @@ AgentView.of(() => surface.$name).as(
   String _generateTool(AgentMethod item) {
     final (:method, :parameterTypes) = item;
     final name = method.displayName;
-    final types = AgentTypes(method, converters: converters);
+    final types = AgentTypes(method, library: library, converters: converters);
     final parameters = method.formalParameters;
     final parameterCode = [
       for (final (index, parameter) in parameters.indexed)
@@ -79,8 +83,8 @@ AgentView.of(() => surface.$name).as(
     ].join(Tokens.newLine);
     final arguments = types.constructorArguments(
       parameters,
-      from: 'args',
       read: (name) => "args.read('$name')",
+      readOr: (name, fallback) => "args.readOr('$name', $fallback)",
     );
     final call = 'surface.$name($arguments)';
     final wireName = DartLiteral.json(agentName(name));

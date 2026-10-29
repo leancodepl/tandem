@@ -79,7 +79,7 @@ final class const AgentClass._(final List<AgentField> fields) {
     required String path,
   }) {
     final name = parameter.displayName;
-    final getter = type.getGetter(name);
+    final getter = type.lookUpGetter(name, type.element.library);
 
     if (getter == null || getter.isStatic || !parameter.isPublic) {
       throw AgentTypeError.missingGetter(
@@ -128,7 +128,7 @@ extension on ConstructorElement {
       isPublic && (type is! ClassElement || !type.isAbstract || isFactory);
 }
 
-extension on InterfaceElement {
+extension FrameworkTypes on InterfaceElement {
   /// A type of Dart or Flutter, such as `Duration` or `IconData`: its values
   /// have a form only through a converter.
   bool get isFrameworkType {

@@ -11,20 +11,17 @@ import 'package:tandem_generator/src/type_names.dart';
 /// Writes the `AgentType` of a Dart type as an expression of the generated
 /// code, such as `.list(.object(...))`. The expression names no type: Dart
 /// infers each from where it stands, a getter or a parameter, so a library
-/// needs no import for the types inside the ones it declares.
+/// needs no import for the types inside the ones it declares. A type that
+/// the code must name is named as the library of the generated code sees it.
 final class AgentTypes(
   final Element _source, {
+  required final LibraryElement _library,
   final AgentConverters _converters = const .none(),
 }) {
   final _visiting = <String>{};
   final _converting = <DartType>{};
 
   TypeSystem get _typeSystem => _library.typeSystem;
-
-  LibraryElement get _library => switch (_source.library) {
-    final library? => library,
-    null => throw StateError('${_source.displayName} has no library.'),
-  };
 
   /// The expression of the `AgentType` of [type], which is at [path] for the
   /// messages of a failed build.
@@ -219,8 +216,8 @@ final class AgentTypes(
       ].join(', ');
       final arguments = constructorArguments(
         [for (final field in object.fields) field.parameter],
-        from: 'values',
         read: (name) => "values('$name')",
+        readOr: (name, fallback) => "values.or('$name', $fallback)",
       );
       final description = _describedBy(type.element);
 
@@ -254,8 +251,8 @@ final class AgentTypes(
   /// keeping its default.
   String constructorArguments(
     List<FormalParameterElement> parameters, {
-    required String from,
     required String Function(String name) read,
+    required String Function(String name, String fallback) readOr,
   }) {
     final arguments = <String>[];
 
@@ -264,7 +261,7 @@ final class AgentTypes(
       final value = read(name);
       final fallback = defaultValue(parameter);
       final argument = switch (fallback) {
-        final fallback? => "$from.has('$name') ? $value : $fallback",
+        final fallback? => readOr(name, fallback),
         null => value,
       };
 
@@ -281,7 +278,9 @@ final class AgentTypes(
 
     if (!origin.hasDefaultValue) return null;
 
-    if (copyDefault(origin) case (:final code)) return code;
+    final copied = copyDefault(origin, path: parameter.displayName);
+
+    if (copied case (:final code)) return code;
 
     throw AgentTypeError.unsupportedDefault(
       _source,
@@ -289,12 +288,23 @@ final class AgentTypes(
     );
   }
 
-  /// The default value of [parameter] as code: null for none or null, and a
-  /// null record when Tandem cannot copy it.
-  ({String? code})? copyDefault(FormalParameterElement parameter) {
+  /// The default value of [parameter], which is at [path], as code: null for
+  /// none or null, and a null record when Tandem cannot copy it. Throws when
+  /// it is a member of a class that the library does not see.
+  ({String? code})? copyDefault(
+    FormalParameterElement parameter, {
+    required String path,
+  }) {
     final value = parameter.computeConstantValue();
 
     if (value == null || value.isNull) return (code: null);
+
+    final declared = _typeSystem.promoteToNonNull(parameter.type);
+
+    // A constant of an extension type has the type of its representation.
+    if (declared case InterfaceType(element: ExtensionTypeElement())) {
+      return null;
+    }
 
     final literal = value.toBoolValue() ?? value.toIntValue();
 
@@ -308,22 +318,22 @@ final class AgentTypes(
 
     if (text != null) return (code: DartLiteral.json(text));
 
-    final type = value.type;
-
-    if (type is InterfaceType && type.element is ExtensionTypeElement) {
-      return null;
-    }
-
-    if (type case InterfaceType(:final EnumElement element)) {
-      final index = value.getField('index')?.toIntValue();
-
-      if (index != null) return (code: '.${element.constants[index].name}');
-    }
-
-    if (type case InterfaceType(:final ClassElement element)) {
-      for (final name in _tokenNames(element)) {
-        if (element.getField(name)?.computeConstantValue() == value) {
-          return (code: '.$name');
+    // An enum value is a static const member of its enum.
+    if (value.type case InterfaceType(:final element)) {
+      for (final field in element.fields) {
+        if (field.isStatic &&
+            field.isConst &&
+            field.isAccessibleIn(_library) &&
+            _typeSystem.isSubtypeOf(field.type, parameter.type) &&
+            field.computeConstantValue() == value) {
+          return (
+            code: _member(
+              field,
+              element: element,
+              declared: declared,
+              path: path,
+            ),
+          );
         }
       }
     }
@@ -331,8 +341,36 @@ final class AgentTypes(
     return null;
   }
 
+  /// [field] of [element] as code where a value of [declared] stands: `.name`
+  /// when [declared] is its class, so that Dart looks it up there.
+  String _member(
+    FieldElement field, {
+    required InterfaceElement element,
+    required DartType declared,
+    required String path,
+  }) {
+    final name = field.displayName;
+
+    if (declared.element == element) return '.$name';
+
+    final className = TypeNames(_library).visibleName(element);
+
+    if (className == null) {
+      throw AgentTypeError.unnamedDefault(
+        _source,
+        className: element.displayName,
+        member: name,
+        path: path,
+      );
+    }
+
+    return '$className.$name';
+  }
+
+  /// The first paragraph of the doc comment of [element], as an argument.
   String _describedBy(Element element) => switch (documentationOf(element)) {
-    final text? => ', description: ${DartLiteral.json(text)}',
+    final text? =>
+      ', description: ${DartLiteral.json(text.split('\n\n').first)}',
     null => '',
   };
 
@@ -360,12 +398,7 @@ final class AgentTypes(
       isDartCoreSet: true,
       :final typeArguments,
     ) => holdsObjects(typeArguments.single),
-    InterfaceType(:final ClassElement element) =>
-      _tokenNames(element).isEmpty &&
-          element.library.uri.scheme != 'dart' &&
-          !(element.library.uri.isScheme('package') &&
-              element.library.uri.pathSegments.first == 'flutter'),
-    _ => false,
+    _ => type.isAgentClass,
   };
 
   /// The classes that a value of [type] holds, by id, the ones inside other

@@ -160,9 +160,20 @@ final class AgentTypeError extends InvalidGenerationSource {
 
   new unsupportedDefault(Element element, {required String parameterName})
     : super(
-        'Tandem copies only literals, enum values, static const members and '
-        'null as default values. Make $parameterName required or nullable '
-        'instead.',
+        'Tandem copies only literals, enum values, null and the static const '
+        "members of the value's class as default values. Make $parameterName "
+        'required or nullable instead.',
         element: element,
       );
+
+  new unnamedDefault(
+    Element element, {
+    required String className,
+    required String member,
+    required String path,
+  }) : super(
+         '$path: this library does not import $className, so the generated '
+         'code cannot copy the default $className.$member. Import it.',
+         element: element,
+       );
 }

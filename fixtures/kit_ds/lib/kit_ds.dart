@@ -2,5 +2,7 @@
 library;
 
 export 'src/kit.dart';
+export 'src/kit_catalog.dart';
 export 'src/kit_ink.dart';
 export 'src/kit_style.dart';
+export 'src/kit_widgets.dart';

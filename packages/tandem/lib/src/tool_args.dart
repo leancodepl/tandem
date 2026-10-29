@@ -16,7 +16,8 @@ final class ToolArgs._(
   /// The argument [name] as its parameter's type [T].
   T read<T>(String name) => _values[name] as T;
 
-  /// Whether the call has the argument [name], so a parameter's default
-  /// stays otherwise.
-  bool has(String name) => _values.containsKey(name);
+  /// The argument [name], or [fallback], the parameter's default, when the
+  /// call has none.
+  T readOr<T>(String name, T fallback) =>
+      _values.containsKey(name) ? _values[name] as T : fallback;
 }

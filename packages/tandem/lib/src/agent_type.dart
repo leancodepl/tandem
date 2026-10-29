@@ -347,9 +347,10 @@ final class const _Field<O, F>(
 final class AgentFieldValues._(final Map<String, Object?> _values) {
   T call<T>(String name) => _values[name] as T;
 
-  /// Whether the agent wrote [name], so the constructor's default stays
-  /// otherwise.
-  bool has(String name) => _values.containsKey(name);
+  /// The field [name], or [fallback], the constructor's default, when the
+  /// agent did not write it.
+  T or<T>(String name, T fallback) =>
+      _values.containsKey(name) ? _values[name] as T : fallback;
 }
 
 final class const _Absent();
