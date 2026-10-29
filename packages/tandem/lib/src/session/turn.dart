@@ -4,6 +4,7 @@ import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
+import 'package:tandem/src/session/view_tool.dart';
 
 /// The calls of one turn of the agent, from the run that made them until
 /// their answers go out with the next run. The calls that need approval wait
@@ -27,6 +28,16 @@ final class Turn(final List<ToolCall> calls) {
   /// can go to the agent.
   bool get answered =>
       calls.isNotEmpty && calls.every((call) => call.answer != null);
+
+  /// Whether the answers go to the agent now, in a run of their own: the
+  /// turn is answered, and not every call drew a view that shows, which the
+  /// agent already followed with its text. Those answers go with the next
+  /// message.
+  bool get answersDue =>
+      answered &&
+      calls.any(
+        (call) => call.tool != ViewTool.name || call.answer?.status != .shown,
+      );
 
   /// The tool messages that answer the calls, once the undecided ones were
   /// cancelled. Only an approved method that still runs has no answer then,

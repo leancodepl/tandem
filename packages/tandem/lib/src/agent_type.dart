@@ -190,7 +190,8 @@ sealed class const AgentType<T>() {
   Object? write(T value);
 
   /// The [json] that the agent wrote at [reading]'s path, as [T]. Throws a
-  /// [ToolCallRefused] that says what to fix.
+  /// [ToolCallRefused] that says what to fix, or what a converter of the app
+  /// throws other than a `FormatException`, a bug of the app.
   T read(Object? json, AgentReading reading);
 
   /// The JSON Schema of what the agent writes, inline.
@@ -203,8 +204,8 @@ sealed class const AgentType<T>() {
   /// The value at [segment] inside [value], or [AgentType.absent].
   Object? valueAt(T value, String segment) => absent;
 
-  /// The types that [name] mentions and a description lists once each, such
-  /// as the enums and classes inside it.
+  /// The types that [name] mentions or that a converter writes it as, which
+  /// a description lists once each, such as the enums and classes inside it.
   Iterable<AgentType<Object?>> get parts => const [];
 
   /// Whether this is a class that the agent points at by path.
@@ -234,7 +235,7 @@ sealed class const AgentType<T>() {
   /// The JSON Schema of a path to a value of this type.
   JsonObject get _pathSchema => {
     'type': 'object',
-    'description': 'The path of a $name in the data you see, such as /name/0.',
+    'description': 'A path to a $name in the data you see, never the object.',
     'properties': {
       'path': {'type': 'string'},
     },
@@ -579,6 +580,20 @@ AgentType<Object?> _nonNull(AgentType<Object?> type) => switch (type) {
   _ => type,
 };
 
+/// Whether every value of [other] is a value of [type], as an item of a
+/// list must be: the same type, or a non-null one where [type] is nullable.
+bool _holds(AgentType<Object?> type, AgentType<Object?> other) =>
+    switch ((type, other)) {
+      _ when type.id == other.id => true,
+      (_Nullable(:final _type), _) => _holds(_type, _nonNull(other)),
+      (_List(_item: final item), _List(_item: final otherItem)) ||
+      (
+        _Set(_item: final item),
+        _Set(_item: final otherItem),
+      ) => _holds(item, otherItem),
+      _ => false,
+    };
+
 final class const _List<T>(final AgentType<T> _item)
     extends AgentType<List<T>> {
   @override
@@ -622,9 +637,10 @@ final class const _List<T>(final AgentType<T> _item)
   @override
   Iterable<AgentType<Object?>> get parts => [_item];
 
+  // A List<int> is no List<double>, and a List<String?> no List<String>.
   @override
   bool accepts(AgentType<Object?> other) => switch (_nonNull(other)) {
-    _List(:final _item) => this._item.accepts(_item),
+    _List(:final _item) => _holds(this._item, _item),
     _ => false,
   };
 
@@ -679,7 +695,7 @@ final class const _Set<T>(final AgentType<T> _item) extends AgentType<Set<T>> {
 
   @override
   bool accepts(AgentType<Object?> other) => switch (_nonNull(other)) {
-    _Set(:final _item) => this._item.accepts(_item),
+    _Set(:final _item) => _holds(this._item, _item),
     _ => false,
   };
 }
@@ -727,15 +743,7 @@ final class _Object<T>(
           if (field.required) field.name,
       ],
     },
-    .paths || .refused => {
-      'type': 'object',
-      'description':
-          'The path of a $name in the data you see, such as /name/0.',
-      'properties': {
-        'path': {'type': 'string'},
-      },
-      'required': ['path'],
-    },
+    .paths || .refused => _pathSchema,
   };
 
   @override
@@ -796,8 +804,8 @@ final class const _Converted<T, S>(
   @override
   Object? write(T value) => _json.write(_converter.toJson(value));
 
-  // A converter refuses a value with a FormatException; anything else it
-  // throws is a bug of the app, not the agent's mistake.
+  // A converter refuses a value with a FormatException. Anything else it
+  // throws is a bug of the app, which fails the call.
   @override
   T read(Object? json, AgentReading reading) {
     if (isObject && reading.objects != .fields) return _resolve(json, reading);
@@ -816,7 +824,7 @@ final class const _Converted<T, S>(
   };
 
   @override
-  Iterable<AgentType<Object?>> get parts => _json.parts;
+  Iterable<AgentType<Object?>> get parts => [_json];
 }
 
 extension AgentTypeDetails on AgentType<Object?> {
@@ -834,7 +842,7 @@ extension AgentTypeDetails on AgentType<Object?> {
       : name;
 
   /// The names an enum or a token class takes, or null for another type.
-  Iterable<String>? get choices => switch (this) {
+  Iterable<String>? get choices => switch (_nonNull(this)) {
     final _Choice<Object?> choice => choice.names,
     _ => null,
   };
@@ -843,6 +851,45 @@ extension AgentTypeDetails on AgentType<Object?> {
   Iterable<String> get fieldNames => switch (_nonNull(this)) {
     final _Object<Object?> object => object._byName.keys,
     _ => const [],
+  };
+
+  /// Whether null is a value of this type.
+  bool get isNullable => this is _Nullable;
+
+  AgentType<Object?> get nonNull => _nonNull(this);
+
+  /// The type a converter writes a value of this type as, or null for a
+  /// type without a converter.
+  AgentType<Object?>? get form => switch (_nonNull(this)) {
+    _Converted(:final _json) => _json,
+    _ => null,
+  };
+
+  /// Whether a value has an object of a class in it, at any depth, which a
+  /// method's argument reads only by path.
+  bool get holdsObject => switch (_nonNull(this)) {
+    AgentType(isObject: true) => true,
+    _List(:final _item) || _Set(:final _item) => _item.holdsObject,
+    _Extension(:final _representation) => _representation.holdsObject,
+    _ => false,
+  };
+
+  /// [json], the value at [path], as [AgentType.read] takes it with
+  /// [AgentObjects.paths]: every object in it, at any depth, as a path to
+  /// where it is.
+  Object? pathArgument(String path, Object? json) => switch ((this, json)) {
+    (_, null) => null,
+    (_Nullable(:final _type), _) => _type.pathArgument(path, json),
+    (AgentType(isObject: true), _) => {'path': path},
+    (_List(:final _item) || _Set(:final _item), final List<Object?> items) => [
+      for (final (index, item) in items.indexed)
+        _item.pathArgument('$path/$index', item),
+    ],
+    (_Extension(:final _representation), _) => _representation.pathArgument(
+      path,
+      json,
+    ),
+    _ => json,
   };
 
   /// The type of an item of a list or a set, or null for another type.

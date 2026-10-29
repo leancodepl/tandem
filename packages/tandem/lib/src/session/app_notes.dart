@@ -1,12 +1,18 @@
 import 'dart:convert';
 
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/session/tool_answer.dart';
 
 /// One thing that happened in the app outside the chat, as the agent reads
 /// it.
 extension type const AppNote._(JsonObject json) {
   /// What the app wrote with `session.note`.
   factory text(String text) => ._({'note': text});
+
+  /// An action of a view the agent drew, by the user, that called [tool]
+  /// with [arguments] and got [answer].
+  factory action(String tool, Object? arguments, ToolAnswer answer) =>
+      ._({'pressed': tool, 'arguments': arguments, ...answer.json});
 }
 
 /// The latest notes of the app, which every run gives the agent in one

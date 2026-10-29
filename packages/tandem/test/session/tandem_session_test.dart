@@ -2087,10 +2087,83 @@ void main() {
     ]);
     expect(session.items, isEmpty);
   });
+
+  test('the note of an action of a view names the object the user picked, '
+      'also once the screen no longer lists it', () async {
+    final nursery = _Nursery();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Opened.')],
+    ]);
+    final session = TandemSession(surface: nursery, connection: agent);
+    addTearDown(session.dispose);
+
+    await session.callFor(.view, 'open', {
+      'grower': {'path': '/growers/0'},
+    }, seen: AgentListing.of(nursery));
+    session.send('What did I open?');
+    await pumpEventQueue();
+
+    final request = AgentRequest(agent.requests.single);
+    expect(request.context('growers'), [
+      {'name': 'Bea'},
+    ]);
+    expect(request.newNotes, [
+      {
+        'pressed': 'open',
+        'arguments': {
+          'grower': {'name': 'Ana'},
+        },
+        'status': 'returned',
+        'result': null,
+      },
+    ]);
+  });
 }
 
 ApprovalRequest _card(TandemSession session) =>
     session.items.whereType<ApprovalRequest>().single;
+
+/// A screen whose growers leave the list once opened.
+final class _Nursery() implements AgentSurface {
+  static final AgentType<_Grower> _grower = .object(
+    id: 'test#Grower',
+    fields: (field) => [field('name', (value) => value.name).as(.string)],
+    build: (values) => .new(values('name')),
+  );
+
+  List<_Grower> growers = const [_Grower('Ana'), _Grower('Bea')];
+
+  /// Opens [grower].
+  void open(_Grower grower) =>
+      growers = [...growers.where((other) => other != grower)];
+
+  @override
+  List<AgentCapability> get agentCapabilities => [.sees(growers), .calls(open)];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [
+      AgentView.of(() => growers).as('growers', 'The growers.', .list(_grower)),
+    ],
+    calls: [
+      AgentTool(
+        open,
+        name: 'open',
+        description: 'Opens grower.',
+        parameters: [AgentParameter<_Grower>('grower', _grower)],
+        invoke: (args) {
+          open(args.read('grower'));
+          return null;
+        },
+      ),
+    ],
+  );
+}
+
+final class const _Grower(final String name);
 
 /// A screen whose color converter has a bug.
 final class _Palette() implements AgentSurface {

@@ -24,6 +24,10 @@ final class const TandemInput();
 /// with. Tandem reads each widget's constructor and the first paragraph of
 /// its doc comment. The class's doc comment gives the agent its guidelines
 /// and one example view, a JSON block of `components`.
+///
+/// The guidelines and the example name the data and methods of one screen.
+/// Another screen that draws with the same widgets gets its own catalog
+/// from the same list, as `@TandemCatalog([...DesignSystem.components])`.
 final class const TandemCatalog(
   /// The widget classes. A design system exports its own as a
   /// `static const` list, which the app spreads here.

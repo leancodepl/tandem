@@ -24,5 +24,6 @@ part 'greenhouse_catalog.g.dart';
   UndoBar,
   PotsField,
   SideBySide,
+  PageNumber,
 ])
 final class const GreenhouseCatalog() with _$GreenhouseCatalog;

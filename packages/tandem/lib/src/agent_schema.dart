@@ -101,6 +101,25 @@ final class const AgentParameter<T>(
   final bool input = false,
 });
 
+/// The parameters of a tool, in order.
+extension AgentParameters on List<AgentParameter<Object?>> {
+  /// The JSON Schema of the tool's arguments.
+  JsonObject get schema => {
+    'type': 'object',
+    'properties': {
+      for (final parameter in this)
+        parameter.name: {
+          ...parameter.type.schema(parameter.input ? .fields : .paths),
+          'description': ?parameter.description,
+        },
+    },
+    'required': [
+      for (final parameter in this)
+        if (parameter.required) parameter.name,
+    ],
+  };
+}
+
 /// One method of the agent list, as the generated code describes it.
 final class const AgentTool(
   /// The method itself, to recognize it in the agent list: two tear-offs of
@@ -121,20 +140,7 @@ final class const AgentTool(
   required final FutureOr<Object?> Function(ToolArgs args) invoke,
 }) {
   /// The JSON Schema of the arguments.
-  JsonObject get schema => {
-    'type': 'object',
-    'properties': {
-      for (final parameter in parameters)
-        parameter.name: {
-          ...parameter.type.schema(parameter.input ? .fields : .paths),
-          'description': ?parameter.description,
-        },
-    },
-    'required': [
-      for (final parameter in parameters)
-        if (parameter.required) parameter.name,
-    ],
-  };
+  JsonObject get schema => parameters.schema;
 
   /// The agent's JSON [arguments] read as the method's parameter types, a
   /// `{"path": ...}` as what [paths] gives for it. Without [paths], every

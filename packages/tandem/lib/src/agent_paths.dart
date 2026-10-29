@@ -24,7 +24,11 @@ final class ListingPaths({
         final roots = seen.roots.keys.map((name) => '/$name').join(', ');
         throw refuse('$path is not in the data. Paths: $roots.');
       case PathValue(type: final found) when !type.accepts(found):
-        final fitting = DataPath.pathsOf(seen.roots, type).join(', ');
+        final types = {
+          for (final MapEntry(:key, :value) in seen.roots.entries)
+            key: value.type,
+        };
+        final fitting = DataPath.pathsOf(types, type).join(', ');
         throw refuse(
           '$path is a ${found.nameBeside(type)}, not a '
           '${type.nameBeside(found)}. '
@@ -57,11 +61,19 @@ abstract final class DataPath._() {
   /// The segments of an absolute [path], or null for another path.
   static List<String>? segments(String path) {
     if (!path.startsWith('/')) return null;
-    return [
-      for (final segment in path.substring(1).split('/'))
-        if (segment.isNotEmpty) segment,
-    ];
+    return relative(path.substring(1));
   }
+
+  /// The segments of a [path] without a leading `/`, from where it starts.
+  static List<String> relative(String path) => [
+    for (final segment in path.split('/'))
+      if (segment.isNotEmpty) segment,
+  ];
+
+  /// The segments of [path] from the root: an absolute path, or one that
+  /// starts at [base].
+  static List<String> resolve(String path, {required List<String> base}) =>
+      segments(path) ?? [...base, ...relative(path)];
 
   /// The type, the JSON and the value at [segments] below [roots], or null
   /// when the type has no such place. The JSON and the value are
@@ -86,6 +98,16 @@ abstract final class DataPath._() {
     return PathValue(type, value, json);
   }
 
+  /// The JSON at the absolute [path] below [roots], or [AgentType.absent]
+  /// when the data has no such place or no value there now. A null there is
+  /// a value.
+  static Object? jsonAt(Map<String, PathValue> roots, String path) {
+    if (segments(path) case [_, ...] && final names) {
+      if (locate(roots, names) case PathValue(:final json)) return json;
+    }
+    return AgentType.absent;
+  }
+
   /// Whether [a] and [b], JSON at a path or [AgentType.absent], are the
   /// same value.
   static bool sameJson(Object? a, Object? b) {
@@ -96,7 +118,7 @@ abstract final class DataPath._() {
   /// The paths below [roots] whose type [type] accepts, an item of a list as
   /// `<i>`.
   static List<String> pathsOf(
-    Map<String, PathValue> roots,
+    Map<String, AgentType<Object?>> roots,
     AgentType<Object?> type,
   ) {
     final paths = <String>[];
@@ -114,7 +136,7 @@ abstract final class DataPath._() {
     }
 
     for (final MapEntry(key: name, value: root) in roots.entries) {
-      visit(root.type, '/$name', 4);
+      visit(root, '/$name', 4);
     }
     return paths;
   }

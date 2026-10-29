@@ -33,8 +33,24 @@ A method of the surface that the agent may call, listed with `.calls` or `.calls
 _Avoid_: client tool, action, command
 
 **Caller**:
-Who called a listed method: the in-app agent or a coding agent. `AgentCall` and `ApprovalRequest` name it as a `Caller`.
+Who called a listed method: the in-app agent, a coding agent, or the user with an action of a view. `AgentCall` and `ApprovalRequest` name it as a `Caller`.
 _Avoid_: source, origin
+
+**View**:
+What the in-app agent drew with the tool `tandem_show_view`, which a `TandemView` shows: components of the catalog, bound to what the screen lists with `.sees`.
+_Avoid_: surface, generated UI, screen
+
+**Catalog**:
+The components an app lets the agent draw a view with, each drawn by the app's own widget: the widget classes of `@TandemCatalog([...])`.
+_Avoid_: design system, widgets
+
+**Component**:
+One widget of the catalog in a view, with an `id` and the properties its constructor takes.
+_Avoid_: node, element
+
+**Action**:
+A property of a component that calls a listed method when the user presses it, or, as a field, with what the user enters.
+_Avoid_: button, callback, handler
 
 **Approval request**:
 A call of a `.callsWithApproval` method by any caller, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.

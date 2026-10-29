@@ -4,9 +4,13 @@ import 'package:tandem/src/agent_type.dart';
 /// The widgets the agent may draw a view with. The `_$Name` mixin that
 /// `tandem_generator` writes for a class with `@TandemCatalog([...])`
 /// implements it, from each widget's constructor and doc comment.
-// The experimental lint asks for a primary constructor on an interface too.
-// ignore: use_primary_constructors
-abstract interface class AgentCatalog {
+///
+/// A catalog belongs to one screen: its [guidelines] and [example] name
+/// that screen's data and methods. Another screen that draws with the same
+/// widgets declares its own catalog from the same list of widgets, with its
+/// own guidelines and example. In debug, `TandemView` reports an example
+/// that does not fit the screen it is on.
+abstract interface class AgentCatalog() {
   /// One for every widget of the catalog.
   List<AgentComponent> get components;
 
@@ -107,7 +111,15 @@ final class ValueProperty<T>._(
   @override final String name,
   final AgentType<T> type, {
   @override required final bool required,
-}) extends AgentProperty;
+}) extends AgentProperty {
+  /// [value] from the data as [T], an `int` as a `double` where one is
+  /// expected, or [AgentType.absent] when it does not fit, such as null.
+  Object? fit(Object? value) => switch (value) {
+    final T value => value,
+    final int value when 0.5 is T => value.toDouble(),
+    _ => AgentType.absent,
+  };
+}
 
 /// A `Widget`: the id of another component.
 final class ChildProperty._(
@@ -132,7 +144,12 @@ final class FieldProperty<T>._(
   @override final String name,
   final AgentType<T> type, {
   @override required final bool required,
-}) extends AgentProperty;
+}) extends AgentProperty {
+  /// A `ValueChanged<T>` of the widget's own [T] that hands its entry to
+  /// [onEntry].
+  Function callback(void Function(Object? entry) onEntry) =>
+      (T entry) => onEntry(entry);
+}
 
 /// The properties of one component of a view, as the widget's constructor
 /// takes them. The generated `build` reads them; the view gives only a

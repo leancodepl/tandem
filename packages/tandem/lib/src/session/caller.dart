@@ -5,4 +5,7 @@ enum Caller() {
 
   /// A coding agent, through `TandemBridge`.
   codingAgent,
+
+  /// The user, with a button or a field of a view the agent drew.
+  view,
 }

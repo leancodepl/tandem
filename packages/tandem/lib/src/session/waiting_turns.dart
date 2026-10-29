@@ -13,8 +13,9 @@ final class WaitingTurns() {
 
   final _others = <Caller, Turn>{};
 
-  /// Whether the in-app agent's turn has calls and each has an answer.
-  bool get agentAnswered => _agent.answered;
+  /// Whether the answers of the in-app agent's turn go to it now, as
+  /// [Turn.answersDue] says.
+  bool get agentAnswersDue => _agent.answersDue;
 
   /// Whether [turn] is the in-app agent's.
   bool isAgentTurn(Turn turn) => identical(turn, _agent);
