@@ -2,16 +2,22 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_system.dart';
 import 'package:tandem_generator/src/agent_class.dart';
+import 'package:tandem_generator/src/agent_converters.dart';
 import 'package:tandem_generator/src/agent_type_error.dart';
 import 'package:tandem_generator/src/dart_literal.dart';
 import 'package:tandem_generator/src/source_documentation.dart';
+import 'package:tandem_generator/src/type_names.dart';
 
 /// Writes the `AgentType` of a Dart type as an expression of the generated
 /// code, such as `.list(.object(...))`. The expression names no type: Dart
 /// infers each from where it stands, a getter or a parameter, so a library
 /// needs no import for the types inside the ones it declares.
-final class AgentTypes(final Element _source) {
+final class AgentTypes(
+  final Element _source, {
+  final AgentConverters _converters = const .none(),
+}) {
   final _visiting = <String>{};
+  final _converting = <DartType>{};
 
   TypeSystem get _typeSystem => _library.typeSystem;
 
@@ -28,6 +34,12 @@ final class AgentTypes(final Element _source) {
 
       return '.nullable($value)';
     }
+
+    if (_converters[type] case final converter?) {
+      return _converted(converter, path: path);
+    }
+
+    if (_builtIns[idOf(type)] case final builtIn?) return builtIn;
 
     if (_scalars[_scalarName(type)] case final scalar?) return scalar;
 
@@ -78,6 +90,67 @@ final class AgentTypes(final Element _source) {
     };
 
     return '$library#$name$arguments$nullable';
+  }
+
+  String _converted(AgentConverter converter, {required String path}) {
+    final (:code, :converted, :json, :id, :className, :element) = converter;
+
+    if (!_converting.add(converted)) {
+      throw AgentTypeError.converterCycle(
+        _source,
+        className: className,
+        path: path,
+      );
+    }
+
+    try {
+      var jsonCode = describe(json, path: path);
+
+      if (!_isContextFree(json)) {
+        final name = TypeNames(_library).name(json);
+
+        if (name == null) {
+          throw AgentTypeError.unnamedJson(
+            _source,
+            className: className,
+            json: json,
+            path: path,
+          );
+        }
+
+        jsonCode = '.typed<$name>($jsonCode)';
+      }
+
+      final typeId = DartLiteral.json(idOf(converted));
+      final description = _describedBy(element);
+      final object = converted.isAgentClass ? ', object: true' : '';
+
+      return '.converted($code, $jsonCode, id: $typeId, '
+          'converterId: ${DartLiteral.json(id)}$description$object)';
+    } finally {
+      _converting.remove(converted);
+    }
+  }
+
+  /// Whether the description of [type] has its type without a context, so
+  /// Dart infers `S` of a converter from it.
+  bool _isContextFree(DartType type) {
+    final nonNull = _typeSystem.promoteToNonNull(type);
+
+    if (_converters[nonNull] != null) return false;
+
+    if (_builtIns.containsKey(idOf(nonNull))) return true;
+
+    if (_scalars.containsKey(_scalarName(nonNull))) return true;
+
+    return switch (nonNull) {
+      InterfaceType(isDartCoreList: true, :final typeArguments) ||
+      InterfaceType(
+        isDartCoreSet: true,
+        :final typeArguments,
+      ) => _isContextFree(typeArguments.single),
+      _ => false,
+    };
   }
 
   String _enum(EnumElement element) {
@@ -280,7 +353,21 @@ final class AgentTypes(final Element _source) {
   }
 
   /// Whether [code], an expression of [describe], is a constant.
-  static bool isConstant(String code) => _scalars.containsValue(code);
+  static bool isConstant(String code) =>
+      _scalars.containsValue(code) || _builtIns.containsValue(code);
+
+  static const _builtIns = {
+    'dart:ui#Color': '.color',
+    '$_edgeInsets#EdgeInsetsGeometry': '.edgeInsetsGeometry',
+    '$_edgeInsets#EdgeInsets': '.edgeInsets',
+    '$_edgeInsets#EdgeInsetsDirectional': '.edgeInsetsDirectional',
+    '$_alignment#AlignmentGeometry': '.alignmentGeometry',
+    '$_alignment#Alignment': '.alignment',
+    '$_alignment#AlignmentDirectional': '.alignmentDirectional',
+  };
+
+  static const _edgeInsets = 'package:flutter/src/painting/edge_insets.dart';
+  static const _alignment = 'package:flutter/src/painting/alignment.dart';
 
   static const _scalars = {
     'String': '.string',

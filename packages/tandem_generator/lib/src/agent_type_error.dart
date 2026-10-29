@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:source_gen/source_gen.dart';
@@ -19,7 +20,63 @@ final class AgentTypeError extends InvalidGenerationSource {
          'String, int, double, num, bool, DateTime, Uri, enums, classes whose '
          'values are their own static const members, extension types over '
          'these, lists and sets of them, and classes with a public '
-         'constructor and a getter for each parameter.',
+         'constructor and a getter for each parameter. A '
+         'JsonConverter<${type.getDisplayString()}, S> in converters: gives '
+         'it a form.',
+         element: element,
+       );
+
+  new twoConverters(
+    Element element, {
+    required DartType converted,
+    required String first,
+    required String second,
+  }) : super(
+         'converters: has two for ${converted.getDisplayString()}, $first and '
+         '$second. Keep one.',
+         element: element,
+       );
+
+  new nullableConverter(
+    Element element, {
+    required String className,
+    required DartType converted,
+    required DartType nonNull,
+    required DartType json,
+  }) : super(
+         'converters: $className converts ${converted.getDisplayString()}, '
+         'and a converter matches the type without ?: Tandem handles null. '
+         'Make it a JsonConverter<${nonNull.getDisplayString()}, '
+         '${json.getDisplayString()}>.',
+         element: element,
+       );
+
+  new notConverter(Element element, {required DartObject value})
+    : super(
+        'converters: takes JsonConverter<T, S> values of json_annotation, '
+        'and ${value.type?.getDisplayString()} is not one.',
+        element: element,
+      );
+
+  new unnamedJson(
+    Element element, {
+    required String className,
+    required DartType json,
+    required String path,
+  }) : super(
+         '$path: $className writes ${json.getDisplayString()}, which this '
+         'library does not import. Import it, so that the generated code can '
+         'name it.',
+         element: element,
+       );
+
+  new converterCycle(
+    Element element, {
+    required String className,
+    required String path,
+  }) : super(
+         '$path: $className writes a type that converts back into the one it '
+         'converts. Make S a type without a converter.',
          element: element,
        );
 

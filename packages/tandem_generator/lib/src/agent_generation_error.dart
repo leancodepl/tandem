@@ -23,6 +23,13 @@ final class AgentGenerationError extends InvalidGenerationSource {
         element: element,
       );
 
+  new missingConverterSource(ClassElement type)
+    : super(
+        'Tandem cannot find the converters: of ${type.displayName} in its '
+        'source. Write them in the annotation.',
+        element: type,
+      );
+
   new untypedParameter(FormalParameter parameter)
     : super(
         "Give ${parameter.name?.lexeme} a type: Tandem reads the agent's "

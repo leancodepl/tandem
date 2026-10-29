@@ -37,6 +37,15 @@ export 'src/chat/chat_item.dart'
         ChatNotice,
         ChatNoticeKind,
         UserMessage;
+export 'src/converters.dart'
+    show
+        AlignmentConverter,
+        AlignmentDirectionalConverter,
+        AlignmentGeometryConverter,
+        ColorConverter,
+        EdgeInsetsConverter,
+        EdgeInsetsDirectionalConverter,
+        EdgeInsetsGeometryConverter;
 export 'src/debug/tandem_bridge.dart' show TandemBridge;
 export 'src/errors.dart'
     show

@@ -105,6 +105,24 @@ final class const AgentClass._(final List<AgentField> fields) {
 
 typedef AgentField = ({FormalParameterElement parameter, GetterElement getter});
 
+extension AgentClasses on DartType {
+  /// Whether [AgentClass.read] reads this type. The agent points at a value
+  /// of it by path, or writes one with `@TandemInput()`, also when a
+  /// converter gives it a form.
+  bool get isAgentClass {
+    final type = this;
+    if (type is! InterfaceType) return false;
+
+    try {
+      AgentClass.read(type, source: type.element, path: '');
+    } on AgentTypeError {
+      return false;
+    }
+
+    return true;
+  }
+}
+
 extension on ConstructorElement {
   bool canInstantiate(InterfaceElement type) =>
       isPublic && (type is! ClassElement || !type.isAbstract || isFactory);

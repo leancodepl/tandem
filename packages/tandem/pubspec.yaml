@@ -30,6 +30,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.6.0
+  json_annotation: ^4.9.0
   meta: ^1.19.0
   rfc_6902: ^0.3.1
   uuid: ^4.6.0

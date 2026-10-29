@@ -24,6 +24,22 @@ Tandem describes each type once: the same description gives the JSON Schema of a
 
 Each type may be nullable. A result may also be `void`, or a `Future` or `FutureOr` of a supported type.
 
+## Converters
+
+A type that Tandem cannot read from its declaration gets its form from a `JsonConverter<T, S>` of `json_annotation`, listed on the annotation: `@TandemAgent(converters: [IconConverter()])`. The agent writes what `S` says, a type from the table above, and its schema and description come from `S` and the converter's doc comment. A `FormatException` from `fromJson` refuses the call with the parameter's name and the exception's message; anything else it throws is a bug of the app, and the call fails. A design system exports its converters as a `static const` list, and the app spreads it: `converters: [...Ds.converters, IconConverter()]`.
+
+Tandem has its own converters, which a converter of the app for the same type replaces:
+
+| Type | The agent writes |
+| --- | --- |
+| `Color` | `#RRGGBB`, or `#RRGGBBAA` with the opacity, as in CSS. 8 bits per channel in sRGB: a color of another color space, such as Display P3, may change slightly. |
+| `EdgeInsetsGeometry` | `"16"`, `"8 16"` (top and bottom, then the sides), or sides by name, as `"top 8 start 16"`. `start` and `end` give `EdgeInsetsDirectional`, which follows the reading direction; `left` and `right`, or neither, give `EdgeInsets`. |
+| `EdgeInsets`, `EdgeInsetsDirectional` | The same, with only `left` and `right`, or only `start` and `end`. |
+| `AlignmentGeometry` | A name of `Alignment`, such as `topLeft`, or of `AlignmentDirectional`, such as `topStart`. |
+| `Alignment`, `AlignmentDirectional` | A name of that class. |
+
+A converter matches its type exactly: a parameter of type `EdgeInsets` takes the converter of `EdgeInsets`, not the one of `EdgeInsetsGeometry`. Tandem handles null itself, so a converter converts a type without `?`, and one such as `JsonConverter<Uri?, String?>` fails the build. Two converters for one type fail the build.
+
 ## Missing, null and default
 
 | The agent | `int count = 1` | `String? note = 'new'` | `String? note` |
