@@ -1,0 +1,622 @@
+{
+  "@@locale": "en",
+  "appTitle": "Waypoint",
+
+  "dateRange": "{from} – {to}",
+  "@dateRange": {
+    "description": "Two days of a trip, such as Wed 28 – Fri 30 Oct.",
+    "placeholders": {
+      "from": {"type": "String"},
+      "to": {"type": "String"}
+    }
+  },
+  "nights": "{count, plural, =1{1 night} other{{count} nights}}",
+  "@nights": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "tripDates": "{dates} · {count, plural, =1{1 night} other{{count} nights}}",
+  "@tripDates": {
+    "description": "The days of a trip and how many nights it has.",
+    "placeholders": {
+      "dates": {"type": "String", "example": "Wed 28 – Fri 30 Oct"},
+      "count": {"type": "int"}
+    }
+  },
+  "clientWork": "Client work",
+  "@clientWork": {
+    "description": "What a trip is for, when the traveller did not say."
+  },
+  "stillMissing": "Still missing: {items}.",
+  "@stillMissing": {
+    "placeholders": {
+      "items": {"type": "String", "example": "the city, the hotel"}
+    }
+  },
+  "listSeparator": ", ",
+  "@listSeparator": {
+    "description": "Between the items of a list in a sentence, such as what is still missing."
+  },
+  "companyPolicy": "Company policy: {rules}",
+  "@companyPolicy": {
+    "placeholders": {
+      "rules": {"type": "String"}
+    }
+  },
+  "tripPolicy": "Economy flights. Hotels up to {maxNightly} a night. Arrive the evening before a meeting that starts before {morningUntil}. Fly home at least an hour after the last meeting ends.",
+  "@tripPolicy": {
+    "placeholders": {
+      "maxNightly": {"type": "String", "example": "€160"},
+      "morningUntil": {"type": "String", "example": "12:00"}
+    }
+  },
+  "expensesPolicy": "Meals are paid back up to {mealsPerDay} a day. Taxis and public transport are paid back in full. Every expense needs its receipt.",
+  "@expensesPolicy": {
+    "placeholders": {
+      "mealsPerDay": {"type": "String", "example": "€60"}
+    }
+  },
+  "agentUnreachable": "Waypoint cannot reach the assistant. Check your connection.",
+  "agentRunFailed": "The assistant ran into a problem.",
+  "approvalFallback": "The assistant asks to go ahead.",
+  "@approvalFallback": {
+    "description": "An approval request of a method that the screen has no own words for."
+  },
+  "booking": "Booking",
+  "addToTrip": "Add to trip",
+  "adding": "Adding",
+  "noHotelYet": "No hotel yet",
+  "flightAt": "{number} · {time}",
+  "@flightAt": {
+    "placeholders": {
+      "number": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "flightRoute": "{from} → {to}",
+  "@flightRoute": {
+    "placeholders": {
+      "from": {"type": "String"},
+      "to": {"type": "String"}
+    }
+  },
+  "meetingTimes": "{start}–{end} · {place}",
+  "@meetingTimes": {
+    "placeholders": {
+      "start": {"type": "String"},
+      "end": {"type": "String"},
+      "place": {"type": "String"}
+    }
+  },
+
+  "tabTrips": "Trips",
+  "tabInbox": "Inbox",
+  "tabExpenses": "Expenses",
+
+  "tripsTitle": "TRIPS",
+  "tripsGreeting": "Hi, {name}",
+  "@tripsGreeting": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "planATrip": "Plan a trip",
+  "tripsNeedsYou": "NEEDS YOU",
+  "tripsUpcoming": "UPCOMING",
+  "tripsPast": "PAST",
+  "invitationTitle": "{city} · Invitation from {client}",
+  "@invitationTitle": {
+    "placeholders": {
+      "city": {"type": "String"},
+      "client": {"type": "String"}
+    }
+  },
+  "invitationText": "{from} invites you to {city}. Waypoint plans the trip within your company policy.",
+  "@invitationText": {
+    "placeholders": {
+      "from": {"type": "String"},
+      "city": {"type": "String"}
+    }
+  },
+  "meetingMovedTitle": "{city} · {subject}",
+  "@meetingMovedTitle": {
+    "placeholders": {
+      "city": {"type": "String"},
+      "subject": {"type": "String"}
+    }
+  },
+  "meetingMovedText": "{from} moved the {meeting} to {when}. Your flight home and hotel are booked for the old day.",
+  "@meetingMovedText": {
+    "placeholders": {
+      "from": {"type": "String"},
+      "meeting": {"type": "String", "example": "workshop"},
+      "when": {"type": "String"}
+    }
+  },
+  "meetingFallback": "meeting",
+  "@meetingFallback": {
+    "description": "A meeting that an e-mail moves, when the trip does not know it."
+  },
+  "hotelToAddTitle": "{city} · A hotel to add",
+  "@hotelToAddTitle": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "hotelToAddText": "{from} confirmed your stay. It is not on the trip yet.",
+  "@hotelToAddText": {
+    "placeholders": {
+      "from": {"type": "String"}
+    }
+  },
+  "unknownTrip": "This trip is not in Waypoint.",
+  "yourTrips": "Your trips",
+  "unknownInvitation": "This invitation is not in your inbox.",
+
+  "inboxTitle": "INBOX",
+  "inboxAbove": "Forwarded to Waypoint",
+  "emailInReport": "In your {city} expense report",
+  "@emailInReport": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "emailOnTrip": "On your {city} trip",
+  "@emailOnTrip": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "emailToPlan": "A trip to {city} to plan",
+  "@emailToPlan": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "emailChangesTrip": "Changes your {city} trip",
+  "@emailChangesTrip": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "emailNotOnTrip": "Not on your {city} trip yet",
+  "@emailNotOnTrip": {
+    "placeholders": {
+      "city": {"type": "String"}
+    }
+  },
+  "emailNoTrip": "For a trip not planned yet",
+  "planTheTrip": "Plan the trip",
+  "reviewTheTrip": "Review the trip",
+  "openTheReport": "Open the report",
+
+  "expensesTitle": "EXPENSES",
+  "expensesAbove": "After your trips",
+  "expensesNone": "Your trips are still ahead. Forward their receipts to Waypoint, and the report waits here when you are back.",
+  "reportSubmittedLine": "Submitted · {total} · {confirmation}",
+  "@reportSubmittedLine": {
+    "placeholders": {
+      "total": {"type": "String"},
+      "confirmation": {"type": "String"}
+    }
+  },
+  "reportToSubmit": "To submit · {count, plural, =1{1 receipt} other{{count} receipts}}",
+  "@reportToSubmit": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "reportAdding": "Adding the receipts",
+  "reportMissingReceipts": "Still missing: the receipts.",
+  "reportDates": "Expenses · {dates}",
+  "@reportDates": {
+    "placeholders": {
+      "dates": {"type": "String"}
+    }
+  },
+  "reportReceipts": "RECEIPTS",
+  "receiptLine": "{merchant} · {day} · {paid}",
+  "@receiptLine": {
+    "placeholders": {
+      "merchant": {"type": "String"},
+      "day": {"type": "String"},
+      "paid": {"type": "String"}
+    }
+  },
+  "receiptNotPaidBack": "{amount} not paid back",
+  "@receiptNotPaidBack": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
+  "claimOutOfRange": "Claim more than 0 and at most the {paid} paid.",
+  "@claimOutOfRange": {
+    "placeholders": {
+      "paid": {"type": "String"}
+    }
+  },
+  "claimOverPolicy": "{breach}.",
+  "@claimOverPolicy": {
+    "placeholders": {
+      "breach": {"type": "String"}
+    }
+  },
+  "paidBack": "Paid back",
+  "submitted": "Submitted",
+  "submit": "Submit",
+  "submitting": "Submitting",
+  "reportAskToSubmit": "The assistant asks to submit the report for {total}.",
+  "@reportAskToSubmit": {
+    "placeholders": {
+      "total": {"type": "String"}
+    }
+  },
+
+  "planFromInvitation": "Planning from the invitation",
+  "planPlanning": "Planning the trip",
+  "planPlanned": "Planned within the company policy. Check it before you book.",
+  "planWordsHint": "Paste an invitation, or say where you go and for what",
+  "plan": "Plan",
+  "planTrip": "TRIP",
+  "planMeetings": "MEETINGS",
+  "planFlights": "FLIGHTS",
+  "planHotel": "HOTEL",
+  "planCity": "City",
+  "planPurpose": "What for",
+  "planMeetingsField": "Meetings",
+  "planThere": "There",
+  "planHome": "Home",
+  "hotel": "Hotel",
+  "bookTrip": "Book trip",
+  "planTotal": "Flights and hotel",
+  "planPart": "{part, select, city{the city} meetings{the meetings} outbound{the flight there} homebound{the flight home} other{the hotel}}",
+  "@planPart": {
+    "description": "A part of a planned trip that is still missing.",
+    "placeholders": {
+      "part": {"type": "String"}
+    }
+  },
+  "planFlightLine": "{number} · {departs} → {arrives} · {fare}",
+  "@planFlightLine": {
+    "placeholders": {
+      "number": {"type": "String"},
+      "departs": {"type": "String"},
+      "arrives": {"type": "String"},
+      "fare": {"type": "String"}
+    }
+  },
+  "planHotelLine": "{name} · {count, plural, =1{1 night} other{{count} nights}} · {nightly} a night · {minutes} min on foot",
+  "@planHotelLine": {
+    "placeholders": {
+      "name": {"type": "String"},
+      "count": {"type": "int"},
+      "nightly": {"type": "String"},
+      "minutes": {"type": "int"}
+    }
+  },
+
+  "bookingTitle": "Add a booking",
+  "bookingReading": "Reading the e-mail",
+  "bookingFilled": "Filled in from the e-mail. Check it before you add it.",
+  "bookingPick": "Pick the confirmation you forwarded to Waypoint.",
+  "bookingFromEmails": "From your forwarded e-mails",
+  "changeEmail": "Change",
+  "bookingAddress": "Address",
+  "bookingCheckIn": "Check-in",
+  "bookingCheckOut": "Check-out",
+  "bookingPrice": "Price",
+  "bookingConfirmation": "Confirmation",
+  "bookingCheckOutDay": "{day} · {count, plural, =1{1 night} other{{count} nights}}",
+  "@bookingCheckOutDay": {
+    "placeholders": {
+      "day": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "bookingNightly": "{nightly} a night",
+  "@bookingNightly": {
+    "placeholders": {
+      "nightly": {"type": "String"}
+    }
+  },
+  "bookingOutsideTrip": "{day} is outside the trip, {trip}.",
+  "@bookingOutsideTrip": {
+    "placeholders": {
+      "day": {"type": "String"},
+      "trip": {"type": "String"}
+    }
+  },
+  "bookingCheckInNotBeforeCheckOut": "The check-in must be before the check-out, {checkOut}.",
+  "@bookingCheckInNotBeforeCheckOut": {
+    "placeholders": {
+      "checkOut": {"type": "String"}
+    }
+  },
+  "bookingCheckOutNotAfterCheckIn": "The check-out must be after the check-in, {checkIn}.",
+  "@bookingCheckOutNotAfterCheckIn": {
+    "placeholders": {
+      "checkIn": {"type": "String"}
+    }
+  },
+  "bookingPriceNotPositive": "The price must be more than 0.",
+  "bookingPart": "{part, select, hotel{the hotel} address{the address} checkIn{the check-in} checkOut{the check-out} price{the price} other{the confirmation number}}",
+  "@bookingPart": {
+    "description": "A part of a hotel booking that is still missing.",
+    "placeholders": {
+      "part": {"type": "String"}
+    }
+  },
+
+  "tripInboxNews": "From your inbox: {from} · {subject}",
+  "@tripInboxNews": {
+    "placeholders": {
+      "from": {"type": "String"},
+      "subject": {"type": "String"}
+    }
+  },
+  "tripLands": "You land {day} at {time}",
+  "@tripLands": {
+    "placeholders": {
+      "day": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "arrivalDay": "Arrival day",
+  "warningNoHotelForNight": "No hotel for the night of {day}",
+  "@warningNoHotelForNight": {
+    "placeholders": {
+      "day": {"type": "String"}
+    }
+  },
+  "warningNoHotelBooked": "No hotel booked for {count, plural, =1{1 night} other{{count} nights}}",
+  "@warningNoHotelBooked": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "breachLandsOnMeetingDay": "{flight} lands on the day of the {meeting}, which starts before {morningUntil}",
+  "@breachLandsOnMeetingDay": {
+    "placeholders": {
+      "flight": {"type": "String"},
+      "meeting": {"type": "String"},
+      "morningUntil": {"type": "String"}
+    }
+  },
+  "breachLandsTooLate": "{flight} lands too late for the {meeting}",
+  "@breachLandsTooLate": {
+    "placeholders": {
+      "flight": {"type": "String"},
+      "meeting": {"type": "String"}
+    }
+  },
+  "breachLeavesTooEarly": "{flight} leaves less than an hour after the {meeting} ends",
+  "@breachLeavesTooEarly": {
+    "placeholders": {
+      "flight": {"type": "String"},
+      "meeting": {"type": "String"}
+    }
+  },
+  "breachOverNightly": "Over the policy: {nightly} a night, the limit is {maxNightly}",
+  "@breachOverNightly": {
+    "placeholders": {
+      "nightly": {"type": "String"},
+      "maxNightly": {"type": "String"}
+    }
+  },
+  "breachOverMealsPerDay": "Meals are paid back up to {mealsPerDay} a day, and {left} is left for that day",
+  "@breachOverMealsPerDay": {
+    "placeholders": {
+      "mealsPerDay": {"type": "String"},
+      "left": {"type": "String"}
+    }
+  },
+  "breachTaxiNotNeeded": "The S-Bahn gets you there at {trainArrives}, in time for {meetingStarts}: the policy allows a taxi only when public transport would make you late",
+  "@breachTaxiNotNeeded": {
+    "placeholders": {
+      "trainArrives": {"type": "String"},
+      "meetingStarts": {"type": "String"}
+    }
+  },
+
+  "nothingPlanned": "Nothing planned",
+  "flightNumber": "Flight {number}",
+  "@flightNumber": {
+    "placeholders": {
+      "number": {"type": "String"}
+    }
+  },
+  "flightOut": "Out",
+  "flightHome": "Home",
+  "flightTimes": "{departs} → {arrives}",
+  "@flightTimes": {
+    "placeholders": {
+      "departs": {"type": "String"},
+      "arrives": {"type": "String"}
+    }
+  },
+  "tooEarly": "Too early",
+  "hotelTimes": "Check-in {checkIn} · out {checkOut}",
+  "@hotelTimes": {
+    "placeholders": {
+      "checkIn": {"type": "String"},
+      "checkOut": {"type": "String"}
+    }
+  },
+  "noHotelText": "Booked one yourself? Add it from its confirmation e-mail.",
+  "addFromEmail": "Add from e-mail",
+  "meeting": "Meeting",
+  "was": "Was {was}",
+  "@was": {
+    "description": "What a booking was before its change, struck through.",
+    "placeholders": {
+      "was": {"type": "String"}
+    }
+  },
+
+  "bookChanges": "Book changes",
+  "changesNotBooked": "{count, plural, =1{1 change} other{{count} changes}} not booked",
+  "@changesNotBooked": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "changesBooked": "Booked · confirmation {confirmation}",
+  "@changesBooked": {
+    "placeholders": {
+      "confirmation": {"type": "String"}
+    }
+  },
+  "changeBookings": "Change {count, plural, =1{1 booking} other{{count} bookings}}",
+  "@changeBookings": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "changeHotelNights": "{hotel}, {count, plural, =1{1 night} other{{count} nights}}",
+  "@changeHotelNights": {
+    "placeholders": {
+      "hotel": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "changeFlightHome": "Flight home {number}",
+  "@changeFlightHome": {
+    "placeholders": {
+      "number": {"type": "String"}
+    }
+  },
+  "approved": "Approved",
+  "rejected": "Rejected",
+  "cancelledByMessage": "Cancelled by your message",
+  "approvalReplaced": "The trip changed. Replaced by the request below.",
+  "approvalUpdating": "The trip changed. Updating the request…",
+  "approvalVoided": "No longer valid. The trip changed after the assistant asked.",
+
+  "assistant": "Assistant",
+  "waitingForYou": "Waiting for you",
+  "statusThinking": "Thinking",
+  "statusFindingFlights": "Looking up flights",
+  "statusMovingMeeting": "Moving the meeting",
+  "statusChangingFlightHome": "Changing the flight home",
+  "statusChangingHotel": "Changing the hotel",
+  "statusWorking": "Working",
+  "statusStopping": "Stopping",
+  "assistantEmpty": "Ask the assistant to change this trip. It asks you before it books anything.",
+  "stopped": "Stopped",
+  "noticeStopped": "Stopped.",
+  "noticeStartedOver": "New conversation.",
+  "tripComposerHint": "Ask about this trip",
+  "stepMeetingMoved": "Moved {meeting} to {when}",
+  "@stepMeetingMoved": {
+    "placeholders": {
+      "meeting": {"type": "String"},
+      "when": {"type": "String"}
+    }
+  },
+  "stepHotelNights": "{hotel}: {count, plural, =1{1 night} other{{count} nights}}",
+  "@stepHotelNights": {
+    "placeholders": {
+      "hotel": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "stepFlightsOn": "Looked up flights {origin} → {destination}, {day}",
+  "@stepFlightsOn": {
+    "placeholders": {
+      "origin": {"type": "String"},
+      "destination": {"type": "String"},
+      "day": {"type": "String"}
+    }
+  },
+  "stepFlights": "Looked up flights",
+  "stepFlightHome": "Flight home: {number}, {when}",
+  "@stepFlightHome": {
+    "placeholders": {
+      "number": {"type": "String"},
+      "when": {"type": "String"}
+    }
+  },
+
+  "noArrivalDay": "No arrival day for this trip yet.",
+  "backToTrip": "Back to the trip",
+  "arrivalDate": "Arrival day · {day}, landing {time}",
+  "@arrivalDate": {
+    "placeholders": {
+      "day": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
+  "arrivalBookingRide": "Booking the ride",
+  "arrivalPlanning": "Planning your arrival",
+  "arrivalComposerHint": "Ask about your arrival",
+  "askBookRide": "Book {mode, select, taxi{a taxi} other{the S-Bahn}} for {fare} on the company card?",
+  "@askBookRide": {
+    "placeholders": {
+      "mode": {"type": "String"},
+      "fare": {"type": "String"}
+    }
+  },
+  "askMessageHost": "Text {host} that you are on your way?",
+  "@askMessageHost": {
+    "placeholders": {
+      "host": {"type": "String"}
+    }
+  },
+  "rideMode": "{mode, select, taxi{Taxi} other{S-Bahn and a short walk}}",
+  "@rideMode": {
+    "placeholders": {
+      "mode": {"type": "String"}
+    }
+  },
+  "rideLine": "{minutes} min · {fare} · there at {arrives}",
+  "@rideLine": {
+    "placeholders": {
+      "minutes": {"type": "int"},
+      "fare": {"type": "String"},
+      "arrives": {"type": "String"}
+    }
+  },
+  "book": "Book",
+  "rideBooked": "{mode, select, taxi{Taxi {reference}, at the rank when you land} other{S-Bahn ticket {reference}, valid for 2 hours}}",
+  "@rideBooked": {
+    "placeholders": {
+      "mode": {"type": "String"},
+      "reference": {"type": "String"}
+    }
+  },
+  "rideOverPolicy": "Public transport is in time: the policy allows a taxi only when it would make you late.",
+  "hostTold": "{name} knows when you arrive",
+  "@hostTold": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "hostExpects": "{name} expects you",
+  "@hostExpects": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "textHost": "Text {firstName}",
+  "@textHost": {
+    "placeholders": {
+      "firstName": {"type": "String"}
+    }
+  },
+  "noHotel": "No hotel",
+  "roomReadyAt": "Room ready at {time}",
+  "@roomReadyAt": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "checkInFrom": "Check-in from {time}",
+  "@checkInFrom": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "noCheckIn": "No check-in booked",
+  "roomEarly": "Room early"
+}
