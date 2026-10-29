@@ -1,0 +1,25 @@
+name: greenhouse_app
+description: "An app for the tests of Tandem that uses kit_ds, built apart from it."
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  json_annotation: ^4.9.0
+  kit_ds:
+    path: ../kit_ds
+  tandem: ^0.2.3
+
+dev_dependencies:
+  build_runner: ^2.16.0
+  flutter_test:
+    sdk: flutter
+  tandem_generator:
+    path: ../../packages/tandem_generator

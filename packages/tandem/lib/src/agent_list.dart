@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
-import 'package:tandem/src/tool_args.dart';
 
 /// One item of the agent list: a value the agent sees or a method it may
 /// call. Write it as `.sees`, `.calls` or `.callsWithApproval`.
@@ -76,8 +75,8 @@ final class AgentListing._(
     return ._(surface, [
       for (final (index, view) in schema.sees.indexed)
         (
-          name: view.name,
-          description: view.description,
+          view: view,
+          value: visibleValues[index],
           json: jsonEncode(view.write(visibleValues[index])),
         ),
     ], tools);
@@ -85,13 +84,16 @@ final class AgentListing._(
 
   /// The `context` of AG-UI's `RunAgentInput`: one entry for every `.sees`.
   List<Map<String, Object?>> get context => [
-    for (final (:name, :description, :json) in _seen)
-      {AgUiFields.description: '$name: $description', AgUiFields.value: json},
+    for (final (:view, value: _, :json) in _seen)
+      {
+        AgUiFields.description: '${view.name}: ${view.description}',
+        AgUiFields.value: json,
+      },
   ];
 
   /// The value of every `.sees` by its name, as JSON.
   late final Map<String, Object?> seen = {
-    for (final (:name, description: _, :json) in _seen) name: jsonDecode(json),
+    for (final (:view, value: _, :json) in _seen) view.name: jsonDecode(json),
   };
 
   /// The `tools` of AG-UI's `RunAgentInput`: the methods listed when this
@@ -101,7 +103,7 @@ final class AgentListing._(
       {
         AgUiFields.name: tool.name,
         AgUiFields.description: tool.description,
-        AgUiFields.parameters: tool.parameters,
+        AgUiFields.parameters: tool.schema,
       },
   ];
 
@@ -112,7 +114,7 @@ final class AgentListing._(
 
   /// The JSON Schema of the arguments of [tool], or null for a tool this
   /// listing does not list.
-  Map<String, Object?>? parameters(String tool) => _tools[tool]?.parameters;
+  Map<String, Object?>? parameters(String tool) => _tools[tool]?.schema;
 
   /// The doc comment of [tool], as the agent got it. Throws a [StateError] for
   /// a tool this listing does not list.
@@ -149,8 +151,7 @@ final class AgentListing._(
     if (capability.needsApproval && !approved) {
       throw ToolCallRefused('$tool runs only after the user approves it.');
     }
-    _rejectUnknown(arguments, target.parameters, '');
-    return await target.invoke(ToolArgs(arguments));
+    return await target.invoke(target.read(arguments));
   }
 
   _Calls? _currentCapabilityFor(String tool) {
@@ -162,34 +163,6 @@ final class AgentListing._(
     }
     return null;
   }
-
-  static void _rejectUnknown(Object? json, Object? schema, String path) {
-    switch ((json, schema)) {
-      case (
-        final Object value,
-        {'anyOf': [final valueSchema, {'type': 'null'}]},
-      ):
-        _rejectUnknown(value, valueSchema, path);
-      case (
-        final Map<String, Object?> object,
-        {'properties': final Map<Object?, Object?> properties},
-      ):
-        for (final MapEntry(:key, :value) in object.entries) {
-          final at = path.isEmpty ? key : '$path.$key';
-          if (!properties.containsKey(key)) {
-            throw ToolCallRefused(
-              '$at: unknown, expected one of ${properties.keys.join(', ')}',
-            );
-          }
-          _rejectUnknown(value, properties[key], at);
-        }
-      case (final List<Object?> list, {'items': final items}):
-        for (final (index, item) in list.indexed) {
-          _rejectUnknown(item, items, '$path[$index]');
-        }
-      case _:
-    }
-  }
 }
 
-typedef _Seen = ({String name, String description, String json});
+typedef _Seen = ({AgentView<Object?> view, Object? value, String json});

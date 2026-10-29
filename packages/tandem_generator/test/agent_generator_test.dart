@@ -107,7 +107,51 @@ class OrderCubit() {
   Future<Object> placeOrder() async => Object();
 }
 '''),
-      [contains('The agent cannot see Object at the result of placeOrder')],
+      [contains('the result of placeOrder: Tandem has no form for Object.')],
+    );
+  });
+
+  test('a class with a public named constructor is no token class', () async {
+    expect(
+      await _buildErrors('''
+class const Radius.circular(final double x) {
+  static const zero = Radius.circular(0);
+}
+
+@TandemAgent()
+class CardCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(round)];
+
+  /// Rounds the corners by [radius].
+  void round(Radius radius) {}
+}
+'''),
+      [contains('radius: Tandem builds Radius with its unnamed constructor')],
+    );
+  });
+
+  test('a class without a public constructor is a token class', () async {
+    final result = await _build('''
+final class const Weight._(final int value) {
+  static const regular = Weight._(400);
+  static const bold = Weight._(700);
+}
+
+@TandemAgent()
+class TextCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(emphasize)];
+
+  /// Sets the weight of the text.
+  void emphasize(Weight weight) {}
+}
+''');
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      allOf(contains('.token('), contains("'bold': .bold")),
     );
   });
 
@@ -142,6 +186,43 @@ class CartCubit() {
       },
     );
   }
+
+  test('a generic class has the nullability of its type arguments in its id, '
+      'as AgentType.id writes it', () async {
+    final result = await _build('''
+class const Page<T>({required final List<T> items});
+
+@TandemAgent()
+class SearchCubit() {
+  List<AgentCapability> get agentCapabilities => [
+    .sees(names),
+    .sees(hidden),
+    .sees(groups),
+  ];
+
+  /// The names found.
+  Page<String> get names => const Page(items: []);
+
+  /// The names found, null for a hidden one.
+  Page<String?> get hidden => const Page(items: []);
+
+  /// The names found in groups.
+  Page<List<String?>?> get groups => const Page(items: []);
+}
+''');
+
+    expect(result.errors, isEmpty);
+    final output = result.readerWriter.testing.readString(
+      .parse('app|lib/screen.tandem.g.part'),
+    );
+    for (final id in [
+      'package:app/screen.dart#Page<dart:core#String>',
+      'package:app/screen.dart#Page<dart:core#String?>',
+      'package:app/screen.dart#Page<List<dart:core#String?>?>',
+    ]) {
+      expect(output, contains("id: '$id'"));
+    }
+  });
 
   test(
     'a doc comment keeps its paragraphs but not its wrapped lines',

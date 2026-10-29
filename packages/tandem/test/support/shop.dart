@@ -92,25 +92,15 @@ final class Shop() implements AgentSurface {
   @override
   AgentSchema get agentSchema => AgentSchema(
     sees: [
-      AgentView.of(
-        () => items,
-        'items',
-        'What is on the shopping list now.',
-        (items) => items,
-      ),
+      AgentView.of(() => items)
+          .as('items', 'What is on the shopping list now.', .list(.string)),
     ],
     calls: [
       AgentTool(
         add,
         name: 'add',
         description: 'Adds [item] to the list.',
-        parameters: {
-          'type': 'object',
-          'properties': {
-            'item': {'type': 'string'},
-          },
-          'required': ['item'],
-        },
+        parameters: const [AgentParameter<String>('item', .string)],
         invoke: (args) {
           add(args.read('item'));
           return null;
@@ -120,13 +110,7 @@ final class Shop() implements AgentSurface {
         removeAt,
         name: 'remove_at',
         description: 'Removes the item at [index].',
-        parameters: {
-          'type': 'object',
-          'properties': {
-            'index': {'type': 'integer'},
-          },
-          'required': ['index'],
-        },
+        parameters: const [AgentParameter<int>('index', .integer)],
         invoke: (args) {
           removeAt(args.read('index'));
           return null;
@@ -136,7 +120,7 @@ final class Shop() implements AgentSurface {
         refresh,
         name: 'refresh',
         description: 'Reloads the list from the server.',
-        parameters: {'type': 'object', 'properties': {}},
+        parameters: const [],
         invoke: (args) async {
           await refresh();
           return null;
@@ -146,7 +130,7 @@ final class Shop() implements AgentSurface {
         clear,
         name: 'clear',
         description: 'Empties the list.',
-        parameters: {'type': 'object', 'properties': {}},
+        parameters: const [],
         invoke: (args) async {
           await clear();
           return null;
@@ -156,7 +140,7 @@ final class Shop() implements AgentSurface {
         share,
         name: 'share',
         description: 'Sends the list to the family.',
-        parameters: {'type': 'object', 'properties': {}},
+        parameters: const [],
         invoke: (args) async {
           await share();
           return null;

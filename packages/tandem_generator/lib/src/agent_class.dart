@@ -2,40 +2,44 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:tandem_generator/src/agent_type_error.dart';
 
-final class const AgentClass._({
-  required final InterfaceType type,
-  required final ClassElement element,
-  required final List<AgentField> fields,
-}) {
-  static AgentClass? tryRead(
-    DartType type, {
-    required ExecutableElement source,
+/// A class that Tandem reads through its unnamed constructor, with a getter
+/// of the same type for each parameter. A generic class is read with its type
+/// arguments, so `Page<Customer>` and `Page<Order>` are two types.
+final class const AgentClass._(final List<AgentField> fields) {
+  /// Throws an [AgentTypeError] when [type] is not such a class.
+  static AgentClass read(
+    InterfaceType type, {
+    required Element source,
     required String path,
   }) {
-    if (type is! InterfaceType) return null;
-
     final element = type.element;
 
-    if (element is! ClassElement) return null;
-    if (!element.isPublic || element.library.isInSdk) return null;
-    if (type.typeArguments.isNotEmpty) return null;
+    if (element is! ClassElement ||
+        !element.isPublic ||
+        element.isFrameworkType ||
+        type.typeArguments.any((argument) => argument is TypeParameterType)) {
+      throw AgentTypeError.unsupported(source, type: type, path: path);
+    }
 
-    final parameters = _readParameters(element, source: source, path: path);
+    final parameters = _readParameters(type, source: source, path: path);
     final fields = [
       for (final parameter in parameters)
         _readField(type, parameter, source: source, path: path),
     ];
 
-    return AgentClass._(type: type, element: element, fields: fields);
+    return ._(fields);
   }
 
   static List<FormalParameterElement> _readParameters(
-    ClassElement element, {
-    required ExecutableElement source,
+    InterfaceType type, {
+    required Element source,
     required String path,
   }) {
+    final element = type.element;
     final name = element.displayName;
-    final constructor = element.unnamedConstructor;
+    final constructor = type.constructors
+        .where((constructor) => constructor.name == 'new')
+        .firstOrNull;
 
     if (constructor == null || !constructor.canInstantiate(element)) {
       throw AgentTypeError.missingConstructor(
@@ -71,17 +75,25 @@ final class const AgentClass._({
   static AgentField _readField(
     InterfaceType type,
     FormalParameterElement parameter, {
-    required ExecutableElement source,
+    required Element source,
     required String path,
   }) {
-    final element = type.element;
     final name = parameter.displayName;
-    final getter = type.lookUpGetter(name, element.library);
+    final getter = type.getGetter(name);
 
     if (getter == null || getter.isStatic || !parameter.isPublic) {
       throw AgentTypeError.missingGetter(
         source,
-        className: element.displayName,
+        className: type.element.displayName,
+        parameterName: name,
+        path: path,
+      );
+    }
+
+    if (getter.returnType != parameter.type) {
+      throw AgentTypeError.getterType(
+        source,
+        className: type.element.displayName,
         parameterName: name,
         path: path,
       );
@@ -94,6 +106,17 @@ final class const AgentClass._({
 typedef AgentField = ({FormalParameterElement parameter, GetterElement getter});
 
 extension on ConstructorElement {
-  bool canInstantiate(ClassElement type) =>
-      isPublic && (!type.isAbstract || isFactory);
+  bool canInstantiate(InterfaceElement type) =>
+      isPublic && (type is! ClassElement || !type.isAbstract || isFactory);
+}
+
+extension on InterfaceElement {
+  /// A type of Dart or Flutter, such as `Duration` or `IconData`: its values
+  /// have a form only through a converter.
+  bool get isFrameworkType {
+    final uri = library.uri;
+
+    return uri.isScheme('dart') ||
+        (uri.isScheme('package') && uri.pathSegments.first == 'flutter');
+  }
 }

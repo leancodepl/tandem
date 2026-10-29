@@ -17,7 +17,7 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 
 `tandem_generator` is not a workspace member: its dev dependency `test` needs a `test_api` that the pin of `flutter_test` rules out. It has its own lock, which is not committed. The example depends on it by path, and CI runs `dart pub get` in it.
 
-The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentSchema` from `AgentView.of` and `AgentTool`, reading the agent's arguments with `ToolArgs`. So both packages release together, with the same minor version. The generator cannot depend on `tandem`, which needs Flutter.
+The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentSchema` from `AgentView.of` and `AgentTool`. Each type is one `AgentType` expression, which writes values, reads the agent's arguments and gives the schema. The expression names no type: Dart infers each from the getter or the parameter it stands at, so a library needs no import for the types inside the ones it declares. So both packages release together, with the same minor version. The generator cannot depend on `tandem`, which needs Flutter.
 
 `packages/tandem/README.md`, the README pub.dev shows for `tandem`, is a copy of the root README with one difference: under "Try it without a key", GitHub plays the demo film and pub.dev, which plays no video, shows it as a GIF. Change both.
 
@@ -85,7 +85,7 @@ Dart builds the instructions for every run from the current tools and context (`
 
 The copy relies on when Apple writes the batch to the transcript. That timing was measured on macOS 26.6.2 and iOS 26.6.1 and is not documented. Native probes passed all 36 handoff cases on a physical Mac and iPhone, but they cannot prove that no sibling is missing. The model can also propose a wrong current call, so app validation and approvals stay responsible.
 
-**Schemas.** Tool schemas go through `GenerationSchema`'s Codable form. It takes `type`, `description`, `properties`, `required`, `items`, string `enum` and `anyOf`, which is everything `tandem_generator` writes except `format`. Any other keyword, such as the `format` of a `DateTime`, fails the run with `OnDeviceErrorCode.unsupportedSchema` instead of being dropped.
+**Schemas.** Tool schemas go through `GenerationSchema`'s Codable form. It takes `type`, `description`, `properties`, `required`, `items`, string `enum` and `anyOf`, which is everything `tandem_generator` writes except `format` and `uniqueItems`. Any other keyword, such as the `format` of a `DateTime` or a `Uri`, fails the run with `OnDeviceErrorCode.unsupportedSchema` instead of being dropped.
 
 The system must accept the full schema or the run fails with the same code. Tandem keeps explicit null distinct from an omitted argument, which can select a Dart default. iOS 26.2 rejected null unions in an earlier simulator schema check; macOS 26.6.2 accepts them. A system that rejects a tool's null unions cannot use that tool, even when omission would happen to give null. Compatibility for those systems is deferred beyond 0.3. The native contracts check accepted schemas and system rejection without inference; they do not establish model behavior on older systems.
 

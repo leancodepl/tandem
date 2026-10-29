@@ -1,39 +1,30 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:source_gen/source_gen.dart';
-import 'package:tandem_generator/src/agent_type_operation.dart';
 
 final class AgentTypeError extends InvalidGenerationSource {
-  new optionalList(ExecutableElement element, {required String path})
+  new optionalList(Element element, {required String path})
     : super(
         '$path is a list, so the agent must send it: drop the ? and '
         'the default value.',
         element: element,
       );
 
-  new invalidListItem(ExecutableElement element, {required String path})
-    : super(
-        '$path: the agent sends lists of items that are neither null nor '
-        'lists.',
-        element: element,
-      );
-
   new unsupported(
-    ExecutableElement element, {
+    Element element, {
     required DartType type,
-    required AgentTypeOperation operation,
     required String path,
   }) : super(
-         'The agent cannot ${operation.agentVerb} '
-         '${type.getDisplayString()} at $path. '
-         'It can ${operation.agentVerb} '
-         'String, int, double, num, bool, DateTime, enums, '
-         'lists and plain classes.',
+         '$path: Tandem has no form for ${type.getDisplayString()}. It reads '
+         'String, int, double, num, bool, DateTime, Uri, enums, classes whose '
+         'values are their own static const members, extension types over '
+         'these, lists and sets of them, and classes with a public '
+         'constructor and a getter for each parameter.',
          element: element,
        );
 
   new missingConstructor(
-    ExecutableElement element, {
+    Element element, {
     required String className,
     required String path,
   }) : super(
@@ -43,7 +34,7 @@ final class AgentTypeError extends InvalidGenerationSource {
        );
 
   new emptyConstructor(
-    ExecutableElement element, {
+    Element element, {
     required String className,
     required String path,
   }) : super(
@@ -53,7 +44,7 @@ final class AgentTypeError extends InvalidGenerationSource {
        );
 
   new positionalParameters(
-    ExecutableElement element, {
+    Element element, {
     required String className,
     required String path,
   }) : super(
@@ -63,7 +54,7 @@ final class AgentTypeError extends InvalidGenerationSource {
        );
 
   new missingGetter(
-    ExecutableElement element, {
+    Element element, {
     required String className,
     required String parameterName,
     required String path,
@@ -73,14 +64,26 @@ final class AgentTypeError extends InvalidGenerationSource {
          element: element,
        );
 
+  new getterType(
+    Element element, {
+    required String className,
+    required String parameterName,
+    required String path,
+  }) : super(
+         '$path: the getter $parameterName of $className must have the type '
+         'of its constructor parameter, so that Tandem reads back what it '
+         'writes.',
+         element: element,
+       );
+
   new recursiveClass(
-    ExecutableElement element, {
+    Element element, {
     required String className,
     required String path,
   }) : super('$path: $className contains itself.', element: element);
 
   new invalidValueConstructor(
-    ExecutableElement element, {
+    Element element, {
     required String className,
     required DartType valueType,
     required String path,
@@ -91,12 +94,11 @@ final class AgentTypeError extends InvalidGenerationSource {
          element: element,
        );
 
-  new unsupportedDefault(
-    ExecutableElement element, {
-    required String parameterName,
-  }) : super(
-         'Tandem copies only literals, enum values and null as default values. '
-         'Make $parameterName required or nullable instead.',
-         element: element,
-       );
+  new unsupportedDefault(Element element, {required String parameterName})
+    : super(
+        'Tandem copies only literals, enum values, static const members and '
+        'null as default values. Make $parameterName required or nullable '
+        'instead.',
+        element: element,
+      );
 }

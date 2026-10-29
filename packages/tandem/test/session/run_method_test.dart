@@ -71,7 +71,7 @@ final class _Surface(final FutureOr<Object?> Function() operation)
         execute,
         name: 'execute',
         description: 'Executes an operation.',
-        parameters: const {'type': 'object', 'properties': <String, Object?>{}},
+        parameters: const [],
         invoke: (_) => execute(),
       ),
     ],

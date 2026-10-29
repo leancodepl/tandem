@@ -13,21 +13,53 @@ mixin _$EnumShelf implements AgentSurface {
 
     return AgentSchema(
       sees: [
-        AgentView.of(
-          () => surface.sample,
+        AgentView.of(() => surface.sample).as(
           'sample',
           "The shelf's current and previous statuses.",
-          (sample) => {
-            'size': EnumName(sample.size).name,
-            'status': EnumName(sample.status).name,
-            'optionalStatus': switch (sample.optionalStatus) {
-              null => null,
-              final optionalStatus => EnumName(optionalStatus).name,
-            },
-            'statuses': [
-              for (final item in sample.statuses) EnumName(item).name,
+          .object(
+            id: 'asset:example/test/parameters_test.dart#EnumSample',
+            fields: (field) => [
+              field('size', (value) => value.size).as(
+                .enumeration([
+                  .s,
+                  .m,
+                  .l,
+                ], id: 'asset:example/test/parameters_test.dart#Size'),
+              ),
+              field('status', (value) => value.status).as(
+                .enumeration([
+                  .ready,
+                  .sent,
+                ], id: 'asset:example/test/parameters_test.dart#StockStatus'),
+              ),
+              field(
+                'optionalStatus',
+                (value) => value.optionalStatus,
+                required: false,
+              ).as(
+                .nullable(
+                  .enumeration([
+                    .ready,
+                    .sent,
+                  ], id: 'asset:example/test/parameters_test.dart#StockStatus'),
+                ),
+              ),
+              field('statuses', (value) => value.statuses).as(
+                .list(
+                  .enumeration([
+                    .ready,
+                    .sent,
+                  ], id: 'asset:example/test/parameters_test.dart#StockStatus'),
+                ),
+              ),
             ],
-          },
+            build: (values) => .new(
+              size: values('size'),
+              status: values('status'),
+              optionalStatus: values('optionalStatus'),
+              statuses: values('statuses'),
+            ),
+          ),
         ),
       ],
       calls: [
@@ -35,69 +67,104 @@ mixin _$EnumShelf implements AgentSurface {
           surface.echo,
           name: 'echo',
           description: 'Stores and returns [sample].',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'sample': {
-                'type': 'object',
-                'properties': {
-                  'size': {
-                    'type': 'string',
-                    'enum': ['s', 'm', 'l'],
-                  },
-                  'status': {
-                    'type': 'string',
-                    'enum': ['ready', 'sent'],
-                  },
-                  'optionalStatus': {
-                    'anyOf': [
-                      {
-                        'type': 'string',
-                        'enum': ['ready', 'sent'],
-                      },
-                      {'type': 'null'},
-                    ],
-                  },
-                  'statuses': {
-                    'type': 'array',
-                    'items': {
-                      'type': 'string',
-                      'enum': ['ready', 'sent'],
-                    },
-                  },
-                },
-                'required': ['size', 'status', 'statuses'],
-              },
-            },
-            'required': ['sample'],
-          },
-          invoke: (args) {
-            final result = surface.echo(
-              args.readObject(
-                'sample',
-                (sample) => .new(
-                  size: sample.read('size', oneOf: [.s, .m, .l]),
-                  status: sample.read('status', oneOf: [.ready, .sent]),
-                  optionalStatus: sample.read(
-                    'optionalStatus',
-                    oneOf: [.ready, .sent],
+          parameters: [
+            AgentParameter<EnumSample>(
+              'sample',
+              .object(
+                id: 'asset:example/test/parameters_test.dart#EnumSample',
+                fields: (field) => [
+                  field('size', (value) => value.size).as(
+                    .enumeration([
+                      .s,
+                      .m,
+                      .l,
+                    ], id: 'asset:example/test/parameters_test.dart#Size'),
                   ),
-                  statuses: sample.readList('statuses', oneOf: [.ready, .sent]),
+                  field('status', (value) => value.status).as(
+                    .enumeration(
+                      [.ready, .sent],
+                      id: 'asset:example/test/parameters_test.dart#StockStatus',
+                    ),
+                  ),
+                  field(
+                    'optionalStatus',
+                    (value) => value.optionalStatus,
+                    required: false,
+                  ).as(
+                    .nullable(
+                      .enumeration(
+                        [.ready, .sent],
+                        id: 'asset:example/test/parameters_test.dart#StockStatus',
+                      ),
+                    ),
+                  ),
+                  field('statuses', (value) => value.statuses).as(
+                    .list(
+                      .enumeration(
+                        [.ready, .sent],
+                        id: 'asset:example/test/parameters_test.dart#StockStatus',
+                      ),
+                    ),
+                  ),
+                ],
+                build: (values) => .new(
+                  size: values('size'),
+                  status: values('status'),
+                  optionalStatus: values('optionalStatus'),
+                  statuses: values('statuses'),
+                ),
+              ),
+            ),
+          ],
+          invoke: (args) {
+            final result = surface.echo(args.read('sample'));
+
+            return AgentResult(result).as(
+              .object(
+                id: 'asset:example/test/parameters_test.dart#EnumSample',
+                fields: (field) => [
+                  field('size', (value) => value.size).as(
+                    .enumeration([
+                      .s,
+                      .m,
+                      .l,
+                    ], id: 'asset:example/test/parameters_test.dart#Size'),
+                  ),
+                  field('status', (value) => value.status).as(
+                    .enumeration(
+                      [.ready, .sent],
+                      id: 'asset:example/test/parameters_test.dart#StockStatus',
+                    ),
+                  ),
+                  field(
+                    'optionalStatus',
+                    (value) => value.optionalStatus,
+                    required: false,
+                  ).as(
+                    .nullable(
+                      .enumeration(
+                        [.ready, .sent],
+                        id: 'asset:example/test/parameters_test.dart#StockStatus',
+                      ),
+                    ),
+                  ),
+                  field('statuses', (value) => value.statuses).as(
+                    .list(
+                      .enumeration(
+                        [.ready, .sent],
+                        id: 'asset:example/test/parameters_test.dart#StockStatus',
+                      ),
+                    ),
+                  ),
+                ],
+                build: (values) => .new(
+                  size: values('size'),
+                  status: values('status'),
+                  optionalStatus: values('optionalStatus'),
+                  statuses: values('statuses'),
                 ),
               ),
             );
-
-            return {
-              'size': EnumName(result.size).name,
-              'status': EnumName(result.status).name,
-              'optionalStatus': switch (result.optionalStatus) {
-                null => null,
-                final optionalStatus => EnumName(optionalStatus).name,
-              },
-              'statuses': [
-                for (final item in result.statuses) EnumName(item).name,
-              ],
-            };
           },
         ),
       ],
@@ -117,45 +184,51 @@ mixin _$Shelf implements AgentSurface {
           surface.stock,
           name: 'stock',
           description: 'Puts [skus] on the shelf.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'skus': {
-                'type': 'array',
-                'items': {'type': 'string'},
-              },
-              'size': {
-                'anyOf': [
-                  {
-                    'type': 'string',
-                    'enum': ['s', 'm', 'l'],
-                  },
-                  {'type': 'null'},
-                ],
-              },
-              'count': {'type': 'integer'},
-              'fit': {
-                'type': 'string',
-                'enum': ['s', 'm', 'l'],
-              },
-              'note': {
-                'anyOf': [
-                  {'type': 'string'},
-                  {'type': 'null'},
-                ],
-              },
-            },
-            'required': ['skus'],
-          },
+          parameters: [
+            AgentParameter<List<Sku>>(
+              'skus',
+              .list(
+                .extension(
+                  .string,
+                  (value) => .new(value),
+                  id: 'asset:example/test/parameters_test.dart#Sku',
+                ),
+              ),
+            ),
+            AgentParameter<Size?>(
+              'size',
+              .nullable(
+                .enumeration([
+                  .s,
+                  .m,
+                  .l,
+                ], id: 'asset:example/test/parameters_test.dart#Size'),
+              ),
+              required: false,
+            ),
+            const AgentParameter<int>('count', .integer, required: false),
+            AgentParameter<Size>(
+              'fit',
+              .enumeration([
+                .s,
+                .m,
+                .l,
+              ], id: 'asset:example/test/parameters_test.dart#Size'),
+              required: false,
+            ),
+            AgentParameter<String?>(
+              'note',
+              .nullable(.string),
+              required: false,
+            ),
+          ],
           invoke: (args) {
             surface.stock(
-              [for (final item in args.readList<String>('skus')) .new(item)],
-              args.read('size', oneOf: [.s, .m, .l]),
-              count: args.json.containsKey('count') ? args.read('count') : 1,
-              fit: args.json.containsKey('fit')
-                  ? args.read('fit', oneOf: [.s, .m, .l])
-                  : .m,
-              note: args.json.containsKey('note') ? args.read('note') : 'new',
+              args.read('skus'),
+              args.read('size'),
+              count: args.has('count') ? args.read('count') : 1,
+              fit: args.has('fit') ? args.read('fit') : .m,
+              note: args.has('note') ? args.read('note') : 'new',
             );
             return null;
           },
@@ -172,22 +245,56 @@ mixin _$Dispatch implements AgentSurface {
 
     return AgentSchema(
       sees: [
-        AgentView.of(
-          () => surface.lastBooked,
+        AgentView.of(() => surface.lastBooked).as(
           'last_booked',
           'The delivery booked last, if any.',
-          (lastBooked) => switch (lastBooked) {
-            null => null,
-            final lastBooked => {
-              'address': {
-                'street': lastBooked.address.street,
-                'city': lastBooked.address.city,
-              },
-              'day': lastBooked.day.toIso8601String(),
-              'slot': EnumName(lastBooked.slot).name,
-              'note': lastBooked.note,
-            },
-          },
+          .nullable(
+            .object(
+              id: 'asset:example/test/delivery.dart#Delivery',
+              description: 'Where and when an order goes.',
+              fields: (field) => [
+                field(
+                  'address',
+                  (value) => value.address,
+                  description: 'Where the courier brings the order.',
+                ).as(
+                  .object(
+                    id: 'asset:example/test/delivery.dart#Address',
+                    description: 'A street address.',
+                    fields: (field) => [
+                      field('street', (value) => value.street).as(.string),
+                      field('city', (value) => value.city).as(.string),
+                    ],
+                    build: (values) =>
+                        .new(street: values('street'), city: values('city')),
+                  ),
+                ),
+                field(
+                  'day',
+                  (value) => value.day,
+                  description: 'The day the order arrives.',
+                ).as(.dateTime),
+                field('slot', (value) => value.slot, required: false).as(
+                  .enumeration([
+                    .morning,
+                    .afternoon,
+                  ], id: 'asset:example/test/delivery.dart#DeliverySlot'),
+                ),
+                field(
+                  'note',
+                  (value) => value.note,
+                  description: 'Anything the courier should know.',
+                  required: false,
+                ).as(.nullable(.string)),
+              ],
+              build: (values) => .new(
+                address: values('address'),
+                day: values('day'),
+                slot: values.has('slot') ? values('slot') : .morning,
+                note: values('note'),
+              ),
+            ),
+          ),
         ),
       ],
       calls: [
@@ -196,168 +303,196 @@ mixin _$Dispatch implements AgentSurface {
           name: 'book',
           description:
               'Books a courier for [lines] and returns the delivery as booked.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'lines': {
-                'type': 'array',
-                'items': {
-                  'type': 'object',
-                  'description':
+          parameters: [
+            AgentParameter<List<OrderLine>>(
+              'lines',
+              .list(
+                .object(
+                  id: 'package:example/order.dart#OrderLine',
+                  description:
                       'One product of an order and how many pieces of it.',
-                  'properties': {
-                    'sku': {
-                      'type': 'string',
-                      'description': "The product's code in the catalog.",
-                    },
-                    'quantity': {
-                      'type': 'integer',
-                      'description': 'How many pieces.',
-                    },
-                  },
-                  'required': ['sku', 'quantity'],
-                },
-              },
-              'delivery': {
-                'type': 'object',
-                'description': 'Where and when an order goes.',
-                'properties': {
-                  'address': {
-                    'type': 'object',
-                    'description': 'Where the courier brings the order.',
-                    'properties': {
-                      'street': {'type': 'string'},
-                      'city': {'type': 'string'},
-                    },
-                    'required': ['street', 'city'],
-                  },
-                  'day': {
-                    'type': 'string',
-                    'format': 'date-time',
-                    'description': 'The day the order arrives.',
-                  },
-                  'slot': {
-                    'type': 'string',
-                    'enum': ['morning', 'afternoon'],
-                  },
-                  'note': {
-                    'anyOf': [
-                      {'type': 'string'},
-                      {'type': 'null'},
-                    ],
-                    'description': 'Anything the courier should know.',
-                  },
-                },
-                'required': ['address', 'day'],
-              },
-            },
-            'required': ['lines', 'delivery'],
-          },
-          invoke: (args) async {
-            final result = await surface.book(
-              args.readObjects(
-                'lines',
-                (item) => .new(
-                  sku: item.read('sku'),
-                  quantity: item.read('quantity'),
+                  fields: (field) => [
+                    field(
+                      'sku',
+                      (value) => value.sku,
+                      description: "The product's code in the catalog.",
+                    ).as(.string),
+                    field(
+                      'quantity',
+                      (value) => value.quantity,
+                      description: 'How many pieces.',
+                    ).as(.integer),
+                  ],
+                  build: (values) =>
+                      .new(sku: values('sku'), quantity: values('quantity')),
                 ),
               ),
-              args.readObject(
-                'delivery',
-                (delivery) => .new(
-                  address: delivery.readObject(
+            ),
+            AgentParameter<Delivery>(
+              'delivery',
+              .object(
+                id: 'asset:example/test/delivery.dart#Delivery',
+                description: 'Where and when an order goes.',
+                fields: (field) => [
+                  field(
                     'address',
-                    (address) => .new(
-                      street: address.read('street'),
-                      city: address.read('city'),
+                    (value) => value.address,
+                    description: 'Where the courier brings the order.',
+                  ).as(
+                    .object(
+                      id: 'asset:example/test/delivery.dart#Address',
+                      description: 'A street address.',
+                      fields: (field) => [
+                        field('street', (value) => value.street).as(.string),
+                        field('city', (value) => value.city).as(.string),
+                      ],
+                      build: (values) =>
+                          .new(street: values('street'), city: values('city')),
                     ),
                   ),
-                  day: delivery.read('day'),
-                  slot: delivery.json.containsKey('slot')
-                      ? delivery.read('slot', oneOf: [.morning, .afternoon])
-                      : .morning,
-                  note: delivery.read('note'),
+                  field(
+                    'day',
+                    (value) => value.day,
+                    description: 'The day the order arrives.',
+                  ).as(.dateTime),
+                  field('slot', (value) => value.slot, required: false).as(
+                    .enumeration([
+                      .morning,
+                      .afternoon,
+                    ], id: 'asset:example/test/delivery.dart#DeliverySlot'),
+                  ),
+                  field(
+                    'note',
+                    (value) => value.note,
+                    description: 'Anything the courier should know.',
+                    required: false,
+                  ).as(.nullable(.string)),
+                ],
+                build: (values) => .new(
+                  address: values('address'),
+                  day: values('day'),
+                  slot: values.has('slot') ? values('slot') : .morning,
+                  note: values('note'),
+                ),
+              ),
+            ),
+          ],
+          invoke: (args) async {
+            final result = await surface.book(
+              args.read('lines'),
+              args.read('delivery'),
+            );
+
+            return AgentResult(result).as(
+              .object(
+                id: 'asset:example/test/delivery.dart#Delivery',
+                description: 'Where and when an order goes.',
+                fields: (field) => [
+                  field(
+                    'address',
+                    (value) => value.address,
+                    description: 'Where the courier brings the order.',
+                  ).as(
+                    .object(
+                      id: 'asset:example/test/delivery.dart#Address',
+                      description: 'A street address.',
+                      fields: (field) => [
+                        field('street', (value) => value.street).as(.string),
+                        field('city', (value) => value.city).as(.string),
+                      ],
+                      build: (values) =>
+                          .new(street: values('street'), city: values('city')),
+                    ),
+                  ),
+                  field(
+                    'day',
+                    (value) => value.day,
+                    description: 'The day the order arrives.',
+                  ).as(.dateTime),
+                  field('slot', (value) => value.slot, required: false).as(
+                    .enumeration([
+                      .morning,
+                      .afternoon,
+                    ], id: 'asset:example/test/delivery.dart#DeliverySlot'),
+                  ),
+                  field(
+                    'note',
+                    (value) => value.note,
+                    description: 'Anything the courier should know.',
+                    required: false,
+                  ).as(.nullable(.string)),
+                ],
+                build: (values) => .new(
+                  address: values('address'),
+                  day: values('day'),
+                  slot: values.has('slot') ? values('slot') : .morning,
+                  note: values('note'),
                 ),
               ),
             );
-
-            return {
-              'address': {
-                'street': result.address.street,
-                'city': result.address.city,
-              },
-              'day': result.day.toIso8601String(),
-              'slot': EnumName(result.slot).name,
-              'note': result.note,
-            };
           },
         ),
         AgentTool(
           surface.setDelivery,
           name: 'set_delivery',
           description: 'Replaces or clears the delivery.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'delivery': {
-                'anyOf': [
-                  {
-                    'type': 'object',
-                    'description': 'Where and when an order goes.',
-                    'properties': {
-                      'address': {
-                        'type': 'object',
-                        'description': 'Where the courier brings the order.',
-                        'properties': {
-                          'street': {'type': 'string'},
-                          'city': {'type': 'string'},
-                        },
-                        'required': ['street', 'city'],
-                      },
-                      'day': {
-                        'type': 'string',
-                        'format': 'date-time',
-                        'description': 'The day the order arrives.',
-                      },
-                      'slot': {
-                        'type': 'string',
-                        'enum': ['morning', 'afternoon'],
-                      },
-                      'note': {
-                        'anyOf': [
-                          {'type': 'string'},
-                          {'type': 'null'},
+          parameters: [
+            AgentParameter<Delivery?>(
+              'delivery',
+              .nullable(
+                .object(
+                  id: 'asset:example/test/delivery.dart#Delivery',
+                  description: 'Where and when an order goes.',
+                  fields: (field) => [
+                    field(
+                      'address',
+                      (value) => value.address,
+                      description: 'Where the courier brings the order.',
+                    ).as(
+                      .object(
+                        id: 'asset:example/test/delivery.dart#Address',
+                        description: 'A street address.',
+                        fields: (field) => [
+                          field('street', (value) => value.street).as(.string),
+                          field('city', (value) => value.city).as(.string),
                         ],
-                        'description': 'Anything the courier should know.',
-                      },
-                    },
-                    'required': ['address', 'day'],
-                  },
-                  {'type': 'null'},
-                ],
-              },
-            },
-          },
-          invoke: (args) {
-            surface.setDelivery(
-              args.readObject(
-                'delivery',
-                (delivery) => .new(
-                  address: delivery.readObject(
-                    'address',
-                    (address) => .new(
-                      street: address.read('street'),
-                      city: address.read('city'),
+                        build: (values) => .new(
+                          street: values('street'),
+                          city: values('city'),
+                        ),
+                      ),
                     ),
+                    field(
+                      'day',
+                      (value) => value.day,
+                      description: 'The day the order arrives.',
+                    ).as(.dateTime),
+                    field('slot', (value) => value.slot, required: false).as(
+                      .enumeration([
+                        .morning,
+                        .afternoon,
+                      ], id: 'asset:example/test/delivery.dart#DeliverySlot'),
+                    ),
+                    field(
+                      'note',
+                      (value) => value.note,
+                      description: 'Anything the courier should know.',
+                      required: false,
+                    ).as(.nullable(.string)),
+                  ],
+                  build: (values) => .new(
+                    address: values('address'),
+                    day: values('day'),
+                    slot: values.has('slot') ? values('slot') : .morning,
+                    note: values('note'),
                   ),
-                  day: delivery.read('day'),
-                  slot: delivery.json.containsKey('slot')
-                      ? delivery.read('slot', oneOf: [.morning, .afternoon])
-                      : .morning,
-                  note: delivery.read('note'),
                 ),
               ),
-            );
+              required: false,
+            ),
+          ],
+          invoke: (args) {
+            surface.setDelivery(args.read('delivery'));
             return null;
           },
         ),
@@ -365,33 +500,72 @@ mixin _$Dispatch implements AgentSurface {
           surface.findDelivery,
           name: 'find_delivery',
           description: 'Finds the last booked delivery, if any.',
-          parameters: const {'type': 'object', 'properties': {}},
+          parameters: [],
           invoke: (args) async {
             final result = await surface.findDelivery();
 
-            return switch (result) {
-              null => null,
-              final result => {
-                'address': {
-                  'street': result.address.street,
-                  'city': result.address.city,
-                },
-                'day': result.day.toIso8601String(),
-                'slot': EnumName(result.slot).name,
-                'note': result.note,
-              },
-            };
+            return AgentResult(result).as(
+              .nullable(
+                .object(
+                  id: 'asset:example/test/delivery.dart#Delivery',
+                  description: 'Where and when an order goes.',
+                  fields: (field) => [
+                    field(
+                      'address',
+                      (value) => value.address,
+                      description: 'Where the courier brings the order.',
+                    ).as(
+                      .object(
+                        id: 'asset:example/test/delivery.dart#Address',
+                        description: 'A street address.',
+                        fields: (field) => [
+                          field('street', (value) => value.street).as(.string),
+                          field('city', (value) => value.city).as(.string),
+                        ],
+                        build: (values) => .new(
+                          street: values('street'),
+                          city: values('city'),
+                        ),
+                      ),
+                    ),
+                    field(
+                      'day',
+                      (value) => value.day,
+                      description: 'The day the order arrives.',
+                    ).as(.dateTime),
+                    field('slot', (value) => value.slot, required: false).as(
+                      .enumeration([
+                        .morning,
+                        .afternoon,
+                      ], id: 'asset:example/test/delivery.dart#DeliverySlot'),
+                    ),
+                    field(
+                      'note',
+                      (value) => value.note,
+                      description: 'Anything the courier should know.',
+                      required: false,
+                    ).as(.nullable(.string)),
+                  ],
+                  build: (values) => .new(
+                    address: values('address'),
+                    day: values('day'),
+                    slot: values.has('slot') ? values('slot') : .morning,
+                    note: values('note'),
+                  ),
+                ),
+              ),
+            );
           },
         ),
         AgentTool(
           surface.deliveryDay,
           name: 'delivery_day',
           description: 'The day of the last booked delivery, if any.',
-          parameters: const {'type': 'object', 'properties': {}},
+          parameters: [],
           invoke: (args) async {
             final result = await surface.deliveryDay();
 
-            return result?.toIso8601String();
+            return AgentResult(result).as(.nullable(.dateTime));
           },
         ),
       ],

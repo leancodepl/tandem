@@ -1,0 +1,21 @@
+name: kit_ds
+description: "A design system for the tests of Tandem: its widgets and tokens, built on their own."
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  json_annotation: ^4.9.0
+  tandem: ^0.2.3
+
+dev_dependencies:
+  build_runner: ^2.16.0
+  tandem_generator:
+    path: ../../packages/tandem_generator
