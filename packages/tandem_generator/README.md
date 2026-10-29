@@ -55,7 +55,7 @@ A converter matches its type exactly: a parameter of type `EdgeInsets` takes the
 
 A widget without a doc comment fails the build. A required parameter of a type without a form fails the build and names the converter to add; an optional one keeps the widget's default, with one line in the build. A default that is not a literal, an enum value or a static const member of its own class, such as `Alignment.center`, also keeps the widget's default. The widget's class must be visible where the catalog is, and Tandem reads a parameter's type from the widget's getter of the same name; without one, the type must be visible there too.
 
-The catalog's doc comment gives the agent its guidelines and one example view, a ```json block of `components`. The build checks the example's component and property names.
+The catalog's doc comment gives the agent its guidelines and one example view, a ```json block of `components`. The build checks the example's component and property names; `TandemView` checks its paths and methods against the screen in debug.
 
 A catalog belongs to one screen, because its guidelines and example name that screen's data and methods. Another screen that draws with the same widgets declares its own catalog from the same list, as `@TandemCatalog([...DesignSystem.components])`, with its own guidelines and example.
 

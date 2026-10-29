@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart' hide Page;
 import 'package:greenhouse_app/contracts.dart';
 
 /// A plant by its label and the light it wants. A tap picks it.
@@ -74,4 +74,11 @@ final class const SideBySide({super.key, required final List<PlantDTO> plants})
   @override
   Widget build(BuildContext context) =>
       Text([for (final plant in plants) plant.label].join(' | '));
+}
+
+/// Which page of labels this is, on a page whose hidden labels are null.
+final class const PageNumber({super.key, required final Page<String?> page})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Text('Page ${page.number}');
 }

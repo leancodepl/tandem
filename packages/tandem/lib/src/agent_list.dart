@@ -48,11 +48,13 @@ final class AgentListing._(
   final List<_Seen> _seen,
   final Map<String, AgentTool> _tools,
 ) {
-  /// Reads [surface]'s [AgentSurface.agentCapabilities] and names its items
-  /// with the generated [AgentSurface.agentSchema].
+  /// Reads [surface]'s agent list, through the copy in its generated
+  /// [AgentSurface.agentSchema] when it has one, and names its items.
   ///
-  /// Throws a [StateError] when the list and the generated code disagree,
-  /// which means the code was not generated again after the list changed.
+  /// Throws a [StateError] when the list names a getter or a method the
+  /// generated code does not know; in debug an assert also compares the copy
+  /// with [AgentSurface.agentCapabilities]. Either means the code was not
+  /// generated again after the list changed.
   factory of(AgentSurface surface) {
     final schema = surface.agentSchema;
     final capabilities = _read(surface, schema);
@@ -126,14 +128,19 @@ final class AgentListing._(
     }
     final seen = <_Seen>[];
     for (final (index, _Sees(:value, :name)) in sees.indexed) {
-      final view = switch (name) {
-        final name? =>
+      final view = switch ((name, schema.capabilities)) {
+        (final name?, _) =>
           byName[name] ??
               (throw StateError(
                 'The generated code does not know the .sees $name. Run '
                 'build_runner again.',
               )),
-        null => schema.sees[index],
+        (null, null) => schema.sees[index],
+        // Only the copy of agentCapabilities names its .sees.
+        (null, _) => throw StateError(
+          'A .sees comes from outside agentCapabilities, such as a method it '
+          'calls. Write every .sees in agentCapabilities itself.',
+        ),
       };
       if (seen.any((item) => item.view.name == view.name)) {
         throw StateError('The agent list sees ${view.name} twice.');
@@ -170,6 +177,11 @@ final class AgentListing._(
 
   bool lists(String tool) => _tools.containsKey(tool);
 
+  /// The method behind [tool], or null for a tool this listing does not
+  /// list.
+  @internal
+  AgentTool? toolNamed(String tool) => _tools[tool];
+
   /// The names of the tools this listing lists.
   Iterable<String> get toolNames => _tools.keys;
 
@@ -188,6 +200,11 @@ final class AgentListing._(
   /// list as it is now.
   bool needsApproval(String tool) =>
       _currentCapabilityFor(tool)?.needsApproval ?? false;
+
+  /// Whether this listing lists [tool] with `.callsWithApproval`.
+  @internal
+  bool listedWithApproval(String tool) =>
+      _capabilityOf(_tools[tool]?.method)?.needsApproval ?? false;
 
   /// Calls the method behind [tool] with the agent's JSON [arguments] and
   /// returns its result as JSON.

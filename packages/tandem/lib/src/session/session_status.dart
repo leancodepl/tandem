@@ -14,13 +14,19 @@ final class const Thinking({
   /// `TOOL_CALL_START` until its result or the agent's next text or call.
   /// Null when no backend tool is tracked.
   final String? backendTool,
+
+  /// The agent draws a view for `TandemView`: from the start of its call
+  /// until the agent's next text or call.
+  final bool drawing = false,
 }) extends SessionStatus {
   @override
   bool operator ==(Object other) =>
-      other is Thinking && other.backendTool == backendTool;
+      other is Thinking &&
+      other.backendTool == backendTool &&
+      other.drawing == drawing;
 
   @override
-  int get hashCode => backendTool.hashCode;
+  int get hashCode => Object.hash(backendTool, drawing);
 }
 
 /// A listed method runs: one the agent called in its run, or one the user

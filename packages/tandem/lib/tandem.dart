@@ -63,6 +63,7 @@ export 'src/genui/agent_catalog.dart'
         AgentProperty,
         AgentPropertyOf,
         ComponentArgs;
+export 'src/genui/tandem_view.dart' show TandemView;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection;
 export 'src/protocol/on_device_agent.dart'

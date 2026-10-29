@@ -25,6 +25,7 @@ import 'package:tandem/src/session/tandem_thread.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/turn.dart';
+import 'package:tandem/src/session/view_tool.dart';
 import 'package:tandem/src/session/waiting_turns.dart';
 import 'package:uuid/uuid.dart';
 
@@ -89,6 +90,14 @@ final class TandemSession({
   /// The approved method that runs now, outside any run.
   Calling? _approvedCall;
 
+  /// The view that the next run offers the agent to draw on.
+  ViewTool? _view;
+
+  /// The views refused in a row since the last message, which stop the
+  /// drawing at [_maxRefusedViews].
+  var _refusedViews = 0;
+  static const _maxRefusedViews = 3;
+
   var _disposed = false;
 
   /// True until the first message, which checks the screen against the
@@ -109,7 +118,10 @@ final class TandemSession({
   SessionStatus get status => switch (_run) {
     Run(stopped: true) => const Stopping(),
     Run(:final calling?) => calling,
-    Run(:final backendTool) => Thinking(backendTool: backendTool),
+    Run(:final backendTool, :final drawing) => Thinking(
+      backendTool: backendTool,
+      drawing: drawing,
+    ),
     null => _approvedCall ?? _waitingStatus,
   };
 
@@ -292,6 +304,18 @@ final class TandemSession({
   @internal
   bool get asksForApproval => _asksForApproval();
 
+  /// Offers the agent [view] to draw on, from the next run on.
+  @internal
+  void attach(ViewTool view) => _view = view;
+
+  /// Stops offering [view], from the next run on.
+  @internal
+  void detach(ViewTool view) {
+    if (identical(view, _view)) {
+      _view = null;
+    }
+  }
+
   /// Calls [tool] for [caller], such as a coding agent through
   /// `TandemBridge`. The call stays out of the agent's history, and `onEvent`
   /// hears of its return as of the agent's own calls. Throws a [StateError]
@@ -301,20 +325,22 @@ final class TandemSession({
   /// Otherwise a call that needs approval waits for the user as an
   /// [ApprovalRequest], which shows once the session is idle. One call of
   /// [caller] waits at a time: the same call waits for the same answer, and
-  /// another is refused.
+  /// another is refused. The paths of [arguments] point at what [seen] read,
+  /// such as the data a view was drawn with, or at the list now.
   @internal
   Future<ToolAnswer> callFor(
     Caller caller,
     String tool,
     JsonObject arguments, {
     bool autoApprove = false,
+    AgentListing? seen,
   }) {
     // The in-app agent's calls come with its runs.
     assert(caller != .inAppAgent, 'callFor is for callers outside a run.');
     if (_disposed) {
       return Future.value(.refused('This session no longer owns its thread.'));
     }
-    final listing = AgentListing.of(_surface);
+    final listing = seen ?? AgentListing.of(_surface);
     final needsApproval = listing.needsApproval(tool);
     if (needsApproval && !autoApprove) {
       final call = ToolCall(
@@ -359,6 +385,7 @@ final class TandemSession({
   }
 
   void _post(UserMessage message) {
+    _refusedViews = 0;
     if (_screenToCheck) {
       _screenToCheck = false;
       _startOverIfScreenChanged();
@@ -393,7 +420,8 @@ final class TandemSession({
 
   void _open() {
     try {
-      final run = _run = Run(AgentListing.of(_surface));
+      final listing = AgentListing.of(_surface);
+      final run = _run = Run(listing, view: _offeredView(listing));
       final input = _agUiThread.input(
         tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
@@ -515,6 +543,8 @@ final class TandemSession({
       final arguments = call.objectArguments;
       if (arguments == null) {
         call.answerWith(ToolAnswer.argumentsNotAnObject);
+      } else if (run.view case final view? when call.tool == ViewTool.name) {
+        call.answerWith(_show(view, arguments));
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
@@ -534,6 +564,20 @@ final class TandemSession({
         _invalidateIfSeesChanged();
       }
     }
+  }
+
+  // A model that never draws a view that fits would try again on every run.
+  ToolAnswer _show(OfferedView view, JsonObject arguments) {
+    if (_refusedViews >= _maxRefusedViews) {
+      return ToolAnswer.drawingStopped;
+    }
+    final answer = identical(view.tool, _view)
+        ? view.tool.show(arguments)
+        : ToolAnswer.refused('No view is on the screen now.');
+    _refusedViews = answer.status == .shown ? 0 : _refusedViews + 1;
+    return _refusedViews < _maxRefusedViews
+        ? answer
+        : ToolAnswer.drawingStopped;
   }
 
   void _askUser(
@@ -628,7 +672,8 @@ final class TandemSession({
       _goOn(withAnswers: _waiting.isAgentTurn(turn));
 
   /// Runs the method behind [tool] for [caller]. Unless the session is
-  /// disposed by then, `onEvent` hears of the return.
+  /// disposed by then, the agent gets a note of an action of a view, and
+  /// `onEvent` hears of the return after it, so it may wake the agent.
   Future<ToolAnswer> _callMethod(
     AgentListing listing,
     String tool,
@@ -646,6 +691,9 @@ final class TandemSession({
     );
     if (_disposed) {
       return answer;
+    }
+    if (caller == .view) {
+      _notes.add(.action(tool, returned?.arguments ?? arguments.json, answer));
     }
     if (returned case final agentCall?) {
       _emit(agentCall);
@@ -708,6 +756,15 @@ final class TandemSession({
   }
 
   SeesSnapshot get _seesNow => .read(_surface, report: report);
+
+  OfferedView? _offeredView(AgentListing listing) {
+    final view = _view;
+    if (view == null || _refusedViews >= _maxRefusedViews) return null;
+    return switch (view.definition(listing)) {
+      final definition? => (tool: view, definition: definition),
+      null => null,
+    };
+  }
 
   bool get _isBusy => _run != null || _approvedCall != null;
 
@@ -782,7 +839,7 @@ final class TandemSession({
   /// message of the app starts a run.
   void _goOn({required bool withAnswers}) {
     assert(!_isBusy, 'Only a session where nothing runs goes on.');
-    if ((withAnswers && _waiting.agentAnswered) || _queue.userWrote) {
+    if ((withAnswers && _waiting.agentAnswersDue) || _queue.userWrote) {
       _start();
       notifyListeners();
       return;

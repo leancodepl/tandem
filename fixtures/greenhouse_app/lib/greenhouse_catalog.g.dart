@@ -324,5 +324,31 @@ mixin _$GreenhouseCatalog implements AgentCatalog {
       ],
       build: (args) => SideBySide(plants: args.value('plants')),
     ),
+    AgentComponent<PageNumber>.of(
+      name: 'PageNumber',
+      description: 'Which page of labels this is, on a page whose hidden labels are null.',
+      properties: (property) => [
+        property('page', (widget) => widget.page).value(
+          .object(
+            id: 'package:greenhouse_app/contracts.dart#Page<dart:core#String?>',
+            description: 'One page of results.',
+            fields: (field) => [
+              field(
+                'items',
+                (value) => value.items,
+              ).as(.list(.nullable(.string))),
+              field(
+                'number',
+                (value) => value.number,
+                description: 'Which page this is, from 1.',
+              ).as(.integer),
+            ],
+            build: (values) =>
+                .new(items: values('items'), number: values('number')),
+          ),
+        ),
+      ],
+      build: (args) => PageNumber(page: args.value('page')),
+    ),
   ];
 }
