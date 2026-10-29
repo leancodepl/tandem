@@ -102,15 +102,18 @@ final class InvoiceStore() extends ChangeNotifier with _$InvoiceStore {
   /// What [interpretInvoiceInput] would do with these arguments, for its
   /// approval card. Arguments it cannot read get the hint for a month.
   InvoicePlan planFor(Map<String, Object?> arguments) {
-    final args = ToolArgs(arguments);
+    final tool = agentSchema.calls.firstWhere(
+      (tool) => tool.method == interpretInvoiceInput,
+    );
     try {
+      final args = tool.read(arguments);
       return plan(
-        action: args.read('action', oneOf: RequestedAction.values),
-        recordKind: args.read('recordKind', oneOf: RecordKind.values),
-        dateField: args.read('dateField', oneOf: DateField.values),
-        month: args.read('month', oneOf: Month.values),
+        action: args.read('action'),
+        recordKind: args.read('recordKind'),
+        dateField: args.read('dateField'),
+        month: args.read('month'),
         year: args.read('year'),
-        restriction: args.read('restriction', oneOf: Restriction.values),
+        restriction: args.read('restriction'),
       );
     } on ToolCallRefused {
       return const RefusedPlan(_askForMonth);

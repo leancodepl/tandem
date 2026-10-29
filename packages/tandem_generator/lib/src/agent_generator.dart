@@ -86,7 +86,16 @@ class _CapabilityReader(final ClassElement _type)
     final views = [for (final item in _viewExpressions) _readView(item)];
     final methods = {for (final item in _methodExpressions) _readMethod(item)};
 
-    return _AgentCapabilities(views: views, methods: methods);
+    return _AgentCapabilities(
+      views: views,
+      methods: [
+        for (final method in methods)
+          (
+            method: method,
+            parameterTypes: await _parameterTypes(method, buildStep),
+          ),
+      ],
+    );
   }
 
   @override
@@ -144,6 +153,29 @@ class _CapabilityReader(final ClassElement _type)
     return method;
   }
 
+  /// The type of each parameter of [method] as its declaration writes it,
+  /// which names it in this library.
+  static Future<List<String>> _parameterTypes(
+    MethodElement method,
+    BuildStep buildStep,
+  ) async {
+    final source = await buildStep.resolver.astNodeFor(method.firstFragment);
+
+    if (source is! MethodDeclaration) {
+      throw AgentGenerationError.missingSource(method);
+    }
+
+    return [
+      for (final parameter
+          in source.parameters?.parameters ?? const <FormalParameter>[])
+        switch (parameter) {
+          FormalParameter(:final type?, functionTypedSuffix: null) =>
+            type.toSource(),
+          _ => throw AgentGenerationError.untypedParameter(parameter),
+        },
+    ];
+  }
+
   static bool _isDirectListItem(Expression item) {
     final arguments = item.parent;
 
@@ -187,7 +219,7 @@ class _CapabilityReader(final ClassElement _type)
 
 final class const _AgentCapabilities({
   required final List<GetterElement> views,
-  required final Set<MethodElement> methods,
+  required final List<AgentMethod> methods,
 });
 
 enum _CapabilityKind() {

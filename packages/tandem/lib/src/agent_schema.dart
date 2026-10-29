@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/agent_type.dart';
+import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/tool_args.dart';
 
 /// A class with an agent list. The `_$ClassName` mixin that
@@ -26,7 +29,7 @@ abstract interface class AgentSurface {
 /// What `tandem_generator` read from a class's agent list.
 final class const AgentSchema({
   /// One item for every `.sees` of the list, in the same order.
-  required final List<AgentView> sees,
+  required final List<AgentView<Object?>> sees,
 
   /// One item for every method the list mentions in `.calls` or
   /// `.callsWithApproval`, listed now or not.
@@ -34,39 +37,57 @@ final class const AgentSchema({
 });
 
 /// One `.sees` of the agent list, as the generated code describes it.
-final class AgentView._(
+final class const AgentView<T>._(
   /// The getter's name in snake_case.
   final String name,
 
   /// The getter's doc comment, sent to the agent with the value.
   final String description,
-  final Object? Function(Object? value) _write,
+
+  /// The getter's type.
+  final AgentType<T> type,
 ) {
-  /// Called by the generated code. The closure only gives Dart the getter's
-  /// type [T], so the generated code does not have to name it; it is never
-  /// called.
-  static AgentView of<T>(
-    T Function() _,
-    String name,
-    String description,
-    Object? Function(T value) write,
-  ) => ._(
-    name,
-    description,
-    (value) => value is T
-        ? write(value)
-        : throw StateError(
-            'The agent list sees a ${value.runtimeType} as $name, the '
-            'generated code a $T. Run build_runner again.',
-          ),
-  );
+  /// Called by the generated code: `AgentView.of(() => surface.order)` gives
+  /// Dart the getter's type, and `.as(...)` its name and description. The
+  /// closure is never called.
+  static AgentViewOf<T> of<T>(T Function() _) => AgentViewOf<T>._();
 
   /// [value], read from the agent list, as JSON.
   ///
   /// Throws a [StateError] when its type is not the getter's, which means the
   /// code was not generated again after the list changed.
-  Object? write(Object? value) => _write(value);
+  Object? write(Object? value) => type.write(_checked(value));
+
+  /// [value], read from the agent list, as the getter's type.
+  T checked(Object? value) => _checked(value);
+
+  T _checked(Object? value) => switch (value) {
+    final T value => value,
+    _ => throw StateError(
+      'The agent list sees a ${value.runtimeType} as $name, the generated '
+      'code a $T. Run build_runner again.',
+    ),
+  };
 }
+
+/// An [AgentView] that waits for its name, description and type.
+final class AgentViewOf<T>._() {
+  AgentView<T> as(String name, String description, AgentType<T> type) =>
+      ._(name, description, type);
+}
+
+/// One parameter of a method of the agent list.
+final class const AgentParameter<T>(
+  final String name,
+  final AgentType<T> type, {
+
+  /// The parameter's doc comment.
+  final String? description,
+
+  /// Whether the agent must send it: it is neither nullable nor has a
+  /// default value.
+  final bool required = true,
+});
 
 /// One method of the agent list, as the generated code describes it.
 final class const AgentTool(
@@ -80,10 +101,57 @@ final class const AgentTool(
   /// The method's doc comment, sent to the agent as the tool's description.
   required final String description,
 
-  /// The JSON Schema of the arguments, built from the parameter types.
-  required final Map<String, Object?> parameters,
+  /// The method's parameters, in order.
+  required final List<AgentParameter<Object?>> parameters,
 
-  /// Calls [method] with the agent's JSON arguments and returns its result
-  /// as JSON, `null` for `void`.
+  /// Calls [method] with the arguments read as its parameter types and
+  /// returns its result as JSON, `null` for `void`.
   required final FutureOr<Object?> Function(ToolArgs args) invoke,
-});
+}) {
+  /// The JSON Schema of the arguments.
+  JsonObject get schema => {
+    'type': 'object',
+    'properties': {
+      for (final parameter in parameters)
+        parameter.name: {
+          ...parameter.type.schema(.fields),
+          'description': ?parameter.description,
+        },
+    },
+    'required': [
+      for (final parameter in parameters)
+        if (parameter.required) parameter.name,
+    ],
+  };
+
+  /// The agent's JSON [arguments] read as the method's parameter types.
+  /// Throws a [ToolCallRefused] for a missing, unknown or wrong argument.
+  ToolArgs read(JsonObject arguments) {
+    final byName = {for (final parameter in parameters) parameter.name: null};
+    for (final key in arguments.keys) {
+      if (!byName.containsKey(key)) {
+        throw ToolCallRefused(
+          '$key: unknown, expected one of ${byName.keys.join(', ')}',
+        );
+      }
+    }
+    final values = <String, Object?>{};
+    final json = <String, Object?>{};
+    for (final AgentParameter(:name, :type, :required) in parameters) {
+      final reading = AgentReading(name, objects: .fields);
+      if (arguments.containsKey(name)) {
+        final value = values[name] = type.read(arguments[name], reading);
+        json[name] = type.write(value);
+      } else if (required) {
+        throw reading.refuse('missing, expected ${type.expected}');
+      }
+    }
+    return ToolArgs.of(values, json: json);
+  }
+}
+
+/// A method's result, which the generated code writes as JSON with
+/// `AgentResult(result).as(type)`.
+final class const AgentResult<T>(final T _value) {
+  Object? as(AgentType<T> type) => type.write(_value);
+}

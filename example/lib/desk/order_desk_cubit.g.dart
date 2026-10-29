@@ -13,40 +13,89 @@ mixin _$OrderDeskCubit implements AgentSurface {
 
     return AgentSchema(
       sees: [
-        AgentView.of(
-          () => surface.order,
+        AgentView.of(() => surface.order).as(
           'order',
           'The order as the user sees it on the screen.',
-          (order) => {
-            'customer': switch (order.customer) {
-              null => null,
-              final customer => {
-                'id': customer.id,
-                'name': customer.name,
-                'contact': customer.contact,
-                'priceList': customer.priceList,
-              },
-            },
-            'lines': [
-              for (final item in order.lines)
-                {
-                  'sku': item.sku,
-                  'name': item.name,
-                  'quantity': item.quantity,
-                  'unitPrice': item.unitPrice,
-                  'discount': item.discount,
-                  'lineTotal': item.lineTotal,
-                },
+          .object(
+            id: 'package:example/desk/desk_order.dart#DeskOrder',
+            fields: (field) => [
+              field('customer', (value) => value.customer, required: false).as(
+                .nullable(
+                  .object(
+                    id: 'package:example/desk/customers.dart#Customer',
+                    fields: (field) => [
+                      field('id', (value) => value.id).as(.string),
+                      field('name', (value) => value.name).as(.string),
+                      field('contact', (value) => value.contact).as(.string),
+                      field(
+                        'priceList',
+                        (value) => value.priceList,
+                      ).as(.string),
+                    ],
+                    build: (values) => .new(
+                      id: values('id'),
+                      name: values('name'),
+                      contact: values('contact'),
+                      priceList: values('priceList'),
+                    ),
+                  ),
+                ),
+              ),
+              field('lines', (value) => value.lines).as(
+                .list(
+                  .object(
+                    id: 'package:example/desk/desk_order.dart#DeskLine',
+                    fields: (field) => [
+                      field('sku', (value) => value.sku).as(.string),
+                      field('name', (value) => value.name).as(.string),
+                      field('quantity', (value) => value.quantity).as(.integer),
+                      field(
+                        'unitPrice',
+                        (value) => value.unitPrice,
+                      ).as(.string),
+                      field(
+                        'discount',
+                        (value) => value.discount,
+                        required: false,
+                      ).as(.nullable(.string)),
+                      field(
+                        'lineTotal',
+                        (value) => value.lineTotal,
+                      ).as(.string),
+                    ],
+                    build: (values) => .new(
+                      sku: values('sku'),
+                      name: values('name'),
+                      quantity: values('quantity'),
+                      unitPrice: values('unitPrice'),
+                      discount: values('discount'),
+                      lineTotal: values('lineTotal'),
+                    ),
+                  ),
+                ),
+              ),
+              field('delivery', (value) => value.delivery, required: false).as(
+                .nullable(
+                  .object(
+                    id: 'package:example/desk/desk_order.dart#DeskDelivery',
+                    fields: (field) => [
+                      field('address', (value) => value.address).as(.string),
+                      field('date', (value) => value.date).as(.dateTime),
+                    ],
+                    build: (values) =>
+                        .new(address: values('address'), date: values('date')),
+                  ),
+                ),
+              ),
+              field('total', (value) => value.total).as(.string),
             ],
-            'delivery': switch (order.delivery) {
-              null => null,
-              final delivery => {
-                'address': delivery.address,
-                'date': delivery.date.toIso8601String(),
-              },
-            },
-            'total': order.total,
-          },
+            build: (values) => .new(
+              customer: values('customer'),
+              lines: values('lines'),
+              delivery: values('delivery'),
+              total: values('total'),
+            ),
+          ),
         ),
       ],
       calls: [
@@ -54,38 +103,39 @@ mixin _$OrderDeskCubit implements AgentSurface {
           surface.searchCatalog,
           name: 'search_catalog',
           description: 'Finds products by SKU, name or description.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'query': {'type': 'string'},
-            },
-            'required': ['query'],
-          },
+          parameters: [const AgentParameter<String>('query', .string)],
           invoke: (args) async {
             final result = await surface.searchCatalog(args.read('query'));
 
-            return [
-              for (final item in result)
-                {
-                  'sku': item.sku,
-                  'name': item.name,
-                  'description': item.description,
-                  'price': item.price,
-                },
-            ];
+            return AgentResult(result).as(
+              .list(
+                .object(
+                  id: 'package:example/desk/catalog.dart#Product',
+                  fields: (field) => [
+                    field('sku', (value) => value.sku).as(.string),
+                    field('name', (value) => value.name).as(.string),
+                    field(
+                      'description',
+                      (value) => value.description,
+                    ).as(.string),
+                    field('price', (value) => value.price).as(.number),
+                  ],
+                  build: (values) => .new(
+                    sku: values('sku'),
+                    name: values('name'),
+                    description: values('description'),
+                    price: values('price'),
+                  ),
+                ),
+              ),
+            );
           },
         ),
         AgentTool(
           surface.setCustomer,
           name: 'set_customer',
           description: 'Sets the customer the order is for; prices follow their price list.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'customerId': {'type': 'string'},
-            },
-            'required': ['customerId'],
-          },
+          parameters: [const AgentParameter<String>('customerId', .string)],
           invoke: (args) {
             surface.setCustomer(args.read('customerId'));
             return null;
@@ -95,14 +145,10 @@ mixin _$OrderDeskCubit implements AgentSurface {
           surface.setQuantity,
           name: 'set_quantity',
           description: 'Sets how many pieces of [sku] the order has; 0 removes the line.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'sku': {'type': 'string'},
-              'quantity': {'type': 'integer'},
-            },
-            'required': ['sku', 'quantity'],
-          },
+          parameters: [
+            const AgentParameter<String>('sku', .string),
+            const AgentParameter<int>('quantity', .integer),
+          ],
           invoke: (args) {
             surface.setQuantity(args.read('sku'), args.read('quantity'));
             return null;
@@ -112,14 +158,10 @@ mixin _$OrderDeskCubit implements AgentSurface {
           surface.setDelivery,
           name: 'set_delivery',
           description: 'Sets where and when the order is delivered.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'address': {'type': 'string'},
-              'date': {'type': 'string', 'format': 'date-time'},
-            },
-            'required': ['address', 'date'],
-          },
+          parameters: [
+            const AgentParameter<String>('address', .string),
+            const AgentParameter<DateTime>('date', .dateTime),
+          ],
           invoke: (args) {
             surface.setDelivery(args.read('address'), args.read('date'));
             return null;
@@ -129,8 +171,18 @@ mixin _$OrderDeskCubit implements AgentSurface {
           surface.placeOrder,
           name: 'place_order',
           description: 'Places the order exactly as it is on the screen.',
-          parameters: const {'type': 'object', 'properties': {}},
-          invoke: (args) => surface.placeOrder(),
+          parameters: [],
+          invoke: (args) async {
+            final result = await surface.placeOrder();
+
+            return AgentResult(result).as(
+              .extension(
+                .string,
+                (value) => .new(value),
+                id: 'package:example/desk/desk_order.dart#OrderId',
+              ),
+            );
+          },
         ),
       ],
     );

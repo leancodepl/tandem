@@ -16,11 +16,18 @@ final class AgentGenerationError extends InvalidGenerationSource {
         element: type,
       );
 
-  new missingSource(GetterElement getter)
+  new missingSource(ExecutableElement element)
     : super(
         'Tandem cannot find the source of '
-        '${getter.enclosingElement.displayName}.agentCapabilities.',
-        element: getter,
+        '${element.enclosingElement?.displayName}.${element.displayName}.',
+        element: element,
+      );
+
+  new untypedParameter(FormalParameter parameter)
+    : super(
+        "Give ${parameter.name?.lexeme} a type: Tandem reads the agent's "
+        'arguments as the types the method declares.',
+        node: parameter,
       );
 
   new nestedView(Expression item)

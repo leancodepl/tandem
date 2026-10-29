@@ -132,6 +132,10 @@ jobs:
         run: flutter test
         working-directory: example
 
+      - name: Test the design system and app fixtures
+        run: flutter test
+        working-directory: fixtures/greenhouse_app
+
   codegen:
     name: Check the generated code
 
@@ -161,6 +165,13 @@ jobs:
       - name: Generate the example code
         run: dart run build_runner build
         working-directory: example
+
+      # Each fixture package builds on its own, as an app and its design
+      # system do.
+      - name: Generate the fixture code
+        run: |
+          (cd fixtures/kit_ds && dart run build_runner build)
+          (cd fixtures/greenhouse_app && dart run build_runner build)
 
       - name: Generate the Swift bridge API
         run: dart run pigeon --input pigeons/apple_api.dart && dart format lib test

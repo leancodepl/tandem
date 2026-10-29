@@ -13,16 +13,38 @@ mixin _$OrderCubit implements AgentSurface {
 
     return AgentSchema(
       sees: [
-        AgentView.of(
-          () => surface.draft,
+        AgentView.of(() => surface.draft).as(
           'draft',
           'The order as the user sees it on the screen.',
-          (draft) => {
-            'lines': [
-              for (final item in draft.lines)
-                {'sku': item.sku, 'quantity': item.quantity},
+          .object(
+            id: 'package:example/order.dart#OrderDraft',
+            fields: (field) => [
+              field('lines', (value) => value.lines).as(
+                .list(
+                  .object(
+                    id: 'package:example/order.dart#OrderLine',
+                    description:
+                        'One product of an order and how many pieces of it.',
+                    fields: (field) => [
+                      field(
+                        'sku',
+                        (value) => value.sku,
+                        description: "The product's code in the catalog.",
+                      ).as(.string),
+                      field(
+                        'quantity',
+                        (value) => value.quantity,
+                        description: 'How many pieces.',
+                      ).as(.integer),
+                    ],
+                    build: (values) =>
+                        .new(sku: values('sku'), quantity: values('quantity')),
+                  ),
+                ),
+              ),
             ],
-          },
+            build: (values) => .new(lines: values('lines')),
+          ),
         ),
       ],
       calls: [
@@ -30,14 +52,10 @@ mixin _$OrderCubit implements AgentSurface {
           surface.setQuantity,
           name: 'set_quantity',
           description: 'Sets how many pieces of [sku] the order has.',
-          parameters: const {
-            'type': 'object',
-            'properties': {
-              'sku': {'type': 'string'},
-              'quantity': {'type': 'integer'},
-            },
-            'required': ['sku', 'quantity'],
-          },
+          parameters: [
+            const AgentParameter<String>('sku', .string),
+            const AgentParameter<int>('quantity', .integer),
+          ],
           invoke: (args) {
             surface.setQuantity(args.read('sku'), args.read('quantity'));
             return null;
@@ -47,8 +65,18 @@ mixin _$OrderCubit implements AgentSurface {
           surface.placeOrder,
           name: 'place_order',
           description: 'Places the order exactly as it is on the screen.',
-          parameters: const {'type': 'object', 'properties': {}},
-          invoke: (args) => surface.placeOrder(),
+          parameters: [],
+          invoke: (args) async {
+            final result = await surface.placeOrder();
+
+            return AgentResult(result).as(
+              .extension(
+                .string,
+                (value) => .new(value),
+                id: 'package:example/order.dart#OrderId',
+              ),
+            );
+          },
         ),
       ],
     );

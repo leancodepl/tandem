@@ -1,15 +1,20 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
+import 'package:tandem_generator/src/agent_type_error.dart';
 import 'package:tandem_generator/src/agent_types.dart';
 import 'package:tandem_generator/src/dart_literal.dart';
 import 'package:tandem_generator/src/source_documentation.dart';
 import 'package:tandem_generator/src/tokens.dart';
 
+/// A method of the agent list with the source of its parameters' types, as
+/// the library writes them.
+typedef AgentMethod = ({MethodElement method, List<String> parameterTypes});
+
 final class const AgentMixin({
   required final String className,
   required final List<GetterElement> views,
-  required final Set<MethodElement> methods,
+  required final List<AgentMethod> methods,
 }) {
   String generate() {
     final viewCode = _generateList(views.map(_generateView));
@@ -32,26 +37,36 @@ $surfaceDeclaration
 
   static String _generateView(GetterElement getter) {
     final name = getter.displayName;
-    final types = AgentTypes(getter);
-    final write = types.write(getter.returnType, value: name, path: name);
+    final type = AgentTypes(getter).describe(getter.returnType, path: name);
     final agentName = DartLiteral.json(_snakeCase(name));
     final description = DartLiteral.json(_documentation(getter));
 
     return '''
-AgentView.of(
-  () => surface.$name,
+AgentView.of(() => surface.$name).as(
   $agentName,
   $description,
-  ($name) => $write,
+  $type,
 ),''';
   }
 
-  static String _generateTool(MethodElement method) {
+  static String _generateTool(AgentMethod item) {
+    final (:method, :parameterTypes) = item;
     final name = method.displayName;
     final types = AgentTypes(method);
-    final parameters = types.parameters(method.formalParameters, from: 'args');
-    final schema = DartLiteral.json(parameters.schema);
-    final arguments = parameters.arguments;
+    final parameters = method.formalParameters;
+    final parameterCode = [
+      for (final (index, parameter) in parameters.indexed)
+        _generateParameter(
+          parameter,
+          types: types,
+          typeSource: parameterTypes[index],
+        ),
+    ].join(Tokens.newLine);
+    final arguments = types.constructorArguments(
+      parameters,
+      from: 'args',
+      read: (name) => "args.read('$name')",
+    );
     final call = 'surface.$name($arguments)';
     final agentName = DartLiteral.json(_snakeCase(name));
     final description = DartLiteral.json(_documentation(method));
@@ -62,9 +77,33 @@ AgentTool(
   surface.$name,
   name: $agentName,
   description: $description,
-  parameters: const $schema,
+  parameters: [$parameterCode],
   invoke: $invoke,
 ),''';
+  }
+
+  static String _generateParameter(
+    FormalParameterElement parameter, {
+    required AgentTypes types,
+    required String typeSource,
+  }) {
+    final name = parameter.displayName;
+    final type = parameter.type;
+
+    if (type.isDartCoreList && parameter.isOptionalForAgent) {
+      throw AgentTypeError.optionalList(parameter, path: name);
+    }
+
+    final typeCode = types.describe(type, path: name);
+    final description = switch (documentationOf(parameter)) {
+      final text? => ', description: ${DartLiteral.json(text)}',
+      null => '',
+    };
+    final optional = parameter.isOptionalForAgent ? ', required: false' : '';
+    final constant = AgentTypes.isConstant(typeCode) ? 'const ' : '';
+
+    return "${constant}AgentParameter<$typeSource>('$name', "
+        '$typeCode$description$optional),';
   }
 
   String _generateSurfaceDeclaration() {
@@ -92,19 +131,16 @@ AgentTool(
       return '(args) $async{ $invocation; return null; }';
     }
 
-    final write = types.write(
+    final type = types.describe(
       resultType,
-      value: 'result',
       path: 'the result of ${method.displayName}',
     );
-
-    if (write == 'result') return '(args) => $call';
 
     return '''
 (args) $async{
   final result = $invocation;
 
-  return $write;
+  return AgentResult(result).as($type);
 }''';
   }
 

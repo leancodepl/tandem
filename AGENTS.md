@@ -7,6 +7,7 @@ Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what the
 - `packages/tandem`: the agent list, the AG-UI connection, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` and the Agent Skills in `skills/`. This is what apps depend on. It does not depend on bloc and has no chat widget.
 - `skills/tandem`: the `/tandem` skill that apps install from this repository. It checks the app and hands the work to the package's skills.
 - `packages/tandem_generator`: the builder behind `@TandemAgent()`. It is not a workspace member, so it has its own `pubspec.lock`, which is not committed. The root `pubspec.lock` is committed.
+- `fixtures`: a design system (`kit_ds`) and an app that uses it (`greenhouse_app`), each built on its own by build_runner, so the tests see what two builds that meet at runtime give: backend DTOs, design tokens, converters and catalogs as real apps write them.
 - `example`: one app with two examples. The order desk (`lib/desk`, run by `lib/main.dart`) is on bloc with a scripted agent, and talks to its agents in `example/agents` (Python, uv): one each on Google ADK, LangGraph and Pydantic AI, with what they share in `example/agents/order-desk`. The invoice list (`lib/invoices`, run by `lib/main_apple.dart`) is on provider with Apple's on-device model. Also the order form of the README and of both packages' `example/example.md` (`lib/order.dart`, `lib/order_cubit.dart`, `lib/order_screen.dart`, `lib/order_messages.dart` and `lib/status_line.dart`), with its generated code and tests, and the chat that apps copy (`lib/agent_chat.dart`). `test/doc_snippets_test.dart` checks that every Dart block of the README and both packages' `example/example.md` is a verbatim part of the file its comment names. The state classes and fixtures that only tests use, such as the shopping list that holds a method open with `serverReply`, are in `test/`. How to run the examples: [example/README.md](example/README.md).
 
 ## Commands
@@ -21,8 +22,10 @@ fvm dart format --set-exit-if-changed .
 (cd packages/tandem && fvm flutter test)
 (cd packages/tandem_generator && fvm dart test)
 (cd example && fvm dart run build_runner build)     # then git diff --exit-code: the generated code is committed
+(cd fixtures/kit_ds && fvm dart run build_runner build) && (cd fixtures/greenhouse_app && fvm dart run build_runner build)
 (cd packages/tandem && fvm dart run pigeon --input pigeons/apple_api.dart && fvm dart format lib test)  # the Swift bridge's API
 (cd example && fvm flutter test)
+(cd fixtures/greenhouse_app && fvm flutter test)
 bash tool/check_apple.sh                           # macOS 26+, no inference
 (cd example/agents/adk && uv sync --locked && uv run ruff check . ../order-desk && uv run ruff format --check . ../order-desk && uv run pytest)  # and lang-graph, pydantic-ai
 ```

@@ -10,7 +10,24 @@ library;
 
 export 'src/agent_list.dart' show AgentCapability;
 export 'src/agent_schema.dart'
-    show AgentSchema, AgentSurface, AgentTool, AgentView;
+    show
+        AgentParameter,
+        AgentResult,
+        AgentSchema,
+        AgentSurface,
+        AgentTool,
+        AgentView,
+        AgentViewOf;
+export 'src/agent_type.dart'
+    show
+        AgentField,
+        AgentFieldOf,
+        AgentFieldValues,
+        AgentFields,
+        AgentObjects,
+        AgentPaths,
+        AgentReading,
+        AgentType;
 export 'src/chat/chat_item.dart'
     show
         AgentMessage,
