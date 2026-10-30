@@ -40,6 +40,17 @@ wheels = [
 ]
 
 [[package]]
+name = "adk-streaming"
+version = "0.1.0"
+source = { editable = "../adk-streaming" }
+dependencies = [
+    { name = "google-adk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "google-adk", specifier = ">=2.13,<2.14" }]
+
+[[package]]
 name = "ag-ui-a2ui-toolkit"
 version = "0.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1511,6 +1522,7 @@ name = "order-agent-adk"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "adk-streaming" },
     { name = "ag-ui-adk" },
     { name = "fastapi" },
     { name = "google-adk" },
@@ -1529,6 +1541,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "adk-streaming", editable = "../adk-streaming" },
     { name = "ag-ui-adk", specifier = "==0.11.0" },
     { name = "fastapi" },
     { name = "google-adk", specifier = ">=2.13,<2.14" },

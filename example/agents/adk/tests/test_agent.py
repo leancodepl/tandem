@@ -1,12 +1,12 @@
 import asyncio
 
+from adk_streaming import WholeTurnGemini
 from ag_ui.core import Tool
 from ag_ui_adk.client_proxy_tool import ClientProxyTool
 from google.genai import types
 
 from order_agent.agent import build_app
 from order_agent.settings import Settings
-from order_agent.streaming import WholeTurnGemini
 
 
 def test_gemini_streams_whole_turns() -> None:

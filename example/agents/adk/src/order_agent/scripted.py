@@ -2,11 +2,10 @@ from collections.abc import AsyncGenerator
 from datetime import date
 from typing import Any
 
+from adk_streaming import stream_turn
 from google.adk.models import BaseLlm, LlmRequest, LlmResponse
 from google.genai import types
 from order_desk.script import Answer, Call, Part, play
-
-from order_agent.streaming import stream_turn
 
 
 class ScriptedOrderLlm(BaseLlm):

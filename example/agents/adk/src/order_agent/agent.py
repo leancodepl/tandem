@@ -1,3 +1,4 @@
+from adk_streaming import WholeTurnGemini
 from ag_ui_adk import AGUIToolset
 from google.adk.agents import LlmAgent
 from google.adk.apps import App, ResumabilityConfig
@@ -9,7 +10,6 @@ from order_desk.tools import find_customer, get_order_history
 from order_agent.instruction import build_instruction
 from order_agent.scripted import ScriptedOrderLlm
 from order_agent.settings import Settings
-from order_agent.streaming import WholeTurnGemini
 
 # The free tier answers 503 "high demand" and 429 in bursts.
 _RETRY = types.HttpRetryOptions(

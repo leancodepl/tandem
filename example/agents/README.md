@@ -10,7 +10,7 @@ The order desk of the example app ([example/README.md](../README.md)) on the thr
 
 Each agent fills in a B2B order from an e-mail, together with the user, over AG-UI. Its own tools are `find_customer` and `get_order_history`. The order on the screen reaches the model as the AG-UI `context` of each run, and the app's methods as the run's `tools`, so the agent changes the order only through the app. The README of each agent says what its framework needs for that.
 
-[order-desk](order-desk) holds what the three share: the customers, the two tools, the instruction, the script of the scripted model and the tests.
+[order-desk](order-desk) holds what the three share: the customers, the two tools, the instruction, the script of the scripted model and the tests. [adk-streaming](adk-streaming) holds the streaming that the ADK agent shares with the Waypoint agent.
 
 Needs [uv](https://docs.astral.sh/uv/). Run the commands below in the folder of an agent.
 
@@ -75,4 +75,4 @@ uv run ruff format --check . ../order-desk
 uv run pytest
 ```
 
-The tests of [order-desk/tests](order-desk/tests) play the script over HTTP with the scripted model, through a client that keeps the thread the way Tandem's session does ([tandem_thread.py](order-desk/tests/tandem_thread.py)). Each agent runs them, and its own tests in `tests`. CI runs the checks for each agent.
+In `adk`, both ruff commands also take `../adk-streaming`. The tests of [order-desk/tests](order-desk/tests) play the script over HTTP with the scripted model, through a client that keeps the thread the way Tandem's session does ([tandem_thread.py](order-desk/tests/tandem_thread.py)). Each agent runs them, and its own tests in `tests`. The ADK agent also runs the tests of [adk-streaming](adk-streaming/tests). CI runs the checks for each agent.

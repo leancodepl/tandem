@@ -1,0 +1,15 @@
+name: waypoint_scripted_agent
+description: "Waypoint's agents as scripts: the showcase runs without a server and without an API key."
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  tandem: ^0.2.3
