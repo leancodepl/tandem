@@ -244,7 +244,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        agent: [adk, lang-graph, pydantic-ai]
+        include:
+          - agent: adk
+            shared: ../order-desk ../adk-streaming
+          - agent: lang-graph
+            shared: ../order-desk
+          - agent: pydantic-ai
+            shared: ../order-desk
 
     defaults:
       run:
@@ -266,12 +272,12 @@ jobs:
       - name: Download Python dependencies
         run: uv sync --locked
 
-      # order-desk holds what the agents share, so each of them checks it too.
+      # Each agent checks the packages it shares with others too.
       - name: Run ruff
-        run: uv run ruff check . ../order-desk
+        run: uv run ruff check . ${{ matrix.shared }}
 
       - name: Check Python formatting
-        run: uv run ruff format --check . ../order-desk
+        run: uv run ruff format --check . ${{ matrix.shared }}
 
       # The tests play the order desk with the scripted model: no API key, no network.
       - name: Test the agent

@@ -5,7 +5,7 @@ import pytest
 from google.adk.models import Gemini, LlmRequest, LlmResponse
 from google.genai import types
 
-from order_agent.streaming import WholeTurnGemini, stream_turn
+from adk_streaming import WholeTurnGemini, stream_turn
 
 TURN = [
     types.Part(text="Filling the order."),
