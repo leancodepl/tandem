@@ -14,4 +14,4 @@ workspace:
   - fixtures/greenhouse_app
 
 dev_dependencies:
-  leancode_lint: ^27.0.0
+  leancode_lint: ">=27.0.0 <29.0.0"
