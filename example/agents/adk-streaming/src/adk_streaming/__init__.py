@@ -1,7 +1,7 @@
 """Streams a whole model turn so that ag-ui-adk sees all its calls.
 
 ag-ui-adk takes a call whose name repeats a call of an earlier chunk for a replay and drops it.
-Gemini streams parallel calls in separate chunks, so of two `set_quantity` calls only the first
+Gemini streams parallel calls in separate chunks, so of two calls to the same tool only the first
 would reach the app. Here the text comes word by word and all the calls in one chunk.
 """
 
