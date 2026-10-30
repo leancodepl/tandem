@@ -6,6 +6,7 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11,<3.15"
 dependencies = [
+    "adk-streaming",
     "ag-ui-adk==0.11.0",
     "fastapi",
     "google-adk>=2.13,<2.14",
@@ -27,6 +28,7 @@ dev = [
 ]
 
 [tool.uv.sources]
+adk-streaming = { path = "../adk-streaming", editable = true }
 order-desk = { path = "../order-desk", editable = true }
 
 [build-system]
@@ -37,7 +39,7 @@ build-backend = "uv_build"
 module-name = "order_agent"
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "../order-desk/tests"]
+testpaths = ["tests", "../adk-streaming/tests", "../order-desk/tests"]
 filterwarnings = [
     "ignore:\\[EXPERIMENTAL\\]:UserWarning",
     "ignore::DeprecationWarning:google.genai.types",

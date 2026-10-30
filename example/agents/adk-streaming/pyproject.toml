@@ -1,0 +1,14 @@
+[project]
+name = "adk-streaming"
+version = "0.1.0"
+description = "What the agents on Google ADK share: a Gemini that streams the whole turn, so that ag-ui-adk sees all its calls."
+license = "Apache-2.0"
+requires-python = ">=3.11,<3.15"
+dependencies = ["google-adk>=2.13,<2.14"]
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
