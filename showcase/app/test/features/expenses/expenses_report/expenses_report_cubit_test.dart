@@ -80,7 +80,7 @@ void main() {
     final stored = ExpenseReport(
       lines: [ExpenseLine(receipt: taxi, claimed: taxi.paid)],
     );
-    reports.save(paris.id, stored);
+    reports.saveDraft(paris.id, stored);
     final corrected = Receipt(
       id: taxi.id,
       merchant: taxi.merchant,
@@ -191,6 +191,66 @@ void main() {
     );
     expect(claim('R-0916-1').value.readOnly, isTrue);
   });
+
+  test(
+    'a submission stays locked and completes after the page is reopened',
+    () async {
+      report.addExpense('R-0916-1', 12);
+      final submission = report.submitReport();
+      await Future<void>.delayed(Duration.zero);
+      await report.close();
+      form.dispose();
+      open();
+
+      expect(report.state.submitting, isTrue);
+      expect(claim('R-0916-1').value.readOnly, isTrue);
+      await expectLater(report.submitReport(), throwsA(isA<ToolCallRefused>()));
+      final submitted = await submission;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(report.report.submitted, submitted.confirmation);
+      expect(claim('R-0916-1').fieldValue, '12');
+      expect(
+        () => report.removeExpense('R-0916-1'),
+        throwsA(isA<ToolCallRefused>()),
+      );
+      claim('R-0916-1').textController.text = '10';
+      expect(reports.report(paris.id).submitted?.value, submitted.confirmation);
+      expect(reports.report(paris.id).total, wholeMoney(12));
+    },
+  );
+
+  test('removing an unknown receipt is refused', () {
+    expect(
+      () => report.removeExpense('unknown'),
+      throwsA(isA<ToolCallRefused>()),
+    );
+  });
+
+  test(
+    'two manual submissions produce one report without a UI exception',
+    () async {
+      report.addExpense('R-0916-1', 12);
+      final otherForm = ExpensesReportFormController(
+        receipts: reports.receipts(paris.id),
+        stored: reports.report(paris.id),
+      );
+      final other = ExpensesReportCubit(
+        trip: paris,
+        reports: reports,
+        form: otherForm,
+      );
+      addTearDown(() async {
+        await other.close();
+        otherForm.dispose();
+      });
+
+      final submitted = await Future.wait([report.submit(), other.submit()]);
+
+      expect(submitted.whereType<Submitted>(), hasLength(1));
+      expect(reports.report(paris.id).submitted, isNotNull);
+    },
+  );
 
   test('meals over the daily limit are refused with what is left', () {
     report.addExpense('R-0915-2', 18);

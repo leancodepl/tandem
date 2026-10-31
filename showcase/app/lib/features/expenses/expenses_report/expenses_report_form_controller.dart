@@ -11,9 +11,7 @@ final class ExpensesReportFormController({
 }) extends AdvancedFormController {
   this : super(validationMode: .onUserInteraction) {
     // Seeded before registerFields: touched, but not validated.
-    for (final line in stored.lines) {
-      claims[line.receipt.id]?.field.setValue('${line.claimed.toInt()}');
-    }
+    restore(stored);
     registerFields([for (final claim in claims.values) claim.field]);
     for (final ReceiptClaimField(:receipt, :field) in claims.values) {
       if (receipt.category == .meal) {
@@ -39,6 +37,20 @@ final class ExpensesReportFormController({
         ),
       ),
   });
+
+  void restore(ExpenseReport report) {
+    final saved = {
+      for (final line in report.lines) line.receipt.id: line.claimed,
+    };
+    for (final MapEntry(key: id, value: claim) in claims.entries) {
+      final amount = saved[id];
+      final text = amount == null ? '' : '${amount.toInt()}';
+      if (claim.field.fieldValue != text) {
+        claim.field.setValue(text, force: true);
+      }
+    }
+    revalidateSync();
+  }
 
   /// What is wrong with claiming [text] of [receipt], or null. An empty
   /// claim is not wrong: the receipt is just not in the report.

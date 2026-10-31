@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:copy_with_extension/copy_with_extension.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -28,7 +30,12 @@ class ExpensesReportCubit({
   this
     : super(ExpensesReportState(submitted: reports.report(trip.id).submitted)) {
     _saves.addListener(_save);
+    _reportChanges = reports.stream.listen((_) => _syncSubmission());
+    _syncSubmission();
   }
+
+  late final StreamSubscription<ReportsState> _reportChanges;
+  var _validating = false;
 
   // Status too: a meal fixed from its pair turns valid after the values
   // notify.
@@ -75,12 +82,9 @@ class ExpensesReportCubit({
   /// Adds the receipt [receiptId] to the report, paying back [claimed] whole
   /// euros of it: what was paid, or less where the policy limits it.
   void addExpense(String receiptId, int claimed) {
-    final id = ReceiptId.tryParse(receiptId);
-    if (id == null) _refuse('The receipt id must not be empty.');
-    final entry = form.claims[id];
-    if (entry == null) {
-      _refuse('There is no receipt $receiptId on this trip.');
-    }
+    _requireOpen();
+    final entry = _claim(receiptId);
+    final id = entry.receipt.id;
     if (form.isClaimed(id)) {
       _refuse('$receiptId is in the report already.');
     }
@@ -94,10 +98,10 @@ class ExpensesReportCubit({
 
   /// Takes the receipt [receiptId] out of the report.
   void removeExpense(String receiptId) {
-    final id = ReceiptId.tryParse(receiptId);
-    if (id == null) _refuse('The receipt id must not be empty.');
-    form.claims[id]?.field.setValue('');
-    unmark(id);
+    _requireOpen();
+    final entry = _claim(receiptId);
+    entry.field.setValue('');
+    unmark(entry.receipt.id);
   }
 
   /// Whether the report can be submitted: open, with an expense, and no
@@ -106,39 +110,42 @@ class ExpensesReportCubit({
 
   /// Submits the report exactly as it is on the screen, to be paid back.
   /// Returns its confirmation, to tell the traveller.
-  Future<Submitted> submitReport() async =>
-      await submit() ?? _refuse('Fix the claims the screen marks first.');
+  Future<Submitted> submitReport() async {
+    _requireOpen();
+    final submitted = await submit();
+    if (submitted != null) return submitted;
+    _requireOpen();
+    _refuse('Fix the claims the screen marks first.');
+  }
 
   /// Submits the report once it checks out; null if it does not.
   Future<Submitted?> submit() async {
     if (!ready) return null;
 
-    final lines = form.lines;
-    final total = form.total;
-    _log.info(
-      'Submitting the report of trip ${trip.id} for ${total.toInt()} ${total.currency.isoCode}',
-    );
-    emit(state.copyWith(submitting: true));
-    form.markReadOnly();
-    if (!await form.validate()) {
-      if (!isClosed) {
-        emit(state.copyWith(submitting: false));
-        form.unmarkReadOnly();
+    final draft = ExpenseReport(lines: form.lines);
+    _validating = true;
+    _syncSubmission();
+    try {
+      if (!await form.validate()) return null;
+      final submission = reports.submit(trip.id, draft);
+      _validating = false;
+      if (!isClosed) _syncSubmission();
+      final confirmed = await submission;
+      final confirmation = confirmed.submitted;
+      if (confirmation == null) {
+        throw StateError('The report has no submission reference.');
       }
+      _log.info('Submitted the report of trip ${trip.id} as $confirmation');
+      return Submitted(
+        confirmation: confirmation.value,
+        total: confirmed.total.toInt(),
+      );
+    } on ReportLocked {
       return null;
+    } finally {
+      _validating = false;
+      if (!isClosed) _syncSubmission();
     }
-
-    // Waypoint's showcase submits nothing for real.
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    final confirmation = BookingReference(
-      'ER-${trip.id.value.toUpperCase()}-${total.toInt()}',
-    );
-    reports.save(trip.id, ExpenseReport(lines: lines, submitted: confirmation));
-    _log.info('Submitted the report of trip ${trip.id} as $confirmation');
-    if (!isClosed) {
-      emit(state.copyWith(submitted: confirmation, submitting: false));
-    }
-    return Submitted(confirmation: confirmation.value, total: total.toInt());
   }
 
   /// The traveller changed the claim of the receipt [receiptId] by hand.
@@ -146,18 +153,50 @@ class ExpensesReportCubit({
       emit(state.copyWith(marked: {...state.marked}..remove(receiptId)));
 
   @override
-  Future<void> close() {
+  Future<void> close() async {
     _saves.removeListener(_save);
-    return super.close();
+    await _reportChanges.cancel();
+    await super.close();
   }
 
-  bool get _open => state.submitted == null && !state.submitting;
+  bool get _open => reports.isEditable(trip.id) && !_validating;
+
+  void _syncSubmission() {
+    final stored = reports.report(trip.id);
+    final submitting = _validating || reports.isSubmitting(trip.id);
+    final locked = submitting || stored.submitted != null;
+    if (reports.isSubmitting(trip.id) || stored.submitted != null) {
+      form.restore(stored);
+    }
+    if (locked) {
+      form.markReadOnly();
+    } else {
+      form.unmarkReadOnly();
+    }
+    emit(state.copyWith(submitted: stored.submitted, submitting: submitting));
+  }
+
+  ReceiptClaimField _claim(String receiptId) {
+    final id = ReceiptId.tryParse(receiptId);
+    if (id == null) _refuse('The receipt id must not be empty.');
+    return form.claims[id] ??
+        _refuse('There is no receipt $receiptId on this trip.');
+  }
+
+  void _requireOpen() {
+    if (_validating || reports.isSubmitting(trip.id)) {
+      _refuse('This report is being submitted.');
+    }
+    if (reports.report(trip.id).submitted != null) {
+      _refuse('This report has already been submitted.');
+    }
+  }
 
   /// Keeps the report in the store while it is open and every claim is
   /// right, so the store only ever holds a report that could be submitted.
   void _save() {
     if (_open && form.value.canSubmit) {
-      reports.save(trip.id, ExpenseReport(lines: form.lines));
+      reports.saveDraft(trip.id, ExpenseReport(lines: form.lines));
     }
   }
 
