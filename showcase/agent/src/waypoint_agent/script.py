@@ -7,7 +7,7 @@ the booking. On the booking form, it reads a hotel's confirmation e-mail.
 
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
@@ -18,10 +18,6 @@ TRIP_REPLY = "This is a scripted assistant: it knows that the workshop in Berlin
 BOOKING_REPLY = "This e-mail has no hotel booking."
 # What the app notes when the traveller's change voided an approval.
 REASK = "changed the trip on the screen"
-_SUMMARY = (
-    "Moved the workshop to Friday, added a night at Spree Loft and put you on the 18:05 home. "
-    "Book both?"
-)
 
 
 @dataclass(frozen=True)
@@ -40,62 +36,163 @@ Part = str | Call | Answer
 Message = Sequence[Part]
 
 
-def play(screen: Screen, messages: Sequence[Message], instruction: str) -> list[str | Call]:
+def play(
+    screen: Screen,
+    messages: Sequence[Message],
+    instruction: str,
+    offered_tools: frozenset[str] = frozenset(),
+) -> list[str | Call]:
     """The next turn of the model, oldest message first. The last message holds the user's text
     or the answers the model waits for. The instruction holds the screen and the app's notes."""
-    last = messages[-1]
+    last = messages[-1] if messages else ()
     answers = {part.name: part.result for part in last if isinstance(part, Answer)}
     text = " ".join(part for part in last if isinstance(part, str))
     match screen:
         case Screen.TRIP:
             # A wake-up of the app says only to read its notes, which are in the instruction.
             woken = text.startswith("The app sent this")
-            return _trip(answers, "\n".join(_new_notes(instruction)) if woken else text)
+            return _trip(
+                answers,
+                "\n".join(_new_notes(instruction)) if woken else text,
+                _context(instruction, "trip"),
+                offered_tools,
+            )
         case Screen.BOOKING:
             return _booking(answers, text)
         case Screen.PLAN:
             return _plan(last, text, instruction)
         case Screen.EXPENSES:
-            return _expenses(last, instruction)
+            return _expenses(last, instruction, offered_tools)
         case Screen.ARRIVAL:
-            return _arrival(last, text, instruction)
+            return _arrival(last, text, instruction, offered_tools)
 
 
-def _trip(answers: dict[str, Any], text: str) -> list[str | Call]:
+def _trip(
+    answers: dict[str, Any], text: str, trip: dict[str, Any], offered_tools: frozenset[str]
+) -> list[str | Call]:
     match answers:
-        case {"book_changes": {"confirmation": confirmation}}:
-            return [f"Booked. Your confirmation is {confirmation}."]
+        case {"book_changes": {"confirmation": str(confirmation)}}:
+            return [_with_trip_warnings(trip, f"Booked. Your confirmation is {confirmation}.")]
         case {"book_changes": {"status": "rejected_by_user"}}:
             return ["OK, I won't book them."]
+        case {"book_changes": result} if _tool_problem(result):
+            return [f"I could not confirm the booking. {_tool_problem(result)}"]
         case {"find_flights": flights}:
             return [_home_after_the_workshop(flights)]
+        case {"set_homebound_flight": result} if _tool_problem(result):
+            return [f"I could not confirm the flight change. {_tool_problem(result)}"]
         case {"set_homebound_flight": _}:
-            return [_SUMMARY, Call("book_changes", {})]
+            return _ask_to_book(trip, offered_tools, "The flight home is updated.")
     if REASK in text:
-        return ["The trip changed. Book the changes as they are now?", Call("book_changes", {})]
+        return _ask_to_book(trip, offered_tools, "The trip changed.")
     if "workshop" in text.lower():
-        return [
+        steps: list[str | Call] = [
             Call("move_meeting", {"meetingId": "workshop", "start": "2026-10-30T10:00:00"}),
-            Call("set_hotel_nights", {"nights": 2}),
-            Call("find_flights", {"origin": "BER", "destination": "WAW", "date": "2026-10-30"}),
         ]
+        if "set_hotel_nights" in offered_tools:
+            steps.append(Call("set_hotel_nights", {"nights": 2}))
+        steps.append(
+            Call(
+                "find_flights",
+                {
+                    "origin": "BER",
+                    "destination": "WAW",
+                    "date": "2026-10-30",
+                },
+            )
+        )
+        if notice := _hotel_notice(trip):
+            steps.append(notice)
+        return steps
     return [TRIP_REPLY]
 
 
-def _new_notes(instruction: str) -> list[str]:
-    """The app's new notes, from the `app_notes` line of the screen in the instruction."""
-    found = re.search(r"^- app_notes: .*?(\{.*\})$", instruction, re.MULTILINE)
+def _ask_to_book(
+    trip: dict[str, Any], offered_tools: frozenset[str], lead: str
+) -> list[str | Call]:
+    summary = _with_trip_warnings(trip, lead)
+    match trip:
+        case {"unbookedChanges": list(changes), "unbookedCost": int(cost)} if (
+            changes and "book_changes" in offered_tools
+        ):
+            label = "change" if len(changes) == 1 else "changes"
+            return [f"{summary} Book {len(changes)} {label} for €{cost}?", Call("book_changes", {})]
+    return [f"{summary} Check the current trip before booking."]
+
+
+def _with_trip_warnings(trip: dict[str, Any], lead: str) -> str:
+    parts = [lead]
+    if notice := _hotel_notice(trip):
+        parts.append(notice)
+    if isinstance(warnings := trip.get("warnings"), list):
+        text = "; ".join(warning for warning in warnings if isinstance(warning, str))
+        if text:
+            parts.append(f"Check the trip: {text}.")
+    return " ".join(parts)
+
+
+def _hotel_notice(trip: dict[str, Any]) -> str | None:
+    match trip:
+        case {"hotel": {"nightly": None}}:
+            return "Changing the hotel nights still needs a nightly quote."
+        case {"hotel": None}:
+            return "There is no hotel booking to extend."
+    return None
+
+
+def _context(instruction: str, name: str) -> dict[str, Any]:
+    found = re.search(rf"^- {re.escape(name)}: .*?(\{{.*\}})$", instruction, re.MULTILINE)
     if found is None:
-        return []
-    return [note.get("note", "") for note in json.loads(found[1]).get("new", [])]
+        return {}
+    try:
+        value = json.loads(found[1])
+    except json.JSONDecodeError:
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
-def _home_after_the_workshop(flights: list[dict]) -> Call:
-    """The first flight home that the app does not rule out."""
-    flight = next(flight for flight in flights if not flight.get("unavailable"))
-    # As find_flights gives it: "Fri 2026-10-30 18:05".
-    day = date.fromisoformat(flight["departs"].split()[1])
-    return Call("set_homebound_flight", {"number": flight["number"], "date": day.isoformat()})
+def _new_notes(instruction: str) -> list[str]:
+    return [
+        text for note in _new_notes_raw(instruction) if isinstance(text := note.get("note"), str)
+    ]
+
+
+@dataclass(frozen=True)
+class _FlightChoice:
+    number: str
+    departs: datetime
+
+
+def _allowed_flights(value: object) -> Iterator[_FlightChoice]:
+    if not isinstance(value, list):
+        return
+    for flight in value:
+        match flight:
+            case {"number": str(number), "departs": str(departure)} if (
+                flight.get("unavailable") is None and number.strip()
+            ):
+                parts = departure.split(" ")
+                if len(parts) != 3:
+                    continue
+                _, day, time = parts
+                try:
+                    at = datetime.fromisoformat(f"{day}T{time}")
+                except ValueError:
+                    continue
+                if at.isoformat(timespec="minutes") == f"{day}T{time}":
+                    yield _FlightChoice(number, at)
+
+
+def _home_after_the_workshop(flights: object) -> str | Call:
+    for flight in _allowed_flights(flights):
+        return Call(
+            "set_homebound_flight",
+            {
+                "number": flight.number,
+                "date": flight.departs.date().isoformat(),
+            },
+        )
+    return "No flight home fits after the workshop."
 
 
 def _booking(answers: dict[str, Any], text: str) -> list[str | Call]:
@@ -235,16 +332,11 @@ _READ_THE_INVITATION: list[str | Call] = [
 ]
 
 
-def _choose_flight(flights: list[dict], tool: str, afternoon: bool = False) -> Call | None:
-    """The first flight the policy allows, after noon when `afternoon`."""
-    for flight in flights:
-        if flight.get("unavailable"):
+def _choose_flight(flights: object, tool: str, afternoon: bool = False) -> Call | None:
+    for flight in _allowed_flights(flights):
+        if afternoon and flight.departs.hour < 12:
             continue
-        # As the app writes it: "Tue 2026-12-08 17:40".
-        _, day, time = flight["departs"].split()
-        if afternoon and int(time.split(":")[0]) < 12:
-            continue
-        return Call(tool, {"number": flight["number"], "date": day})
+        return Call(tool, {"number": flight.number, "date": flight.departs.date().isoformat()})
     return None
 
 
@@ -257,8 +349,7 @@ def _closest_hotel(hotels: list[dict]) -> Call | None:
 
 
 def _plan_summary(instruction: str) -> str:
-    found = re.search(r"^- plan: .*?(\{.*\})$", instruction, re.MULTILINE)
-    plan = json.loads(found[1]) if found else {}
+    plan = _context(instruction, "plan")
     if plan.get("missing") or not plan.get("hotel"):
         return "I could not plan all of it within the policy. Check what is missing."
     there = plan["outbound"]["departs"].split()[-1]
@@ -271,36 +362,62 @@ def _plan_summary(instruction: str) -> str:
     )
 
 
-def _expenses(last: Message, instruction: str) -> list[str | Call]:
-    found = re.search(r"^- report: .*?(\{.*\})$", instruction, re.MULTILINE)
-    report = json.loads(found[1]) if found else {}
-    missing = [receipt for receipt in report.get("receipts", []) if receipt.get("claimed") is None]
+def _expenses(last: Message, instruction: str, offered_tools: frozenset[str]) -> list[str | Call]:
+    report = _context(instruction, "report")
+    missing = [
+        receipt
+        for receipt in report.get("receipts", [])
+        if receipt.get("claimed") is None and receipt.get("problem") is None
+    ]
     answers = [part for part in last if isinstance(part, Answer)]
     if not answers:
+        if any(receipt.get("problem") for receipt in report.get("receipts", [])):
+            return _ask_to_submit(report, offered_tools)
         if missing:
-            return [
-                Call("add_expense", {"receiptId": receipt["id"], "claimed": receipt["paid"]})
-                for receipt in missing
-            ]
-        return _ask_to_submit(report)
+            if "add_expense" in offered_tools:
+                return [
+                    Call("add_expense", {"receiptId": receipt["id"], "claimed": receipt["paid"]})
+                    for receipt in missing
+                ]
+            return ["Expenses cannot be added right now. Check the current screen."]
+        return _ask_to_submit(report, offered_tools)
     if answers[-1].name == "submit_report":
         match answers[-1].result:
             case {"confirmation": confirmation, "total": total}:
                 return [f"Submitted as {confirmation}. €{total} comes back with your next salary."]
-            case _:
+            case {"status": "rejected_by_user"}:
                 return ["OK, the report stays unsubmitted. Submit it when you're ready."]
+            case {"reason": str(reason)}:
+                return [f"The report was not submitted: {reason}"]
+            case {"error": str(error)}:
+                return [f"I could not confirm whether the report was submitted. {error}"]
+            case _:
+                return [
+                    "I could not confirm whether the report was submitted. Check the current screen."
+                ]
     # A meal over the daily limit: the app says what is left for that day.
     for answer in answers:
-        if not isinstance(answer.result, dict) or answer.result.get("status") != "refused":
-            continue
-        left = re.search(r"€(\d+) is left", answer.result.get("reason", ""))
-        meals = [receipt for receipt in missing if receipt["category"] == "meal"]
-        if left and meals and left[1] != "0":
-            return [Call("add_expense", {"receiptId": meals[0]["id"], "claimed": int(left[1])})]
-    return _ask_to_submit(report)
+        match answer.result:
+            case {"status": "refused", "reason": str(reason)}:
+                left = re.search(r"€(\d+) is left", reason)
+                meals = [receipt for receipt in missing if receipt["category"] == "meal"]
+                if left and left[1] != "0" and len(meals) == 1 and "add_expense" in offered_tools:
+                    return [
+                        Call(
+                            "add_expense",
+                            {
+                                "receiptId": meals[0]["id"],
+                                "claimed": int(left[1]),
+                            },
+                        )
+                    ]
+                return [f"The expense was not added: {reason}"]
+        if problem := _tool_problem(answer.result):
+            return [f"I could not confirm the expense change. {problem}"]
+    return _ask_to_submit(report, offered_tools)
 
 
-def _ask_to_submit(report: dict) -> list[str | Call]:
+def _ask_to_submit(report: dict[str, Any], offered_tools: frozenset[str]) -> list[str | Call]:
     if report.get("submitted"):
         return ["The report is submitted already."]
     problems = [
@@ -313,66 +430,139 @@ def _ask_to_submit(report: dict) -> list[str | Call]:
         return [
             f"Some claims are wrong. {wrong}. Change them on the screen, then submit the report."
         ]
-    summary = (
-        f"All receipts are in: €{report.get('total', 0)} paid back. The dinner went over the "
-        "policy's €60 a day for meals, so only what was left for that day is paid back. "
-        "Submit the report?"
-    )
-    return [summary, Call("submit_report", {})]
+    if any(receipt.get("claimed") is None for receipt in report.get("receipts", [])):
+        return ["Some receipts are not in the report. Review them before submitting."]
+    if "submit_report" not in offered_tools:
+        return ["The report cannot be submitted right now. Check the current screen."]
+    match report:
+        case {"total": int(total)}:
+            return [f"The report claims €{total}. Submit the report?", Call("submit_report", {})]
+    return ["Check the current report before submitting."]
 
 
-def _arrival(last: Message, text: str, instruction: str) -> list[str | Call]:
+def _arrival(
+    last: Message, text: str, instruction: str, offered_tools: frozenset[str]
+) -> list[str | Call]:
+    arrival = _context(instruction, "arrival")
     notes = _new_notes_raw(instruction)
-    if notes and "pressed" in notes[-1]:
-        return [_answer_press(notes[-1])]
+    if notes:
+        match notes[-1]:
+            case {"pressed": str(tool), "status": str(status)} as note:
+                return [_arrival_answer(tool, status, note, arrival, offered_tools)]
     answers = [part for part in last if isinstance(part, Answer)]
     if answers:
-        match answers[-1].result:
-            case {"status": "refused", "reason": reason}:
-                return [
-                    f"I can't book the taxi: {reason}. The S-Bahn is booked from the view in one tap."
-                ]
-            case _:
-                return ["Done."]
+        answer = answers[-1]
+        note = answer.result if isinstance(answer.result, dict) else {"result": answer.result}
+        status = note.get("status", "returned")
+        return [_arrival_answer(answer.name, status, note, arrival, offered_tools)]
     if "taxi" in text.lower() and "app_notes" not in text:
-        return [Call("book_ride", {"rideId": "taxi"})]
-    return [Call("tandem_show_view", {"components": json.dumps(_DAY_VIEW)}), _ARRIVAL_SUMMARY]
+        if "book_ride" in offered_tools:
+            return [Call("book_ride", {"rideId": "taxi"})]
+        return ["Ride booking is not available right now. Check the current screen."]
+    reply: list[str | Call] = []
+    if "tandem_show_view" in offered_tools:
+        reply.append(Call("tandem_show_view", {"components": json.dumps(_day_view(offered_tools))}))
+    reply.append(_arrival_summary(arrival))
+    return reply
 
 
-def _new_notes_raw(instruction: str) -> list[dict]:
-    found = re.search(r"^- app_notes: .*?(\{.*\})$", instruction, re.MULTILINE)
-    return json.loads(found[1]).get("new", []) if found else []
+def _new_notes_raw(instruction: str) -> list[dict[str, Any]]:
+    notes = _context(instruction, "app_notes").get("new", [])
+    return [note for note in notes if isinstance(note, dict)] if isinstance(notes, list) else []
 
 
-def _answer_press(note: dict) -> str:
-    match note:
-        case {"status": "refused", "reason": reason}:
-            return f"That did not go through: {reason}."
-        case {"status": "rejected_by_user"}:
-            return "OK, I left it."
-        case {"pressed": "book_ride", "result": booking}:
-            return f"Booked: {booking}. I can text Lena that you are on your way."
-        case {"pressed": "message_host", "result": message}:
-            return f'Texted Lena: "{message}"'
-        case {"pressed": "request_early_check_in"}:
-            return "The hotel will have your room ready at 13:00, so you can drop your bags."
+def _arrival_answer(
+    tool: str,
+    status: str,
+    note: dict[str, Any],
+    arrival: dict[str, Any],
+    offered_tools: frozenset[str],
+) -> str:
+    if status == "rejected_by_user":
+        return "OK, I left it."
+    if status == "refused" and isinstance(reason := note.get("reason"), str):
+        return f"That did not go through: {reason}"
+    if tool == "tandem_show_view" and status == "shown":
+        return "The arrival day is on the screen."
+    if status != "returned":
+        detail = note.get("reason") or note.get("error") or "Check the current screen."
+        return f"I could not confirm that action. {detail}"
+    host = None
+    match arrival:
+        case {"meeting": {"host": str(name)}}:
+            host = name
+    match (tool, note.get("result")):
+        case ("book_ride", str(booking)):
+            offer = (
+                f" I can text {host} that you are on your way."
+                if host and "message_host" in offered_tools
+                else ""
+            )
+            return f"Booked: {booking}.{offer}"
+        case ("message_host", str(message)):
+            return f'{f"Texted {host}" if host else "Sent"}: "{message}"'
+        case ("request_early_check_in", _):
+            match arrival:
+                case {"hotel": {"roomReady": str(ready)}}:
+                    if at := _arrival_datetime(ready):
+                        return f"The hotel reports your room ready at {at:%H:%M}."
+            return "The early check-in was requested."
     return "Done."
 
 
-def _action(tool: str, context: dict | None = None) -> dict:
-    event: dict = {"name": tool}
+def _arrival_summary(arrival: dict[str, Any]) -> str:
+    match arrival:
+        case {"meeting": {"title": str(title), "start": str(start)}, "rides": list(rides)}:
+            meeting = _arrival_datetime(start)
+            if meeting is not None:
+                for ride in rides:
+                    match ride:
+                        case {"mode": str(mode), "arrives": str(arrives), "overPolicy": False}:
+                            at = _arrival_datetime(arrives)
+                            if at is None or (at.tzinfo is None) != (meeting.tzinfo is None):
+                                continue
+                            if at <= meeting:
+                                return (
+                                    f"The {mode} gets you there by {at:%H:%M} for {title} "
+                                    f"at {meeting:%H:%M}."
+                                )
+                return f"{title} starts at {meeting:%H:%M}. Check the available routes below."
+    return "Check the meeting and route options on the arrival day."
+
+
+def _arrival_datetime(value: str) -> datetime | None:
+    if "T" not in value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _action(tool: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    event: dict[str, Any] = {"name": tool}
     if context:
         event["context"] = context
     return {"action": {"event": event}}
 
 
-_ARRIVAL_SUMMARY = (
-    "You land at 08:40. The S-Bahn gets you to Studio Kraft by 09:42, in good time for the "
-    "kickoff at 11:00."
-)
+def _day_view(offered_tools: frozenset[str]) -> list[dict[str, Any]]:
+    actions = {
+        "onBook": "book_ride",
+        "onText": "message_host",
+        "onEarlyCheckIn": "request_early_check_in",
+    }
+    return [
+        {
+            key: value
+            for key, value in component.items()
+            if key not in actions or actions[key] in offered_tools
+        }
+        for component in _DAY_VIEW
+    ]
 
-# The arrival day in the app's components, as `ArrivalCatalog` lists them.
-_DAY_VIEW = [
+
+_DAY_VIEW: list[dict[str, Any]] = [
     {
         "id": "root",
         "component": "ArrivalCard",

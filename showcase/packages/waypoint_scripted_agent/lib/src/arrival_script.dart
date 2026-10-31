@@ -13,49 +13,116 @@ List<AgentStep> _arrival(Map<String, Object?> raw) {
   if (request.newNotes.lastOrNull
       case {'pressed': final String tool, 'status': final String status} &&
           final note) {
-    return [AgentStep.say(_answer(tool, status, note))];
+    return [AgentStep.say(_answer(request, tool, status, note))];
   }
 
   if (request.isUserMessage) {
     if (lastUserText(raw).toLowerCase().contains('taxi')) {
-      return const [
-        AgentStep.callTool('book_ride', {'rideId': 'taxi'}),
-      ];
+      return request.offersTool('book_ride')
+          ? const [
+              AgentStep.callTool('book_ride', {'rideId': 'taxi'}),
+            ]
+          : const [
+              AgentStep.say(
+                'Ride booking is not available right now. Check the current screen.',
+              ),
+            ];
     }
     return [
-      AgentStep.callTool('tandem_show_view', {'components': _dayView(request)}),
-      const AgentStep.say(
-        'You land at 08:40. The S-Bahn gets you to Studio Kraft by 09:42, '
-        'in good time for the kickoff at 11:00.',
-      ),
+      if (request.offersTool('tandem_show_view'))
+        AgentStep.callTool('tandem_show_view', {
+          'components': _dayView(request),
+        }),
+      AgentStep.say(_arrivalSummary(request.context('arrival'))),
     ];
   }
 
-  return switch (request.latestToolResults.lastOrNull?.value) {
-    {'status': 'refused', 'reason': final String reason} => [
-      AgentStep.say(
-        "I can't book the taxi: $reason. The S-Bahn is booked "
-        'from the view in one tap.',
-      ),
-    ],
-    _ => const [AgentStep.say('Done.')],
+  final result = request.latestToolResults.lastOrNull;
+  if (result == null) {
+    return const [AgentStep.say('Check the arrival day on the screen.')];
+  }
+  final value = result.value;
+  final note = switch (value) {
+    {'status': final String _} && final Map<String, Object?> details => details,
+    _ => <String, Object?>{'result': value},
+  };
+  final status = switch (note['status']) {
+    final String status => status,
+    _ => 'returned',
+  };
+  return [AgentStep.say(_answer(request, result.toolName ?? '', status, note))];
+}
+
+String _answer(
+  AgentRequest request,
+  String tool,
+  String status,
+  Map<Object?, Object?> note,
+) {
+  if (status == 'rejected_by_user') return 'OK, I left it.';
+  if (status == 'refused') {
+    if (note['reason'] case final String reason) {
+      return 'That did not go through: $reason';
+    }
+  }
+  if (tool == 'tandem_show_view' && status == 'shown') {
+    return 'The arrival day is on the screen.';
+  }
+  if (status != 'returned') {
+    final detail =
+        note['reason'] ?? note['error'] ?? 'Check the current screen.';
+    return 'I could not confirm that action. $detail';
+  }
+  final arrival = request.context('arrival');
+  final host = switch (arrival) {
+    {'meeting': {'host': final String host}} => host,
+    _ => null,
+  };
+  return switch ((tool, note['result'])) {
+    ('book_ride', final String booking) =>
+      'Booked: $booking.${host != null && request.offersTool('message_host') ? ' I can text $host that you are on your way.' : ''}',
+    ('message_host', final String message) =>
+      '${host == null ? 'Sent' : 'Texted $host'}: "$message"',
+    ('request_early_check_in', _) => switch (arrival) {
+      {'hotel': {'roomReady': final String ready}} => switch (DateTime.tryParse(
+        ready,
+      )) {
+        final at? => 'The hotel reports your room ready at ${_time(at)}.',
+        null => 'The early check-in was requested.',
+      },
+      _ => 'The early check-in was requested.',
+    },
+    _ => 'Done.',
   };
 }
 
-String _answer(String tool, String status, Map<Object?, Object?> note) =>
-    switch ((tool, status, note['result'], note['reason'])) {
-      (_, 'refused', _, final String reason) =>
-        'That did not go through: '
-            '$reason.',
-      (_, 'rejected_by_user', _, _) => 'OK, I left it.',
-      ('book_ride', _, final String booking, _) =>
-        'Booked: $booking. I can text Lena that you are on your way.',
-      ('message_host', _, final String message, _) => 'Texted Lena: "$message"',
-      ('request_early_check_in', _, _, _) =>
-        'The hotel will have your room ready at 13:00, so you can drop your '
-            'bags after the kickoff.',
-      _ => 'Done.',
-    };
+String _arrivalSummary(Object? arrival) {
+  if (arrival case {
+    'meeting': {'title': final String title, 'start': final String start},
+    'rides': final List<Object?> rides,
+  }) {
+    final meeting = DateTime.tryParse(start);
+    if (meeting != null) {
+      for (final ride in rides) {
+        if (ride case {
+          'mode': final String mode,
+          'arrives': final String arrival,
+          'overPolicy': false,
+        }) {
+          final at = DateTime.tryParse(arrival);
+          if (at != null && at.compareTo(meeting) <= 0) {
+            return 'The $mode gets you there by ${_time(at)} for $title at ${_time(meeting)}.';
+          }
+        }
+      }
+      return '$title starts at ${_time(meeting)}. Check the available routes below.';
+    }
+  }
+  return 'Check the meeting and route options on the arrival day.';
+}
+
+String _time(DateTime at) =>
+    '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
 
 /// The arrival day in Waypoint's components, with a button only for a
 /// method the screen offers now.

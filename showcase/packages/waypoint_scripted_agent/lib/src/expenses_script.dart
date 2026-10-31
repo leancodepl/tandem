@@ -14,23 +14,40 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
   };
   final missing = [
     for (final receipt in receipts)
-      if (receipt case {
-        'id': final String id,
-        'paid': final int paid,
-        'category': final String category,
-        'claimed': null,
-      })
+      if (receipt
+          case {
+            'id': final String id,
+            'paid': final int paid,
+            'category': final String category,
+            'claimed': null,
+          }
+          when receipt['problem'] == null)
         (id: id, paid: paid, category: category),
   ];
 
   if (request.isUserMessage) {
-    return [
-      for (final receipt in missing)
-        AgentStep.callTool('add_expense', {
-          'receiptId': receipt.id,
-          'claimed': receipt.paid,
-        }),
-      if (missing.isEmpty) ..._askToSubmit(request),
+    if (missing.isEmpty ||
+        receipts.any(
+          (receipt) => switch (receipt) {
+            {'problem': final String _} => true,
+            _ => false,
+          },
+        )) {
+      return _askToSubmit(request);
+    }
+    if (request.offersTool('add_expense')) {
+      return [
+        for (final receipt in missing)
+          AgentStep.callTool('add_expense', {
+            'receiptId': receipt.id,
+            'claimed': receipt.paid,
+          }),
+      ];
+    }
+    return const [
+      AgentStep.say(
+        'Expenses cannot be added right now. Check the current screen.',
+      ),
     ];
   }
 
@@ -42,7 +59,13 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
         {'confirmation': final String confirmation, 'total': final int total} =>
           'Submitted as $confirmation. €$total comes back with your next '
               'salary.',
-        _ => "OK, the report stays unsubmitted. Submit it when you're ready.",
+        {'status': 'rejected_by_user'} =>
+          "OK, the report stays unsubmitted. Submit it when you're ready.",
+        {'reason': final String reason} =>
+          'The report was not submitted: $reason',
+        {'error': final String error} =>
+          'I could not confirm whether the report was submitted. $error',
+        _ => 'I could not confirm whether the report was submitted. Check the current screen.',
       }),
     ];
   }
@@ -54,10 +77,11 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
       'reason': final String reason,
     }) {
       final left = RegExp(r'€(\d+) is left').firstMatch(reason)?[1];
-      final meal = missing
+      final meals = missing
           .where((receipt) => receipt.category == 'meal')
-          .firstOrNull;
-      if ((left, meal) case (final left?, final meal?) when left != '0') {
+          .toList();
+      if ((left, meals) case (final left?, [final meal])
+          when left != '0' && request.offersTool('add_expense')) {
         return [
           AgentStep.callTool('add_expense', {
             'receiptId': meal.id,
@@ -65,6 +89,13 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
           }),
         ];
       }
+      return [AgentStep.say('The expense was not added: $reason')];
+    }
+    if (result.value case {'status': final String status} && final details
+        when status != 'returned') {
+      final reason =
+          details['error'] ?? details['reason'] ?? 'Check the current screen.';
+      return [AgentStep.say('I could not confirm the expense change. $reason')];
     }
   }
   return _askToSubmit(request);
@@ -92,23 +123,31 @@ List<AgentStep> _askToSubmit(AgentRequest request) {
       ),
     ];
   }
-  if (!request.offersTool('submit_report')) {
-    return const [AgentStep.say('The report has no expense to submit yet.')];
+  if (report case {'receipts': final List<Object?> receipts}
+      when receipts.any(
+        (receipt) => switch (receipt) {
+          {'claimed': null} => true,
+          _ => false,
+        },
+      )) {
+    return const [
+      AgentStep.say(
+        'Some receipts are not in the report. Review them before submitting.',
+      ),
+    ];
   }
-  return _submit(request);
-}
-
-List<AgentStep> _submit(AgentRequest request) {
-  final total = switch (request.context('report')) {
-    {'total': final int total} => total,
-    _ => 0,
-  };
-  return [
-    AgentStep.say(
-      'All receipts are in: €$total paid back. The dinner went over the '
-      "policy's €60 a day for meals, so only what was left for that day is "
-      'paid back. Submit the report?',
-    ),
-    const AgentStep.callTool('submit_report'),
-  ];
+  if (!request.offersTool('submit_report')) {
+    return const [
+      AgentStep.say(
+        'The report cannot be submitted right now. Check the current screen.',
+      ),
+    ];
+  }
+  if (report case {'total': final int total}) {
+    return [
+      AgentStep.say('The report claims €$total. Submit the report?'),
+      const AgentStep.callTool('submit_report'),
+    ];
+  }
+  return const [AgentStep.say('Check the current report before submitting.')];
 }
