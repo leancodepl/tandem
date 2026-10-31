@@ -94,13 +94,14 @@ class BookingCubit({@override required final BookingFormController form})
 
     emit(state.copyWith(adding: true));
     form.markReadOnly();
-    if (!await form.validate()) {
-      if (isClosed) return;
+    final validated = await form.validate();
+    if (isClosed || form.isDisposed) return;
+    if (validated && form.value.canSubmit && form.missing.isEmpty) {
+      emitPresentation(BookingPresentationEventAdded(stay));
+    } else {
       emit(state.copyWith(adding: false));
       form.unmarkReadOnly();
-      return;
     }
-    if (!isClosed) emitPresentation(BookingPresentationEventAdded(stay));
   }
 
   /// The traveller changed [part] by hand.
