@@ -5,13 +5,18 @@ void main() {
   const flights = FlightSearch();
 
   Flight flight(String number, DateTime date) =>
-      switch (flights.find(number, date)) {
+      switch (flights.find(FlightNumber(number), date)) {
         final flight? => flight,
         null => fail('$number is not in the timetable.'),
       };
 
-  Meeting meeting(String title, DateTime start, DateTime end) =>
-      Meeting(id: title, title: title, place: 'Vienna', start: start, end: end);
+  Meeting meeting(String title, DateTime start, DateTime end) => Meeting(
+    id: MeetingId(title),
+    title: title,
+    place: 'Vienna',
+    start: start,
+    end: end,
+  );
 
   test('a meeting before noon needs a flight the day before', () {
     final workshop = meeting(
@@ -78,16 +83,25 @@ void main() {
   test('a hotel night costs at most the limit', () {
     expect(Policy.checkNightly(Policy.maxNightly), isNull);
     expect(
-      Policy.checkNightly(Policy.maxNightly + 1),
-      const OverNightly(Policy.maxNightly + 1),
+      Policy.checkNightly(Policy.maxNightly + wholeMoney(1)),
+      OverNightly(Policy.maxNightly + wholeMoney(1)),
     );
   });
 
   test('meals of a day pay back up to the daily limit', () {
-    expect(Policy.checkMeals(claimed: 18, claimedThatDay: 42), isNull);
     expect(
-      Policy.checkMeals(claimed: 30, claimedThatDay: 42),
-      const OverMealsPerDay(18),
+      Policy.checkMeals(
+        claimed: wholeMoney(18),
+        claimedThatDay: wholeMoney(42),
+      ),
+      isNull,
+    );
+    expect(
+      Policy.checkMeals(
+        claimed: wholeMoney(30),
+        claimedThatDay: wholeMoney(42),
+      ),
+      OverMealsPerDay(wholeMoney(18)),
     );
   });
 

@@ -3,23 +3,18 @@ import 'package:waypoint_design_system/src/buttons.dart';
 import 'package:waypoint_design_system/src/layout.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// A screen of its own, above the tabs.
 final class const WaypointPage({super.key, required final Widget child})
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(body: child);
 }
 
-/// The way back, with the page's [title] next to it, or a [trailing] line
-/// such as what the trip is for at the other end. It keeps clear of the
-/// status bar.
 final class const WaypointTopBar({
   super.key,
   required final VoidCallback onBack,
   final String? title,
   final String? trailing,
 
-  /// On a wide layout, whose content sits further in.
   final bool wide = false,
 }) extends StatelessWidget {
   @override
@@ -48,8 +43,6 @@ final class const WaypointTopBar({
   );
 }
 
-/// The page's name in large capitals, with a short line above or below
-/// it, and [trailing] such as a button at its end.
 final class const WaypointPageTitle(
   final String title, {
   super.key,
@@ -79,9 +72,6 @@ final class const WaypointPageTitle(
   );
 }
 
-/// A page of a tab: its [title], with [above] and [trailing] as on
-/// [WaypointPageTitle], over [children] in a list that keeps clear of the
-/// status bar.
 final class const WaypointTabPage({
   super.key,
   required final String title,

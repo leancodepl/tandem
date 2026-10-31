@@ -15,8 +15,9 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 ) => switch ((email.news, trip)) {
   (TripInvitation(), _) => (
     context.l10n.planTheTrip,
-    () =>
-        context.router.navigate(PlanTripRoute(invitationTripId: email.tripId)),
+    () => context.router.navigate(
+      PlanTripRoute(invitationTripId: email.tripId.value),
+    ),
   ),
   (_, null) => (
     context.l10n.planTheTrip,
@@ -24,7 +25,7 @@ import 'package:waypoint_travel/waypoint_travel.dart';
   ),
   (MeetingMoved(), final trip?) => (
     context.l10n.reviewTheTrip,
-    () => context.router.navigate(TripRoute(tripId: trip.id)),
+    () => context.router.navigate(TripRoute(tripId: trip.id.value)),
   ),
   (HotelConfirmation(), final trip?) => (
     context.l10n.addToTrip,
@@ -32,6 +33,6 @@ import 'package:waypoint_travel/waypoint_travel.dart';
   ),
   (Receipt(), final trip?) => (
     context.l10n.openTheReport,
-    () => context.router.push(ExpensesReportRoute(tripId: trip.id)),
+    () => context.router.push(ExpensesReportRoute(tripId: trip.id.value)),
   ),
 };

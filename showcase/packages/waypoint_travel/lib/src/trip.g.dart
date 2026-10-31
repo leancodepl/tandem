@@ -15,11 +15,11 @@ abstract class _$HotelStayCWProxy {
 
   HotelStay checkIn(DateTime checkIn);
 
-  HotelStay nights(int nights);
+  HotelStay nights(NightCount nights);
 
-  HotelStay nightly(int nightly);
+  HotelStay nightly(Money nightly);
 
-  HotelStay confirmation(String confirmation);
+  HotelStay confirmation(BookingReference confirmation);
 
   /// Creates a new instance with the provided field values.
   /// Omitted fields keep their values; explicit `null` clears nullable fields.
@@ -33,9 +33,9 @@ abstract class _$HotelStayCWProxy {
     String name,
     String address,
     DateTime checkIn,
-    int nights,
-    int nightly,
-    String confirmation,
+    NightCount nights,
+    Money nightly,
+    BookingReference confirmation,
   });
 }
 
@@ -56,13 +56,13 @@ class _$HotelStayCWProxyImpl implements _$HotelStayCWProxy {
   HotelStay checkIn(DateTime checkIn) => call(checkIn: checkIn);
 
   @override
-  HotelStay nights(int nights) => call(nights: nights);
+  HotelStay nights(NightCount nights) => call(nights: nights);
 
   @override
-  HotelStay nightly(int nightly) => call(nightly: nightly);
+  HotelStay nightly(Money nightly) => call(nightly: nightly);
 
   @override
-  HotelStay confirmation(String confirmation) =>
+  HotelStay confirmation(BookingReference confirmation) =>
       call(confirmation: confirmation);
 
   /// Creates a new instance with the provided field values.
@@ -98,16 +98,16 @@ class _$HotelStayCWProxyImpl implements _$HotelStayCWProxy {
       nights: nights == const $CopyWithPlaceholder() || nights == null
           ? _value.nights
           // ignore: cast_nullable_to_non_nullable
-          : nights as int,
+          : nights as NightCount,
       nightly: nightly == const $CopyWithPlaceholder() || nightly == null
           ? _value.nightly
           // ignore: cast_nullable_to_non_nullable
-          : nightly as int,
+          : nightly as Money,
       confirmation:
           confirmation == const $CopyWithPlaceholder() || confirmation == null
           ? _value.confirmation
           // ignore: cast_nullable_to_non_nullable
-          : confirmation as String,
+          : confirmation as BookingReference,
     );
   }
 }
@@ -193,7 +193,7 @@ extension $ItineraryCopyWith on Itinerary {
 }
 
 abstract class _$TripCWProxy {
-  Trip id(String id);
+  Trip id(TripId id);
 
   Trip city(String city);
 
@@ -209,7 +209,7 @@ abstract class _$TripCWProxy {
   /// ```dart
   /// Trip(...).copyWith(id: 12, name: "My name")
   /// ```
-  Trip call({String id, String city, String? purpose, Itinerary booked});
+  Trip call({TripId id, String city, String? purpose, Itinerary booked});
 }
 
 /// Callable proxy for `copyWith` functionality.
@@ -220,7 +220,7 @@ class _$TripCWProxyImpl implements _$TripCWProxy {
   final Trip _value;
 
   @override
-  Trip id(String id) => call(id: id);
+  Trip id(TripId id) => call(id: id);
 
   @override
   Trip city(String city) => call(city: city);
@@ -250,7 +250,7 @@ class _$TripCWProxyImpl implements _$TripCWProxy {
       id: id == const $CopyWithPlaceholder() || id == null
           ? _value.id
           // ignore: cast_nullable_to_non_nullable
-          : id as String,
+          : id as TripId,
       city: city == const $CopyWithPlaceholder() || city == null
           ? _value.city
           // ignore: cast_nullable_to_non_nullable

@@ -5,8 +5,6 @@ import 'package:waypoint_design_system/src/note.dart';
 import 'package:waypoint_design_system/src/page.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// A page that cannot show what it was opened for, with a way out that
-/// works without a page to go back to.
 final class const ErrorView(
   final String message, {
   super.key,
@@ -35,8 +33,6 @@ final class const ErrorView(
   );
 }
 
-/// What went wrong on part of a screen, in place of its `WorkStatus` or as
-/// a line of the chat, with a way to try again.
 final class const InlineError(
   final String message, {
   super.key,

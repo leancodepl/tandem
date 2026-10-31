@@ -11,7 +11,5 @@ analyzer:
   exclude:
     - build/**
     - "**/build/**"
-    # Pigeon reads its inputs with an older Dart syntax, and nobody edits
-    # what it writes.
     - "**/pigeons/**"
     - packages/tandem/test/protocol/apple_api_test.g.dart

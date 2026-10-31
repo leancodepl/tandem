@@ -2,15 +2,16 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tandem/tandem.dart';
 
-/// The approvals the app asked the agent to make again.
 final class ReasksCubit() extends Cubit<ReasksState> {
-  this : super(const ReasksState({}));
+  this : super(ReasksState({}));
 
   void add(ApprovalRequest request) =>
       emit(ReasksState({...state.toolCallIds, request.toolCallId}));
 }
 
-final class const ReasksState(final Set<String> toolCallIds) with Equatable {
+final class ReasksState(Set<String> toolCallIds) with Equatable {
+  final Set<String> toolCallIds = Set.unmodifiable(toolCallIds);
+
   @override
   List<Object?> get props => [toolCallIds];
 

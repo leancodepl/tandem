@@ -20,13 +20,16 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
         'category': final String category,
         'claimed': null,
       })
-        (id, paid, category),
+        (id: id, paid: paid, category: category),
   ];
 
   if (request.isUserMessage) {
     return [
-      for (final (id, paid, _) in missing)
-        AgentStep.callTool('add_expense', {'receiptId': id, 'claimed': paid}),
+      for (final receipt in missing)
+        AgentStep.callTool('add_expense', {
+          'receiptId': receipt.id,
+          'claimed': receipt.paid,
+        }),
       if (missing.isEmpty) ..._askToSubmit(request),
     ];
   }
@@ -51,12 +54,13 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
       'reason': final String reason,
     }) {
       final left = RegExp(r'€(\d+) is left').firstMatch(reason)?[1];
-      final meal = missing.where((receipt) => receipt.$3 == 'meal');
-      if ((left, meal.firstOrNull) case (final left?, (final id, _, _)?)
-          when left != '0') {
+      final meal = missing
+          .where((receipt) => receipt.category == 'meal')
+          .firstOrNull;
+      if ((left, meal) case (final left?, final meal?) when left != '0') {
         return [
           AgentStep.callTool('add_expense', {
-            'receiptId': id,
+            'receiptId': meal.id,
             'claimed': int.parse(left),
           }),
         ];

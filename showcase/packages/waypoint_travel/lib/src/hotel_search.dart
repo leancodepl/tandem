@@ -1,64 +1,65 @@
 import 'package:equatable/equatable.dart';
+import 'package:waypoint_travel/src/value_objects.dart';
 
 /// The hotels Waypoint can book, with how far each is from the places the
 /// demo's meetings are at. A real app would ask its travel provider.
 final class const HotelSearch() {
-  static const _hotels = [
+  static final _hotels = [
     Hotel(
-      id: 'ringstrasse-grand',
+      id: HotelId('ringstrasse-grand'),
       name: 'Ringstrasse Grand',
       city: 'Vienna',
       address: 'Kärntner Ring 9, 1010 Vienna',
-      nightly: 245,
-      walkMinutes: 4,
+      nightly: wholeMoney(245),
+      walkDuration: const Duration(minutes: 4),
     ),
     Hotel(
-      id: 'spittelberg',
+      id: HotelId('spittelberg'),
       name: 'Spittelberg Boutique Hotel',
       city: 'Vienna',
       address: 'Spittelberggasse 12, 1070 Vienna',
-      nightly: 138,
-      walkMinutes: 8,
+      nightly: wholeMoney(138),
+      walkDuration: const Duration(minutes: 8),
     ),
     Hotel(
-      id: 'naschmarkt-rooms',
+      id: HotelId('naschmarkt-rooms'),
       name: 'Naschmarkt Rooms',
       city: 'Vienna',
       address: 'Linke Wienzeile 30, 1060 Vienna',
-      nightly: 119,
-      walkMinutes: 22,
+      nightly: wholeMoney(119),
+      walkDuration: const Duration(minutes: 22),
     ),
     Hotel(
-      id: 'spree-loft',
+      id: HotelId('spree-loft'),
       name: 'Spree Loft Hotel',
       city: 'Berlin',
       address: 'Am Wriezener Bahnhof 2, Berlin',
-      nightly: 122,
-      walkMinutes: 12,
+      nightly: wholeMoney(122),
+      walkDuration: const Duration(minutes: 12),
     ),
     Hotel(
-      id: 'oberbaum-suites',
+      id: HotelId('oberbaum-suites'),
       name: 'Oberbaum Suites',
       city: 'Berlin',
       address: 'Stralauer Allee 3, 10245 Berlin',
-      nightly: 189,
-      walkMinutes: 18,
+      nightly: wholeMoney(189),
+      walkDuration: const Duration(minutes: 18),
     ),
     Hotel(
-      id: 'havnegade-loft',
+      id: HotelId('havnegade-loft'),
       name: 'Havnegade Loft',
       city: 'Copenhagen',
       address: 'Havnegade 44, 1058 Copenhagen',
-      nightly: 168,
-      walkMinutes: 25,
+      nightly: wholeMoney(168),
+      walkDuration: const Duration(minutes: 25),
     ),
     Hotel(
-      id: 'kalvebod-rooms',
+      id: HotelId('kalvebod-rooms'),
       name: 'Kalvebod Rooms',
       city: 'Copenhagen',
       address: 'Kalvebod Brygge 10, 1560 Copenhagen',
-      nightly: 139,
-      walkMinutes: 5,
+      nightly: wholeMoney(139),
+      walkDuration: const Duration(minutes: 5),
     ),
   ];
 
@@ -67,20 +68,32 @@ final class const HotelSearch() {
       if (hotel.city.toLowerCase() == city.trim().toLowerCase()) hotel,
   ];
 
-  Hotel? find(String id) =>
+  Hotel? find(HotelId id) =>
       _hotels.where((hotel) => hotel.id == id).firstOrNull;
 }
 
-final class const Hotel({
-  required final String id,
+final class Hotel({
+  required final HotelId id,
   required final String name,
   required final String city,
   required final String address,
-  required final int nightly,
+  required final Money nightly,
 
-  /// On foot to the meetings of the trip.
-  required final int walkMinutes,
+  required final Duration walkDuration,
 }) with Equatable {
+  this {
+    requireSupportedWholeMoney(nightly, 'nightly');
+    if (nightly < wholeMoney(0)) {
+      throw ArgumentError.value(nightly, 'nightly', 'Cannot be negative');
+    }
+    if (walkDuration >= Duration.zero) return;
+    throw ArgumentError.value(
+      walkDuration,
+      'walkDuration',
+      'Cannot be negative',
+    );
+  }
+
   @override
-  List<Object?> get props => [id, name, city, address, nightly, walkMinutes];
+  List<Object?> get props => [id, name, city, address, nightly, walkDuration];
 }

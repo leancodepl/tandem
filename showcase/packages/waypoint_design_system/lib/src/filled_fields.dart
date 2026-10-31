@@ -7,7 +7,6 @@ import 'package:waypoint_design_system/src/card.dart';
 import 'package:waypoint_design_system/src/field_row.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// A part of a form under its heading.
 final class const WaypointSection(
   final String title, {
   super.key,
@@ -24,8 +23,6 @@ final class const WaypointSection(
   );
 }
 
-/// The fields of a form that the agent fills in, as label and value. A
-/// field without a value shows a dash.
 final class const FilledFields(final List<(String, String?)> rows, {super.key})
     extends StatelessWidget {
   @override

@@ -29,7 +29,7 @@ Future<void> addHotelFromInbox(
     return;
   }
 
-  trips.book(trip.id, trip.booked.copyWith(hotel: stay));
+  trips.confirmHotel(trip.id, stay);
   _log.info('Added a hotel of ${stay.nights} nights to trip ${trip.id}');
-  await context.router.navigate(TripRoute(tripId: trip.id));
+  await context.router.navigate(TripRoute(tripId: trip.id.value));
 }

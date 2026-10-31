@@ -5,6 +5,7 @@ import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
+import 'package:waypoint_travel/waypoint_travel.dart';
 
 /// The app's tabs: a bar at the bottom on a phone, a rail on an iPad.
 @RoutePage()
@@ -16,7 +17,7 @@ final class const HomePage({super.key}) extends StatelessWidget {
       final unread = context.select<TripsCubit, int>((trips) => trips.waiting);
       final reports = context.watch<ReportsCubit>();
       final toSubmit = context
-          .select<TripsCubit, List<String>>(
+          .select<TripsCubit, List<TripId>>(
             (trips) => [for (final trip in trips.state.trips) trip.id],
           )
           .where(reports.waits)

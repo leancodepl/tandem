@@ -12,7 +12,7 @@ void main() {
 
   setUp(() {
     trip = TripCubit(
-      info: demoTrips().singleWhere((trip) => trip.id == 'berlin'),
+      info: demoTrips().singleWhere((trip) => trip.id == TripId('berlin')),
       trips: TripsCubit(demoTrips(), inbox: const Inbox()),
       flights: const FlightSearch(),
       traveller: demoTraveller(),
@@ -27,9 +27,9 @@ void main() {
 
   test('a moved meeting is a step with its new start', () {
     final friday = DateTime(2026, 10, 30, 10);
-    trip.moveMeeting('workshop', friday);
+    trip.moveMeeting(' workshop ', friday);
 
-    activity.add(_action('move_meeting', {'meetingId': 'workshop'}), trip, 3);
+    activity.add(_action('move_meeting', {'meetingId': ' workshop '}), trip, 3);
 
     expect(activity.state.steps, [
       MeetingMovedStep(3, meeting: 'Design workshop', start: friday),
@@ -39,8 +39,8 @@ void main() {
   test('a look-up of flights is a step with its route and day', () {
     activity.add(
       _action('find_flights', {
-        'origin': 'BER',
-        'destination': 'WAW',
+        'origin': ' ber ',
+        'destination': ' waw ',
         'date': '2026-10-30',
       }),
       trip,
@@ -50,8 +50,8 @@ void main() {
     expect(activity.state.steps, [
       FlightsLookedUpStep(
         1,
-        origin: 'BER',
-        destination: 'WAW',
+        origin: AirportCode('BER'),
+        destination: AirportCode('WAW'),
         date: DateTime(2026, 10, 30),
       ),
     ]);
@@ -67,10 +67,10 @@ void main() {
       ..add(_action('set_homebound_flight'), trip, 2);
 
     expect(activity.state.steps, [
-      const HotelNightsStep(1, hotel: 'Spree Loft Hotel', nights: 2),
+      HotelNightsStep(1, hotel: 'Spree Loft Hotel', nights: NightCount(2)),
       FlightHomeStep(
         2,
-        number: 'WA 390',
+        number: FlightNumber('WA 390'),
         departs: DateTime(2026, 10, 29, 20, 45),
       ),
     ]);

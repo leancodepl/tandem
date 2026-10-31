@@ -1,7 +1,12 @@
 import 'package:advanced_forms/advanced_forms.dart';
+import 'package:waypoint_travel/waypoint_travel.dart';
 
 /// The cities Waypoint flies to, by their airport.
-const tripAirports = {'Berlin': 'BER', 'Copenhagen': 'CPH', 'Vienna': 'VIE'};
+final tripAirports = {
+  'Berlin': AirportCode('BER'),
+  'Copenhagen': AirportCode('CPH'),
+  'Vienna': AirportCode('VIE'),
+};
 
 /// What the traveller sets of a new trip: where it goes and what it is for.
 final class PlanTripFormController() extends AdvancedFormController {

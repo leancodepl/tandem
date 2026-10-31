@@ -4,13 +4,10 @@ import 'package:waypoint_design_system/src/buttons.dart';
 import 'package:waypoint_design_system/src/layout.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// The bar at the bottom of a screen with what the traveller acts on: a
-/// form's submit, or the assistant's request to approve.
 final class const WaypointActionBar({
   super.key,
   required final Widget child,
 
-  /// A request waits for the traveller.
   final bool active = false,
   final double gutter = 20,
 
@@ -37,9 +34,6 @@ final class const WaypointActionBar({
   );
 }
 
-/// A form's submit, for a [WaypointActionBar]: its [total] and the
-/// traveller's button, which takes the whole width without a total.
-/// [onSubmit] is null while the agent works or something is missing.
 final class const WaypointSubmit({
   super.key,
   required final String label,
@@ -60,7 +54,6 @@ final class const WaypointSubmit({
   }
 }
 
-/// What something costs, under what it is.
 final class const WaypointTotal(
   final String caption,
   final String amount, {
@@ -77,8 +70,6 @@ final class const WaypointTotal(
   );
 }
 
-/// What is booked or submitted, for a [WaypointActionBar]: a check with
-/// [title], over its [reference] when it has one.
 final class const WaypointConfirmation(
   final String title, {
   super.key,
@@ -109,8 +100,6 @@ final class const WaypointConfirmation(
   );
 }
 
-/// What the assistant asks to do in the traveller's name, for a
-/// [WaypointActionBar], with the traveller's answer.
 final class const WaypointApproval(
   final String question, {
   super.key,
@@ -128,7 +117,6 @@ final class const WaypointApproval(
   );
 }
 
-/// The traveller's answer to a request: Reject, then Approve.
 final class const WaypointDecision({
   super.key,
   required final VoidCallback onApprove,

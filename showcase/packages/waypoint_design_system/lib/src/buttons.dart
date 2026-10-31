@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:waypoint_design_system/l10n/design_system_localizations.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// The app's one primary and one secondary button.
 final class const WaypointButton(
   final String label, {
   super.key,
@@ -71,7 +70,6 @@ final class const WaypointButton(
   }
 }
 
-/// A button that is only its label, for a small action inside a row.
 final class const WaypointTextButton(
   final String label, {
   super.key,
@@ -88,7 +86,6 @@ final class const WaypointTextButton(
   );
 }
 
-/// Closes the sheet or dialog it is on.
 final class const WaypointCloseButton({
   super.key,
   required final VoidCallback onPressed,
@@ -101,7 +98,6 @@ final class const WaypointCloseButton({
   );
 }
 
-/// Goes back to the page before.
 final class const WaypointBackButton({
   super.key,
   required final VoidCallback onPressed,

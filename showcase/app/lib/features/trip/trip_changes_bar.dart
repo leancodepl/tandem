@@ -4,9 +4,10 @@ import 'package:bloc_presentation/bloc_presentation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:intl/intl.dart';
 import 'package:tandem/tandem.dart';
+import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
+import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
@@ -51,7 +52,7 @@ final class const _ChangesBarContent({
     // On a phone the approval card shows the same, right below.
     final changes = !wide && awaiting
         ? const <BookingChange>[]
-        : trip.bookingChanges;
+        : trip.bookingChanges.items;
     final confirmation = changes.isEmpty && !booking
         ? booked?.confirmation
         : null;
@@ -64,7 +65,7 @@ final class const _ChangesBarContent({
         busy: booking,
         total: WaypointTotal(
           l10n.changesNotBooked(changes.length),
-          l10n.eurosDelta(trip.changesCost),
+          l10n.moneyDelta(trip.bookingChanges.totalCost),
         ),
         onSubmit: status.isWorking || trip.changesBreach != null
             ? null
@@ -76,7 +77,7 @@ final class const _ChangesBarContent({
       (_, _, final confirmation?) => Align(
         key: const ValueKey('booked'),
         alignment: .centerLeft,
-        child: WaypointConfirmation(l10n.changesBooked(confirmation)),
+        child: WaypointConfirmation(l10n.changesBooked(confirmation.value)),
       ),
       _ => null,
     };
@@ -98,20 +99,5 @@ final class const _ChangesBarContent({
         null => const SizedBox(width: double.infinity),
       },
     );
-  }
-}
-
-extension EurosDelta on AppLocalizations {
-  /// +€174, -€20
-  String eurosDelta(int amount) {
-    final euros = NumberFormat.simpleCurrency(
-      locale: localeName,
-      name: 'EUR',
-      decimalDigits: 0,
-    );
-    return switch (amount) {
-      >= 0 => '${euros.symbols.PLUS_SIGN}${euros.format(amount)}',
-      _ => euros.format(amount),
-    };
   }
 }

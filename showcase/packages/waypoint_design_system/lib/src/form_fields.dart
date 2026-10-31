@@ -7,17 +7,13 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:waypoint_design_system/src/field_row.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// A form field to write text in. [onEdited] runs on the traveller's input
-/// only, never when the program writes the field. [maxLines] null lets the
-/// text wrap onto as many lines as it needs.
+/// [onEdited] runs only for user input.
 final class const FormTextField<E extends Object>({
   super.key,
   required final AdvancedTextFieldController<E> field,
   required final String label,
   required final bool enabled,
 
-  /// The assistant filled the field in. The mark grows a moment after the
-  /// one of the field above, by [order].
   required final bool marked,
   required final int order,
   final ErrorTranslator<E>? translateError,
@@ -57,8 +53,6 @@ final class const FormAmountField<E extends Object>({
   required final String symbol,
   required final bool enabled,
 
-  /// The assistant filled the field in. The mark grows a moment after the
-  /// one of the field above, by [order].
   required final bool marked,
   required final int order,
   final ErrorTranslator<E>? translateError,
@@ -103,8 +97,6 @@ final class const FormDateField<E extends Object>({
   final bool withTime = false,
   required final bool enabled,
 
-  /// The assistant filled the field in. The mark grows a moment after the
-  /// one of the field above, by [order].
   required final bool marked,
   required final int order,
   final ErrorTranslator<E>? translateError,
@@ -120,7 +112,6 @@ final class const FormDateField<E extends Object>({
     translateError: translateError,
     note: note,
     action: Icons.calendar_today_outlined,
-    // No calendar when no day is left to pick.
     onTap: (state) =>
         enabled &&
             !state.readOnly &&
@@ -156,7 +147,6 @@ final class const FormDateField<E extends Object>({
       final time = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(value),
-        // The app shows its times on the 24-hour clock.
         builder: (context, picker) => MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
           child: picker ?? const SizedBox.shrink(),
@@ -176,7 +166,6 @@ final class const FormDateField<E extends Object>({
   }
 }
 
-/// A form field that holds one of its field's options, all shown at once.
 final class const FormSelectField<V, E extends Object>({
   super.key,
   required final AdvancedSingleSelectFieldController<V, E> field,
@@ -184,8 +173,6 @@ final class const FormSelectField<V, E extends Object>({
   required final String Function(V option) optionLabel,
   required final bool enabled,
 
-  /// The assistant filled the field in. The mark grows a moment after the
-  /// one of the field above, by [order].
   required final bool marked,
   required final int order,
   final ErrorTranslator<E>? translateError,
@@ -286,8 +273,6 @@ final class const _BoundRow<T, E extends Object>({
   }
 }
 
-/// True 140 ms × [order] after [marked] turns true, so marks follow the
-/// form down as FilledField's values do; false as soon as it turns false.
 bool _useMarkedAfter(bool marked, int order) {
   final shown = useState(false);
   useEffect(() {

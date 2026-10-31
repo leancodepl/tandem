@@ -1,41 +1,44 @@
-import 'dart:math';
-
 import 'package:advanced_forms/advanced_forms.dart';
 import 'package:equatable/equatable.dart';
-import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 /// The expense report form: what is claimed of each of the trip's
 /// [receipts], starting from the report the store holds.
 final class ExpensesReportFormController({
-  required final List<Receipt> receipts,
+  required List<Receipt> receipts,
   required ExpenseReport stored,
 }) extends AdvancedFormController {
   this : super(validationMode: .onUserInteraction) {
     // Seeded before registerFields: touched, but not validated.
     for (final line in stored.lines) {
-      claims[line.receipt]?.setValue('${line.claimed}');
+      claims[line.receipt.id]?.field.setValue('${line.claimed.toInt()}');
     }
-    registerFields([...claims.values]);
-    for (final MapEntry(key: receipt, value: claim) in claims.entries) {
+    registerFields([for (final claim in claims.values) claim.field]);
+    for (final ReceiptClaimField(:receipt, :field) in claims.values) {
       if (receipt.category == .meal) {
-        claim.subscribeToFields([
-          for (final (_, other) in _otherMealsOf(receipt)) other,
+        field.subscribeToFields([
+          for (final other in _otherMealsOf(receipt)) other.field,
         ]);
       }
     }
+    revalidateSync();
     if (stored.submitted != null) markReadOnly();
   }
 
+  final List<Receipt> receipts = List.unmodifiable(receipts);
+
   /// The whole euros claimed of each receipt, in receipt order. Empty
   /// means the receipt is not in the report.
-  late final Map<Receipt, AdvancedTextFieldController<ClaimError>> claims = {
+  late final Map<ReceiptId, ReceiptClaimField> claims = Map.unmodifiable({
     for (final receipt in receipts)
-      receipt: AdvancedTextFieldController(
-        validator: (text) => claimError(receipt, text),
+      receipt.id: ReceiptClaimField(
+        receipt: receipt,
+        field: AdvancedTextFieldController(
+          validator: (text) => claimError(receipt, text),
+        ),
       ),
-  };
+  });
 
   /// What is wrong with claiming [text] of [receipt], or null. An empty
   /// claim is not wrong: the receipt is just not in the report.
@@ -45,51 +48,60 @@ final class ExpensesReportFormController({
     if (claimed == null) return ClaimOutOfRange(receipt.paid);
     if (receipt.category != .meal) return null;
 
-    var otherMeals = 0;
-    for (final (meal, claim) in _otherMealsOf(receipt)) {
-      otherMeals += _inRange(meal, claim.fieldValue) ?? 0;
+    var otherMeals = wholeMoney(0);
+    for (final ReceiptClaimField(receipt: meal, :field) in _otherMealsOf(
+      receipt,
+    )) {
+      otherMeals += _inRange(meal, field.fieldValue) ?? wholeMoney(0);
     }
     final breach = Policy.checkMeals(
       claimed: claimed,
-      claimedThatDay: min(Policy.mealsPerDay, otherMeals),
+      claimedThatDay: otherMeals > Policy.mealsPerDay
+          ? Policy.mealsPerDay
+          : otherMeals,
     );
     return breach == null ? null : ClaimOverPolicy(breach);
   }
 
   /// The claims that are in the report, in receipt order.
   List<ExpenseLine> get lines => [
-    for (final MapEntry(key: receipt, value: claim) in claims.entries)
-      if (int.tryParse(claim.fieldValue.trim()) case final claimed?)
+    for (final ReceiptClaimField(:receipt, :field) in claims.values)
+      if (_inRange(receipt, field.fieldValue) case final claimed?)
         ExpenseLine(receipt: receipt, claimed: claimed),
   ];
 
   /// Paid back in all, in euros.
-  int get total => lines.fold(0, (sum, line) => sum + line.claimed);
+  Money get total =>
+      lines.fold(wholeMoney(0), (sum, line) => sum + line.claimed);
 
   /// Whether the receipt [receiptId] is in the report.
-  bool isClaimed(String receiptId) => claims.entries.any(
-    (claim) =>
-        claim.key.id == receiptId && claim.value.fieldValue.trim().isNotEmpty,
-  );
+  bool isClaimed(ReceiptId receiptId) => switch (claims[receiptId]) {
+    ReceiptClaimField(:final field) => field.fieldValue.trim().isNotEmpty,
+    null => false,
+  };
 
-  Iterable<(Receipt, AdvancedTextFieldController<ClaimError>)> _otherMealsOf(
-    Receipt receipt,
-  ) => [
-    for (final MapEntry(key: other, value: claim) in claims.entries)
-      if (other != receipt &&
-          other.category == .meal &&
-          dateOnly(other.day) == dateOnly(receipt.day))
-        (other, claim),
+  Iterable<ReceiptClaimField> _otherMealsOf(Receipt receipt) => [
+    for (final claim in claims.values)
+      if (claim.receipt.id != receipt.id &&
+          claim.receipt.category == .meal &&
+          calendarDaysBetween(claim.receipt.day, receipt.day) == 0)
+        claim,
   ];
 
   /// The euros claimed in [text] when they lie between 1 and what was paid
   /// for [receipt].
-  static int? _inRange(Receipt receipt, String text) =>
+  static Money? _inRange(Receipt receipt, String text) =>
       switch (int.tryParse(text.trim())) {
-        final claimed? when claimed > 0 && claimed <= receipt.paid => claimed,
+        final claimed? when claimed > 0 && claimed <= receipt.paid.toInt() =>
+          wholeMoney(claimed),
         _ => null,
       };
 }
+
+final class const ReceiptClaimField({
+  required final Receipt receipt,
+  required final AdvancedTextFieldController<ClaimError> field,
+});
 
 /// Why a claim of the expense report is wrong.
 sealed class const ClaimError() with Equatable {
@@ -99,12 +111,12 @@ sealed class const ClaimError() with Equatable {
 
 /// The claim is not a whole number of euros between 1 and the [paid]
 /// amount of its receipt.
-final class const ClaimOutOfRange(final int paid) extends ClaimError {
+final class const ClaimOutOfRange(final Money paid) extends ClaimError {
   @override
   List<Object?> get props => [paid];
 
   @override
-  String get forAgent => 'Claim between €1 and the €$paid paid';
+  String get forAgent => 'Claim between €1 and the €${paid.toInt()} paid';
 }
 
 /// The claim breaks the company's policy.

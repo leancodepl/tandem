@@ -53,7 +53,7 @@ final class const _ReportCard(
     final status = switch (report.submitted) {
       final confirmation? => WaypointNote(
         Icons.check_rounded,
-        l10n.reportSubmittedLine(l10n.euros(report.total), confirmation),
+        l10n.reportSubmittedLine(l10n.money(report.total), confirmation.value),
       ),
       null => WaypointNote(
         Icons.receipt_long_rounded,
@@ -64,7 +64,7 @@ final class const _ReportCard(
 
     return WaypointListCard(
       onTap: () =>
-          context.router.navigate(ExpensesReportRoute(tripId: trip.id)),
+          context.router.navigate(ExpensesReportRoute(tripId: trip.id.value)),
       border: report.submitted == null ? Palette.aiLine : Palette.line,
       title: trip.city.toUpperCase(),
       subtitle: l10n.dayRange(

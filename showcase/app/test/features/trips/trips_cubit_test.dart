@@ -10,25 +10,38 @@ void main() {
 
   tearDown(() => trips.close());
 
+  test('a trip snapshot stays unchanged when its source list changes', () {
+    final source = demoTrips();
+    final snapshot = TripsState(source);
+
+    source.clear();
+
+    expect(snapshot.trips, hasLength(3));
+    expect(snapshot.trips.clear, throwsUnsupportedError);
+  });
+
   test('a new trip takes its place by its departure', () {
     trips.add(_vienna(DateTime(2026, 11, 4)));
 
     expect(
-      [for (final trip in trips.state.trips) trip.id],
+      [for (final trip in trips.state.trips) trip.id.value],
       ['paris', 'berlin', 'vienna', 'copenhagen'],
     );
   });
 
   test('the news of a trip leaves out receipts and what it follows', () {
     expect(
-      [for (final email in trips.news('berlin')) email.subject],
+      [for (final email in trips.news(TripId('berlin'))) email.subject],
       ['Workshop moves to Friday'],
     );
-    expect(trips.news('paris'), isEmpty);
+    expect(trips.news(TripId('paris')), isEmpty);
   });
 
   test('an invitation leaves the inbox once its trip is planned', () {
-    expect([for (final email in trips.invitations) email.tripId], ['vienna']);
+    expect(
+      [for (final email in trips.invitations) email.tripId.value],
+      ['vienna'],
+    );
 
     trips.add(_vienna(DateTime(2026, 12, 8)));
 
@@ -46,11 +59,11 @@ Trip _vienna(DateTime day) {
   const flights = FlightSearch();
   final nextDay = day.add(const Duration(days: 1));
   return switch ((
-    flights.find('WA 517', day),
-    flights.find('WA 518', nextDay),
+    flights.find(FlightNumber('WA 517'), day),
+    flights.find(FlightNumber('WA 518'), nextDay),
   )) {
     (final outbound?, final homebound?) => Trip(
-      id: 'vienna',
+      id: TripId('vienna'),
       city: 'Vienna',
       booked: Itinerary(outbound: outbound, homebound: homebound, meetings: []),
     ),

@@ -1,7 +1,5 @@
 import 'package:flutter/widgets.dart';
 
-/// The widths the screens change their layout at, and the width of a side
-/// panel.
 abstract final class Widths() {
   /// The shortest side of a tablet.
   static const tablet = 600.0;
@@ -22,7 +20,6 @@ extension Layout on BuildContext {
   bool get isTablet => MediaQuery.sizeOf(this).shortestSide >= Widths.tablet;
 }
 
-/// A page's content at a width that reads well, centred on a wide screen.
 final class const Readable({super.key, required final Widget child})
     extends StatelessWidget {
   @override

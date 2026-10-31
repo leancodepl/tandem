@@ -9,7 +9,7 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 void main() {
   test('every tool of the trip reads as its action, with its arguments', () {
     final trip = TripCubit(
-      info: demoTrips().singleWhere((trip) => trip.id == 'berlin'),
+      info: demoTrips().singleWhere((trip) => trip.id == TripId('berlin')),
       trips: TripsCubit(demoTrips(), inbox: const Inbox()),
       flights: const FlightSearch(),
       traveller: demoTraveller(),

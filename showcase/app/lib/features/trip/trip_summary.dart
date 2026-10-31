@@ -1,8 +1,7 @@
 import 'package:waypoint/common/formatters/agent_formatters.dart';
+import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
-
-// What the agent sees: the trip screen in words, every time with its weekday.
 
 final class const TripSummary({
   required final String today,
@@ -24,7 +23,7 @@ final class const TripSummary({
   factory of(
     Trip trip,
     Itinerary itinerary, {
-    required List<BookingChange> changes,
+    required BookingChanges changes,
     required List<TripWarning> warnings,
     required Traveller traveller,
   }) => TripSummary(
@@ -40,8 +39,8 @@ final class const TripSummary({
     },
     meetings: [for (final meeting in itinerary.meetings) .of(meeting)],
     warnings: [for (final warning in warnings) warning.forAgent],
-    unbookedChanges: [for (final change in changes) .of(change)],
-    unbookedCost: changes.fold(0, (sum, change) => sum + change.cost),
+    unbookedChanges: [for (final change in changes.items) .of(change)],
+    unbookedCost: changes.totalCost.toInt(),
   );
 }
 
@@ -54,12 +53,12 @@ final class const FlightSummary({
   required final int fare,
 }) {
   factory of(Flight flight) => FlightSummary(
-    number: flight.number,
-    from: flight.from,
-    to: flight.to,
+    number: flight.number.value,
+    from: flight.origin.value,
+    to: flight.destination.value,
     departs: forAgent(flight.departs),
     arrives: forAgent(flight.arrives),
-    fare: flight.fare,
+    fare: flight.fare.toInt(),
   );
 }
 
@@ -74,8 +73,8 @@ final class const HotelSummary({
     name: hotel.name,
     checkIn: forAgent(hotel.checkIn),
     checkOut: forAgent(hotel.checkOut, withTime: false),
-    nights: hotel.nights,
-    nightly: hotel.nightly,
+    nights: hotel.nights.value,
+    nightly: hotel.nightly.toInt(),
   );
 }
 
@@ -87,7 +86,7 @@ final class const MeetingSummary({
   required final String end,
 }) {
   factory of(Meeting meeting) => MeetingSummary(
-    id: meeting.id,
+    id: meeting.id.value,
     title: meeting.title,
     place: meeting.place,
     start: forAgent(meeting.start),
@@ -103,16 +102,16 @@ final class const ChangeSummary({
 }) {
   factory of(BookingChange change) => switch (change) {
     HotelNightsChange(:final hotel, :final was) => ChangeSummary(
-      what: '${hotel.name}, ${_nights(hotel.nights)}',
+      what: '${hotel.name}, ${_nights(hotel.nights.value)}',
       now: 'Out ${dayForAgent(hotel.checkOut)}',
-      was: _nights(was.nights),
-      cost: change.cost,
+      was: _nights(was.nights.value),
+      cost: change.cost.toInt(),
     ),
     FlightHomeChange(:final flight, :final was) => ChangeSummary(
       what: 'Flight home ${flight.number}',
       now: _dayTime(flight.departs),
       was: _dayTime(was.departs),
-      cost: change.cost,
+      cost: change.cost.toInt(),
     ),
   };
 }

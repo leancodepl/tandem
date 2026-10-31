@@ -9,11 +9,11 @@ part of 'expenses_report_cubit.dart';
 // **************************************************************************
 
 abstract class _$ExpensesReportStateCWProxy {
-  ExpensesReportState submitted(String? submitted);
+  ExpensesReportState submitted(BookingReference? submitted);
 
   ExpensesReportState submitting(bool submitting);
 
-  ExpensesReportState marked(Set<String> marked);
+  ExpensesReportState marked(Set<ReceiptId> marked);
 
   /// Creates a new instance with the provided field values.
   /// Omitted fields keep their values; explicit `null` clears nullable fields.
@@ -24,9 +24,9 @@ abstract class _$ExpensesReportStateCWProxy {
   /// ExpensesReportState(...).copyWith(id: 12, name: "My name")
   /// ```
   ExpensesReportState call({
-    String? submitted,
+    BookingReference? submitted,
     bool submitting,
-    Set<String> marked,
+    Set<ReceiptId> marked,
   });
 }
 
@@ -38,7 +38,7 @@ class _$ExpensesReportStateCWProxyImpl implements _$ExpensesReportStateCWProxy {
   final ExpensesReportState _value;
 
   @override
-  ExpensesReportState submitted(String? submitted) =>
+  ExpensesReportState submitted(BookingReference? submitted) =>
       call(submitted: submitted);
 
   @override
@@ -46,7 +46,7 @@ class _$ExpensesReportStateCWProxyImpl implements _$ExpensesReportStateCWProxy {
       call(submitting: submitting);
 
   @override
-  ExpensesReportState marked(Set<String> marked) => call(marked: marked);
+  ExpensesReportState marked(Set<ReceiptId> marked) => call(marked: marked);
 
   /// Creates a new instance with the provided field values.
   /// Omitted fields keep their values; explicit `null` clears nullable fields.
@@ -66,7 +66,7 @@ class _$ExpensesReportStateCWProxyImpl implements _$ExpensesReportStateCWProxy {
       submitted: submitted == const $CopyWithPlaceholder()
           ? _value.submitted
           // ignore: cast_nullable_to_non_nullable
-          : submitted as String?,
+          : submitted as BookingReference?,
       submitting:
           submitting == const $CopyWithPlaceholder() || submitting == null
           ? _value.submitting
@@ -75,7 +75,7 @@ class _$ExpensesReportStateCWProxyImpl implements _$ExpensesReportStateCWProxy {
       marked: marked == const $CopyWithPlaceholder() || marked == null
           ? _value.marked
           // ignore: cast_nullable_to_non_nullable
-          : marked as Set<String>,
+          : marked as Set<ReceiptId>,
     );
   }
 }

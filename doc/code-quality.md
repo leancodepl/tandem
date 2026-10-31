@@ -5,8 +5,10 @@ excessive indirection both add reading work.
 
 ## Principles
 
-1. **KISS: prefer less code.** Reuse project code, framework APIs and suitable
-   libraries before implementing an equivalent. Keep only what current
+1. **KISS: prefer less code.** Reuse project code and framework APIs. Prefer a
+   proven, maintained package that meets the requirements over a custom
+   equivalent. Check its API, maintenance and dependencies before implementing
+   a replacement. Keep only what current
    requirements need. Each abstraction must save more work than it adds. Apply
    this discipline to documentation and tooling too.
 2. **Keep a flow at one level of detail.** An entry point coordinates meaningful
@@ -26,8 +28,13 @@ excessive indirection both add reading work.
    call, with names that explain their purpose.
 5. **Keep detail with its owner.** Put related data and behavior together, and
    peer steps next to each other. Use types for real domain alternatives and
-   translate boundary strings once. A value with meaning gets a narrow type,
-   not `Object`, a raw `List` or a `Map`. An app never types a protocol
+   translate boundary strings once. Give domain identifiers, amounts with units
+   and constrained values their own immutable value types. Their constructors
+   enforce the invariants in release builds, and equality compares their values.
+   Name fields for their roles, such as `origin` and `destination`. Keep raw
+   input in forms and wire DTOs, and parse it before entering the domain. When
+   fixing one such case, check and migrate analogous values in the same domain.
+   Ordinary free text can stay a string. An app never types a protocol
    string: a code is a constant on its type, next to what produces it. An
    identity comes from one constructor, not from each caller. A constant
    belongs where its meaning is owned; a top-level declaration can be

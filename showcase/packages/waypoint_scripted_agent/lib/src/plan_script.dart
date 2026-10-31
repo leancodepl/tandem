@@ -1,5 +1,6 @@
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
+import 'package:waypoint_scripted_agent/src/flight_choice.dart';
 import 'package:waypoint_scripted_agent/src/last_user_text.dart';
 
 /// The new trip's agent: it plans the trip to Vienna from Alpenlicht's
@@ -79,19 +80,14 @@ AgentStep? _choose(
   String tool, {
   bool afternoon = false,
 }) {
-  for (final flight in flights) {
-    if (flight case {
-      'number': final String number,
-      // As the app writes it: "Tue 2026-12-08 17:40".
-      'departs': final String departs,
-      'unavailable': null,
-    }) {
-      final [_, date, time] = departs.split(' ');
-      if (afternoon && int.parse(time.split(':').first) < 12) {
-        continue;
-      }
-      return AgentStep.callTool(tool, {'number': number, 'date': date});
+  for (final flight in FlightChoice.allowed(flights)) {
+    if (afternoon && flight.departs.hour < 12) {
+      continue;
     }
+    return AgentStep.callTool(tool, {
+      'number': flight.number,
+      'date': flight.dateArgument,
+    });
   }
   return null;
 }
@@ -104,10 +100,10 @@ AgentStep? _closestHotel(List<Object?> hotels) {
         'walkMinutes': final int minutes,
         'unavailable': null,
       })
-        (id, minutes),
-  ]..sort((a, b) => a.$2.compareTo(b.$2));
+        (hotelId: id, walkMinutes: minutes),
+  ]..sort((a, b) => a.walkMinutes.compareTo(b.walkMinutes));
   return switch (allowed.firstOrNull) {
-    (final id, _)? => AgentStep.callTool('set_hotel', {'hotelId': id}),
+    final hotel? => AgentStep.callTool('set_hotel', {'hotelId': hotel.hotelId}),
     null => null,
   };
 }

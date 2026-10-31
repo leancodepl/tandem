@@ -4,9 +4,6 @@ publish_to: none
 environment:
   sdk: ^3.13.0
 
-# packages/tandem_generator is not a member: its dev dependency `test` needs a
-# test_api that the Flutter SDK's flutter_test pin rules out, so it has its own
-# lock and the example depends on it by path.
 workspace:
   - packages/tandem
   - example

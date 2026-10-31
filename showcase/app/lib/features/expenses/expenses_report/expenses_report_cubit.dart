@@ -1,4 +1,3 @@
-import 'package:advanced_forms/advanced_forms.dart';
 import 'package:copy_with_extension/copy_with_extension.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -55,19 +54,19 @@ class ExpensesReportCubit({
         '${trip.city}, '
         '${dayRangeForAgent(trip.booked.outbound.departs, trip.booked.homebound.departs)}',
     receipts: [
-      for (final MapEntry(key: receipt, value: claim) in form.claims.entries)
+      for (final ReceiptClaimField(:receipt, :field) in form.claims.values)
         ReceiptSummary(
-          id: receipt.id,
+          id: receipt.id.value,
           merchant: receipt.merchant,
           category: receipt.category,
           day: forAgent(receipt.day, withTime: false),
-          paid: receipt.paid,
-          claimed: int.tryParse(claim.fieldValue.trim()),
-          problem: claim.error?.forAgent,
+          paid: receipt.paid.toInt(),
+          claimed: int.tryParse(field.fieldValue.trim()),
+          problem: field.error?.forAgent,
         ),
     ],
-    total: form.total,
-    submitted: state.submitted,
+    total: form.total.toInt(),
+    submitted: state.submitted?.value,
   );
 
   /// The company's rules for expenses.
@@ -76,25 +75,29 @@ class ExpensesReportCubit({
   /// Adds the receipt [receiptId] to the report, paying back [claimed] whole
   /// euros of it: what was paid, or less where the policy limits it.
   void addExpense(String receiptId, int claimed) {
-    final entry = _claimOf(receiptId);
+    final id = ReceiptId.tryParse(receiptId);
+    if (id == null) _refuse('The receipt id must not be empty.');
+    final entry = form.claims[id];
     if (entry == null) {
       _refuse('There is no receipt $receiptId on this trip.');
     }
-    if (form.isClaimed(receiptId)) {
+    if (form.isClaimed(id)) {
       _refuse('$receiptId is in the report already.');
     }
-    final MapEntry(key: receipt, value: claim) = entry;
+    final ReceiptClaimField(:receipt, field: claim) = entry;
     if (form.claimError(receipt, '$claimed') case final error?) {
       _refuse('${error.forAgent}.');
     }
     claim.setValue('$claimed');
-    emit(state.copyWith(marked: {...state.marked, receiptId}));
+    emit(state.copyWith(marked: {...state.marked, id}));
   }
 
   /// Takes the receipt [receiptId] out of the report.
   void removeExpense(String receiptId) {
-    _claimOf(receiptId)?.value.setValue('');
-    unmark(receiptId);
+    final id = ReceiptId.tryParse(receiptId);
+    if (id == null) _refuse('The receipt id must not be empty.');
+    form.claims[id]?.field.setValue('');
+    unmark(id);
   }
 
   /// Whether the report can be submitted: open, with an expense, and no
@@ -112,7 +115,9 @@ class ExpensesReportCubit({
 
     final lines = form.lines;
     final total = form.total;
-    _log.info('Submitting the report of trip ${trip.id} for $total €');
+    _log.info(
+      'Submitting the report of trip ${trip.id} for ${total.toInt()} ${total.currency.isoCode}',
+    );
     emit(state.copyWith(submitting: true));
     form.markReadOnly();
     if (!await form.validate()) {
@@ -125,17 +130,19 @@ class ExpensesReportCubit({
 
     // Waypoint's showcase submits nothing for real.
     await Future<void>.delayed(const Duration(milliseconds: 900));
-    final confirmation = 'ER-${trip.id.toUpperCase()}-$total';
+    final confirmation = BookingReference(
+      'ER-${trip.id.value.toUpperCase()}-${total.toInt()}',
+    );
     reports.save(trip.id, ExpenseReport(lines: lines, submitted: confirmation));
     _log.info('Submitted the report of trip ${trip.id} as $confirmation');
     if (!isClosed) {
       emit(state.copyWith(submitted: confirmation, submitting: false));
     }
-    return Submitted(confirmation: confirmation, total: total);
+    return Submitted(confirmation: confirmation.value, total: total.toInt());
   }
 
   /// The traveller changed the claim of the receipt [receiptId] by hand.
-  void unmark(String receiptId) =>
+  void unmark(ReceiptId receiptId) =>
       emit(state.copyWith(marked: {...state.marked}..remove(receiptId)));
 
   @override
@@ -145,12 +152,6 @@ class ExpensesReportCubit({
   }
 
   bool get _open => state.submitted == null && !state.submitting;
-
-  MapEntry<Receipt, AdvancedTextFieldController<ClaimError>>? _claimOf(
-    String receiptId,
-  ) => form.claims.entries
-      .where((claim) => claim.key.id == receiptId)
-      .firstOrNull;
 
   /// Keeps the report in the store while it is open and every claim is
   /// right, so the store only ever holds a report that could be submitted.
@@ -168,17 +169,27 @@ class ExpensesReportCubit({
 
 /// What the expense report shows besides its claims.
 @CopyWith()
-final class const ExpensesReportState({
+final class const ExpensesReportState._({
   /// The confirmation once the report is submitted.
-  final String? submitted,
+  final BookingReference? submitted,
 
   /// The report is being submitted.
   final bool submitting = false,
 
   /// The receipts whose claim the agent filled in and the traveller has
   /// not changed.
-  final Set<String> marked = const {},
+  final Set<ReceiptId> marked = const {},
 }) with Equatable {
+  factory({
+    BookingReference? submitted,
+    bool submitting = false,
+    Set<ReceiptId> marked = const {},
+  }) => ExpensesReportState._(
+    submitted: submitted,
+    submitting: submitting,
+    marked: Set.unmodifiable(marked),
+  );
+
   @override
   List<Object?> get props => [submitted, submitting, marked];
 }
