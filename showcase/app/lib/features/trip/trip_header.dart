@@ -68,16 +68,27 @@ final class const _Route(
   @override
   Widget build(BuildContext context) => Padding(
     padding: const .only(bottom: 8),
-    child: Row(
+    child: OverflowBar(
+      alignment: .spaceBetween,
+      overflowAlignment: .center,
+      overflowSpacing: 8,
       spacing: 12,
       children: [
         Text(origin.value, style: AppText.route),
-        const Expanded(child: WaypointDivider(color: Palette.lineStrong)),
-        const RotatedBox(
-          quarterTurns: 1,
-          child: Icon(Icons.flight_rounded, size: 18, color: Palette.ink),
+        const SizedBox(
+          width: 56,
+          child: Row(
+            spacing: 8,
+            children: [
+              Expanded(child: WaypointDivider(color: Palette.lineStrong)),
+              RotatedBox(
+                quarterTurns: 1,
+                child: Icon(Icons.flight_rounded, size: 18, color: Palette.ink),
+              ),
+              Expanded(child: WaypointDivider(color: Palette.lineStrong)),
+            ],
+          ),
         ),
-        const Expanded(child: WaypointDivider(color: Palette.lineStrong)),
         Text(destination.value, style: AppText.route),
       ],
     ),
@@ -167,14 +178,14 @@ final class const ArrivalEntry({super.key}) extends StatelessWidget {
     final l10n = context.l10n;
     return Padding(
       padding: const .only(top: 14),
-      child: Row(
+      child: OverflowBar(
+        alignment: .spaceBetween,
+        overflowSpacing: 10,
         spacing: 10,
         children: [
-          Expanded(
-            child: WaypointNote(
-              Icons.flight_land_rounded,
-              l10n.tripLands(l10n.day(lands), l10n.time(lands)),
-            ),
+          WaypointNote(
+            Icons.flight_land_rounded,
+            l10n.tripLands(l10n.day(lands), l10n.time(lands)),
           ),
           WaypointButton(
             l10n.arrivalDay,

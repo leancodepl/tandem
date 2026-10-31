@@ -93,22 +93,22 @@ final class const _EmailCard(
               _ => l10n.emailOnTrip(city),
             }, maxLines: 1)
           else
-            Row(
+            OverflowBar(
+              alignment: .spaceBetween,
               spacing: 10,
+              overflowSpacing: 10,
               children: [
-                Expanded(
-                  child: WaypointNote(Icons.mail_outline_rounded, switch ((
-                    email.news,
-                    trip,
-                  )) {
-                    (TripInvitation(:final city), _) => l10n.emailToPlan(city),
-                    (MeetingMoved(), final trip?) => l10n.emailChangesTrip(
-                      trip.city,
-                    ),
-                    (_, final trip?) => l10n.emailNotOnTrip(trip.city),
-                    _ => l10n.emailNoTrip,
-                  }, tone: .ai),
-                ),
+                WaypointNote(Icons.mail_outline_rounded, switch ((
+                  email.news,
+                  trip,
+                )) {
+                  (TripInvitation(:final city), _) => l10n.emailToPlan(city),
+                  (MeetingMoved(), final trip?) => l10n.emailChangesTrip(
+                    trip.city,
+                  ),
+                  (_, final trip?) => l10n.emailNotOnTrip(trip.city),
+                  _ => l10n.emailNoTrip,
+                }, tone: .ai),
                 WaypointButton(action, small: true, onPressed: act),
               ],
             ),

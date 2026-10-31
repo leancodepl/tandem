@@ -44,13 +44,15 @@ final class const WaypointSubmit({
   @override
   Widget build(BuildContext context) {
     final button = WaypointButton(label, busy: busy, onPressed: onSubmit);
-    return Row(
-      spacing: 16,
-      children: switch (total) {
-        final total? => [Expanded(child: total), button],
-        null => [Expanded(child: button)],
-      },
-    );
+    return switch (total) {
+      final total? => OverflowBar(
+        alignment: .spaceBetween,
+        overflowSpacing: 12,
+        spacing: 16,
+        children: [total, button],
+      ),
+      null => SizedBox(width: double.infinity, child: button),
+    };
   }
 }
 

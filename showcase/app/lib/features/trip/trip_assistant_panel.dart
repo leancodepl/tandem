@@ -21,7 +21,7 @@ final class const AssistantPanel({super.key}) extends StatelessWidget {
       child: Column(
         crossAxisAlignment: .stretch,
         children: [
-          _Header(height: 60),
+          _Header(minHeight: 60),
           Expanded(child: _Thread()),
           Padding(padding: .fromLTRB(16, 8, 16, 16), child: _TripComposer()),
         ],
@@ -61,7 +61,7 @@ final class const AssistantDock({super.key}) extends StatelessWidget {
                         mainAxisSize: .min,
                         crossAxisAlignment: .stretch,
                         children: [
-                          _Header(height: 44),
+                          _Header(minHeight: 44),
                           Flexible(child: _Thread(shrinkWrap: true)),
                         ],
                       ),
@@ -79,7 +79,7 @@ final class const AssistantDock({super.key}) extends StatelessWidget {
   }
 }
 
-final class const _Header({required final double height})
+final class const _Header({required final double minHeight})
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -88,37 +88,44 @@ final class const _Header({required final double height})
     // header says only when it waits for the traveller.
     final waiting = status is AwaitingApproval;
     final l10n = context.l10n;
-    return SizedBox(
-      height: height,
-      child: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const .symmetric(horizontal: 20),
-              child: Row(
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        ConstrainedBox(
+          constraints: BoxConstraints(minHeight: minHeight),
+          child: Padding(
+            padding: const .symmetric(horizontal: 20, vertical: 10),
+            child: Align(
+              heightFactor: 1,
+              child: OverflowBar(
+                alignment: .spaceBetween,
+                spacing: 12,
+                overflowSpacing: 8,
                 children: [
-                  Expanded(child: Text(l10n.assistant, style: AppText.title)),
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: waiting ? 1 : 0,
-                    child: Row(
+                  Text(l10n.assistant, style: AppText.title),
+                  if (waiting)
+                    Row(
+                      mainAxisSize: .min,
                       spacing: 6,
                       children: [
                         const WaypointDot(),
-                        Text(
-                          l10n.waitingForYou,
-                          style: AppText.label.copyWith(color: Palette.aiText),
+                        Flexible(
+                          child: Text(
+                            l10n.waitingForYou,
+                            style: AppText.label.copyWith(
+                              color: Palette.aiText,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
                 ],
               ),
             ),
           ),
-          const WaypointDivider(),
-        ],
-      ),
+        ),
+        const WaypointDivider(),
+      ],
     );
   }
 }
