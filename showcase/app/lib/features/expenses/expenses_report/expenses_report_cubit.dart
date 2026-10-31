@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
+import 'package:waypoint/common/formatters/policy_agent_text.dart';
 import 'package:waypoint/common/tandem/form_changes.dart';
 import 'package:waypoint/features/expenses/expenses_report/expenses_report_form_controller.dart';
 import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
@@ -77,7 +78,7 @@ class ExpensesReportCubit({
   );
 
   /// The company's rules for expenses.
-  String get policy => Policy.expensesForAgent;
+  String get policy => PolicyAgentText.expenses;
 
   /// Adds the receipt [receiptId] to the report, paying back [claimed] whole
   /// euros of it: what was paid, or less where the policy limits it.
