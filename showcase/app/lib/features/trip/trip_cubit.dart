@@ -49,18 +49,9 @@ class TripCubit({
         .firstOrNull
         ?.booked;
     if (latest == null) return;
-    final previous = state.booked;
-    final current = itinerary;
     emit(
-      TripState(
-        current: current.copyWith(
-          homebound: current.homebound == previous.homebound
-              ? latest.homebound
-              : current.homebound,
-          hotel: current.hotel == previous.hotel ? latest.hotel : current.hotel,
-          meetings: latest.meetings,
-        ),
-        booked: latest,
+      state.withConfirmed(
+        latest,
         booking: shared.pendingBookings.contains(info.id),
       ),
     );
@@ -297,6 +288,37 @@ final class const TripState({
   required final Itinerary booked,
   final bool booking = false,
 }) with Equatable {
+  TripState withConfirmed(Itinerary latest, {required bool booking}) =>
+      TripState(
+        current: current.copyWith(
+          homebound: _flightWithConfirmedDetails(latest.homebound),
+          hotel: _hotelWithConfirmedDetails(latest.hotel),
+          meetings: latest.meetings,
+        ),
+        booked: latest,
+        booking: booking,
+      );
+
+  Flight _flightWithConfirmedDetails(Flight latest) {
+    final draft = current.homebound;
+    return draft.isSameDepartureAs(booked.homebound) ||
+            draft.isSameDepartureAs(latest)
+        ? latest
+        : draft;
+  }
+
+  HotelStay? _hotelWithConfirmedDetails(HotelStay? latest) {
+    final previous = booked.hotel;
+    final draft = current.hotel;
+    if (latest == null || previous == null || draft == null) return latest;
+    if (draft.confirmation != previous.confirmation ||
+        latest.confirmation != previous.confirmation) {
+      return latest;
+    }
+    if (draft.nights == previous.nights) return latest;
+    return latest.copyWith(nights: draft.nights);
+  }
+
   @override
   List<Object?> get props => [current, booked, booking];
 }

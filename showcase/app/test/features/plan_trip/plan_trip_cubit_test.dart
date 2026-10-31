@@ -284,6 +284,41 @@ void main() {
     await booking;
   });
 
+  test(
+    'an invitation is booked once across open and reopened planners',
+    () async {
+      final invitation = const Inbox().invitation(TripId('vienna'));
+      final first = _planner(trips, invitation: invitation);
+      final second = _planner(trips, invitation: invitation);
+      _plan(first);
+      _plan(second);
+      final count = trips.state.trips.length;
+
+      final booking = _book(first);
+      expect(trips.state.pendingBookings, {TripId('vienna')});
+      expect(await _book(second), isNull);
+      await first.close();
+
+      final reopened = _planner(trips, invitation: invitation);
+      expect(reopened.state.booking, isTrue);
+      expect(reopened.ready, isFalse);
+      final confirmed = <TripId>[];
+      final subscription = reopened.presentation.listen((event) {
+        if (event case PlanTripPresentationEventBooked(:final tripId)) {
+          confirmed.add(tripId);
+        }
+      });
+      await booking;
+      await Future<void>.delayed(Duration.zero);
+      await subscription.cancel();
+
+      expect(trips.state.trips, hasLength(count + 1));
+      expect(trips.tripOrNull(TripId('vienna')), isNotNull);
+      expect(trips.state.pendingBookings, isEmpty);
+      expect(confirmed, [TripId('vienna')]);
+    },
+  );
+
   test('the trip is booked as it was when booking began', () async {
     _plan(plan);
 
@@ -327,7 +362,11 @@ void main() {
       _plan(invited);
       _plan(again);
 
-      final ids = [await _book(invited), await _book(plan), await _book(again)];
+      final ids = await Future.wait([
+        _book(invited),
+        _book(plan),
+        _book(again),
+      ]);
 
       expect(ids.first, TripId('vienna'));
       expect(ids.toSet(), hasLength(3));

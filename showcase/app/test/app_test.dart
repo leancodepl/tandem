@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 import 'package:waypoint/agents.dart';
 import 'package:waypoint/app.dart';
@@ -11,6 +14,7 @@ import 'package:waypoint/features/expenses/expenses_report/expenses_report_form_
 import 'package:waypoint/features/plan_trip/plan_trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_assistant_panel.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
+import 'package:waypoint/features/trip/trip_news_for_agent.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 import 'package:waypoint_scripted_agent/waypoint_scripted_agent.dart';
@@ -378,6 +382,58 @@ void main() {
       find.text('Change 2 bookings', skipOffstage: false),
       findsNWidgets(2),
     );
+  });
+
+  testWidgets('an approval captures the draft before its first card frame', (
+    tester,
+  ) async {
+    final release = Completer<void>();
+    var turn = 0;
+    final agent = ScriptedAgent.repeating(
+      (_) => switch (turn++) {
+        0 => [
+          AgentStep.waitFor(release.future),
+          const AgentStep.callTool('set_hotel_nights', {'nights': 2}),
+        ],
+        1 => const [AgentStep.callTool('book_changes')],
+        _ => const [AgentStep.say('Noted.')],
+      },
+    );
+    await _pumpApp(
+      tester,
+      WaypointApp(
+        createAgents: () => Agents(
+          trip: agent,
+          booking: scriptedBookingAgent(),
+          plan: scriptedPlanAgent(),
+          expenses: scriptedExpensesAgent(),
+          arrival: scriptedArrivalAgent(),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Review the trip'));
+    await _settle(tester);
+
+    final context = tester.element(find.byType(NewsForAgent));
+    final trip = context.read<TripCubit>()..setHotelNights(2);
+    final session = TandemSessionScope.of(context);
+    var changed = false;
+    void changeBeforeTheFrame() {
+      if (session.status is AwaitingApproval && !changed) {
+        changed = true;
+        scheduleMicrotask(() => trip.setHotelNights(3));
+      }
+    }
+
+    session.addListener(changeBeforeTheFrame);
+    release.complete();
+    await _settle(tester);
+    session.removeListener(changeBeforeTheFrame);
+
+    expect(changed, isTrue);
+    expect(trip.itinerary.hotel?.nights.value, 3);
+    expect(find.text('Spree Loft Hotel, 2 nights'), findsOneWidget);
+    expect(find.text(_voided, skipOffstage: false), findsOneWidget);
   });
 
   testWidgets('a voided request is asked again only once', (tester) async {

@@ -49,7 +49,7 @@ void main() {
       ('find_flights', {'origin': 'BER', 'destination': 'WAW'}),
       ('set_homebound_flight', {'number': 'WA 388'}),
     ]) {
-      marks.markAction(_action(tool, arguments));
+      marks.markAction(_action(tool, arguments), unbookedItems: {});
     }
     await Future<void>.delayed(Duration.zero);
     await listening.cancel();
@@ -60,8 +60,8 @@ void main() {
 
   test('booking the changes clears the marks', () {
     marks
-      ..markAction(_action('set_hotel_nights'))
-      ..markAction(_action('book_changes'));
+      ..markAction(_action('set_hotel_nights'), unbookedItems: {})
+      ..markAction(_action('book_changes'), unbookedItems: {});
 
     expect(marks.state.ids, isEmpty);
   });
