@@ -30,4 +30,15 @@ void main() {
       'Sat 31 Oct – Mon 2 Nov',
     );
   });
+
+  test('a range across years identifies both years', () {
+    expect(
+      l10n.dayRange(DateTime(2026, 10, 30), DateTime(2099, 12, 31)),
+      'Fri 30 Oct 2026 – Thu 31 Dec 2099',
+    );
+    expect(
+      l10n.dayRange(DateTime(2026, 10, 30), DateTime(2027, 10, 30)),
+      'Fri 30 Oct 2026 – Sat 30 Oct 2027',
+    );
+  });
 }
