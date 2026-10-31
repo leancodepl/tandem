@@ -62,7 +62,7 @@ final class const TripPage({
               builder: (context) => TandemScope.connected(
                 surface: (context) => context.read<TripCubit>(),
                 connection: context.watch<Agents>().trip,
-                approvals: const .fromState(),
+                approvals: const .callback(_rememberApproval),
                 onEvent: _onEvent,
                 child: const _TripContent(),
               ),
@@ -71,6 +71,17 @@ final class const TripPage({
         ),
         null => const UnknownTrip(),
       };
+
+  static Future<void> _rememberApproval(
+    BuildContext context,
+    ApprovalRequest request,
+    TandemSession session,
+  ) async {
+    context.read<AskedChanges>().remember(
+      request,
+      context.read<TripCubit>().bookingChanges,
+    );
+  }
 
   static void _onEvent(
     BuildContext context,
@@ -85,7 +96,13 @@ final class const TripPage({
           context.read<TripCubit>(),
           session.items.length,
         );
-        context.read<MarksCubit>().markAction(action);
+        context.read<MarksCubit>().markAction(
+          action,
+          unbookedItems: {
+            for (final change in context.read<TripCubit>().bookingChanges.items)
+              change.id,
+          },
+        );
       }
     }
   }

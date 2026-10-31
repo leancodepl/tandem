@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_presentation/bloc_presentation.dart';
 import 'package:copy_with_extension/copy_with_extension.dart';
 import 'package:equatable/equatable.dart';
@@ -30,8 +32,56 @@ class PlanTripCubit({
         _$PlanTripCubit,
         BlocPresentationMixin<PlanTripState, PlanTripPresentationEvent>,
         FormChanges<PlanTripState> {
-  this : super(PlanTripState()) {
+  this
+    : super(
+        PlanTripState(
+          booking: switch (invitation?.tripId) {
+            final id? =>
+              trips.state.pendingBookings.contains(id) ||
+                  trips.tripOrNull(id) != null,
+            null => false,
+          },
+        ),
+      ) {
     form.addRelation(form.city, (city) => city, (_) => _refit());
+    _bookings = trips.stream.listen((_) => _synchronizeInvitation());
+    if (state.booking) form.markReadOnly();
+    scheduleMicrotask(_synchronizeInvitation);
+  }
+
+  late final StreamSubscription<TripsState> _bookings;
+  TripId? _notifiedBookedTrip;
+
+  void _synchronizeInvitation() {
+    if (isClosed) return;
+    final id = invitation?.tripId;
+    if (id == null) return;
+    if (trips.tripOrNull(id) != null) {
+      _showBooked(id);
+      return;
+    }
+    final booking = trips.state.pendingBookings.contains(id);
+    if (booking == state.booking) return;
+    emit(state.copyWith(booking: booking));
+    if (booking) {
+      form.markReadOnly();
+    } else {
+      form.unmarkReadOnly();
+    }
+  }
+
+  void _showBooked(TripId id) {
+    if (isClosed || _notifiedBookedTrip == id) return;
+    _notifiedBookedTrip = id;
+    emit(state.copyWith(booking: true));
+    form.markReadOnly();
+    emitPresentation(PlanTripPresentationEventBooked(id));
+  }
+
+  @override
+  Future<void> close() async {
+    await _bookings.cancel();
+    await super.close();
   }
 
   @override
@@ -193,6 +243,7 @@ class PlanTripCubit({
   bool get ready => missing.isEmpty && form.value.canSubmit && !state.booking;
 
   Future<void> book() async {
+    _synchronizeInvitation();
     if (!ready) return;
 
     final plan = _fitted(state);
@@ -206,49 +257,51 @@ class PlanTripCubit({
       return;
     }
 
-    _log.info('Booking a trip to $city');
-    emit(state.copyWith(booking: true));
-    form.markReadOnly();
-    if (!await form.validate()) {
-      if (isClosed) return;
-      emit(state.copyWith(booking: false));
-      form.unmarkReadOnly();
+    final id = invitation?.tripId ?? trips.newId(city);
+    if (!trips.reserveBooking(id)) {
+      _synchronizeInvitation();
       return;
     }
-    // Waypoint's showcase books nothing for real.
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    final id = switch (invitation?.tripId) {
-      final tripId? when trips.tripOrNull(tripId) == null => tripId,
-      _ => trips.newId(city),
-    };
-    trips.add(
-      Trip(
-        id: id,
-        city: city,
-        purpose: purpose,
-        booked: Itinerary(
-          outbound: outbound,
-          homebound: homebound,
-          hotel: switch ((plan.hotel, plan.nights)) {
-            (final hotel?, final nights?) when nights > 0 => HotelStay(
-              name: hotel.name,
-              address: hotel.address,
-              checkIn: _checkIn(outbound.arrives),
-              nights: NightCount(nights),
-              nightly: hotel.nightly,
-              confirmation: BookingReference(
-                'WP-H${hotel.nightly.toInt()}${outbound.departs.day}',
+    emit(state.copyWith(booking: true));
+    form.markReadOnly();
+    try {
+      _log.info('Booking a trip to $city');
+      if (!await form.validate()) return;
+      // Waypoint's showcase books nothing for real.
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      trips.add(
+        Trip(
+          id: id,
+          city: city,
+          purpose: purpose,
+          booked: Itinerary(
+            outbound: outbound,
+            homebound: homebound,
+            hotel: switch ((plan.hotel, plan.nights)) {
+              (final hotel?, final nights?) when nights > 0 => HotelStay(
+                name: hotel.name,
+                address: hotel.address,
+                checkIn: _checkIn(outbound.arrives),
+                nights: NightCount(nights),
+                nightly: hotel.nightly,
+                confirmation: BookingReference(
+                  'WP-H${hotel.nightly.toInt()}${outbound.departs.day}',
+                ),
               ),
-            ),
-            _ => null,
-          },
-          meetings: plan.meetings,
+              _ => null,
+            },
+            meetings: plan.meetings,
+          ),
         ),
-      ),
-    );
-    _log.info('Booked the trip $id');
-    if (!isClosed) {
-      emitPresentation(PlanTripPresentationEventBooked(id));
+      );
+      _log.info('Booked the trip $id');
+      _showBooked(id);
+    } finally {
+      trips.releaseBooking(id);
+      if (!isClosed && _notifiedBookedTrip == null) {
+        emit(state.copyWith(booking: false));
+        form.unmarkReadOnly();
+      }
     }
   }
 

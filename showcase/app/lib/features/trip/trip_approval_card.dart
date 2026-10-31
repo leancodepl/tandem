@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
@@ -14,26 +13,24 @@ import 'package:waypoint_design_system/waypoint_design_system.dart';
 
 final _log = Logger('Trip');
 
-/// What each approval asked to book, kept by its call's id: the list builds
-/// a card again whenever an item comes before it.
 final class AskedChanges() {
   final _asked = <String, BookingChanges>{};
 
-  BookingChanges of(ApprovalRequest request, TripCubit trip) =>
-      _asked.putIfAbsent(request.toolCallId, () => trip.bookingChanges);
+  void remember(ApprovalRequest request, BookingChanges changes) =>
+      _asked.putIfAbsent(request.toolCallId, () => changes);
+
+  BookingChanges of(ApprovalRequest request) =>
+      _asked[request.toolCallId] ??
+      (throw StateError('The approval has no captured booking changes.'));
 }
 
 /// The approval of [TripCubit.bookChanges]: what the assistant asked to book,
 /// as the screen was when it asked.
 final class const ApprovalCard(final ApprovalRequest request, {super.key})
-    extends HookWidget {
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Kept from when the card first showed: an invalidated card still shows
-    // what was asked.
-    final changes = useMemoized(
-      () => context.read<AskedChanges>().of(request, context.read<TripCubit>()),
-    );
+    final changes = context.watch<AskedChanges>().of(request);
     final cost = changes.totalCost;
     final session = TandemSessionScope.of(context);
     final status = request.status;

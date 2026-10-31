@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
+import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
+import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_travel/demo.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
@@ -121,25 +123,66 @@ void main() {
     );
   });
 
+  test('editing pending changes preserves the edit and its mark', () async {
+    final marks = MarksCubit()
+      ..mark('hotel')
+      ..mark('homebound');
+    addTearDown(marks.close);
+    trip
+      ..setHotelNights(2)
+      ..setHomeboundFlight('WA 390', DateTime(2026, 10, 29));
+    final booking = trip.bookChanges();
+
+    trip.setHotelNights(3);
+
+    expect(trip.state.booking, isTrue);
+    await expectLater(trip.bookChanges(), throwsA(isA<ToolCallRefused>()));
+    await booking;
+
+    expect(
+      trips.tripOrNull(TripId('berlin'))?.booked.hotel?.nights,
+      NightCount(2),
+    );
+    expect(trip.itinerary.hotel?.nights, NightCount(3));
+    expect(trip.bookingChanges.items.single.cost, wholeMoney(122));
+    expect(trip.state.booking, isFalse);
+    marks.markAction(
+      const BookChanges(),
+      unbookedItems: {
+        for (final change in trip.bookingChanges.items) change.id,
+      },
+    );
+    expect(marks.state.ids, {'hotel'});
+  });
+
   test(
-    'editing pending changes keeps one booking and preserves the edit',
+    'hotel night edits keep current details and yield to a replacement',
     () async {
+      final original = trip.itinerary.hotel;
+      if (original == null) fail('The Berlin trip has a hotel.');
       trip.setHotelNights(2);
-      final booking = trip.bookChanges();
-
-      trip.setHotelNights(3);
-
-      expect(trip.state.booking, isTrue);
-      await expectLater(trip.bookChanges(), throwsA(isA<ToolCallRefused>()));
-      await booking;
-
-      expect(
-        trips.tripOrNull(TripId('berlin'))?.booked.hotel?.nights,
-        NightCount(2),
+      final corrected = original.copyWith(
+        address: 'Corrected hotel address',
+        nightly: wholeMoney(130),
       );
-      expect(trip.itinerary.hotel?.nights, NightCount(3));
-      expect(trip.bookingChanges.items.single.cost, wholeMoney(122));
-      expect(trip.state.booking, isFalse);
+
+      trips.confirmHotel(trip.info.id, corrected);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(trip.itinerary.hotel?.nights, NightCount(2));
+      expect(trip.itinerary.hotel?.address, corrected.address);
+      expect(trip.itinerary.hotel?.nightly, corrected.nightly);
+      expect(trip.bookingChanges.totalCost, wholeMoney(130));
+
+      final replacement = corrected.copyWith(
+        confirmation: BookingReference('replacement'),
+        nights: NightCount(3),
+      );
+      trips.confirmHotel(trip.info.id, replacement);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(trip.itinerary.hotel, replacement);
+      expect(trip.bookingChanges.items, isEmpty);
     },
   );
 

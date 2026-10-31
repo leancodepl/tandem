@@ -17,10 +17,10 @@ final class MarksCubit()
 
   void clear() => emit(MarksState({}));
 
-  void markAction(TripAction action) {
+  void markAction(TripAction action, {required Set<String> unbookedItems}) {
     switch (action) {
       case BookChanges():
-        clear();
+        emit(MarksState(state.ids.intersection(unbookedItems)));
       case MoveMeeting(:final meetingId?):
         _changed(meetingId.value);
       case SetHomeboundFlight():

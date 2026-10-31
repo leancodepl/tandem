@@ -14,7 +14,8 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
   TripId newId(String city) {
     final name = city.toLowerCase();
     var count = 1;
-    while (tripOrNull(TripId('$name-$count')) != null) {
+    while (tripOrNull(TripId('$name-$count')) != null ||
+        state.pendingBookings.contains(TripId('$name-$count'))) {
       count++;
     }
     return TripId('$name-$count');
@@ -29,15 +30,20 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
   );
 
   /// Adds a trip planned and booked in the app, in the order of departure.
-  void add(Trip trip) => emit(
-    TripsState(
-      [...state.trips, trip]..sort(
-        (a, b) =>
-            a.booked.outbound.departs.compareTo(b.booked.outbound.departs),
+  void add(Trip trip) {
+    if (tripOrNull(trip.id) != null) {
+      throw ArgumentError.value(trip.id, 'trip', 'A trip already has this id.');
+    }
+    emit(
+      TripsState(
+        [...state.trips, trip]..sort(
+          (a, b) =>
+              a.booked.outbound.departs.compareTo(b.booked.outbound.departs),
+        ),
+        pendingBookings: state.pendingBookings,
       ),
-      pendingBookings: state.pendingBookings,
-    ),
-  );
+    );
+  }
 
   bool reserveBooking(TripId id) {
     if (state.pendingBookings.contains(id)) return false;
