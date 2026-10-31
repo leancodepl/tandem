@@ -89,13 +89,18 @@ def test_the_agent_asks_to_book_and_reports_the_confirmation(agent_url: str) -> 
     first = thread.run(TRIP, ASK)
     flight = thread.run(TRIP, answers=answer(first, {"find_flights": FRIDAY_FLIGHTS}))
 
-    ask = thread.run(TRIP, answers=answer(flight, {}))
+    changed_trip = {
+        **TRIP,
+        "unbookedChanges": [{"kind": "hotel"}, {"kind": "flight"}],
+        "unbookedCost": 189,
+    }
+    ask = thread.run(changed_trip, answers=answer(flight, {}))
     booked = thread.run(
         TRIP, answers=answer(ask, {"book_changes": {"confirmation": "WP-48243", "charged": 189}})
     )
 
     assert calls(ask) == [("book_changes", {})]
-    assert ask.text.endswith("Book both?")
+    assert ask.text == "The flight home is updated. Book 2 changes for €189?"
     assert booked.text == "Booked. Your confirmation is WP-48243."
 
 
@@ -255,3 +260,18 @@ def test_the_arrival_day_is_drawn_with_the_app_components(agent_url: str) -> Non
         "HostNote",
         "HotelNote",
     }
+
+
+def test_arrival_buttons_follow_the_tools_offered_on_this_run(agent_url: str) -> None:
+    tools = [tool for tool in ARRIVAL_TOOLS if tool["name"] == "tandem_show_view"]
+    thread = Thread(f"{agent_url}/agent/arrival", "arrival: The arrival day", tools)
+
+    run = thread.run({}, "Show my arrival day")
+
+    [(name, args)] = calls(run)
+    assert name == "tandem_show_view"
+    assert all(
+        key not in component
+        for component in json.loads(args["components"])
+        for key in ("onBook", "onText", "onEarlyCheckIn")
+    )
