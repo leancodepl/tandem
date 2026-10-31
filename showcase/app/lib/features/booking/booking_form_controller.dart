@@ -5,8 +5,8 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 
 /// The hotel booking form, for a trip from [tripStart] to [tripEnd].
 final class BookingFormController({
-  required final DateTime tripStart,
-  required final DateTime tripEnd,
+  required DateTime tripStart,
+  required DateTime tripEnd,
 }) extends AdvancedFormController {
   this : super(validationMode: .onUserInteraction) {
     registerFields([
@@ -21,6 +21,12 @@ final class BookingFormController({
     checkOut.subscribeToFields([checkIn]);
   }
 
+  DateTime _tripStart = tripStart;
+  DateTime _tripEnd = tripEnd;
+
+  DateTime get tripStart => _tripStart;
+  DateTime get tripEnd => _tripEnd;
+
   final hotel = AdvancedTextFieldController<BookingError>();
   final address = AdvancedTextFieldController<BookingError>();
   late final AdvancedFieldController<DateTime?, BookingError> checkIn =
@@ -30,6 +36,15 @@ final class BookingFormController({
   late final AdvancedTextFieldController<BookingError> totalPrice =
       AdvancedTextFieldController(validator: totalPriceError);
   final confirmation = AdvancedTextFieldController<BookingError>();
+
+  void updateTripDates({required DateTime start, required DateTime end}) {
+    if (start == tripStart && end == tripEnd) return;
+    _tripStart = start;
+    _tripEnd = end;
+    checkIn.revalidateSync();
+    checkOut.revalidateSync();
+    notifyListeners();
+  }
 
   BookingError? checkInError(DateTime? at) {
     if (at == null) return null;

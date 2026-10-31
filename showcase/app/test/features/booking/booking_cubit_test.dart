@@ -120,6 +120,52 @@ void main() {
     expect(await _add(booking), isNull);
   });
 
+  test(
+    'a contracted trip during add preserves the draft for a valid retry',
+    () async {
+      fill();
+      booking
+        ..setCheckOut(DateTime(2026, 10, 30))
+        ..setTotalPrice(245);
+      final originalStart = form.tripStart;
+      final originalEnd = form.tripEnd;
+      final draft = AgentListing.of(booking).seen['draft'];
+      final events = <BookingPresentationEvent>[];
+      final subscription = booking.presentation.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final adding = booking.add();
+      form.updateTripDates(
+        start: originalStart,
+        end: DateTime(2026, 10, 29, 18, 5),
+      );
+      await adding;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events, isEmpty);
+      expect(form.checkOut.error, isA<OutsideTrip>());
+      expect(booking.state.adding, isFalse);
+      expect(
+        form.value.fields.map((field) => field.value.readOnly),
+        everyElement(isFalse),
+      );
+      expect(AgentListing.of(booking).seen['draft'], draft);
+      expect(form.value.wasModified, isTrue);
+
+      form.updateTripDates(start: originalStart, end: originalEnd);
+      expect(booking.ready, isTrue);
+      await booking.add();
+      await Future<void>.delayed(Duration.zero);
+
+      if (events.single case BookingPresentationEventAdded(:final stay)) {
+        expect(stay.nights, NightCount(2));
+        expect(stay.total, wholeMoney(245));
+      } else {
+        fail('The valid retry adds the preserved stay.');
+      }
+    },
+  );
+
   test('another e-mail starts from an empty form', () {
     fill();
 

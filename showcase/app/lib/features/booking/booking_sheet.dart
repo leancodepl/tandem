@@ -17,6 +17,7 @@ import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/booking/booking_cubit.dart';
 import 'package:waypoint/features/booking/booking_form_controller.dart';
 import 'package:waypoint/features/inbox/inbox_received.dart';
+import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
@@ -53,25 +54,44 @@ final class const _BookingSheet({
   required final ForwardedEmail? email,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => ChangeNotifierProvider(
-    create: (context) => BookingFormController(
-      tripStart: trip.booked.outbound.departs,
-      tripEnd: trip.booked.homebound.departs,
-    ),
-    child: BlocProvider(
-      create: (context) =>
-          BookingCubit(form: context.read<BookingFormController>()),
-      child: BlocPresentationListener<BookingCubit, BookingPresentationEvent>(
+  Widget build(BuildContext context) => MultiProvider(
+    providers: [
+      ChangeNotifierProvider(
+        create: (context) {
+          final booked =
+              context.read<TripsCubit>().tripOrNull(trip.id)?.booked ??
+              trip.booked;
+          return BookingFormController(
+            tripStart: booked.outbound.departs,
+            tripEnd: booked.homebound.departs,
+          );
+        },
+      ),
+      BlocProvider(
+        create: (context) =>
+            BookingCubit(form: context.read<BookingFormController>()),
+      ),
+      BlocListener<TripsCubit, TripsState>(
+        listener: (context, _) {
+          final booked = context.read<TripsCubit>().tripOrNull(trip.id)?.booked;
+          if (booked == null) return;
+          context.read<BookingFormController>().updateTripDates(
+            start: booked.outbound.departs,
+            end: booked.homebound.departs,
+          );
+        },
+      ),
+      const BlocPresentationListener<BookingCubit, BookingPresentationEvent>(
         listener: _close,
-        child: Builder(
-          builder: (context) => TandemScope.connected(
-            surface: (context) => context.read<BookingCubit>(),
-            connection: connection,
-            approvals: const .none(),
-            onEvent: (context, event, session) => _log.agentEvent(event),
-            child: _BookingSheetContent(emails: emails, email: email),
-          ),
-        ),
+      ),
+    ],
+    child: Builder(
+      builder: (context) => TandemScope.connected(
+        surface: (context) => context.read<BookingCubit>(),
+        connection: connection,
+        approvals: const .none(),
+        onEvent: (context, event, session) => _log.agentEvent(event),
+        child: _BookingSheetContent(emails: emails, email: email),
       ),
     ),
   );
