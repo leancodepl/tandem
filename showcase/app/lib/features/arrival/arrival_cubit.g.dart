@@ -176,8 +176,9 @@ extension on ArrivalCubit {
   List<AgentCapability> get _$agentCapabilities => [
     .seesAs('arrival', arrival),
     if (_canBookRide) .callsWithApproval(bookRide),
-    if (!_arranged.hostTold) .callsWithApproval(messageHost),
-    if (trip.booked.hotel != null && !_arranged.earlyCheckIn)
+    if (_arranged.pendingRide == null && !_hostTold)
+      .callsWithApproval(messageHost),
+    if (_hotelForEarlyCheckIn != null && _roomReady == null)
       .calls(requestEarlyCheckIn),
   ];
 }

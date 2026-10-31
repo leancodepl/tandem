@@ -11,8 +11,76 @@ final class ReportsCubit({required final Inbox inbox})
   ExpenseReport report(TripId tripId) =>
       state.reports[tripId] ?? ExpenseReport();
 
-  void save(TripId tripId, ExpenseReport report) =>
-      emit(ReportsState({...state.reports, tripId: report}));
+  bool isSubmitting(TripId tripId) => state.submitting.contains(tripId);
+
+  bool isEditable(TripId tripId) =>
+      report(tripId).submitted == null && !isSubmitting(tripId);
+
+  bool saveDraft(TripId tripId, ExpenseReport draft) {
+    if (draft.submitted != null) {
+      throw ArgumentError.value(
+        draft,
+        'draft',
+        'A draft has no submission reference.',
+      );
+    }
+    if (isEditable(tripId)) {
+      emit(
+        ReportsState({
+          ...state.reports,
+          tripId: draft,
+        }, submitting: state.submitting),
+      );
+      return true;
+    }
+    return false;
+  }
+
+  Future<ExpenseReport> submit(TripId tripId, ExpenseReport draft) async {
+    if (isSubmitting(tripId)) {
+      throw const ReportLocked('This report is being submitted.');
+    }
+    if (report(tripId).submitted != null) {
+      throw const ReportLocked('This report has already been submitted.');
+    }
+    if (draft.submitted != null || draft.lines.isEmpty) {
+      throw ArgumentError.value(draft, 'draft', 'Submit a nonempty draft.');
+    }
+    emit(
+      ReportsState(
+        {...state.reports, tripId: draft},
+        submitting: {...state.submitting, tripId},
+      ),
+    );
+    try {
+      // Waypoint's showcase submits nothing for real.
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      final confirmed = ExpenseReport(
+        lines: draft.lines,
+        submitted: BookingReference(
+          'ER-${tripId.value.toUpperCase()}-${draft.total.toInt()}',
+        ),
+      );
+      if (!isClosed) {
+        emit(
+          ReportsState({
+            ...state.reports,
+            tripId: confirmed,
+          }, submitting: {...state.submitting}..remove(tripId)),
+        );
+      }
+      return confirmed;
+    } finally {
+      if (!isClosed && isSubmitting(tripId)) {
+        emit(
+          ReportsState(
+            state.reports,
+            submitting: {...state.submitting}..remove(tripId),
+          ),
+        );
+      }
+    }
+  }
 
   /// The receipts forwarded for the trip [tripId], in the order of their
   /// numbers, which follow the days.
@@ -29,10 +97,15 @@ final class ReportsCubit({required final Inbox inbox})
       receipts(tripId).isNotEmpty && report(tripId).submitted == null;
 }
 
-final class ReportsState(Map<TripId, ExpenseReport> reports) with Equatable {
+final class ReportsState(
+  Map<TripId, ExpenseReport> reports, {
+  Set<TripId> submitting = const {},
+}) with Equatable {
   final Map<TripId, ExpenseReport> reports = Map.unmodifiable(reports);
+  final Set<TripId> submitting = Set.unmodifiable(submitting);
+
   @override
-  List<Object?> get props => [reports];
+  List<Object?> get props => [reports, submitting];
 }
 
 /// An expense of a report: what a receipt shows and what the company pays
@@ -64,6 +137,18 @@ final class ExpenseReport({
   List<ExpenseLine> lines = const [],
   final BookingReference? submitted,
 }) with Equatable {
+  this {
+    final receiptIds = <ReceiptId>{};
+    for (final line in lines) {
+      if (receiptIds.add(line.receipt.id)) continue;
+      throw ArgumentError.value(
+        line.receipt.id,
+        'lines',
+        'A receipt appears only once in a report.',
+      );
+    }
+  }
+
   final List<ExpenseLine> lines = List.unmodifiable(lines);
 
   @override
@@ -75,3 +160,5 @@ final class ExpenseReport({
   bool claims(ReceiptId receiptId) =>
       lines.any((line) => line.receipt.id == receiptId);
 }
+
+final class const ReportLocked(final String reason) implements Exception;

@@ -37,6 +37,7 @@ final class const ExpensesReportPage({
         (trips) => trips.tripOrNull(TripId.tryParse(tripId)),
       )) {
         final trip? => ChangeNotifierProvider(
+          key: ValueKey(trip.id),
           create: (context) {
             final reports = context.read<ReportsCubit>();
             return ExpensesReportFormController(

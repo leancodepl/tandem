@@ -6,10 +6,11 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 part 'arrival_arrangements_cubit.g.dart';
 
 final class ArrivalArrangementsCubit()
-    extends Cubit<Map<TripId, ArrivalState>> {
+    extends Cubit<Map<TripId, ArrivalArrangements>> {
   this : super(const {});
 
-  ArrivalState forTrip(TripId tripId) => state[tripId] ?? const ArrivalState();
+  ArrivalArrangements forTrip(TripId tripId) =>
+      state[tripId] ?? const ArrivalArrangements();
 
   Future<String> bookRide(TripId tripId, Ride ride) async {
     final current = forTrip(tripId);
@@ -46,27 +47,27 @@ final class ArrivalArrangementsCubit()
     }
   }
 
-  void markHostTold(TripId tripId) =>
-      _save(tripId, forTrip(tripId).copyWith(hostTold: true));
+  void recordHostMessage(TripId tripId, SentHostMessage message) =>
+      _save(tripId, forTrip(tripId).copyWith(hostMessage: message));
 
-  void requestEarlyCheckIn(TripId tripId) =>
-      _save(tripId, forTrip(tripId).copyWith(earlyCheckIn: true));
+  void confirmEarlyCheckIn(TripId tripId, EarlyCheckIn confirmed) =>
+      _save(tripId, forTrip(tripId).copyWith(earlyCheckIn: confirmed));
 
-  void _save(TripId tripId, ArrivalState arrival) {
+  void _save(TripId tripId, ArrivalArrangements arrival) {
     if (isClosed) return;
     emit(Map.unmodifiable({...state, tripId: arrival}));
   }
 }
 
 @CopyWith()
-final class const ArrivalState({
+final class const ArrivalArrangements({
   final RideBooking? ride,
   final RideId? pendingRide,
-  final bool hostTold = false,
-  final bool earlyCheckIn = false,
+  final SentHostMessage? hostMessage,
+  final EarlyCheckIn? earlyCheckIn,
 }) with Equatable {
   @override
-  List<Object?> get props => [ride, pendingRide, hostTold, earlyCheckIn];
+  List<Object?> get props => [ride, pendingRide, hostMessage, earlyCheckIn];
 }
 
 final class const RideBooking({
@@ -75,4 +76,20 @@ final class const RideBooking({
 }) with Equatable {
   @override
   List<Object?> get props => [rideId, reference];
+}
+
+final class const SentHostMessage({
+  required final String phone,
+  required final String text,
+}) with Equatable {
+  @override
+  List<Object?> get props => [phone, text];
+}
+
+final class const EarlyCheckIn({
+  required final BookingReference confirmation,
+  required final DateTime roomReady,
+}) with Equatable {
+  @override
+  List<Object?> get props => [confirmation, roomReady];
 }

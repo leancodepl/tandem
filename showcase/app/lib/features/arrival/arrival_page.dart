@@ -43,7 +43,8 @@ final class const ArrivalPage({
   )) {
     (final trip?, final day?) => BlocProvider(
       create: (context) => ArrivalCubit(
-        trip: trip,
+        tripId: trip.id,
+        trips: context.read<TripsCubit>(),
         day: day,
         arrangements: context.read<ArrivalArrangementsCubit>(),
       ),

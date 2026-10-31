@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/features/arrival/arrival_arrangements_cubit.dart';
+import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 part 'arrival_cubit.g.dart';
@@ -19,28 +21,55 @@ const _toRide = Duration(minutes: 10);
 /// company card or write in the traveller's name wait for approval.
 @TandemAgent()
 class ArrivalCubit({
-  required final Trip trip,
+  required final TripId tripId,
+  required final TripsCubit trips,
   required final ArrivalDay day,
   required final ArrivalArrangementsCubit arrangements,
 }) extends Cubit<ArrivalState> with _$ArrivalCubit {
-  this : super(arrangements.forTrip(trip.id)) {
-    _arrangementsChanges = arrangements.stream
-        .map((all) => all[trip.id] ?? const ArrivalState())
-        .distinct()
-        .listen(emit);
+  this
+    : super(
+        ArrivalState(
+          trip: _tripOf(trips, tripId),
+          arrangements: arrangements.forTrip(tripId),
+        ),
+      ) {
+    _meetingOf(trip, day);
+    _arrangementsChanges = arrangements.stream.listen((_) => _refresh());
+    _tripChanges = trips.stream.listen((_) => _refresh());
   }
 
-  final Meeting meeting = _meetingOf(trip, day);
-  late final StreamSubscription<ArrivalState> _arrangementsChanges;
+  late final StreamSubscription<Map<TripId, ArrivalArrangements>>
+  _arrangementsChanges;
+  late final StreamSubscription<TripsState> _tripChanges;
 
-  ArrivalState get _arranged => arrangements.forTrip(trip.id);
+  Trip get trip => trips.tripOrNull(tripId) ?? state.trip;
+  Meeting get meeting => _meetingOf(trip, day);
+  ArrivalArrangements get _arranged => arrangements.forTrip(tripId);
+  bool get _hostTold => _arranged.hostMessage == _messageToSend;
+
+  DateTime? get _roomReady =>
+      switch ((_arranged.earlyCheckIn, trip.booked.hotel)) {
+        (EarlyCheckIn(:final confirmation, :final roomReady), final hotel?)
+            when confirmation == hotel.confirmation &&
+                calendarDaysBetween(roomReady, hotel.checkIn) == 0 =>
+          roomReady,
+        _ => null,
+      };
+
+  HotelStay? get _hotelForEarlyCheckIn => switch (trip.booked.hotel) {
+    final hotel?
+        when calendarDaysBetween(day.roomReadyEarly, hotel.checkIn) == 0 =>
+      hotel,
+    _ => null,
+  };
 
   @override
   List<AgentCapability> get agentCapabilities => [
     .sees(arrival),
     if (_canBookRide) .callsWithApproval(bookRide),
-    if (!_arranged.hostTold) .callsWithApproval(messageHost),
-    if (trip.booked.hotel != null && !_arranged.earlyCheckIn)
+    if (_arranged.pendingRide == null && !_hostTold)
+      .callsWithApproval(messageHost),
+    if (_hotelForEarlyCheckIn != null && _roomReady == null)
       .calls(requestEarlyCheckIn),
   ];
 
@@ -60,7 +89,7 @@ class ArrivalCubit({
       place: meeting.place,
       start: meeting.start,
       host: day.host.name,
-      hostTold: _arranged.hostTold,
+      hostTold: _hostTold,
     ),
     rides: [
       for (final ride in day.rides)
@@ -82,7 +111,7 @@ class ArrivalCubit({
     hotel: HotelNext(
       name: trip.booked.hotel?.name,
       checkIn: trip.booked.hotel?.checkIn,
-      roomReady: _arranged.earlyCheckIn ? day.roomReadyEarly : null,
+      roomReady: _roomReady,
     ),
     policy: Policy.ridesForAgent,
   );
@@ -109,38 +138,62 @@ class ArrivalCubit({
   /// Texts the meeting's host, in the traveller's name, when the traveller
   /// lands and arrives. Returns the message as sent.
   String messageHost() {
-    if (_arranged.hostTold) _refuse('The host has already been told.');
+    if (_arranged.pendingRide != null) {
+      _refuse('Wait for the ride booking before messaging the host.');
+    }
+    if (_hostTold) _refuse('The host already has this arrival update.');
+    final message = _messageToSend;
+    _log.info('Messaged the host of trip $tripId');
+    arrangements.recordHostMessage(tripId, message);
+    return message.text;
+  }
+
+  SentHostMessage get _messageToSend {
     final arrives = switch (_arranged.ride) {
       RideBooking(:final rideId) => _arrives(
         day.rides.firstWhere((ride) => ride.id == rideId),
       ),
       null => lands.add(const Duration(hours: 1)),
     };
-    final message =
-        'Hi ${day.host.name.split(' ').first}, I land at '
-        '${timeForAgent(lands)} and will be at the studio around '
-        '${timeForAgent(arrives)}. See you at '
-        '${timeForAgent(meeting.start)}! Ola';
-    _log.info('Messaged the host of trip ${trip.id}');
-    arrangements.markHostTold(trip.id);
-    return message;
+    return SentHostMessage(
+      phone: day.host.phone,
+      text:
+          'Hi ${day.host.name.split(' ').first}, I land at '
+          '${timeForAgent(lands)} on ${forAgent(lands, withTime: false)} and will be at the studio around '
+          '${timeForAgent(arrives)} on ${forAgent(arrives, withTime: false)}. See you at '
+          '${timeForAgent(meeting.start)} on ${forAgent(meeting.start, withTime: false)}! Ola',
+    );
   }
 
   /// Asks the hotel to have the room ready early, for the bags. It costs
   /// nothing.
   void requestEarlyCheckIn() {
-    if (trip.booked.hotel == null) {
-      _refuse('There is no hotel booking for an early check-in.');
+    final hotel = _hotelForEarlyCheckIn;
+    if (hotel == null) {
+      _refuse('Early check-in is not available for this hotel booking.');
     }
     _log.info('Asked for an early check-in on trip ${trip.id}');
-    arrangements.requestEarlyCheckIn(trip.id);
+    arrangements.confirmEarlyCheckIn(
+      tripId,
+      EarlyCheckIn(
+        confirmation: hotel.confirmation,
+        roomReady: day.roomReadyEarly,
+      ),
+    );
   }
 
   @override
   Future<void> close() async {
     await _arrangementsChanges.cancel();
+    await _tripChanges.cancel();
     await super.close();
   }
+
+  void _refresh() => emit(ArrivalState(trip: trip, arrangements: _arranged));
+
+  static Trip _tripOf(TripsCubit trips, TripId tripId) =>
+      trips.tripOrNull(tripId) ??
+      (throw ArgumentError.value(tripId, 'tripId', 'The trip does not exist.'));
 
   bool get _canBookRide =>
       _arranged.ride == null && _arranged.pendingRide == null;
@@ -175,6 +228,14 @@ class ArrivalCubit({
     _log.warning('Refused: $reason');
     throw ToolCallRefused(reason);
   }
+}
+
+final class const ArrivalState({
+  required final Trip trip,
+  required final ArrivalArrangements arrangements,
+}) with Equatable {
+  @override
+  List<Object?> get props => [trip, arrangements];
 }
 
 final class const ArrivalSummary({
