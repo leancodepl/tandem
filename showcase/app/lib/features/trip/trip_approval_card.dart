@@ -3,9 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
+import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
+import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
-import 'package:waypoint/features/trip/trip_changes_bar.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_reasks_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
@@ -16,9 +17,9 @@ final _log = Logger('Trip');
 /// What each approval asked to book, kept by its call's id: the list builds
 /// a card again whenever an item comes before it.
 final class AskedChanges() {
-  final _asked = <String, List<BookingChange>>{};
+  final _asked = <String, BookingChanges>{};
 
-  List<BookingChange> of(ApprovalRequest request, TripCubit trip) =>
+  BookingChanges of(ApprovalRequest request, TripCubit trip) =>
       _asked.putIfAbsent(request.toolCallId, () => trip.bookingChanges);
 }
 
@@ -33,7 +34,7 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
     final changes = useMemoized(
       () => context.read<AskedChanges>().of(request, context.read<TripCubit>()),
     );
-    final cost = changes.fold(0, (sum, change) => sum + change.cost);
+    final cost = changes.totalCost;
     final session = TandemSessionScope.of(context);
     final status = request.status;
     final pending = status == .pending;
@@ -65,17 +66,19 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
                     children: [
                       Expanded(
                         child: Text(switch (TripAction.of(request.tool)) {
-                          BookChanges() => l10n.changeBookings(changes.length),
+                          BookChanges() => l10n.changeBookings(
+                            changes.items.length,
+                          ),
                           _ => l10n.approvalFallback,
                         }, style: AppText.title.merge(strike)),
                       ),
                       Text(
-                        l10n.eurosDelta(cost),
+                        l10n.moneyDelta(cost),
                         style: AppText.title.merge(strike),
                       ),
                     ],
                   ),
-                  for (final change in changes)
+                  for (final change in changes.items)
                     Row(
                       children: [
                         Expanded(
@@ -85,7 +88,7 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
                           ),
                         ),
                         Text(
-                          l10n.eurosDelta(change.cost),
+                          l10n.moneyDelta(change.cost),
                           style: AppText.label,
                         ),
                       ],
@@ -169,8 +172,8 @@ extension on AppLocalizations {
   String bookingChange(BookingChange change) => switch (change) {
     HotelNightsChange(:final hotel) => changeHotelNights(
       hotel.name,
-      hotel.nights,
+      hotel.nights.value,
     ),
-    FlightHomeChange(:final flight) => changeFlightHome(flight.number),
+    FlightHomeChange(:final flight) => changeFlightHome(flight.number.value),
   };
 }

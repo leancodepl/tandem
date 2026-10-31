@@ -26,48 +26,51 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 
 final _log = Logger('Trip');
 
-/// The trip and its assistant: side by side on an iPad, the assistant docked
-/// under the trip on a phone.
 @RoutePage()
 final class const TripPage({
   super.key,
   @PathParam() required final String tripId,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => switch (context
-      .select<TripsCubit, Trip?>((trips) => trips.tripOrNull(tripId))) {
-    final trip? => MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (context) => TripCubit(
-            info: trip,
-            trips: context.read(),
-            flights: context.read(),
-            traveller: context.read(),
+  Widget build(BuildContext context) =>
+      switch (context.select<TripsCubit, Trip?>(
+        (trips) => switch (TripId.tryParse(tripId)) {
+          final id? => trips.tripOrNull(id),
+          null => null,
+        },
+      )) {
+        final trip? => MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (context) => TripCubit(
+                info: trip,
+                trips: context.read(),
+                flights: context.read(),
+                traveller: context.read(),
+              ),
+            ),
+            BlocProvider(create: (context) => MarksCubit()),
+            BlocProvider(create: (context) => ActivityCubit()),
+            BlocProvider(create: (context) => ReasksCubit()),
+          ],
+          child: MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider(create: (context) => ItemKeys()),
+              RepositoryProvider(create: (context) => AskedChanges()),
+            ],
+            child: Builder(
+              builder: (context) => TandemScope.connected(
+                surface: (context) => context.read<TripCubit>(),
+                connection: context.watch<Agents>().trip,
+                approvals: const .fromState(),
+                onEvent: _onEvent,
+                child: const _TripContent(),
+              ),
+            ),
           ),
         ),
-        BlocProvider(create: (context) => MarksCubit()),
-        BlocProvider(create: (context) => ActivityCubit()),
-        BlocProvider(create: (context) => ReasksCubit()),
-      ],
-      child: MultiRepositoryProvider(
-        providers: [
-          RepositoryProvider(create: (context) => ItemKeys()),
-          RepositoryProvider(create: (context) => AskedChanges()),
-        ],
-        child: Builder(
-          builder: (context) => TandemScope.connected(
-            surface: (context) => context.read<TripCubit>(),
-            connection: context.watch<Agents>().trip,
-            approvals: const .fromState(),
-            onEvent: _onEvent,
-            child: const _TripContent(),
-          ),
-        ),
-      ),
-    ),
-    null => const UnknownTrip(),
-  };
+        null => const UnknownTrip(),
+      };
 
   static void _onEvent(
     BuildContext context,
@@ -97,8 +100,6 @@ final class const _TripContent() extends StatelessWidget {
         child: WaypointPage(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // The assistant beside the trip on a tablet, and the days side by
-              // side once there is room for them next to it.
               final beside = constraints.maxWidth >= Widths.readable;
               final wide =
                   constraints.maxWidth - Widths.sidePanel >= Widths.readable;

@@ -3,7 +3,6 @@ import 'package:waypoint_design_system/l10n/design_system_localizations.dart';
 import 'package:waypoint_design_system/src/text_field.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// The field to write to the assistant, with Send, or Stop while it works.
 final class const WaypointComposer({
   super.key,
   required final TextEditingController controller,

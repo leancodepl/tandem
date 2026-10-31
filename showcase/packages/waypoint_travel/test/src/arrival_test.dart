@@ -1,0 +1,22 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:waypoint_travel/waypoint_travel.dart';
+
+void main() {
+  test('an arrival day owns an immutable snapshot of its rides', () {
+    final berlin = const ArrivalDays().of(TripId('berlin'));
+    if (berlin == null) fail('Berlin has an arrival day.');
+    final rides = [...berlin.rides];
+    final day = ArrivalDay(
+      tripId: berlin.tripId,
+      meetingId: berlin.meetingId,
+      host: berlin.host,
+      roomReadyEarly: berlin.roomReadyEarly,
+      rides: rides,
+    );
+
+    rides.clear();
+
+    expect(day.rides, berlin.rides);
+    expect(day.rides.clear, throwsUnsupportedError);
+  });
+}

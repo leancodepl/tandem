@@ -1,12 +1,13 @@
 import 'package:equatable/equatable.dart';
 import 'package:waypoint_travel/src/arrival.dart';
+import 'package:waypoint_travel/src/calendar_day.dart';
 import 'package:waypoint_travel/src/trip.dart';
+import 'package:waypoint_travel/src/value_objects.dart';
 
 /// The traveller's company rules for a trip, which the app enforces and the
 /// agent sees.
 abstract final class Policy() {
-  /// The most a hotel night may cost, in euros.
-  static const maxNightly = 160;
+  static final maxNightly = wholeMoney(160);
 
   /// A first meeting that starts before this hour needs a night before it.
   static const morningUntil = 12;
@@ -14,13 +15,12 @@ abstract final class Policy() {
   /// A flight home leaves at least this long after the last meeting ends.
   static const toAirport = Duration(hours: 1);
 
-  /// The most meals on one day of a trip pay back, in euros.
-  static const mealsPerDay = 60;
+  static final mealsPerDay = wholeMoney(60);
 
   /// The rules for expenses in English, for the agent. The screens say them
   /// in the app's language.
-  static const expensesForAgent =
-      'Meals are paid back up to €$mealsPerDay a day. Taxis and public '
+  static final expensesForAgent =
+      'Meals are paid back up to €${mealsPerDay.toInt()} a day. Taxis and public '
       'transport are paid back in full. Every expense needs its receipt.';
 
   /// The rule for the ride from the airport in English, for the agent.
@@ -29,8 +29,8 @@ abstract final class Policy() {
       'the meeting.';
 
   /// The rules for a trip in English, for the agent.
-  static const forAgent =
-      'Economy flights. Hotels up to €$maxNightly a night. Arrive the evening '
+  static final forAgent =
+      'Economy flights. Hotels up to €${maxNightly.toInt()} a night. Arrive the evening '
       'before a meeting that starts before $morningUntil:00. Fly home at '
       'least an hour after the last meeting ends.';
 
@@ -45,7 +45,7 @@ abstract final class Policy() {
     if (first == null) return null;
 
     final needsNight = first.start.hour < morningUntil;
-    if (needsNight && !_day(flight.arrives).isBefore(_day(first.start))) {
+    if (needsNight && calendarDaysBetween(flight.arrives, first.start) < 1) {
       return LandsOnMeetingDay(flight, first);
     }
     if (flight.arrives.add(toAirport).isAfter(first.start)) {
@@ -71,14 +71,14 @@ abstract final class Policy() {
   }
 
   /// Why the policy rules out a hotel at [nightly] euros a night, or null.
-  static PolicyBreach? checkNightly(int nightly) =>
+  static PolicyBreach? checkNightly(Money nightly) =>
       nightly > maxNightly ? OverNightly(nightly) : null;
 
   /// Why the policy rules out paying back [claimed] euros of a meal on a day
   /// whose other meals pay back [claimedThatDay], or null.
   static PolicyBreach? checkMeals({
-    required int claimed,
-    required int claimedThatDay,
+    required Money claimed,
+    required Money claimedThatDay,
   }) {
     final left = mealsPerDay - claimedThatDay;
     return claimed > left ? OverMealsPerDay(left) : null;
@@ -98,8 +98,6 @@ abstract final class Policy() {
     ),
     _ => null,
   };
-
-  static DateTime _day(DateTime at) => DateTime(at.year, at.month, at.day);
 }
 
 /// What a booking breaks of the company [Policy].
@@ -144,25 +142,25 @@ final class const LeavesTooEarly(final Flight flight, final Meeting meeting)
       'ends';
 }
 
-final class const OverNightly(final int nightly) extends PolicyBreach {
+final class const OverNightly(final Money nightly) extends PolicyBreach {
   @override
   List<Object?> get props => [nightly];
 
   @override
   String get forAgent =>
-      'Over the policy: €$nightly a night, the limit is '
-      '€${Policy.maxNightly}';
+      'Over the policy: €${nightly.toInt()} a night, the limit is '
+      '€${Policy.maxNightly.toInt()}';
 }
 
 /// The meals of one day would pay back more than [Policy.mealsPerDay]: only
 /// [left] euros are left for that day.
-final class const OverMealsPerDay(final int left) extends PolicyBreach {
+final class const OverMealsPerDay(final Money left) extends PolicyBreach {
   @override
   List<Object?> get props => [left];
 
   @override
   String get forAgent =>
-      'Meals are paid back up to €${Policy.mealsPerDay} a day, and €$left is '
+      'Meals are paid back up to €${Policy.mealsPerDay.toInt()} a day, and €${left.toInt()} is '
       'left for that day';
 }
 

@@ -8,25 +8,25 @@ extension PolicyBreachText on AppLocalizations {
   /// What [breach] breaks of the policy, as the screens say it.
   String policyBreach(PolicyBreach breach) => switch (breach) {
     LandsOnMeetingDay(:final flight, :final meeting) => breachLandsOnMeetingDay(
-      flight.number,
+      flight.number.value,
       meeting.title,
       policyMorningUntil,
     ),
     LandsTooLate(:final flight, :final meeting) => breachLandsTooLate(
-      flight.number,
+      flight.number.value,
       meeting.title,
     ),
     LeavesTooEarly(:final flight, :final meeting) => breachLeavesTooEarly(
-      flight.number,
+      flight.number.value,
       meeting.title,
     ),
     OverNightly(:final nightly) => breachOverNightly(
-      euros(nightly),
-      euros(Policy.maxNightly),
+      money(nightly),
+      money(Policy.maxNightly),
     ),
     OverMealsPerDay(:final left) => breachOverMealsPerDay(
-      euros(Policy.mealsPerDay),
-      euros(left),
+      money(Policy.mealsPerDay),
+      money(left),
     ),
     TaxiNotNeeded(:final trainArrives, :final meetingStarts) =>
       breachTaxiNotNeeded(time(trainArrives), time(meetingStarts)),

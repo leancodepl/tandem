@@ -21,7 +21,7 @@ class BookingCubit({@override required final BookingFormController form})
         _$BookingCubit,
         BlocPresentationMixin<BookingState, BookingPresentationEvent>,
         FormChanges<BookingState> {
-  this : super(const BookingState());
+  this : super(BookingState());
 
   @override
   List<AgentCapability> get agentCapabilities => [
@@ -74,7 +74,11 @@ class BookingCubit({@override required final BookingFormController form})
 
   /// Sets the hotel's confirmation number.
   void setConfirmation(String number) {
-    form.confirmation.setValue(number.trim());
+    final reference = BookingReference.tryParse(number);
+    if (reference == null) {
+      _refuse('The confirmation number must not be empty.');
+    }
+    form.confirmation.setValue(reference.value);
     _mark(.confirmation);
   }
 
@@ -124,13 +128,16 @@ class BookingCubit({@override required final BookingFormController form})
 
 /// What the booking form shows besides its fields.
 @CopyWith()
-final class const BookingState({
+final class const BookingState._({
   /// The parts the agent filled in and the traveller has not changed.
   final Set<BookingPart> marked = const {},
 
   /// The stay is being added to the trip.
   final bool adding = false,
 }) with Equatable {
+  factory({Set<BookingPart> marked = const {}, bool adding = false}) =>
+      BookingState._(marked: Set.unmodifiable(marked), adding: adding);
+
   @override
   List<Object?> get props => [marked, adding];
 }

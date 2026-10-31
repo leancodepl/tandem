@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:waypoint_design_system/src/marker.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// A card. Its border changes colour with a short transition.
 final class const WaypointCard({
   super.key,
   required final Widget child,
@@ -13,7 +12,6 @@ final class const WaypointCard({
   final Color border = Palette.line,
   final EdgeInsetsGeometry padding = const .fromLTRB(16, 14, 16, 16),
 
-  /// Marked in blue while the assistant's change of it stands.
   final bool marked = false,
 }) extends StatelessWidget {
   @override
@@ -53,8 +51,6 @@ final class const WaypointCard({
   );
 }
 
-/// Rows in one frame, divided by lines, such as a form's fields or the
-/// options to pick from.
 final class const WaypointGroup({
   super.key,
   required final List<Widget> children,
@@ -84,9 +80,6 @@ final class const WaypointGroup({
   );
 }
 
-/// An option of a [WaypointGroup]: a lead such as a time, a label, a
-/// trailing value such as a price, and a check when [selected]. Without
-/// [onTap] it cannot be picked and shows dimmed.
 final class const WaypointOption({
   super.key,
   required final String lead,
@@ -149,8 +142,6 @@ final class const WaypointOption({
   }
 }
 
-/// A forwarded e-mail as a card: who sent it and its subject, with
-/// [trailing] such as when it came.
 final class const WaypointMailCard({
   super.key,
   required final String from,
@@ -189,8 +180,6 @@ final class const WaypointMailCard({
   );
 }
 
-/// A row of a card: an icon, a title over an optional subtitle, and an
-/// optional widget at the end, such as a button.
 final class const WaypointTile({
   super.key,
   required final String title,
@@ -198,7 +187,6 @@ final class const WaypointTile({
   final IconData? icon,
   final Widget? trailing,
 
-  /// Shows the title dimmed, for what the traveller cannot take.
   final bool dimmed = false,
 }) extends StatelessWidget {
   @override
@@ -227,8 +215,6 @@ final class const WaypointTile({
   );
 }
 
-/// An item of a list that opens it: its [title], [subtitle] and [caption],
-/// then [footer], with a chevron at its end.
 final class const WaypointListCard({
   super.key,
   required final String title,
@@ -263,8 +249,6 @@ final class const WaypointListCard({
   );
 }
 
-/// One of columns side by side, with a line down its left unless it is the
-/// [first].
 final class const WaypointDividedColumn({
   super.key,
   required final bool first,
@@ -281,7 +265,6 @@ final class const WaypointDividedColumn({
   );
 }
 
-/// A line between parts, across or, when [vertical], down.
 final class const WaypointDivider({
   super.key,
   final bool vertical = false,

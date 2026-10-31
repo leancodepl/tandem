@@ -32,35 +32,37 @@ final class const ExpensesReportPage({
   @PathParam() required final String tripId,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => switch (context
-      .select<TripsCubit, Trip?>((trips) => trips.tripOrNull(tripId))) {
-    final trip? => ChangeNotifierProvider(
-      create: (context) {
-        final reports = context.read<ReportsCubit>();
-        return ExpensesReportFormController(
-          receipts: reports.receipts(trip.id),
-          stored: reports.report(trip.id),
-        );
-      },
-      child: BlocProvider(
-        create: (context) => ExpensesReportCubit(
-          trip: trip,
-          reports: context.read<ReportsCubit>(),
-          form: context.read<ExpensesReportFormController>(),
-        ),
-        child: Builder(
-          builder: (context) => TandemScope.connected(
-            surface: (context) => context.read<ExpensesReportCubit>(),
-            connection: context.watch<Agents>().expenses,
-            approvals: const .fromState(),
-            onEvent: (context, event, session) => _log.agentEvent(event),
-            child: const _ExpensesReportContent(),
+  Widget build(BuildContext context) =>
+      switch (context.select<TripsCubit, Trip?>(
+        (trips) => trips.tripOrNull(TripId.tryParse(tripId)),
+      )) {
+        final trip? => ChangeNotifierProvider(
+          create: (context) {
+            final reports = context.read<ReportsCubit>();
+            return ExpensesReportFormController(
+              receipts: reports.receipts(trip.id),
+              stored: reports.report(trip.id),
+            );
+          },
+          child: BlocProvider(
+            create: (context) => ExpensesReportCubit(
+              trip: trip,
+              reports: context.read<ReportsCubit>(),
+              form: context.read<ExpensesReportFormController>(),
+            ),
+            child: Builder(
+              builder: (context) => TandemScope.connected(
+                surface: (context) => context.read<ExpensesReportCubit>(),
+                connection: context.watch<Agents>().expenses,
+                approvals: const .fromState(),
+                onEvent: (context, event, session) => _log.agentEvent(event),
+                child: const _ExpensesReportContent(),
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-    null => const UnknownTrip(),
-  };
+        null => const UnknownTrip(),
+      };
 }
 
 final class const _ExpensesReportContent() extends StatelessWidget {
@@ -165,7 +167,7 @@ final class const _ExpensesReportForm() extends HookWidget {
                 WaypointNote(
                   Icons.verified_user_outlined,
                   l10n.companyPolicy(
-                    l10n.expensesPolicy(l10n.euros(Policy.mealsPerDay)),
+                    l10n.expensesPolicy(l10n.money(Policy.mealsPerDay)),
                   ),
                 ),
               ],
@@ -200,16 +202,16 @@ final class const _Claims({required final bool enabled})
     final l10n = context.l10n;
     return WaypointGroup(
       children: [
-        for (final (order, MapEntry(key: receipt, value: claim))
-            in form.claims.entries.indexed)
+        for (final (order, ReceiptClaimField(:receipt, field: claim))
+            in form.claims.values.indexed)
           FormAmountField(
             field: claim,
             label: l10n.receiptLine(
               receipt.merchant,
               l10n.day(receipt.day),
-              l10n.euros(receipt.paid),
+              l10n.money(receipt.paid),
             ),
-            symbol: l10n.euroSymbol,
+            symbol: l10n.currencySymbol(receipt.paid.currency),
             enabled: enabled,
             marked: cubit.state.marked.contains(receipt.id),
             order: order,
@@ -218,8 +220,10 @@ final class const _Claims({required final bool enabled})
               final claimed?
                   when claim.error == null &&
                       claimed > 0 &&
-                      claimed < receipt.paid =>
-                l10n.receiptNotPaidBack(l10n.euros(receipt.paid - claimed)),
+                      claimed < receipt.paid.toInt() =>
+                l10n.receiptNotPaidBack(
+                  l10n.money(receipt.paid - wholeMoney(claimed)),
+                ),
               _ => null,
             },
             onEdited: () => cubit.unmark(receipt.id),
@@ -245,7 +249,7 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
         .where((request) => request.status == .pending)
         .lastOrNull;
     final l10n = context.l10n;
-    final total = WaypointTotal(l10n.paidBack, l10n.euros(form.total));
+    final total = WaypointTotal(l10n.paidBack, l10n.money(form.total));
 
     return WaypointActionBar(
       active: request != null,
@@ -258,12 +262,15 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
             spacing: 16,
             children: [
               Expanded(child: total),
-              WaypointConfirmation(l10n.submitted, reference: confirmation),
+              WaypointConfirmation(
+                l10n.submitted,
+                reference: confirmation.value,
+              ),
             ],
           ),
           // The agent's request, in the screen's own bar.
           (final request?, _) => WaypointApproval(
-            l10n.reportAskToSubmit(l10n.euros(form.total)),
+            l10n.reportAskToSubmit(l10n.money(form.total)),
             onApprove: () => _decide(() => session.approve(request)),
             onReject: () => _decide(() => session.reject(request)),
           ),
@@ -294,7 +301,7 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
 
 extension on AppLocalizations {
   String claimError(ClaimError error) => switch (error) {
-    ClaimOutOfRange(:final paid) => claimOutOfRange(euros(paid)),
+    ClaimOutOfRange(:final paid) => claimOutOfRange(money(paid)),
     ClaimOverPolicy(:final breach) => claimOverPolicy(policyBreach(breach)),
   };
 }

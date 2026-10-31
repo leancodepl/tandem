@@ -7,25 +7,25 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     extends Cubit<TripsState> {
   this : super(TripsState(trips));
 
-  Trip? tripOrNull(String id) =>
+  Trip? tripOrNull(TripId? id) =>
       state.trips.where((trip) => trip.id == id).firstOrNull;
 
   /// An id that no trip has yet, for a new trip to [city].
-  String newId(String city) {
+  TripId newId(String city) {
     final name = city.toLowerCase();
     var count = 1;
-    while (tripOrNull('$name-$count') != null) {
+    while (tripOrNull(TripId('$name-$count')) != null) {
       count++;
     }
-    return '$name-$count';
+    return TripId('$name-$count');
   }
 
   /// Records what is now booked for the trip [id].
-  void book(String id, Itinerary booked) => emit(
+  void book(TripId id, Itinerary booked) => emit(
     TripsState([
       for (final trip in state.trips)
         if (trip.id == id) trip.copyWith(booked: booked) else trip,
-    ]),
+    ], pendingBookings: state.pendingBookings),
   );
 
   /// Adds a trip planned and booked in the app, in the order of departure.
@@ -35,12 +35,65 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
         (a, b) =>
             a.booked.outbound.departs.compareTo(b.booked.outbound.departs),
       ),
+      pendingBookings: state.pendingBookings,
     ),
   );
 
+  bool reserveBooking(TripId id) {
+    if (state.pendingBookings.contains(id)) return false;
+    emit(
+      TripsState(state.trips, pendingBookings: {...state.pendingBookings, id}),
+    );
+    return true;
+  }
+
+  void releaseBooking(TripId id) => emit(
+    TripsState(
+      state.trips,
+      pendingBookings: {...state.pendingBookings}..remove(id),
+    ),
+  );
+
+  void confirmHotel(TripId id, HotelStay hotel) {
+    final trip = tripOrNull(id);
+    if (trip == null) return;
+    book(id, trip.booked.copyWith(hotel: hotel));
+  }
+
+  void moveMeeting(TripId id, Meeting moved) {
+    final trip = tripOrNull(id);
+    if (trip == null) return;
+    book(
+      id,
+      trip.booked.copyWith(
+        meetings: [
+          for (final meeting in trip.booked.meetings)
+            if (meeting.id == moved.id) moved else meeting,
+        ],
+      ),
+    );
+  }
+
+  void completeBooking(
+    TripId id, {
+    required Itinerary previouslyBooked,
+    required Itinerary requested,
+  }) {
+    final latest = tripOrNull(id)?.booked ?? previouslyBooked;
+    book(
+      id,
+      requested.copyWith(
+        hotel: latest.hotel != previouslyBooked.hotel
+            ? latest.hotel
+            : requested.hotel,
+        meetings: latest.meetings,
+      ),
+    );
+  }
+
   /// The forwarded e-mails that the trip [id] does not follow yet, newest
   /// first. Receipts are for the trip's expense report instead.
-  List<ForwardedEmail> news(String id) => switch (tripOrNull(id)) {
+  List<ForwardedEmail> news(TripId id) => switch (tripOrNull(id)) {
     final trip? => [
       for (final email in inbox.emails)
         if (email.tripId == id &&
@@ -64,7 +117,13 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
       state.trips.fold(0, (count, trip) => count + news(trip.id).length);
 }
 
-final class const TripsState(final List<Trip> trips) with Equatable {
+final class TripsState(
+  List<Trip> trips, {
+  Set<TripId> pendingBookings = const {},
+}) with Equatable {
+  final List<Trip> trips = List.unmodifiable(trips);
+  final Set<TripId> pendingBookings = Set.unmodifiable(pendingBookings);
+
   @override
-  List<Object?> get props => [trips];
+  List<Object?> get props => [trips, pendingBookings];
 }

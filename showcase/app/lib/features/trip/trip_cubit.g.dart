@@ -289,7 +289,9 @@ extension on TripCubit {
     .calls(moveMeeting),
     .calls(setHomeboundFlight),
     .calls(setHotelNights),
-    if (bookingChanges.isNotEmpty && !state.booking && changesBreach == null)
+    if (bookingChanges.items.isNotEmpty &&
+        !state.booking &&
+        changesBreach == null)
       .callsWithApproval(bookChanges),
   ];
 }

@@ -2,10 +2,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
+import 'package:waypoint_travel/waypoint_travel.dart';
 
-/// The agent's steps, from what it did to the trip.
 final class ActivityCubit() extends Cubit<ActivityState> {
-  this : super(const ActivityState([]));
+  this : super(ActivityState([]));
 
   void add(TripAction action, TripCubit trip, int after) {
     if (_step(action, trip, after) case final step?) {
@@ -49,7 +49,9 @@ final class ActivityCubit() extends Cubit<ActivityState> {
   }
 }
 
-final class const ActivityState(final List<AgentStep> steps) with Equatable {
+final class ActivityState(List<AgentStep> steps) with Equatable {
+  final List<AgentStep> steps = List.unmodifiable(steps);
+
   @override
   List<Object?> get props => [steps];
 }
@@ -70,17 +72,16 @@ final class const MeetingMovedStep(
 final class const HotelNightsStep(
   super.after, {
   required final String hotel,
-  required final int nights,
+  required final NightCount nights,
 }) extends AgentStep {
   @override
   List<Object?> get props => [after, hotel, nights];
 }
 
-/// The agent looked up flights, on a route and day once its call has run.
 final class const FlightsLookedUpStep(
   super.after, {
-  final String? origin,
-  final String? destination,
+  final AirportCode? origin,
+  final AirportCode? destination,
   final DateTime? date,
 }) extends AgentStep {
   @override
@@ -89,7 +90,7 @@ final class const FlightsLookedUpStep(
 
 final class const FlightHomeStep(
   super.after, {
-  required final String number,
+  required final FlightNumber number,
   required final DateTime departs,
 }) extends AgentStep {
   @override

@@ -5,84 +5,6 @@
 part of 'arrival_cubit.dart';
 
 // **************************************************************************
-// CopyWithGenerator
-// **************************************************************************
-
-abstract class _$ArrivalStateCWProxy {
-  ArrivalState ride((String, String)? ride);
-
-  ArrivalState hostTold(bool hostTold);
-
-  ArrivalState earlyCheckIn(bool earlyCheckIn);
-
-  /// Creates a new instance with the provided field values.
-  /// Omitted fields keep their values; explicit `null` clears nullable fields.
-  /// The public API rejects `null` for non-nullable fields. To update a single field use `ArrivalState(...).copyWith.fieldName(value)`.
-  ///
-  /// Example:
-  /// ```dart
-  /// ArrivalState(...).copyWith(id: 12, name: "My name")
-  /// ```
-  ArrivalState call({(String, String)? ride, bool hostTold, bool earlyCheckIn});
-}
-
-/// Callable proxy for `copyWith` functionality.
-/// Use as `instanceOfArrivalState.copyWith(...)` or call `instanceOfArrivalState.copyWith.fieldName(value)` for a single field.
-class _$ArrivalStateCWProxyImpl implements _$ArrivalStateCWProxy {
-  const _$ArrivalStateCWProxyImpl(this._value);
-
-  final ArrivalState _value;
-
-  @override
-  ArrivalState ride((String, String)? ride) => call(ride: ride);
-
-  @override
-  ArrivalState hostTold(bool hostTold) => call(hostTold: hostTold);
-
-  @override
-  ArrivalState earlyCheckIn(bool earlyCheckIn) =>
-      call(earlyCheckIn: earlyCheckIn);
-
-  /// Creates a new instance with the provided field values.
-  /// Omitted fields keep their values; explicit `null` clears nullable fields.
-  /// The public API rejects `null` for non-nullable fields. To update a single field use `ArrivalState(...).copyWith.fieldName(value)`.
-  ///
-  /// Example:
-  /// ```dart
-  /// ArrivalState(...).copyWith(id: 12, name: "My name")
-  /// ```
-  @override
-  ArrivalState call({
-    Object? ride = const $CopyWithPlaceholder(),
-    Object? hostTold = const $CopyWithPlaceholder(),
-    Object? earlyCheckIn = const $CopyWithPlaceholder(),
-  }) {
-    return ArrivalState(
-      ride: ride == const $CopyWithPlaceholder()
-          ? _value.ride
-          // ignore: cast_nullable_to_non_nullable
-          : ride as (String, String)?,
-      hostTold: hostTold == const $CopyWithPlaceholder() || hostTold == null
-          ? _value.hostTold
-          // ignore: cast_nullable_to_non_nullable
-          : hostTold as bool,
-      earlyCheckIn:
-          earlyCheckIn == const $CopyWithPlaceholder() || earlyCheckIn == null
-          ? _value.earlyCheckIn
-          // ignore: cast_nullable_to_non_nullable
-          : earlyCheckIn as bool,
-    );
-  }
-}
-
-extension $ArrivalStateCopyWith on ArrivalState {
-  /// Returns a callable class used to build a new instance with modified fields.
-  /// Example: `instanceOfArrivalState.copyWith(...)` or `instanceOfArrivalState.copyWith.fieldName(...)`.
-  // ignore: library_private_types_in_public_api
-  _$ArrivalStateCWProxy get copyWith => _$ArrivalStateCWProxyImpl(this);
-}
-
-// **************************************************************************
 // AgentGenerator
 // **************************************************************************
 
@@ -253,8 +175,9 @@ mixin _$ArrivalCubit implements AgentSurface {
 extension on ArrivalCubit {
   List<AgentCapability> get _$agentCapabilities => [
     .seesAs('arrival', arrival),
-    if (state.ride == null) .callsWithApproval(bookRide),
-    if (!state.hostTold) .callsWithApproval(messageHost),
-    if (!state.earlyCheckIn) .calls(requestEarlyCheckIn),
+    if (_canBookRide) .callsWithApproval(bookRide),
+    if (!_arranged.hostTold) .callsWithApproval(messageHost),
+    if (trip.booked.hotel != null && !_arranged.earlyCheckIn)
+      .calls(requestEarlyCheckIn),
   ];
 }

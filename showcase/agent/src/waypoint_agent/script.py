@@ -100,41 +100,88 @@ def _home_after_the_workshop(flights: list[dict]) -> Call:
 
 def _booking(answers: dict[str, Any], text: str) -> list[str | Call]:
     if answers:
+        problems = [problem for answer in answers.values() if (problem := _tool_problem(answer))]
+        if problems:
+            return [f"Some booking fields could not be filled in. {' '.join(problems)}"]
         return ["Filled in from the confirmation."]
     return _fill(text) or [BOOKING_REPLY]
 
 
+def _tool_problem(answer: Any) -> str | None:
+    match answer:
+        case {"status": str(status)} if status != "returned":
+            match answer:
+                case {"reason": str(reason)}:
+                    return reason
+                case {"error": str(error)}:
+                    return error
+                case _:
+                    return "Check the fields on the form."
+    return None
+
+
 def _fill(email: str) -> list[str | Call]:
-    """One call per field of a confirmation e-mail, in the form the demo's hotels write them."""
+    lines = email.splitlines()
 
     def line(label: str) -> str | None:
-        found = re.search(rf"^{label}: (.+)$", email, re.MULTILINE)
-        return found[1] if found else None
+        prefix = f"{label}:"
+        return (
+            next((text[len(prefix) :].strip() for text in lines if text.startswith(prefix)), None)
+            or None
+        )
 
     if (confirmation := line("Confirmation number")) is None:
         return []
     calls: list[str | Call] = []
-    if hotel := re.search(r"^From: (.+?) <", email, re.MULTILINE):
-        calls.append(Call("set_hotel", {"name": hotel[1]}))
-    # A hotel signs with its name and its address, the last line.
-    calls.append(Call("set_address", {"address": email.strip().splitlines()[-1].strip()}))
-    if check_in := _date(line("Check-in")):
-        at = re.search(r"\d{2}:\d{2}", line("Check-in") or "")
-        calls.append(Call("set_check_in", {"at": f"{check_in}T{at[0] if at else '15:00'}:00"}))
+    sender = re.match(r"^(.+?)\s*<", line("From") or "")
+    hotel = sender[1].strip() if sender else None
+    if hotel:
+        calls.append(Call("set_hotel", {"name": hotel}))
+    signature = [text.strip() for text in lines if text.strip()]
+    if hotel and len(signature) >= 2 and signature[-2] == hotel:
+        calls.append(Call("set_address", {"address": signature[-1]}))
+    if check_in := _check_in(line("Check-in")):
+        calls.append(Call("set_check_in", {"at": check_in.isoformat(timespec="seconds")}))
     if check_out := _date(line("Check-out")):
-        calls.append(Call("set_check_out", {"day": check_out}))
-    if total := re.search(r"EUR (\d+)", line("Total") or ""):
-        calls.append(Call("set_total_price", {"euros": int(total[1])}))
+        calls.append(Call("set_check_out", {"day": check_out.isoformat()}))
+    if total := _whole_euros(line("Total")):
+        calls.append(Call("set_total_price", {"euros": total}))
     calls.append(Call("set_confirmation", {"number": confirmation}))
     return calls
 
 
-def _date(text: str | None) -> str | None:
-    """ "Wednesday, 18 November 2026, from 15:00" as 2026-11-18."""
-    found = re.search(r"(\d{1,2}) (\w+) (\d{4})", text or "")
+def _date(text: str | None) -> date | None:
+    found = re.fullmatch(
+        r"(?:[A-Za-z]+, )?([0-9]{1,2}) ([A-Za-z]+) ([0-9]{4})(?:, .*)?", text or ""
+    )
     if found is None:
         return None
-    return datetime.strptime(f"{found[1]} {found[2]} {found[3]}", "%d %B %Y").date().isoformat()
+    try:
+        return datetime.strptime(f"{found[1]} {found[2]} {found[3]}", "%d %B %Y").date()
+    except ValueError:
+        return None
+
+
+def _check_in(text: str | None) -> datetime | None:
+    day = _date(text)
+    at = re.search(r", from ([0-9]{2}):([0-9]{2})$", text or "")
+    if day is None or at is None:
+        return None
+    try:
+        return datetime(day.year, day.month, day.day, int(at[1]), int(at[2]))
+    except ValueError:
+        return None
+
+
+def _whole_euros(text: str | None) -> int | None:
+    found = re.fullmatch(r"EUR ([0-9]+)(?:\.00)?(?:, .*)?", text or "")
+    if found is None:
+        return None
+    try:
+        euros = int(found[1])
+    except ValueError:
+        return None
+    return euros if euros > 0 else None
 
 
 def _plan(last: Message, text: str, instruction: str) -> list[str | Call]:

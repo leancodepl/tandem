@@ -1,6 +1,5 @@
 import 'package:advanced_forms/advanced_forms.dart';
 import 'package:equatable/equatable.dart';
-import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
@@ -36,7 +35,7 @@ final class BookingFormController({
     if (at == null) return null;
     if (_outsideTrip(at) case final outside?) return outside;
     if (checkOut.fieldValue case final out?
-        when !dateOnly(at).isBefore(dateOnly(out))) {
+        when calendarDaysBetween(at, out) <= 0) {
       return CheckInNotBeforeCheckOut(out);
     }
     return null;
@@ -46,7 +45,7 @@ final class BookingFormController({
     if (day == null) return null;
     if (_outsideTrip(day) case final outside?) return outside;
     if (checkIn.fieldValue case final at?
-        when !dateOnly(day).isAfter(dateOnly(at))) {
+        when calendarDaysBetween(at, day) <= 0) {
       return CheckOutNotAfterCheckIn(at);
     }
     return null;
@@ -99,21 +98,22 @@ final class BookingFormController({
       :final totalPrice?,
       :final confirmation?,
     )
-        when nights >= 1 =>
+        when nights >= 1 && totalPrice > 0 =>
       HotelStay(
         name: hotel,
         address: address,
         checkIn: checkIn,
-        nights: nights,
-        nightly: (totalPrice / nights).round(),
-        confirmation: confirmation,
+        nights: NightCount(nights),
+        nightly: wholeMoney((totalPrice / nights).round()),
+        confirmation: BookingReference(confirmation),
       ),
     _ => null,
   };
 
   OutsideTrip? _outsideTrip(DateTime at) {
-    final day = dateOnly(at);
-    if (day.isBefore(dateOnly(tripStart)) || day.isAfter(dateOnly(tripEnd))) {
+    final day = calendarDay(at);
+    if (calendarDaysBetween(tripStart, day) < 0 ||
+        calendarDaysBetween(day, tripEnd) < 0) {
       return OutsideTrip(day, tripStart: tripStart, tripEnd: tripEnd);
     }
     return null;
@@ -135,7 +135,7 @@ final class const BookingDraft({
   final String? confirmation,
 }) {
   int? get nights => switch ((checkIn, checkOut)) {
-    (final from?, final to?) => dateOnly(to).difference(dateOnly(from)).inDays,
+    (final from?, final to?) => calendarDaysBetween(from, to),
     _ => null,
   };
 }

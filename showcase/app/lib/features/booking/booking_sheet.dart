@@ -314,14 +314,16 @@ final class const _BookingFields({required final bool enabled})
         FormAmountField(
           field: form.totalPrice,
           label: l10n.bookingPrice,
-          symbol: l10n.euroSymbol,
+          symbol: l10n.currencySymbol(supportedCurrency),
           enabled: enabled,
           marked: marked.contains(BookingPart.price),
           order: 4,
           translateError: l10n.bookingError,
           note: switch ((draft.totalPrice, nights)) {
             (final total?, final nights?) when nights > 1 =>
-              l10n.bookingNightly(l10n.euros((total / nights).round())),
+              l10n.bookingNightly(
+                l10n.money(wholeMoney((total / nights).round())),
+              ),
             _ => null,
           },
           onEdited: () => cubit.unmark(.price),

@@ -16,6 +16,36 @@ void main() {
     plan = _planner(trips);
   });
 
+  test('plan snapshots and copies own their meetings and marks', () {
+    final meetings = [...plan.state.meetings];
+    final marked = {PlanTripInput.city};
+    final snapshot = PlanTripState(meetings: meetings, marked: marked);
+    meetings.clear();
+    marked.clear();
+
+    final copiedMeetings = [...snapshot.meetings];
+    final copiedMarks = {PlanTripInput.purpose};
+    final copied = snapshot.copyWith(
+      meetings: copiedMeetings,
+      marked: copiedMarks,
+    );
+    copiedMeetings.clear();
+    copiedMarks.clear();
+
+    expect(snapshot.meetings, plan.state.meetings);
+    expect(snapshot.marked, {PlanTripInput.city});
+    expect(copied.meetings, plan.state.meetings);
+    expect(copied.marked, {PlanTripInput.purpose});
+    for (final clear in [
+      snapshot.meetings.clear,
+      snapshot.marked.clear,
+      copied.meetings.clear,
+      copied.marked.clear,
+    ]) {
+      expect(clear, throwsUnsupportedError);
+    }
+  });
+
   test('a city that Waypoint does not fly to is refused', () {
     expect(() => plan.setCity('Paris'), throwsA(isA<ToolCallRefused>()));
     expect(plan.form.city.fieldValue, 'Vienna');
@@ -37,7 +67,7 @@ void main() {
 
     expect(plan.state.nights, 1);
     // WA 517 and WA 518 on weekdays, and a night at the Spittelberg.
-    expect(plan.state.total, 141 + 148 + 138);
+    expect(plan.state.total, wholeMoney(141 + 148 + 138));
   });
 
   test('the trip can be booked once nothing is missing', () {
@@ -58,19 +88,59 @@ void main() {
     final sameDay = PlanTripState(
       meetings: [
         Meeting(
-          id: 'meeting-1',
+          id: MeetingId('meeting-1'),
           title: 'Lunch with Mira',
           place: 'Alpenlicht',
           start: DateTime(2026, 12, 9, 12),
           end: DateTime(2026, 12, 9, 13),
         ),
       ],
-      outbound: const FlightSearch().find('WA 511', day),
-      homebound: const FlightSearch().find('WA 518', day),
+      outbound: const FlightSearch().find(FlightNumber('WA 511'), day),
+      homebound: const FlightSearch().find(FlightNumber('WA 518'), day),
     );
 
     expect(sameDay.nights, 0);
     expect(sameDay.missingPicks, isEmpty);
+  });
+
+  test('changing to a same-day trip clears and refuses its hotel', () async {
+    final form = PlanTripFormController();
+    final planner = PlanTripCubit(
+      trips: trips,
+      flights: const FlightSearch(),
+      hotels: const HotelSearch(),
+      form: form,
+    );
+    addTearDown(() async {
+      await planner.close();
+      form.dispose();
+    });
+    planner
+      ..setCity('Vienna')
+      ..addMeeting(
+        'Lunch with Mira',
+        'Alpenlicht',
+        DateTime(2026, 12, 9, 12),
+        DateTime(2026, 12, 9, 13),
+      )
+      ..setOutboundFlight('WA 517', DateTime(2026, 12, 8))
+      ..setHomeboundFlight('WA 518', DateTime(2026, 12, 9))
+      ..setHotel('spittelberg')
+      ..setOutboundFlight('WA 511', DateTime(2026, 12, 9));
+
+    expect(planner.state.hotel, isNull);
+    expect(planner.state.nights, 0);
+    expect(planner.ready, isTrue);
+    expect(
+      () => planner.setHotel('spittelberg'),
+      throwsA(isA<ToolCallRefused>()),
+    );
+    final booked = switch (await _book(planner)) {
+      final id? => trips.tripOrNull(id),
+      null => null,
+    };
+    expect(booked, isNotNull);
+    expect(booked?.booked.hotel, isNull);
   });
 
   test('a morning meeting needs a flight the evening before', () {
@@ -81,7 +151,7 @@ void main() {
 
     plan.setOutboundFlight('WA 517', DateTime(2026, 12, 8));
 
-    expect(plan.state.outbound?.number, 'WA 517');
+    expect(plan.state.outbound?.number.value, 'WA 517');
   });
 
   test('a hotel over the policy is refused', () {
@@ -225,7 +295,7 @@ void main() {
     };
 
     expect(booked?.homebound.departs.day, 9);
-    expect(booked?.hotel?.nights, 1);
+    expect(booked?.hotel?.nights.value, 1);
   });
 
   test('check-in is from 15:00, or an hour after a later landing', () async {
@@ -250,7 +320,7 @@ void main() {
     () async {
       final invited = _planner(
         trips,
-        invitation: const Inbox().invitation('vienna'),
+        invitation: const Inbox().invitation(TripId('vienna')),
       );
       final again = _planner(trips);
       _plan(plan);
@@ -259,7 +329,7 @@ void main() {
 
       final ids = [await _book(invited), await _book(plan), await _book(again)];
 
-      expect(ids.first, 'vienna');
+      expect(ids.first, TripId('vienna'));
       expect(ids.toSet(), hasLength(3));
     },
   );
@@ -267,8 +337,8 @@ void main() {
 
 /// Books [plan] and gives the id of the trip it booked, or null when it
 /// booked nothing.
-Future<String?> _book(PlanTripCubit plan) async {
-  final ids = <String>[];
+Future<TripId?> _book(PlanTripCubit plan) async {
+  final ids = <TripId>[];
   final booked = plan.presentation.listen(
     (event) => switch (event) {
       PlanTripPresentationEventBooked(:final tripId) => ids.add(tripId),

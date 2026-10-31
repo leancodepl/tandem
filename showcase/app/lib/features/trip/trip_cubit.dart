@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_presentation/bloc_presentation.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
+import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_summary.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
@@ -12,9 +15,6 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 part 'trip_cubit.g.dart';
 
 final _log = Logger('Trip');
-
-/// What a changed flight costs on top of the fare difference.
-const changeFee = 40;
 
 @TandemAgent()
 class TripCubit({
@@ -27,7 +27,50 @@ class TripCubit({
   required final Traveller traveller,
 }) extends Cubit<TripState>
     with _$TripCubit, BlocPresentationMixin<TripState, TripPresentationEvent> {
-  this : super(TripState(current: info.booked, booked: info.booked));
+  this : super(_initialState(info, trips)) {
+    _bookings = trips.stream.listen((_) => _adoptConfirmed(trips.state));
+  }
+
+  late final StreamSubscription<TripsState> _bookings;
+
+  static TripState _initialState(Trip info, TripsCubit trips) {
+    final booked = trips.tripOrNull(info.id)?.booked ?? info.booked;
+    return TripState(
+      current: booked,
+      booked: booked,
+      booking: trips.state.pendingBookings.contains(info.id),
+    );
+  }
+
+  void _adoptConfirmed(TripsState shared) {
+    if (isClosed) return;
+    final latest = shared.trips
+        .where((trip) => trip.id == info.id)
+        .firstOrNull
+        ?.booked;
+    if (latest == null) return;
+    final previous = state.booked;
+    final current = itinerary;
+    emit(
+      TripState(
+        current: current.copyWith(
+          homebound: current.homebound == previous.homebound
+              ? latest.homebound
+              : current.homebound,
+          hotel: current.hotel == previous.hotel ? latest.hotel : current.hotel,
+          meetings: latest.meetings,
+        ),
+        booked: latest,
+        booking: shared.pendingBookings.contains(info.id),
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() async {
+    await _bookings.cancel();
+    await super.close();
+  }
 
   @override
   List<AgentCapability> get agentCapabilities => [
@@ -36,7 +79,9 @@ class TripCubit({
     .calls(moveMeeting),
     .calls(setHomeboundFlight),
     .calls(setHotelNights),
-    if (bookingChanges.isNotEmpty && !state.booking && changesBreach == null)
+    if (bookingChanges.items.isNotEmpty &&
+        !state.booking &&
+        changesBreach == null)
       .callsWithApproval(bookChanges),
   ];
 
@@ -55,51 +100,40 @@ class TripCubit({
     traveller: traveller,
   );
 
-  /// The bookings that differ from what is booked, in the order the screen
-  /// lists them.
-  List<BookingChange> get bookingChanges {
-    final now = itinerary;
-    final was = state.booked;
-    return [
-      if ((now.hotel, was.hotel) case (final hotel?, final booked?)
-          when hotel.nights != booked.nights)
-        HotelNightsChange(hotel, was: booked),
-      if (!now.homebound.isSameAs(was.homebound))
-        FlightHomeChange(now.homebound, was: was.homebound),
-    ];
-  }
+  BookingChanges get bookingChanges =>
+      BookingChanges.between(itinerary, state.booked);
 
   /// Why the changed bookings break the policy, or null when they can be
   /// booked. A booking that stays as it is does not count.
-  PolicyBreach? get changesBreach =>
-      switch (bookingChanges.whereType<FlightHomeChange>().firstOrNull) {
-        final change? => _homeboundBreach(change.flight),
-        null => null,
+  PolicyBreach? get changesBreach {
+    for (final change in bookingChanges.items) {
+      final breach = switch (change) {
+        HotelNightsChange(:final hotel) => Policy.checkNightly(hotel.nightly),
+        FlightHomeChange(:final flight) => _homeboundBreach(flight),
       };
+      if (breach != null) return breach;
+    }
+    return null;
+  }
 
-  int get changesCost =>
-      bookingChanges.fold(0, (sum, change) => sum + change.cost);
-
-  /// What does not fit together on the screen now.
   List<TripWarning> get warnings {
     final hotel = itinerary.hotel;
     final home = dateOnly(itinerary.homebound.departs);
     final out = dateOnly(itinerary.outbound.departs);
+    final nights = calendarDaysBetween(out, home);
     return [
-      if (hotel != null && dateOnly(hotel.checkOut).isBefore(home))
+      if (hotel != null && calendarDaysBetween(hotel.checkOut, home) > 0)
         NoHotelForNight(dateOnly(hotel.checkOut)),
-      if (hotel == null && home.isAfter(out))
-        NoHotelBooked(home.difference(out).inDays),
+      if (hotel == null && nights > 0) NoHotelBooked(nights),
       if (_homeboundBreach(itinerary.homebound) case final breach?)
         BreaksPolicy(breach),
     ];
   }
 
-  /// The flights home on the homebound day, for the screen's picker.
   List<(Flight, PolicyBreach?)> get homeboundOptions => [
     for (final flight in flights.on(
-      itinerary.homebound.from,
-      itinerary.homebound.to,
+      itinerary.homebound.origin,
+      itinerary.homebound.destination,
       itinerary.homebound.departs,
     ))
       (flight, _homeboundBreach(flight)),
@@ -112,47 +146,46 @@ class TripCubit({
     String origin,
     String destination,
     DateTime date,
-  ) => [
-    for (final flight in flights.on(
-      origin.toUpperCase(),
-      destination.toUpperCase(),
-      date,
-    ))
-      FlightOption(
-        number: flight.number,
-        departs: forAgent(flight.departs),
-        arrives: forAgent(flight.arrives),
-        fare: flight.fare,
-        unavailable: destination.toUpperCase() == itinerary.homebound.to
-            ? _homeboundBreach(flight)?.forAgent
-            : null,
-      ),
-  ];
+  ) {
+    final originCode = AirportCode.tryParse(origin);
+    final destinationCode = AirportCode.tryParse(destination);
+    if (originCode == null || destinationCode == null) {
+      _refuse('Use three-letter airport codes, such as BER and WAW.');
+    }
+    return [
+      for (final flight in flights.on(originCode, destinationCode, date))
+        FlightOption(
+          number: flight.number.value,
+          departs: forAgent(flight.departs),
+          arrives: forAgent(flight.arrives),
+          fare: flight.fare.toInt(),
+          unavailable: destinationCode == itinerary.homebound.destination
+              ? _homeboundBreach(flight)?.forAgent
+              : null,
+        ),
+    ];
+  }
 
   /// Moves the meeting [meetingId] to start at [start], keeping its length.
   /// Meetings are in the traveller's calendar, so moving one books nothing.
   void moveMeeting(String meetingId, DateTime start) {
-    final meeting = itinerary.meeting(meetingId);
+    final id = MeetingId.tryParse(meetingId);
+    if (id == null) _refuse('A meeting id must not be empty.');
+    final meeting = itinerary.meeting(id);
     if (meeting == null) {
       _refuse('There is no meeting $meetingId on this trip.');
     }
-    emit(
-      _with(
-        itinerary.copyWith(
-          meetings: [
-            for (final other in itinerary.meetings)
-              if (other.id == meetingId) other.movedTo(start) else other,
-          ],
-        ),
-      ),
-    );
+    trips.moveMeeting(info.id, meeting.movedTo(start));
+    _adoptConfirmed(trips.state);
   }
 
   /// Puts the traveller on flight [number] home on [date], one that
   /// find_flights gives. Nothing is booked until book_changes.
   void setHomeboundFlight(String number, DateTime date) {
-    final flight = flights.find(number, date);
-    if (flight == null || flight.from != itinerary.homebound.from) {
+    final flightNumber = FlightNumber.tryParse(number);
+    if (flightNumber == null) _refuse('Invalid flight number: $number.');
+    final flight = flights.find(flightNumber, date);
+    if (flight == null) {
       _refuse('There is no flight $number home.');
     }
     if (changeHomeboundFlight(flight) case final breach?) {
@@ -160,8 +193,14 @@ class TripCubit({
     }
   }
 
-  /// Puts the traveller on [flight] home, unless the policy rules it out.
   PolicyBreach? changeHomeboundFlight(Flight flight) {
+    final booked = info.booked.homebound;
+    if (flight.origin != booked.origin ||
+        flight.destination != booked.destination) {
+      _refuse(
+        'The flight home must fly from ${booked.origin} to ${booked.destination}.',
+      );
+    }
     if (_homeboundBreach(flight) case final breach?) return breach;
 
     emit(_with(itinerary.copyWith(homebound: flight)));
@@ -178,55 +217,74 @@ class TripCubit({
     if (nights < 1 || nights > 14) {
       _refuse('A stay is 1 to 14 nights.');
     }
-    emit(_with(itinerary.copyWith(hotel: hotel.copyWith(nights: nights))));
+    emit(
+      _with(
+        itinerary.copyWith(hotel: hotel.copyWith(nights: NightCount(nights))),
+      ),
+    );
   }
 
   /// Adds [hotel] to the trip as booked: the traveller booked it themselves.
   void addHotel(HotelStay hotel) {
-    final booked = state.booked.copyWith(hotel: hotel);
-    trips.book(info.id, booked);
-    emit(
-      TripState(
-        current: itinerary.copyWith(hotel: hotel),
-        booked: booked,
-      ),
-    );
+    trips.confirmHotel(info.id, hotel);
+    _adoptConfirmed(trips.state);
   }
 
   /// Books every change exactly as it is on the screen and charges its cost
   /// to the company card. Returns what was booked, to tell the traveller.
   Future<Booked> bookChanges() async {
-    if (changesBreach case final breach?) {
-      _refuse('${breach.forAgent}.');
-    }
-    final booking = itinerary;
+    _adoptConfirmed(trips.state);
+    if (state.booking) _refuse('The changes are already being booked.');
     final changes = bookingChanges;
-    _log.info('Booking ${changes.length} changes of trip ${info.id}');
-    emit(TripState(current: booking, booked: state.booked, booking: true));
-    // Waypoint's showcase books nothing for real.
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    final confirmation = 'WP-${48213 + booking.homebound.departs.day}';
-    trips.book(info.id, booking);
-    _log.info('Booked the changes of trip ${info.id} as $confirmation');
-    if (!isClosed) {
-      emit(TripState(current: itinerary, booked: booking));
-      emitPresentation(TripPresentationEventChangesBooked(confirmation));
+    if (changes.items.isEmpty) _refuse('There are no booking changes.');
+    if (changesBreach case final breach?) _refuse('${breach.forAgent}.');
+    final booking = itinerary;
+    final previouslyBooked = state.booked;
+    if (!trips.reserveBooking(info.id)) {
+      _refuse('The changes are already being booked.');
     }
-    return Booked(
-      confirmation: confirmation,
-      changes: [
-        for (final ChangeSummary(:what, :now) in changes.map(ChangeSummary.of))
-          '$what: $now',
-      ],
-      charged: changes.fold(0, (sum, change) => sum + change.cost),
-    );
+    _adoptConfirmed(trips.state);
+    try {
+      _log.info('Booking ${changes.items.length} changes of trip ${info.id}');
+      // Waypoint's showcase books nothing for real.
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      final confirmation = BookingReference(
+        'WP-${48213 + booking.homebound.departs.day}',
+      );
+      trips.completeBooking(
+        info.id,
+        previouslyBooked: previouslyBooked,
+        requested: booking,
+      );
+      _adoptConfirmed(trips.state);
+      _log.info('Booked the changes of trip ${info.id} as $confirmation');
+      if (!isClosed) {
+        emitPresentation(TripPresentationEventChangesBooked(confirmation));
+      }
+      return Booked(
+        confirmation: confirmation.value,
+        changes: [
+          for (final ChangeSummary(:what, :now) in changes.items.map(
+            ChangeSummary.of,
+          ))
+            '$what: $now',
+        ],
+        charged: changes.totalCost.toInt(),
+      );
+    } finally {
+      trips.releaseBooking(info.id);
+      _adoptConfirmed(trips.state);
+    }
   }
 
   PolicyBreach? _homeboundBreach(Flight flight) =>
       Policy.checkHomebound(flight, itinerary.meetings);
 
-  TripState _with(Itinerary itinerary) =>
-      TripState(current: itinerary, booked: state.booked);
+  TripState _with(Itinerary itinerary) => TripState(
+    current: itinerary,
+    booked: state.booked,
+    booking: state.booking,
+  );
 
   Never _refuse(String reason) {
     _log.warning('Refused: $reason');
@@ -245,53 +303,12 @@ final class const TripState({
 
 sealed class const TripPresentationEvent();
 
-/// The changes are booked under [confirmation].
-final class const TripPresentationEventChangesBooked(final String confirmation)
-    extends TripPresentationEvent;
+final class const TripPresentationEventChangesBooked(
+  final BookingReference confirmation,
+) extends TripPresentationEvent;
 
-/// One booking that differs from what is booked.
-sealed class const BookingChange() with Equatable {
-  /// The item of the trip that changes.
-  String get id;
-
-  /// What the change costs on top of the booking, in euros.
-  int get cost;
-}
-
-/// The stay at [hotel] has another number of nights than [was].
-final class const HotelNightsChange(
-  final HotelStay hotel, {
-  required final HotelStay was,
-}) extends BookingChange {
-  @override
-  List<Object?> get props => [hotel, was];
-
-  @override
-  String get id => 'hotel';
-
-  @override
-  int get cost => (hotel.nights - was.nights) * hotel.nightly;
-}
-
-/// The traveller flies home on [flight] instead of [was].
-final class const FlightHomeChange(
-  final Flight flight, {
-  required final Flight was,
-}) extends BookingChange {
-  @override
-  List<Object?> get props => [flight, was];
-
-  @override
-  String get id => 'homebound';
-
-  @override
-  int get cost => flight.fare - was.fare + changeFee;
-}
-
-/// What does not fit together on the trip.
 sealed class const TripWarning() with Equatable;
 
-/// The hotel stay ends on [night], before the flight home.
 final class const NoHotelForNight(final DateTime night) extends TripWarning {
   @override
   List<Object?> get props => [night];

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// A field to write in, with [trailing] such as its button at the end.
 final class const WaypointTextField({
   super.key,
   required final TextEditingController controller,

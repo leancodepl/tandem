@@ -22,7 +22,6 @@ abstract final class Palette() {
   static const aiText = Color(0xFF4AA8FF);
   static const warn = Color(0xFFE5A94A);
 
-  /// What dims the screen behind a sheet.
   static const scrim = Color(0xB3000000);
 }
 
@@ -30,7 +29,6 @@ abstract final class Radii() {
   static const card = BorderRadius.all(Radius.circular(10));
   static const control = BorderRadius.all(Radius.circular(10));
 
-  /// The corners of a sheet, a dialog and the assistant's dock.
   static const sheet = Radius.circular(16);
 }
 
@@ -62,7 +60,6 @@ abstract final class AppText() {
     color: Palette.ink,
   );
 
-  /// The title of a card in a list, such as a trip's city.
   static const cardTitle = TextStyle(
     fontFamily: _condensed,
     package: _package,
@@ -73,7 +70,6 @@ abstract final class AppText() {
     color: Palette.ink,
   );
 
-  /// Departure and arrival times.
   static const time = TextStyle(
     fontFamily: _condensed,
     package: _package,
@@ -114,7 +110,6 @@ abstract final class AppText() {
     fontFeatures: _figures,
   );
 
-  /// What follows a title, such as a trip's dates.
   static const subtitle = TextStyle(
     fontFamily: _sans,
     package: _package,
@@ -135,7 +130,6 @@ abstract final class AppText() {
     fontFeatures: _figures,
   );
 
-  /// Day headers: the one place with capitals and tracking.
   static const day = TextStyle(
     fontFamily: _sans,
     package: _package,
@@ -154,7 +148,6 @@ abstract final class AppText() {
     height: 1.2,
   );
 
-  /// What no longer holds, merged onto another style.
   static const struck = TextStyle(
     decoration: TextDecoration.lineThrough,
     decorationColor: Palette.muted,

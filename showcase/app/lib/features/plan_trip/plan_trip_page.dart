@@ -36,7 +36,10 @@ final class const PlanTripPage({
   @override
   Widget build(BuildContext context) {
     final invitation = switch (invitationTripId) {
-      final tripId? => context.watch<Inbox>().invitation(tripId),
+      final tripId? => switch (TripId.tryParse(tripId)) {
+        final id? => context.watch<Inbox>().invitation(id),
+        null => null,
+      },
       null => null,
     };
     return switch ((invitationTripId, invitation)) {
@@ -83,7 +86,7 @@ final class const PlanTripPage({
   ) {
     switch (event) {
       case PlanTripPresentationEventBooked(:final tripId):
-        context.router.replace(TripRoute(tripId: tripId));
+        context.router.replace(TripRoute(tripId: tripId.value));
     }
   }
 }
@@ -252,8 +255,8 @@ final class const _PlanTripForm() extends HookWidget {
                             (final hotel?, final nights?) => l10n.planHotelLine(
                               hotel.name,
                               nights,
-                              l10n.euros(hotel.nightly),
-                              hotel.walkMinutes,
+                              l10n.money(hotel.nightly),
+                              hotel.walkDuration.inMinutes,
                             ),
                             _ => null,
                           },
@@ -264,7 +267,7 @@ final class const _PlanTripForm() extends HookWidget {
                       Icons.verified_user_outlined,
                       l10n.companyPolicy(
                         l10n.tripPolicy(
-                          l10n.euros(Policy.maxNightly),
+                          l10n.money(Policy.maxNightly),
                           l10n.policyMorningUntil,
                         ),
                       ),
@@ -279,7 +282,7 @@ final class const _PlanTripForm() extends HookWidget {
           child: WaypointSubmit(
             label: plan.booking ? l10n.booking : l10n.bookTrip,
             busy: plan.booking,
-            total: WaypointTotal(l10n.planTotal, l10n.euros(plan.total)),
+            total: WaypointTotal(l10n.planTotal, l10n.money(plan.total)),
             onSubmit: cubit.ready && !busy
                 ? () async {
                     await cubit.book();
@@ -317,10 +320,10 @@ final class const _Words(
 extension on AppLocalizations {
   String? flightLine(Flight? flight) => switch (flight) {
     final flight? => planFlightLine(
-      flight.number,
+      flight.number.value,
       dayTime(flight.departs),
       time(flight.arrives),
-      euros(flight.fare),
+      money(flight.fare),
     ),
     null => null,
   };

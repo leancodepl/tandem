@@ -124,6 +124,19 @@ def test_a_hotel_confirmation_fills_every_field_of_the_booking(agent_url: str) -
     ]
 
 
+def test_a_refused_booking_field_is_explained_instead_of_claiming_success(agent_url: str) -> None:
+    thread = Thread(f"{agent_url}/agent/booking", "draft: The hotel booking", BOOKING_TOOLS)
+    first = thread.run({}, CONFIRMATION)
+    reason = "The check-in is outside this trip."
+
+    reply = thread.run(
+        {},
+        answers=answer(first, {"set_check_in": {"status": "refused", "reason": reason}}),
+    )
+
+    assert reply.text == f"Some booking fields could not be filled in. {reason}"
+
+
 PLAN_TOOLS = [
     {"name": name, "description": "", "parameters": {"type": "object", "properties": {}}}
     for name in [

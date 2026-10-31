@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waypoint/agents.dart';
+import 'package:waypoint/features/arrival/arrival_arrangements_cubit.dart';
 import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_travel/demo.dart';
@@ -26,6 +27,7 @@ final class const GlobalProviders({
     ],
     child: MultiBlocProvider(
       providers: [
+        BlocProvider(create: (context) => ArrivalArrangementsCubit()),
         BlocProvider(
           create: (context) => TripsCubit(demoTrips(), inbox: context.read()),
         ),

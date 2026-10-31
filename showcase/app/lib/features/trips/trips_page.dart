@@ -54,7 +54,7 @@ final class const TripsPage({super.key}) extends StatelessWidget {
               child: _TripCard(
                 trip,
                 onTap: () =>
-                    context.router.navigate(TripRoute(tripId: trip.id)),
+                    context.router.navigate(TripRoute(tripId: trip.id.value)),
               ),
             ),
         const SizedBox(height: 20),
@@ -67,8 +67,9 @@ final class const TripsPage({super.key}) extends StatelessWidget {
               // After a trip, what is left to do is its expenses.
               child: _TripCard(
                 trip,
-                onTap: () =>
-                    context.router.push(ExpensesReportRoute(tripId: trip.id)),
+                onTap: () => context.router.push(
+                  ExpensesReportRoute(tripId: trip.id.value),
+                ),
               ),
             ),
       ],
@@ -148,14 +149,14 @@ final class const _TripCard(
       title: city.toUpperCase(),
       subtitle: l10n.tripDates(
         l10n.dayRange(out, home),
-        home.difference(out).inDays,
+        calendarDaysBetween(out, home),
       ),
       caption: purpose ?? l10n.clientWork,
       footer: [
         WaypointNote(
           Icons.flight_rounded,
           l10n.flightAt(
-            booked.outbound.number,
+            booked.outbound.number.value,
             l10n.time(booked.outbound.departs),
           ),
           maxLines: 1,

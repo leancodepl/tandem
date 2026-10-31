@@ -14,6 +14,7 @@ import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 import 'package:waypoint_scripted_agent/waypoint_scripted_agent.dart';
+import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
   testWidgets(
@@ -114,7 +115,10 @@ void main() {
       await _settle(tester);
 
       final trips = tester.element(find.text('COPENHAGEN')).read<TripsCubit>();
-      expect(trips.tripOrNull('copenhagen')?.booked.hotel?.nightly, 190);
+      expect(
+        trips.tripOrNull(TripId('copenhagen'))?.booked.hotel?.nightly,
+        wholeMoney(190),
+      );
     },
   );
 

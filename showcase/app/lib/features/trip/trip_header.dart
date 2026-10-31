@@ -11,7 +11,6 @@ import 'package:waypoint/navigation/app_router.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
-/// The city, the dates and the route of the trip.
 final class const TripHeader({super.key, required final bool wide})
     extends StatelessWidget {
   @override
@@ -25,10 +24,13 @@ final class const TripHeader({super.key, required final bool wide})
     final l10n = context.l10n;
     final dates = l10n.tripDates(
       l10n.dayRange(out, home),
-      home.difference(out).inDays,
+      calendarDaysBetween(out, home),
     );
     final display = wide ? AppText.display : AppText.headline;
-    final route = _Route(itinerary.outbound.from, itinerary.outbound.to);
+    final route = _Route(
+      itinerary.outbound.origin,
+      itinerary.outbound.destination,
+    );
 
     return Column(
       crossAxisAlignment: .stretch,
@@ -59,28 +61,29 @@ final class const TripHeader({super.key, required final bool wide})
   }
 }
 
-final class const _Route(final String from, final String to)
-    extends StatelessWidget {
+final class const _Route(
+  final AirportCode origin,
+  final AirportCode destination,
+) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const .only(bottom: 8),
     child: Row(
       spacing: 12,
       children: [
-        Text(from, style: AppText.route),
+        Text(origin.value, style: AppText.route),
         const Expanded(child: WaypointDivider(color: Palette.lineStrong)),
         const RotatedBox(
           quarterTurns: 1,
           child: Icon(Icons.flight_rounded, size: 18, color: Palette.ink),
         ),
         const Expanded(child: WaypointDivider(color: Palette.lineStrong)),
-        Text(to, style: AppText.route),
+        Text(destination.value, style: AppText.route),
       ],
     ),
   );
 }
 
-/// What does not fit together on the trip, such as a night without a hotel.
 final class const TripWarnings({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -115,7 +118,7 @@ final class const TripWarnings({super.key}) extends StatelessWidget {
 final class const TripNews({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final id = context.select<TripCubit, String>((trip) => trip.info.id);
+    final id = context.select<TripCubit, TripId>((trip) => trip.info.id);
     final news = context.select<TripsCubit, List<ForwardedEmail>>(
       (trips) => trips.news(id),
     );
@@ -141,8 +144,6 @@ final class const TripNews({super.key}) extends StatelessWidget {
   }
 }
 
-/// Back to where the trip was opened from, and what the trip is for. It
-/// stays on top while the trip scrolls.
 final class const TripTopBar({super.key, required final bool wide})
     extends StatelessWidget {
   @override
@@ -155,7 +156,6 @@ final class const TripTopBar({super.key, required final bool wide})
   );
 }
 
-/// The way to the arrival day, for a trip whose arrival Waypoint knows.
 final class const ArrivalEntry({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -181,7 +181,7 @@ final class const ArrivalEntry({super.key}) extends StatelessWidget {
             small: true,
             primary: false,
             onPressed: () =>
-                context.router.navigate(ArrivalRoute(tripId: trip.id)),
+                context.router.navigate(ArrivalRoute(tripId: trip.id.value)),
           ),
         ],
       ),

@@ -9,21 +9,20 @@ import 'package:waypoint/features/trip/trip_action.dart';
 final class MarksCubit()
     extends Cubit<MarksState>
     with BlocPresentationMixin<MarksState, MarksPresentationEvent> {
-  this : super(const MarksState({}));
+  this : super(MarksState({}));
 
   void mark(String id) => emit(MarksState({...state.ids, id}));
 
   void unmark(String id) => emit(MarksState({...state.ids}..remove(id)));
 
-  void clear() => emit(const MarksState({}));
+  void clear() => emit(MarksState({}));
 
-  /// Marks the item that [action] changed, for the screen to show it.
   void markAction(TripAction action) {
     switch (action) {
       case BookChanges():
         clear();
       case MoveMeeting(:final meetingId?):
-        _changed(meetingId);
+        _changed(meetingId.value);
       case SetHomeboundFlight():
         _changed('homebound');
       case SetHotelNights():
@@ -39,13 +38,14 @@ final class MarksCubit()
   }
 }
 
-final class const MarksState(final Set<String> ids) with Equatable {
+final class MarksState(Set<String> ids) with Equatable {
+  final Set<String> ids = Set.unmodifiable(ids);
+
   @override
   List<Object?> get props => [ids];
 }
 
 sealed class const MarksPresentationEvent();
 
-/// The agent changed the item [id].
 final class const MarksPresentationEventItemChanged(final String id)
     extends MarksPresentationEvent;

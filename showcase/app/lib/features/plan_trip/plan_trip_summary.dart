@@ -1,8 +1,6 @@
 import 'package:waypoint/features/plan_trip/plan_trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_summary.dart';
 
-// What the agent sees of the form: every time with its weekday.
-
 final class const PlanSummary({
   final String? city,
   final String? purpose,
@@ -35,13 +33,13 @@ final class const PlanSummary({
     hotel: switch ((state.hotel, state.nights)) {
       (final hotel?, final nights?) => PlannedHotel(
         name: hotel.name,
-        nightly: hotel.nightly,
+        nightly: hotel.nightly.toInt(),
         nights: nights,
       ),
       _ => null,
     },
     missing: [for (final part in missing) part.forAgent],
-    total: state.total,
+    total: state.total.toInt(),
   );
 }
 

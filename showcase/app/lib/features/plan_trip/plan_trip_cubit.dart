@@ -4,7 +4,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
-import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/common/tandem/form_changes.dart';
 import 'package:waypoint/features/plan_trip/plan_trip_form_controller.dart';
@@ -16,19 +15,14 @@ part 'plan_trip_cubit.g.dart';
 
 final _log = Logger('PlanTrip');
 
-/// Where Waypoint flies from.
-const _home = 'WAW';
+final _home = AirportCode('WAW');
 
-/// The new trip that an invitation or the traveller's words fill in. The
-/// traveller books it with their own tap, so nothing here needs approval.
-/// The company policy holds for the agent and the traveller alike.
 @TandemAgent()
 class PlanTripCubit({
   required final TripsCubit trips,
   required final FlightSearch flights,
   required final HotelSearch hotels,
 
-  /// The invitation in the inbox that the trip is planned from, if any.
   final ForwardedEmail? invitation,
   @override required final PlanTripFormController form,
 }) extends Cubit<PlanTripState>
@@ -36,8 +30,7 @@ class PlanTripCubit({
         _$PlanTripCubit,
         BlocPresentationMixin<PlanTripState, PlanTripPresentationEvent>,
         FormChanges<PlanTripState> {
-  this : super(const PlanTripState()) {
-    // Whoever changes the city, what no longer fits goes.
+  this : super(PlanTripState()) {
     form.addRelation(form.city, (city) => city, (_) => _refit());
   }
 
@@ -93,7 +86,7 @@ class PlanTripCubit({
       _refuse('A meeting ends after it starts.');
     }
     final meeting = Meeting(
-      id: 'meeting-${state.meetings.length + 1}',
+      id: MeetingId('meeting-${state.meetings.length + 1}'),
       title: title,
       place: place,
       start: start,
@@ -117,45 +110,42 @@ class PlanTripCubit({
     String origin,
     String destination,
     DateTime date,
-  ) => [
-    for (final flight in flights.on(
-      origin.toUpperCase(),
-      destination.toUpperCase(),
-      date,
-    ))
-      FlightOption(
-        number: flight.number,
-        departs: forAgent(flight.departs),
-        arrives: forAgent(flight.arrives),
-        fare: flight.fare,
-        unavailable: _flightRefusal(flight, state)?.forAgent,
-      ),
-  ];
+  ) {
+    final originCode = AirportCode.tryParse(origin);
+    final destinationCode = AirportCode.tryParse(destination);
+    if (originCode == null || destinationCode == null) {
+      _refuse('Use three-letter airport codes, such as WAW and VIE.');
+    }
+    return [
+      for (final flight in flights.on(originCode, destinationCode, date))
+        FlightOption(
+          number: flight.number.value,
+          departs: forAgent(flight.departs),
+          arrives: forAgent(flight.arrives),
+          fare: flight.fare.toInt(),
+          unavailable: _flightRefusal(flight, state)?.forAgent,
+        ),
+    ];
+  }
 
   /// Puts the traveller on flight [number] from Warsaw on [date], one that
   /// find_flights gives.
   void setOutboundFlight(String number, DateTime date) {
-    final flight = flights.find(number, date);
-    if (flight == null) {
-      _refuse('There is no flight $number.');
-    }
+    final flight = _findFlight(number, date);
     if (_outboundRefusal(flight, state) case final refusal?) {
       _refuse('${refusal.forAgent}.');
     }
-    emit(state.copyWith(outbound: flight));
+    emit(_fitted(state.copyWith(outbound: flight)));
   }
 
   /// Puts the traveller on flight [number] home to Warsaw on [date], one
   /// that find_flights gives.
   void setHomeboundFlight(String number, DateTime date) {
-    final flight = flights.find(number, date);
-    if (flight == null) {
-      _refuse('There is no flight $number.');
-    }
+    final flight = _findFlight(number, date);
     if (_homeboundRefusal(flight, state) case final refusal?) {
       _refuse('${refusal.forAgent}.');
     }
-    emit(state.copyWith(homebound: flight));
+    emit(_fitted(state.copyWith(homebound: flight)));
   }
 
   /// Finds the hotels in [city], with their price a night, the minutes on
@@ -163,10 +153,10 @@ class PlanTripCubit({
   List<HotelOption> findHotels(String city) => [
     for (final hotel in hotels.inCity(city))
       HotelOption(
-        id: hotel.id,
+        id: hotel.id.value,
         name: hotel.name,
-        nightly: hotel.nightly,
-        walkMinutes: hotel.walkMinutes,
+        nightly: hotel.nightly.toInt(),
+        walkMinutes: hotel.walkDuration.inMinutes,
         unavailable: _hotelRefusal(hotel)?.forAgent,
       ),
   ];
@@ -174,7 +164,9 @@ class PlanTripCubit({
   /// Books the traveller into the hotel [hotelId], one that find_hotels
   /// gives, from the day they land to the day they fly home.
   void setHotel(String hotelId) {
-    final hotel = hotels.find(hotelId);
+    final id = HotelId.tryParse(hotelId);
+    if (id == null) _refuse('A hotel id must not be empty.');
+    final hotel = hotels.find(id);
     if (hotel == null) {
       _refuse('There is no hotel $hotelId.');
     }
@@ -187,21 +179,19 @@ class PlanTripCubit({
         'home.',
       );
     }
+    if (state.nights case final nights? when nights <= 0) {
+      _refuse('A trip that returns on the same day needs no hotel.');
+    }
     emit(state.copyWith(hotel: hotel));
   }
 
-  /// What is still missing before the trip can be booked.
   List<PlanPart> get missing => [
     if (form.city.fieldValue == null) .city,
     ...state.missingPicks,
   ];
 
-  /// Whether the traveller can book the trip: nothing missing, nothing
-  /// wrong, and not being booked already.
   bool get ready => missing.isEmpty && form.value.canSubmit && !state.booking;
 
-  /// Books the trip as planned and keeps it with the traveller's trips,
-  /// unless something is missing or does not fit.
   Future<void> book() async {
     if (!ready) return;
 
@@ -240,13 +230,15 @@ class PlanTripCubit({
           outbound: outbound,
           homebound: homebound,
           hotel: switch ((plan.hotel, plan.nights)) {
-            (final hotel?, final nights?) => HotelStay(
+            (final hotel?, final nights?) when nights > 0 => HotelStay(
               name: hotel.name,
               address: hotel.address,
               checkIn: _checkIn(outbound.arrives),
-              nights: nights,
+              nights: NightCount(nights),
               nightly: hotel.nightly,
-              confirmation: 'WP-H${hotel.nightly}${outbound.departs.day}',
+              confirmation: BookingReference(
+                'WP-H${hotel.nightly.toInt()}${outbound.departs.day}',
+              ),
             ),
             _ => null,
           },
@@ -260,14 +252,12 @@ class PlanTripCubit({
     }
   }
 
-  /// The traveller changed [input] by hand.
   void unmark(PlanTripInput input) =>
       emit(state.copyWith(marked: {...state.marked}..remove(input)));
 
   void _mark(PlanTripInput input) =>
       emit(state.copyWith(marked: {...state.marked, input}));
 
-  /// What the trip is for, or null when it is blank.
   String? get _purpose => switch (form.purpose.fieldValue.trim()) {
     '' => null,
     final purpose => purpose,
@@ -277,33 +267,37 @@ class PlanTripCubit({
     if (!isClosed) emit(_fitted(state));
   }
 
-  /// [plan] without the flights and the hotel that the city, its meetings
-  /// and the policy do not allow.
-  PlanTripState _fitted(PlanTripState plan) => plan.copyWith(
-    outbound: switch (plan.outbound) {
-      final flight? when _outboundRefusal(flight, plan) == null => flight,
-      _ => null,
-    },
-    homebound: switch (plan.homebound) {
-      final flight? when _homeboundRefusal(flight, plan) == null => flight,
-      _ => null,
-    },
-    hotel: switch (plan.hotel) {
-      final hotel? when _hotelRefusal(hotel) == null => hotel,
-      _ => null,
-    },
-  );
+  PlanTripState _fitted(PlanTripState plan) {
+    final fitted = plan.copyWith(
+      outbound: switch (plan.outbound) {
+        final flight? when _outboundRefusal(flight, plan) == null => flight,
+        _ => null,
+      },
+      homebound: switch (plan.homebound) {
+        final flight? when _homeboundRefusal(flight, plan) == null => flight,
+        _ => null,
+      },
+    );
+    return fitted.copyWith(
+      hotel: switch ((fitted.hotel, fitted.nights)) {
+        (final hotel?, final nights?)
+            when nights > 0 && _hotelRefusal(hotel) == null =>
+          hotel,
+        _ => null,
+      },
+    );
+  }
 
   PlanRefusal? _flightRefusal(Flight flight, PlanTripState plan) =>
-      flight.to == _home
+      flight.destination == _home
       ? _homeboundRefusal(flight, plan)
       : _outboundRefusal(flight, plan);
 
   PlanRefusal? _outboundRefusal(Flight flight, PlanTripState plan) {
     final airport = tripAirports[form.city.fieldValue];
     if (airport == null) return const CityNotSet();
-    if (flight.from != _home || flight.to != airport) {
-      return WrongRoute(flight, from: _home, to: airport);
+    if (flight.origin != _home || flight.destination != airport) {
+      return WrongRoute(flight, origin: _home, destination: airport);
     }
     return BreaksPlanPolicy.of(Policy.checkOutbound(flight, plan.meetings));
   }
@@ -311,8 +305,8 @@ class PlanTripCubit({
   PlanRefusal? _homeboundRefusal(Flight flight, PlanTripState plan) {
     final airport = tripAirports[form.city.fieldValue];
     if (airport == null) return const CityNotSet();
-    if (flight.from != airport || flight.to != _home) {
-      return WrongRoute(flight, from: airport, to: _home);
+    if (flight.origin != airport || flight.destination != _home) {
+      return WrongRoute(flight, origin: airport, destination: _home);
     }
     return BreaksPlanPolicy.of(Policy.checkHomebound(flight, plan.meetings));
   }
@@ -324,27 +318,47 @@ class PlanTripCubit({
     return BreaksPlanPolicy.of(Policy.checkNightly(hotel.nightly));
   }
 
+  Flight _findFlight(String number, DateTime date) {
+    final flightNumber = FlightNumber.tryParse(number);
+    if (flightNumber == null) _refuse('Invalid flight number: $number.');
+    final flight = flights.find(flightNumber, date);
+    if (flight == null) _refuse('There is no flight $number.');
+    return flight;
+  }
+
   Never _refuse(String reason) {
     _log.warning('Refused: $reason');
     throw ToolCallRefused(reason);
   }
 }
 
-/// What the agent picks of a trip as it is being planned, before it is
-/// booked. The city and the purpose are the form's.
 @CopyWith()
-final class const PlanTripState({
+final class const PlanTripState._({
   final List<Meeting> meetings = const [],
   final Flight? outbound,
   final Flight? homebound,
   final Hotel? hotel,
 
-  /// Whether the trip is being booked as it is. Nothing changes it then.
   final bool booking = false,
 
-  /// What the agent filled in and the traveller has not changed.
   final Set<PlanTripInput> marked = const {},
 }) with Equatable {
+  factory({
+    List<Meeting> meetings = const [],
+    Flight? outbound,
+    Flight? homebound,
+    Hotel? hotel,
+    bool booking = false,
+    Set<PlanTripInput> marked = const {},
+  }) => ._(
+    meetings: List.unmodifiable(meetings),
+    outbound: outbound,
+    homebound: homebound,
+    hotel: hotel,
+    booking: booking,
+    marked: Set.unmodifiable(marked),
+  );
+
   @override
   List<Object?> get props => [
     meetings,
@@ -355,22 +369,16 @@ final class const PlanTripState({
     marked,
   ];
 
-  /// The nights between landing and flying home, once both flights are set.
   int? get nights => switch ((outbound, homebound)) {
-    (final out?, final home?) => dateOnly(
-      home.departs,
-    ).difference(dateOnly(out.arrives)).inDays,
+    (final out?, final home?) => calendarDaysBetween(out.arrives, home.departs),
     _ => null,
   };
 
-  /// What the trip costs: both fares and every night at the hotel.
-  int get total =>
-      (outbound?.fare ?? 0) +
-      (homebound?.fare ?? 0) +
-      (hotel?.nightly ?? 0) * (nights ?? 0);
+  Money get total =>
+      (outbound?.fare ?? wholeMoney(0)) +
+      (homebound?.fare ?? wholeMoney(0)) +
+      (hotel?.nightly ?? wholeMoney(0)) * (nights ?? 0);
 
-  /// What the agent still has to pick before the trip can be booked: the
-  /// meetings, both flights and the hotel. The city is the form's.
   List<PlanPart> get missingPicks => [
     if (meetings.isEmpty) .meetings,
     if (outbound == null) .outbound,
@@ -379,13 +387,11 @@ final class const PlanTripState({
   ];
 }
 
-/// What of the trip the traveller can set by hand.
 enum PlanTripInput() {
   city,
   purpose,
 }
 
-/// A part of a trip that the plan can miss.
 enum PlanPart(
   /// The part in English, for the agent.
   final String forAgent,
@@ -399,11 +405,9 @@ enum PlanPart(
 
 sealed class const PlanTripPresentationEvent();
 
-/// The trip is booked as the trip [tripId].
-final class const PlanTripPresentationEventBooked(final String tripId)
+final class const PlanTripPresentationEventBooked(final TripId tripId)
     extends PlanTripPresentationEvent;
 
-/// Why the plan cannot take a flight or a hotel.
 sealed class const PlanRefusal() {
   /// The refusal in English, for the agent.
   String get forAgent;
@@ -414,15 +418,14 @@ final class const CityNotSet() extends PlanRefusal {
   String get forAgent => 'Set the city first';
 }
 
-/// [flight] does not fly the trip's way, from [from] to [to].
 final class const WrongRoute(
   final Flight flight, {
-  required final String from,
-  required final String to,
+  required final AirportCode origin,
+  required final AirportCode destination,
 }) extends PlanRefusal {
   @override
   String get forAgent =>
-      'Flight ${flight.number} does not fly from $from to $to';
+      'Flight ${flight.number} does not fly from $origin to $destination';
 }
 
 final class const HotelNotInCity(final Hotel hotel, final String city)

@@ -6,58 +6,72 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 /// app.
 final class ReportsCubit({required final Inbox inbox})
     extends Cubit<ReportsState> {
-  this : super(const ReportsState({}));
+  this : super(ReportsState({}));
 
-  ExpenseReport report(String tripId) =>
-      state.reports[tripId] ?? const ExpenseReport();
+  ExpenseReport report(TripId tripId) =>
+      state.reports[tripId] ?? ExpenseReport();
 
-  void save(String tripId, ExpenseReport report) =>
+  void save(TripId tripId, ExpenseReport report) =>
       emit(ReportsState({...state.reports, tripId: report}));
 
   /// The receipts forwarded for the trip [tripId], in the order of their
   /// numbers, which follow the days.
-  List<Receipt> receipts(String tripId) => [
+  List<Receipt> receipts(TripId tripId) => [
     for (final email in inbox.emails)
       if (email case ForwardedEmail(news: final Receipt receipt)
           when email.tripId == tripId)
         receipt,
-  ]..sort((a, b) => a.id.compareTo(b.id));
+  ]..sort((a, b) => a.id.value.compareTo(b.id.value));
 
   /// Whether the trip [tripId] has receipts and its report is not
   /// submitted.
-  bool waits(String tripId) =>
+  bool waits(TripId tripId) =>
       receipts(tripId).isNotEmpty && report(tripId).submitted == null;
 }
 
-final class const ReportsState(final Map<String, ExpenseReport> reports)
-    with Equatable {
+final class ReportsState(Map<TripId, ExpenseReport> reports) with Equatable {
+  final Map<TripId, ExpenseReport> reports = Map.unmodifiable(reports);
   @override
   List<Object?> get props => [reports];
 }
 
 /// An expense of a report: what a receipt shows and what the company pays
 /// back of it.
-final class const ExpenseLine({
+final class ExpenseLine({
   required final Receipt receipt,
 
   /// Paid back, in whole euros: the receipt's amount or less under the
   /// policy.
-  required final int claimed,
+  required final Money claimed,
 }) with Equatable {
+  this {
+    requireSupportedWholeMoney(claimed, 'claimed');
+    if (claimed <= wholeMoney(0) || claimed > receipt.paid) {
+      throw ArgumentError.value(
+        claimed,
+        'claimed',
+        'Must be positive and no more than the receipt amount',
+      );
+    }
+  }
+
   @override
   List<Object?> get props => [receipt, claimed];
 }
 
 /// The expenses of one trip, and its confirmation once submitted.
-final class const ExpenseReport({
-  final List<ExpenseLine> lines = const [],
-  final String? submitted,
+final class ExpenseReport({
+  List<ExpenseLine> lines = const [],
+  final BookingReference? submitted,
 }) with Equatable {
+  final List<ExpenseLine> lines = List.unmodifiable(lines);
+
   @override
   List<Object?> get props => [lines, submitted];
 
-  int get total => lines.fold(0, (sum, line) => sum + line.claimed);
+  Money get total =>
+      lines.fold(wholeMoney(0), (sum, line) => sum + line.claimed);
 
-  bool claims(String receiptId) =>
+  bool claims(ReceiptId receiptId) =>
       lines.any((line) => line.receipt.id == receiptId);
 }

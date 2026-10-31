@@ -140,6 +140,10 @@ jobs:
         run: flutter test
         working-directory: showcase/packages/waypoint_travel
 
+      - name: Test the showcase scripted agents
+        run: flutter test
+        working-directory: showcase/packages/waypoint_scripted_agent
+
       - name: Test showcase
         run: flutter test
         working-directory: showcase/app

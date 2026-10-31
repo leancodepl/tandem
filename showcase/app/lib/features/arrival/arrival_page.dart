@@ -11,6 +11,7 @@ import 'package:waypoint/common/logging/agent_event_log.dart';
 import 'package:waypoint/common/tandem/agent_failure.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/arrival/arrival_action.dart';
+import 'package:waypoint/features/arrival/arrival_arrangements_cubit.dart';
 import 'package:waypoint/features/arrival/arrival_catalog.dart';
 import 'package:waypoint/features/arrival/arrival_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
@@ -32,11 +33,20 @@ final class const ArrivalPage({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch ((
-    context.select<TripsCubit, Trip?>((trips) => trips.tripOrNull(tripId)),
-    context.watch<ArrivalDays>().of(tripId),
+    context.select<TripsCubit, Trip?>(
+      (trips) => trips.tripOrNull(TripId.tryParse(tripId)),
+    ),
+    switch (TripId.tryParse(tripId)) {
+      final id? => context.watch<ArrivalDays>().of(id),
+      null => null,
+    },
   )) {
     (final trip?, final day?) => BlocProvider(
-      create: (context) => ArrivalCubit(trip: trip, day: day),
+      create: (context) => ArrivalCubit(
+        trip: trip,
+        day: day,
+        arrangements: context.read<ArrivalArrangementsCubit>(),
+      ),
       child: Builder(
         builder: (context) => TandemScope.connected(
           surface: (context) => context.read<ArrivalCubit>(),
@@ -175,7 +185,7 @@ extension on AppLocalizations {
         BookRide(:final rideId) => switch (day.rides
             .where((ride) => ride.id == rideId)
             .firstOrNull) {
-          final ride? => askBookRide(ride.mode.name, euros(ride.fare)),
+          final ride? => askBookRide(ride.mode.name, money(ride.fare)),
           null => approvalFallback,
         },
         MessageHost() => askMessageHost(day.host.name),

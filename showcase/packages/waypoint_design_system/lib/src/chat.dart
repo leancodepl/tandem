@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:waypoint_design_system/src/theme.dart';
 
-/// What the traveller wrote to the assistant, on the right of the thread.
 final class const WaypointBubble(final String text, {super.key})
     extends StatelessWidget {
   @override
@@ -28,7 +27,6 @@ final class const WaypointBubble(final String text, {super.key})
   );
 }
 
-/// A blue dot next to what waits for the traveller.
 final class const WaypointDot({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const DecoratedBox(

@@ -1,6 +1,6 @@
 import 'package:tandem/tandem.dart';
-// ScriptedAgent runs in an app too: here it stands in for the model.
 import 'package:tandem/testing.dart';
+import 'package:waypoint_scripted_agent/src/flight_choice.dart';
 import 'package:waypoint_scripted_agent/src/last_user_text.dart';
 
 /// The trip's agent: when the workshop in Berlin moves to Friday, it fits
@@ -47,6 +47,19 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
     {'find_flights': final List<Object?> flights} => [
       _firstFlightAllowed(flights),
     ],
+    {'set_homebound_flight': {'status': final String status} && final result}
+        when status != 'returned' =>
+      [
+        AgentStep.say(switch (result) {
+          {'status': 'refused', 'reason': final String reason} =>
+            'The flight was not changed: $reason',
+          {'reason': final String reason} =>
+            'I could not confirm the flight change: $reason',
+          {'error': final String error} =>
+            'I could not confirm the flight change: $error',
+          _ => 'The flight change was not confirmed. Check the trip before booking.',
+        }),
+      ],
     {'set_homebound_flight': _} => _askToBook(
       request,
       'The workshop is on Friday now, so I added a night at the hotel and '
@@ -89,20 +102,12 @@ List<AgentStep> _askToBook(AgentRequest request, String lead) {
   };
 }
 
-/// The first flight that find_flights does not rule out.
 AgentStep _firstFlightAllowed(List<Object?> flights) {
-  for (final flight in flights) {
-    if (flight case {
-      'number': final String number,
-      // As TripCubit.findFlights writes it: "Fri 2026-10-30 18:05".
-      'departs': final String departs,
-      'unavailable': null,
-    }) {
-      return AgentStep.callTool('set_homebound_flight', {
-        'number': number,
-        'date': departs.split(' ')[1],
-      });
-    }
+  if (FlightChoice.allowed(flights).firstOrNull case final flight?) {
+    return AgentStep.callTool('set_homebound_flight', {
+      'number': flight.number,
+      'date': flight.dateArgument,
+    });
   }
   return const AgentStep.say('No flight home fits after the workshop.');
 }

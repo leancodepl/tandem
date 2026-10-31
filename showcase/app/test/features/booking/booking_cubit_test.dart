@@ -42,6 +42,14 @@ void main() {
     expect(() => booking.setTotalPrice(0), throwsA(isA<ToolCallRefused>()));
   });
 
+  test('an empty confirmation number is refused', () {
+    expect(
+      () => booking.setConfirmation('  '),
+      throwsA(isA<ToolCallRefused>()),
+    );
+    expect(form.confirmation.fieldValue, isEmpty);
+  });
+
   test('a check-out on the day of the check-in is refused', () {
     booking.setCheckIn(DateTime(2026, 10, 28, 15));
 
@@ -88,9 +96,9 @@ void main() {
     expect(booking.ready, isTrue);
 
     final stay = await _add(booking);
-    expect(stay?.nights, 1);
-    expect(stay?.nightly, 122);
-    expect(stay?.confirmation, '84213907');
+    expect(stay?.nights, NightCount(1));
+    expect(stay?.nightly, wholeMoney(122));
+    expect(stay?.confirmation, BookingReference('84213907'));
   });
 
   test('a hotel of only spaces is missing', () {
@@ -120,13 +128,22 @@ void main() {
     expect(booking.state.marked, isEmpty);
   });
 
+  test('a booking counts calendar nights across a clock change', () {
+    final draft = BookingDraft(
+      checkIn: DateTime(2026, 3, 29, 15),
+      checkOut: DateTime(2026, 3, 30, 11),
+    );
+
+    expect(draft.nights, 1);
+  });
+
   test('the price a night is the total over the nights, rounded', () {
     fill();
     booking
       ..setCheckOut(DateTime(2026, 10, 30))
       ..setTotalPrice(245);
 
-    expect(form.stay?.nightly, 123);
+    expect(form.stay?.nightly, wholeMoney(123));
   });
 
   test("the traveller's edit is what the agent sees", () {

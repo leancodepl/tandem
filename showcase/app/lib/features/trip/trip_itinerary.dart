@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/features/trip/trip_add_hotel.dart';
@@ -13,7 +12,6 @@ import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
-/// One thing on the trip's timeline.
 sealed class const PlanItem() {
   String get id;
 
@@ -41,51 +39,71 @@ final class const HotelItem(final HotelStay hotel, final HotelStay? booked)
 final class const MeetingItem(final Meeting meeting, final Meeting? booked)
     extends PlanItem {
   @override
-  String get id => meeting.id;
+  String get id => meeting.id.value;
 
   @override
   DateTime get at => meeting.start;
 }
 
-/// Where the hotel goes while the trip has none.
 final class const NoHotelItem(@override final DateTime at) extends PlanItem {
   @override
   String get id => 'hotel';
 }
 
-final class const DayPlan(final DateTime date, final List<PlanItem> items);
+final class const DayPlan(
+  final DateTime date,
+  final List<PlanItem> items, {
+  final DateTime? endDate,
+});
 
 List<DayPlan> planOf(Itinerary now, Itinerary booked) {
   final items = <PlanItem>[
     FlightItem('outbound', now.outbound, booked.outbound),
     if (now.hotel case final hotel?)
       HotelItem(hotel, booked.hotel)
-    else if (dateOnly(now.homebound.departs)
-        .isAfter(dateOnly(now.outbound.departs)))
+    else if (calendarDaysBetween(now.outbound.departs, now.homebound.departs) >
+        0)
       NoHotelItem(
-        dateOnly(now.outbound.departs).add(const Duration(hours: 15)),
+        DateTime(
+          now.outbound.departs.year,
+          now.outbound.departs.month,
+          now.outbound.departs.day,
+          15,
+        ),
       ),
     for (final meeting in now.meetings)
       MeetingItem(meeting, booked.meeting(meeting.id)),
     FlightItem('homebound', now.homebound, booked.homebound),
   ];
-  final first = dateOnly(now.outbound.departs);
-  final last = dateOnly(now.homebound.departs);
-  return [
-    for (
-      var date = first;
-      !date.isAfter(last);
-      date = DateTime(date.year, date.month, date.day + 1)
-    )
-      DayPlan(
-        date,
-        [
-          for (final item in items)
-            if (dateOnly(item.at) == date) item,
-        ]..sort((a, b) => a.at.compareTo(b.at)),
-      ),
-  ];
+  final byDay = <DateTime, List<PlanItem>>{};
+  for (final item in items) {
+    byDay.putIfAbsent(_timelineDay(item.at), () => []).add(item);
+  }
+  final first = _timelineDay(now.outbound.departs);
+  final last = _timelineDay(now.homebound.departs);
+  final days = byDay.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+  final sections = <DayPlan>[];
+  for (final (index, MapEntry(key: date, value: items)) in days.indexed) {
+    sections.add(DayPlan(date, items..sort((a, b) => a.at.compareTo(b.at))));
+    if (index + 1 == days.length) continue;
+    final next = days[index + 1].key;
+    final emptyDays = calendarDaysBetween(date, next) - 1;
+    if (emptyDays > 0 &&
+        calendarDaysBetween(first, date) >= 0 &&
+        calendarDaysBetween(next, last) >= 0) {
+      sections.add(
+        DayPlan(
+          addCalendarDays(date, 1),
+          const [],
+          endDate: emptyDays > 1 ? addCalendarDays(next, -1) : null,
+        ),
+      );
+    }
+  }
+  return sections;
 }
+
+DateTime _timelineDay(DateTime at) => DateTime(at.year, at.month, at.day);
 
 /// The trip's days: columns side by side when [wide], sections on a phone.
 /// A card that moves to another day glides there.
@@ -195,7 +213,13 @@ final class const _Day(
         crossAxisAlignment: .stretch,
         spacing: 10,
         children: [
-          Text(l10n.day(day.date).toUpperCase(), style: AppText.day),
+          Text(
+            switch (day.endDate) {
+              final end? => l10n.dayRange(day.date, end),
+              null => l10n.day(day.date),
+            }.toUpperCase(),
+            style: AppText.day,
+          ),
           if (day.items.isEmpty)
             Padding(
               padding: const .symmetric(vertical: 8),
@@ -232,13 +256,13 @@ final class const _FlightBody(final FlightItem item) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final FlightItem(:flight, :booked) = item;
-    final changed = !flight.isSameAs(booked);
+    final changed = !flight.isSameDepartureAs(booked);
     final l10n = context.l10n;
     return Column(
       crossAxisAlignment: .start,
       children: [
         _CardHead(
-          l10n.flightNumber(flight.number),
+          l10n.flightNumber(flight.number.value),
           trailing: item.id == 'outbound' ? l10n.flightOut : l10n.flightHome,
         ),
         const SizedBox(height: 4),
@@ -252,8 +276,8 @@ final class const _FlightBody(final FlightItem item) extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           l10n.flightRoute(
-            FlightSearch.airport(flight.from),
-            FlightSearch.airport(flight.to),
+            FlightSearch.airport(flight.origin),
+            FlightSearch.airport(flight.destination),
           ),
           style: AppText.label,
         ),
@@ -356,9 +380,9 @@ final class const _FlightPicker(
         for (final (flight, breach) in options)
           WaypointOption(
             lead: l10n.time(flight.departs),
-            label: breach == null ? flight.number : l10n.tooEarly,
-            trailing: l10n.euros(flight.fare),
-            selected: flight.isSameAs(selected),
+            label: breach == null ? flight.number.value : l10n.tooEarly,
+            trailing: l10n.money(flight.fare),
+            selected: flight.isSameDepartureAs(selected),
             onTap: breach == null ? () => onPick(flight) : null,
           ),
       ],
@@ -377,7 +401,7 @@ final class const _HotelCard(final HotelItem item) extends StatelessWidget {
       child: Column(
         crossAxisAlignment: .start,
         children: [
-          _CardHead(l10n.hotel, trailing: l10n.nights(hotel.nights)),
+          _CardHead(l10n.hotel, trailing: l10n.nights(hotel.nights.value)),
           const SizedBox(height: 4),
           Text(hotel.name, style: AppText.title),
           const SizedBox(height: 2),
@@ -385,14 +409,13 @@ final class const _HotelCard(final HotelItem item) extends StatelessWidget {
             l10n.hotelTimes(l10n.time(hotel.checkIn), l10n.day(hotel.checkOut)),
             style: AppText.label,
           ),
-          _Was(changed ? l10n.nights(booked.nights) : null),
+          _Was(changed ? l10n.nights(booked.nights.value) : null),
         ],
       ),
     );
   }
 }
 
-/// The way to add a hotel the traveller booked themselves.
 final class const _NoHotelCard() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -486,7 +509,6 @@ final class const _CardHead(final String label, {final String? trailing})
   );
 }
 
-/// What a booking was before its change, struck through.
 final class const _Was(final String? was) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedSize(

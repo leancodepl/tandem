@@ -3,14 +3,16 @@ import 'package:waypoint_travel/demo.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
-  final berlin = demoTrips().singleWhere((trip) => trip.id == 'berlin').booked;
+  final berlin = demoTrips()
+      .singleWhere((trip) => trip.id == TripId('berlin'))
+      .booked;
 
   ForwardedEmail email(EmailNews news) => ForwardedEmail(
     from: 'Studio Kraft',
     subject: 'News',
     received: DateTime(2026, 10, 24),
     body: '',
-    tripId: 'berlin',
+    tripId: TripId('berlin'),
     news: news,
   );
 
@@ -25,11 +27,16 @@ void main() {
 
   test('a moved meeting is done once the trip has it at its new time', () {
     final friday = DateTime(2026, 10, 30, 10);
-    final moved = email(MeetingMoved(meetingId: 'workshop', start: friday));
+    final moved = email(
+      MeetingMoved(meetingId: MeetingId('workshop'), start: friday),
+    );
     final followed = berlin.copyWith(
       meetings: [
         for (final meeting in berlin.meetings)
-          if (meeting.id == 'workshop') meeting.movedTo(friday) else meeting,
+          if (meeting.id == MeetingId('workshop'))
+            meeting.movedTo(friday.toUtc())
+          else
+            meeting,
       ],
     );
 
@@ -38,9 +45,12 @@ void main() {
   });
 
   test('a hotel confirmation is done once the trip has its number', () {
-    expect(email(const HotelConfirmation('84213907')).isDoneIn(berlin), isTrue);
     expect(
-      email(const HotelConfirmation('55120873')).isDoneIn(berlin),
+      email(HotelConfirmation(BookingReference('84213907'))).isDoneIn(berlin),
+      isTrue,
+    );
+    expect(
+      email(HotelConfirmation(BookingReference('55120873'))).isDoneIn(berlin),
       isFalse,
     );
   });
@@ -48,14 +58,18 @@ void main() {
   test('a receipt is never done in the trip: the expense report takes it', () {
     final receipt = email(
       Receipt(
-        id: 'R-1028-1',
+        id: ReceiptId('R-1028-1'),
         merchant: 'Café Ostkreuz',
         category: .meal,
         day: DateTime(2026, 10, 28),
-        paid: 38,
+        paid: wholeMoney(38),
       ),
     );
 
     expect(receipt.isDoneIn(berlin), isFalse);
+  });
+
+  test('reading an inbox cannot mutate its shared messages', () {
+    expect(() => const Inbox().emails.clear(), throwsUnsupportedError);
   });
 }

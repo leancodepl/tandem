@@ -145,13 +145,13 @@ extension on AppLocalizations {
     ),
     HotelNightsStep(:final hotel, :final nights) => stepHotelNights(
       hotel,
-      nights,
+      nights.value,
     ),
     FlightsLookedUpStep(:final origin?, :final destination?, :final date?) =>
-      stepFlightsOn(origin, destination, day(date)),
+      stepFlightsOn(origin.value, destination.value, day(date)),
     FlightsLookedUpStep() => stepFlights,
     FlightHomeStep(:final number, :final departs) => stepFlightHome(
-      number,
+      number.value,
       dayTime(departs),
     ),
   };

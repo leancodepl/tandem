@@ -93,7 +93,7 @@ final class const RideOption({
           title: l10n.rideMode(mode.name),
           subtitle: l10n.rideLine(
             minutes,
-            l10n.euros(fare),
+            l10n.money(wholeMoney(fare)),
             l10n.time(arrives),
           ),
           dimmed: overPolicy,
@@ -168,7 +168,7 @@ final class const HotelNote({
         (_, final from?) => l10n.checkInFrom(l10n.time(from)),
         _ => l10n.noCheckIn,
       },
-      trailing: roomReady == null
+      trailing: name != null && roomReady == null
           ? WaypointButton(
               l10n.roomEarly,
               small: true,

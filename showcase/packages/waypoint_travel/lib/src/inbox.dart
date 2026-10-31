@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:waypoint_travel/src/trip.dart';
+import 'package:waypoint_travel/src/value_objects.dart';
 
 /// An e-mail the traveller forwarded to Waypoint, with what it means for
 /// one of their trips.
@@ -8,7 +9,7 @@ final class const ForwardedEmail({
   required final String subject,
   required final DateTime received,
   required final String body,
-  required final String tripId,
+  required final TripId tripId,
   required final EmailNews news,
 }) with Equatable {
   @override
@@ -22,7 +23,7 @@ final class const ForwardedEmail({
     (Receipt(), _) => false,
     (_, null) => false,
     (MeetingMoved(:final meetingId, :final start), final booked?) =>
-      booked.meeting(meetingId)?.start == start,
+      booked.meeting(meetingId)?.start.isAtSameMomentAs(start) ?? false,
     (HotelConfirmation(:final number), final booked?) =>
       booked.hotel?.confirmation == number,
   };
@@ -33,7 +34,7 @@ sealed class const EmailNews() with Equatable;
 
 /// A meeting of the trip moved.
 final class const MeetingMoved({
-  required final String meetingId,
+  required final MeetingId meetingId,
   required final DateTime start,
 }) extends EmailNews {
   @override
@@ -51,15 +52,20 @@ final class const TripInvitation({
 }
 
 /// A receipt of the trip, for its expense report.
-final class const Receipt({
-  required final String id,
+final class Receipt({
+  required final ReceiptId id,
   required final String merchant,
   required final ExpenseCategory category,
   required final DateTime day,
 
-  /// What the traveller paid, in whole euros.
-  required final int paid,
+  required final Money paid,
 }) extends EmailNews {
+  this {
+    requireSupportedWholeMoney(paid, 'paid');
+    if (paid >= wholeMoney(0)) return;
+    throw ArgumentError.value(paid, 'paid', 'Cannot be negative');
+  }
+
   @override
   List<Object?> get props => [id, merchant, category, day, paid];
 }
@@ -71,7 +77,8 @@ enum ExpenseCategory() {
 }
 
 /// A hotel the traveller booked themselves, to add to the trip.
-final class const HotelConfirmation(final String number) extends EmailNews {
+final class const HotelConfirmation(final BookingReference number)
+    extends EmailNews {
   @override
   List<Object?> get props => [number];
 }
@@ -83,17 +90,17 @@ final class const Inbox() {
   List<ForwardedEmail> get emails => _emails;
 
   /// The invitation that asks for the trip [tripId], or null.
-  ForwardedEmail? invitation(String tripId) => _emails
+  ForwardedEmail? invitation(TripId tripId) => _emails
       .where((email) => email.news is TripInvitation && email.tripId == tripId)
       .firstOrNull;
 }
 
-final _emails = [
+final _emails = List<ForwardedEmail>.unmodifiable([
   ForwardedEmail(
     from: 'Mira Novak, Alpenlicht',
     subject: 'Invitation: discovery workshop in Vienna',
     received: DateTime(2026, 10, 23, 16, 48),
-    tripId: 'vienna',
+    tripId: TripId('vienna'),
     news: const TripInvitation(city: 'Vienna', client: 'Alpenlicht'),
     body: '''
 From: Mira Novak <mira.novak@alpenlicht.example>
@@ -117,9 +124,9 @@ Head of Product, Alpenlicht''',
     from: 'Jonas Weber, Studio Kraft',
     subject: 'Workshop moves to Friday',
     received: DateTime(2026, 10, 24, 9, 12),
-    tripId: 'berlin',
+    tripId: TripId('berlin'),
     news: MeetingMoved(
-      meetingId: 'workshop',
+      meetingId: MeetingId('workshop'),
       start: DateTime(2026, 10, 30, 10),
     ),
     body: '''
@@ -140,8 +147,8 @@ Jonas''',
     from: 'Havnegade Loft',
     subject: 'Your booking is confirmed: 55120873',
     received: DateTime(2026, 10, 22, 19, 30),
-    tripId: 'copenhagen',
-    news: const HotelConfirmation('55120873'),
+    tripId: TripId('copenhagen'),
+    news: HotelConfirmation(BookingReference('55120873')),
     body: '''
 From: Havnegade Loft <stay@havnegadeloft.example>
 Subject: Your booking is confirmed: 55120873
@@ -164,8 +171,8 @@ Havnegade 44, 1058 Copenhagen''',
     from: 'Spree Loft Hotel',
     subject: 'Your booking is confirmed: 84213907',
     received: DateTime(2026, 10, 20, 11, 5),
-    tripId: 'berlin',
-    news: const HotelConfirmation('84213907'),
+    tripId: TripId('berlin'),
+    news: HotelConfirmation(BookingReference('84213907')),
     body: '''
 From: Spree Loft Hotel <reservations@spreeloft.example>
 Subject: Your booking is confirmed: 84213907
@@ -188,13 +195,13 @@ Am Wriezener Bahnhof 2, 10243 Berlin''',
     from: 'G7 Taxi',
     subject: 'Your ride receipt: €58',
     received: DateTime(2026, 9, 15, 10, 41),
-    tripId: 'paris',
+    tripId: TripId('paris'),
     news: Receipt(
-      id: 'R-0915-1',
+      id: ReceiptId('R-0915-1'),
       merchant: 'G7 Taxi',
       category: .taxi,
       day: DateTime(2026, 9, 15),
-      paid: 58,
+      paid: wholeMoney(58),
     ),
     body: '''
 From: G7 Taxi <receipts@g7.example>
@@ -212,13 +219,13 @@ G7 Taxi''',
     from: 'Café Lumière',
     subject: 'Receipt: €18',
     received: DateTime(2026, 9, 15, 12, 52),
-    tripId: 'paris',
+    tripId: TripId('paris'),
     news: Receipt(
-      id: 'R-0915-2',
+      id: ReceiptId('R-0915-2'),
       merchant: 'Café Lumière',
       category: .meal,
       day: DateTime(2026, 9, 15),
-      paid: 18,
+      paid: wholeMoney(18),
     ),
     body: '''
 From: Café Lumière <hello@cafelumiere.example>
@@ -236,13 +243,13 @@ Café Lumière''',
     from: 'Bistrot du Canal',
     subject: 'Your receipt: €71',
     received: DateTime(2026, 9, 15, 21, 14),
-    tripId: 'paris',
+    tripId: TripId('paris'),
     news: Receipt(
-      id: 'R-0915-3',
+      id: ReceiptId('R-0915-3'),
       merchant: 'Bistrot du Canal',
       category: .meal,
       day: DateTime(2026, 9, 15),
-      paid: 71,
+      paid: wholeMoney(71),
     ),
     body: '''
 From: Bistrot du Canal <table@bistrotducanal.example>
@@ -260,13 +267,13 @@ Bistrot du Canal''',
     from: 'RATP',
     subject: 'Your tickets: €12',
     received: DateTime(2026, 9, 16, 9, 20),
-    tripId: 'paris',
+    tripId: TripId('paris'),
     news: Receipt(
-      id: 'R-0916-1',
+      id: ReceiptId('R-0916-1'),
       merchant: 'RATP',
       category: .transport,
       day: DateTime(2026, 9, 16),
-      paid: 12,
+      paid: wholeMoney(12),
     ),
     body: '''
 From: RATP <tickets@ratp.example>
@@ -280,4 +287,4 @@ Total: EUR 12.00, paid by card
 Thank you,
 RATP''',
   ),
-];
+]);
