@@ -47,7 +47,22 @@ void main() {
           arrives: flight.arrives,
           fare: amount,
         ),
-        () => hotel.copyWith(nightly: amount),
+        () => HotelStay.atNightlyRate(
+          name: hotel.name,
+          address: hotel.address,
+          checkIn: hotel.checkIn,
+          nights: hotel.nights,
+          nightlyRate: amount,
+          confirmation: hotel.confirmation,
+        ),
+        () => HotelStay.forTotal(
+          name: hotel.name,
+          address: hotel.address,
+          checkIn: hotel.checkIn,
+          nights: hotel.nights,
+          total: amount,
+          confirmation: hotel.confirmation,
+        ),
         () => Hotel(
           id: HotelId('hotel'),
           name: 'Hotel',

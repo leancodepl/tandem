@@ -305,19 +305,13 @@
   "bookingAddress": "Address",
   "bookingCheckIn": "Check-in",
   "bookingCheckOut": "Check-out",
-  "bookingPrice": "Price",
+  "bookingPrice": "Total price",
   "bookingConfirmation": "Confirmation",
   "bookingCheckOutDay": "{day} · {count, plural, =1{1 night} other{{count} nights}}",
   "@bookingCheckOutDay": {
     "placeholders": {
       "day": {"type": "String"},
       "count": {"type": "int"}
-    }
-  },
-  "bookingNightly": "{nightly} a night",
-  "@bookingNightly": {
-    "placeholders": {
-      "nightly": {"type": "String"}
     }
   },
   "bookingOutsideTrip": "{day} is outside the trip, {trip}.",

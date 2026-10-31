@@ -97,7 +97,8 @@ void main() {
 
     final stay = await _add(booking);
     expect(stay?.nights, NightCount(1));
-    expect(stay?.nightly, wholeMoney(122));
+    expect(stay?.total, wholeMoney(122));
+    expect(stay?.nightlyRate, isNull);
     expect(stay?.confirmation, BookingReference('84213907'));
   });
 
@@ -137,13 +138,14 @@ void main() {
     expect(draft.nights, 1);
   });
 
-  test('the price a night is the total over the nights, rounded', () {
+  test('an imported stay keeps its exact total without inferring a rate', () {
     fill();
     booking
       ..setCheckOut(DateTime(2026, 10, 30))
       ..setTotalPrice(245);
 
-    expect(form.stay?.nightly, wholeMoney(123));
+    expect(form.stay?.total, wholeMoney(245));
+    expect(form.stay?.nightlyRate, isNull);
   });
 
   test("the traveller's edit is what the agent sees", () {

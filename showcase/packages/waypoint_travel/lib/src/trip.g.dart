@@ -15,10 +15,6 @@ abstract class _$HotelStayCWProxy {
 
   HotelStay checkIn(DateTime checkIn);
 
-  HotelStay nights(NightCount nights);
-
-  HotelStay nightly(Money nightly);
-
   HotelStay confirmation(BookingReference confirmation);
 
   /// Creates a new instance with the provided field values.
@@ -33,8 +29,6 @@ abstract class _$HotelStayCWProxy {
     String name,
     String address,
     DateTime checkIn,
-    NightCount nights,
-    Money nightly,
     BookingReference confirmation,
   });
 }
@@ -56,12 +50,6 @@ class _$HotelStayCWProxyImpl implements _$HotelStayCWProxy {
   HotelStay checkIn(DateTime checkIn) => call(checkIn: checkIn);
 
   @override
-  HotelStay nights(NightCount nights) => call(nights: nights);
-
-  @override
-  HotelStay nightly(Money nightly) => call(nightly: nightly);
-
-  @override
   HotelStay confirmation(BookingReference confirmation) =>
       call(confirmation: confirmation);
 
@@ -78,11 +66,9 @@ class _$HotelStayCWProxyImpl implements _$HotelStayCWProxy {
     Object? name = const $CopyWithPlaceholder(),
     Object? address = const $CopyWithPlaceholder(),
     Object? checkIn = const $CopyWithPlaceholder(),
-    Object? nights = const $CopyWithPlaceholder(),
-    Object? nightly = const $CopyWithPlaceholder(),
     Object? confirmation = const $CopyWithPlaceholder(),
   }) {
-    return HotelStay(
+    return HotelStay._(
       name: name == const $CopyWithPlaceholder() || name == null
           ? _value.name
           // ignore: cast_nullable_to_non_nullable
@@ -95,14 +81,9 @@ class _$HotelStayCWProxyImpl implements _$HotelStayCWProxy {
           ? _value.checkIn
           // ignore: cast_nullable_to_non_nullable
           : checkIn as DateTime,
-      nights: nights == const $CopyWithPlaceholder() || nights == null
-          ? _value.nights
-          // ignore: cast_nullable_to_non_nullable
-          : nights as NightCount,
-      nightly: nightly == const $CopyWithPlaceholder() || nightly == null
-          ? _value.nightly
-          // ignore: cast_nullable_to_non_nullable
-          : nightly as Money,
+      nights: _value.nights,
+      total: _value.total,
+      nightlyRate: _value.nightlyRate,
       confirmation:
           confirmation == const $CopyWithPlaceholder() || confirmation == null
           ? _value.confirmation

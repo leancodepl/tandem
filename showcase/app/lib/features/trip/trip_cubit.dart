@@ -69,11 +69,8 @@ class TripCubit({
     .calls(findFlights),
     .calls(moveMeeting),
     .calls(setHomeboundFlight),
-    .calls(setHotelNights),
-    if (bookingChanges.items.isNotEmpty &&
-        !state.booking &&
-        changesBreach == null)
-      .callsWithApproval(bookChanges),
+    if (itinerary.hotel?.nightlyRate != null) .calls(setHotelNights),
+    if (canBookChanges) .callsWithApproval(bookChanges),
   ];
 
   @override
@@ -94,12 +91,20 @@ class TripCubit({
   BookingChanges get bookingChanges =>
       BookingChanges.between(itinerary, state.booked);
 
+  bool get canBookChanges =>
+      bookingChanges.items.isNotEmpty &&
+      !state.booking &&
+      changesBreach == null;
+
   /// Why the changed bookings break the policy, or null when they can be
   /// booked. A booking that stays as it is does not count.
   PolicyBreach? get changesBreach {
     for (final change in bookingChanges.items) {
       final breach = switch (change) {
-        HotelNightsChange(:final hotel) => Policy.checkNightly(hotel.nightly),
+        HotelNightsChange(:final hotel) => switch (hotel.nightlyRate) {
+          final rate? => Policy.checkNightly(rate),
+          null => null,
+        },
         FlightHomeChange(:final flight) => _homeboundBreach(flight),
       };
       if (breach != null) return breach;
@@ -110,11 +115,18 @@ class TripCubit({
   List<TripWarning> get warnings {
     final hotel = itinerary.hotel;
     final home = dateOnly(itinerary.homebound.departs);
-    final out = dateOnly(itinerary.outbound.departs);
+    final out = dateOnly(itinerary.outbound.arrives);
     final nights = calendarDaysBetween(out, home);
     return [
-      if (hotel != null && calendarDaysBetween(hotel.checkOut, home) > 0)
-        NoHotelForNight(dateOnly(hotel.checkOut)),
+      if (hotel != null && nights > 0) ...[
+        if (calendarDaysBetween(out, hotel.checkIn) > 0) NoHotelForNight(out),
+        if (calendarDaysBetween(hotel.checkOut, home) > 0)
+          NoHotelForNight(
+            calendarDaysBetween(hotel.checkOut, out) > 0
+                ? out
+                : dateOnly(hotel.checkOut),
+          ),
+      ],
       if (hotel == null && nights > 0) NoHotelBooked(nights),
       if (_homeboundBreach(itinerary.homebound) case final breach?)
         BreaksPolicy(breach),
@@ -127,7 +139,8 @@ class TripCubit({
       itinerary.homebound.destination,
       itinerary.homebound.departs,
     ))
-      (flight, _homeboundBreach(flight)),
+      if (flight.departs.isAfter(itinerary.outbound.arrives))
+        (flight, _homeboundBreach(flight)),
   ];
 
   // `origin`, not `from`: ag-ui-adk names the parameters in Python.
@@ -151,7 +164,7 @@ class TripCubit({
           arrives: forAgent(flight.arrives),
           fare: flight.fare.toInt(),
           unavailable: destinationCode == itinerary.homebound.destination
-              ? _homeboundBreach(flight)?.forAgent
+              ? _homeboundFlightRefusal(flight)
               : null,
         ),
     ];
@@ -192,6 +205,9 @@ class TripCubit({
         'The flight home must fly from ${booked.origin} to ${booked.destination}.',
       );
     }
+    if (!flight.departs.isAfter(itinerary.outbound.arrives)) {
+      _refuse('The flight home must leave after the flight there lands.');
+    }
     if (_homeboundBreach(flight) case final breach?) return breach;
 
     emit(_with(itinerary.copyWith(homebound: flight)));
@@ -208,10 +224,14 @@ class TripCubit({
     if (nights < 1 || nights > 14) {
       _refuse('A stay is 1 to 14 nights.');
     }
+    if (nights == hotel.nights.value) return;
+    if (hotel.nightlyRate == null) {
+      _refuse(
+        'This hotel has a confirmed total, but no nightly quote for changing the stay.',
+      );
+    }
     emit(
-      _with(
-        itinerary.copyWith(hotel: hotel.copyWith(nights: NightCount(nights))),
-      ),
+      _with(itinerary.copyWith(hotel: hotel.withNights(NightCount(nights)))),
     );
   }
 
@@ -242,11 +262,17 @@ class TripCubit({
       final confirmation = BookingReference(
         'WP-${48213 + booking.homebound.departs.day}',
       );
-      trips.completeBooking(
+      final completed = trips.tryCompleteBooking(
         info.id,
         previouslyBooked: previouslyBooked,
         requested: booking,
       );
+      if (!completed) {
+        _refuse(
+          'The hotel booking changed while these changes were being booked. '
+          'Review the current trip before booking again.',
+        );
+      }
       _adoptConfirmed(trips.state);
       _log.info('Booked the changes of trip ${info.id} as $confirmation');
       if (!isClosed) {
@@ -266,6 +292,13 @@ class TripCubit({
       trips.releaseBooking(info.id);
       _adoptConfirmed(trips.state);
     }
+  }
+
+  String? _homeboundFlightRefusal(Flight flight) {
+    if (flight.departs.isAfter(itinerary.outbound.arrives)) {
+      return _homeboundBreach(flight)?.forAgent;
+    }
+    return 'The flight home must leave after the flight there lands.';
   }
 
   PolicyBreach? _homeboundBreach(Flight flight) =>
@@ -315,8 +348,10 @@ final class const TripState({
         latest.confirmation != previous.confirmation) {
       return latest;
     }
-    if (draft.nights == previous.nights) return latest;
-    return latest.copyWith(nights: draft.nights);
+    if (draft.nights == previous.nights || latest.nightlyRate == null) {
+      return latest;
+    }
+    return latest.withNights(draft.nights);
   }
 
   @override

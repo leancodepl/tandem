@@ -86,7 +86,6 @@ final class const HotelConfirmation(final BookingReference number)
 /// What the traveller forwarded to Waypoint. A real app would fetch the
 /// e-mails; the showcase keeps them here.
 final class const Inbox() {
-  /// Newest first.
   List<ForwardedEmail> get emails => _emails;
 
   /// The invitation that asks for the trip [tripId], or null.

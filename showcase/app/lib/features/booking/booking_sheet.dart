@@ -319,13 +319,6 @@ final class const _BookingFields({required final bool enabled})
           marked: marked.contains(BookingPart.price),
           order: 4,
           translateError: l10n.bookingError,
-          note: switch ((draft.totalPrice, nights)) {
-            (final total?, final nights?) when nights > 1 =>
-              l10n.bookingNightly(
-                l10n.money(wholeMoney((total / nights).round())),
-              ),
-            _ => null,
-          },
           onEdited: () => cubit.unmark(.price),
         ),
         FormTextField(

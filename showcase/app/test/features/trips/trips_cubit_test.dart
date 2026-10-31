@@ -29,6 +29,16 @@ void main() {
     );
   });
 
+  test('a trip identity cannot belong to two confirmed trips', () {
+    final berlin = trips.tripOrNull(TripId('berlin'));
+    if (berlin == null) fail('The Berlin fixture is missing.');
+    final duplicate = berlin.copyWith(city: 'Another city');
+
+    expect(() => TripsState([berlin, duplicate]), throwsArgumentError);
+    expect(() => trips.add(duplicate), throwsArgumentError);
+    expect(trips.tripOrNull(berlin.id), berlin);
+  });
+
   test('the news of a trip leaves out receipts and what it follows', () {
     expect(
       [for (final email in trips.news(TripId('berlin'))) email.subject],

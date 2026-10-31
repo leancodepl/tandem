@@ -31,9 +31,6 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
 
   /// Adds a trip planned and booked in the app, in the order of departure.
   void add(Trip trip) {
-    if (tripOrNull(trip.id) != null) {
-      throw ArgumentError.value(trip.id, 'trip', 'A trip already has this id.');
-    }
     emit(
       TripsState(
         [...state.trips, trip]..sort(
@@ -80,12 +77,17 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     );
   }
 
-  void completeBooking(
+  bool tryCompleteBooking(
     TripId id, {
     required Itinerary previouslyBooked,
     required Itinerary requested,
   }) {
     final latest = tripOrNull(id)?.booked ?? previouslyBooked;
+    final amendsHotelNights =
+        requested.hotel?.nights != previouslyBooked.hotel?.nights;
+    if (amendsHotelNights && latest.hotel != previouslyBooked.hotel) {
+      return false;
+    }
     book(
       id,
       requested.copyWith(
@@ -95,10 +97,11 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
         meetings: latest.meetings,
       ),
     );
+    return true;
   }
 
-  /// The forwarded e-mails that the trip [id] does not follow yet, newest
-  /// first. Receipts are for the trip's expense report instead.
+  /// The forwarded e-mails that the trip [id] does not follow yet.
+  /// Receipts are for the trip's expense report instead.
   List<ForwardedEmail> news(TripId id) => switch (tripOrNull(id)) {
     final trip? => [
       for (final email in inbox.emails)
@@ -110,7 +113,7 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     null => const [],
   };
 
-  /// The invitations whose trip is not planned yet, newest first.
+  /// The invitations whose trip is not planned yet.
   List<ForwardedEmail> get invitations => [
     for (final email in inbox.emails)
       if (email.news is TripInvitation && tripOrNull(email.tripId) == null)
@@ -127,6 +130,14 @@ final class TripsState(
   List<Trip> trips, {
   Set<TripId> pendingBookings = const {},
 }) with Equatable {
+  this {
+    final ids = <TripId>{};
+    for (final trip in trips) {
+      if (ids.add(trip.id)) continue;
+      throw ArgumentError.value(trip.id, 'trips', 'Duplicate trip id');
+    }
+  }
+
   final List<Trip> trips = List.unmodifiable(trips);
   final Set<TripId> pendingBookings = Set.unmodifiable(pendingBookings);
 

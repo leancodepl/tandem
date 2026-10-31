@@ -51,6 +51,34 @@ void main() {
     expect(plan.form.city.fieldValue, 'Vienna');
   });
 
+  test(
+    'an invitation keeps its city at the tool and booking boundaries',
+    () async {
+      final invited = _planner(
+        trips,
+        invitation: const Inbox().invitation(TripId('vienna')),
+      );
+      _plan(invited);
+      final original = invited.state;
+
+      expect(() => invited.setCity('Berlin'), throwsA(isA<ToolCallRefused>()));
+      expect(invited.form.city.fieldValue, 'Vienna');
+      expect(invited.state, original);
+
+      invited.form.city.select('Berlin');
+      invited
+        ..setOutboundFlight('WA 385', DateTime(2026, 12, 8))
+        ..setHomeboundFlight('WA 388', DateTime(2026, 12, 9))
+        ..setHotel('spree-loft');
+      expect(invited.ready, isTrue);
+      await expectLater(invited.book(), throwsA(isA<ToolCallRefused>()));
+
+      expect(invited.form.city.fieldValue, 'Berlin');
+      expect(trips.tripOrNull(TripId('vienna')), isNull);
+      expect(trips.state.pendingBookings, isEmpty);
+    },
+  );
+
   test('a meeting that does not end after it starts is refused', () {
     final noon = DateTime(2026, 12, 10, 12);
 

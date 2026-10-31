@@ -36,20 +36,61 @@ final class Flight({
       number == other.number && departs.isAtSameMomentAs(other.departs);
 }
 
-@CopyWith()
-final class HotelStay({
+@CopyWith(constructor: '_')
+final class HotelStay._({
   required final String name,
   required final String address,
   required final DateTime checkIn,
-  required final NightCount nights,
-  required final Money nightly,
+  @CopyWithField(immutable: true) required final NightCount nights,
+  @CopyWithField(immutable: true) required final Money total,
+  @CopyWithField(immutable: true) final Money? nightlyRate,
   required final BookingReference confirmation,
 }) with Equatable {
   this {
-    requireSupportedWholeMoney(nightly, 'nightly');
-    if (nightly >= wholeMoney(0)) return;
-    throw ArgumentError.value(nightly, 'nightly', 'Cannot be negative');
+    requireSupportedWholeMoney(total, 'total');
+    if (total < wholeMoney(0)) {
+      throw ArgumentError.value(total, 'total', 'Cannot be negative');
+    }
+    if (nightlyRate case final rate?) {
+      requireSupportedWholeMoney(rate, 'nightlyRate');
+      if (rate * nights.value != total) {
+        throw ArgumentError('The total must match the quoted nightly rate.');
+      }
+    }
   }
+
+  factory atNightlyRate({
+    required String name,
+    required String address,
+    required DateTime checkIn,
+    required NightCount nights,
+    required Money nightlyRate,
+    required BookingReference confirmation,
+  }) => HotelStay._(
+    name: name,
+    address: address,
+    checkIn: checkIn,
+    nights: nights,
+    total: nightlyRate * nights.value,
+    nightlyRate: nightlyRate,
+    confirmation: confirmation,
+  );
+
+  factory forTotal({
+    required String name,
+    required String address,
+    required DateTime checkIn,
+    required NightCount nights,
+    required Money total,
+    required BookingReference confirmation,
+  }) => HotelStay._(
+    name: name,
+    address: address,
+    checkIn: checkIn,
+    nights: nights,
+    total: total,
+    confirmation: confirmation,
+  );
 
   @override
   List<Object?> get props => [
@@ -57,11 +98,27 @@ final class HotelStay({
     address,
     checkIn,
     nights,
-    nightly,
+    total,
+    nightlyRate,
     confirmation,
   ];
 
   DateTime get checkOut => addCalendarDays(checkIn, nights.value);
+
+  HotelStay withNights(NightCount nights) {
+    final rate = nightlyRate;
+    if (rate == null) {
+      throw StateError('Changing hotel nights needs a nightly quote.');
+    }
+    return HotelStay.atNightlyRate(
+      name: name,
+      address: address,
+      checkIn: checkIn,
+      nights: nights,
+      nightlyRate: rate,
+      confirmation: confirmation,
+    );
+  }
 }
 
 final class Meeting({
@@ -100,12 +157,26 @@ final class const Itinerary._({
     required Flight homebound,
     HotelStay? hotel,
     required List<Meeting> meetings,
-  }) => Itinerary._(
-    outbound: outbound,
-    homebound: homebound,
-    hotel: hotel,
-    meetings: List.unmodifiable(meetings),
-  );
+  }) {
+    if (homebound.departs.compareTo(outbound.arrives) <= 0) {
+      throw ArgumentError.value(
+        homebound.departs,
+        'homebound',
+        'Must depart after the outbound flight arrives',
+      );
+    }
+    final ids = <MeetingId>{};
+    for (final meeting in meetings) {
+      if (ids.add(meeting.id)) continue;
+      throw ArgumentError.value(meeting.id, 'meetings', 'Duplicate meeting id');
+    }
+    return Itinerary._(
+      outbound: outbound,
+      homebound: homebound,
+      hotel: hotel,
+      meetings: List.unmodifiable(meetings),
+    );
+  }
 
   @override
   List<Object?> get props => [outbound, homebound, hotel, meetings];

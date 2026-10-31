@@ -76,7 +76,12 @@ mixin _$TripCubit implements AgentSurface {
                       field('checkIn', (value) => value.checkIn).as(.string),
                       field('checkOut', (value) => value.checkOut).as(.string),
                       field('nights', (value) => value.nights).as(.integer),
-                      field('nightly', (value) => value.nightly).as(.integer),
+                      field(
+                        'nightly',
+                        (value) => value.nightly,
+                        required: false,
+                      ).as(.nullable(.integer)),
+                      field('total', (value) => value.total).as(.integer),
                     ],
                     build: (values) => .new(
                       name: values('name'),
@@ -84,6 +89,7 @@ mixin _$TripCubit implements AgentSurface {
                       checkOut: values('checkOut'),
                       nights: values('nights'),
                       nightly: values('nightly'),
+                      total: values('total'),
                     ),
                   ),
                 ),
@@ -288,10 +294,7 @@ extension on TripCubit {
     .calls(findFlights),
     .calls(moveMeeting),
     .calls(setHomeboundFlight),
-    .calls(setHotelNights),
-    if (bookingChanges.items.isNotEmpty &&
-        !state.booking &&
-        changesBreach == null)
-      .callsWithApproval(bookChanges),
+    if (itinerary.hotel?.nightlyRate != null) .calls(setHotelNights),
+    if (canBookChanges) .callsWithApproval(bookChanges),
   ];
 }

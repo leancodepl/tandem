@@ -32,6 +32,14 @@ The denomination of a money amount. Waypoint currently uses euros (EUR).
 The positive number of nights in a hotel stay. A trip without a hotel stay can
 last a single day.
 
+**Stay total**:
+The agreed price of the whole hotel stay. Importing a confirmation preserves
+this amount exactly.
+
+**Nightly quote**:
+A provider's price for one night, used to price a change in the stay's length.
+A confirmation's total alone does not establish a nightly quote.
+
 **Booking reference**:
 The identifier a provider assigns to a booking. Its spelling belongs to the
 provider.

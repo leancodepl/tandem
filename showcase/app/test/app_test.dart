@@ -16,6 +16,7 @@ import 'package:waypoint/features/trip/trip_assistant_panel.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_news_for_agent.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
+import 'package:waypoint/features/trips/trips_page.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 import 'package:waypoint_scripted_agent/waypoint_scripted_agent.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
@@ -53,6 +54,43 @@ void main() {
       await tester.pump(const Duration(seconds: 10));
     },
   );
+
+  testWidgets('a same-day trip needs no hotel warning in the trip list', (
+    tester,
+  ) async {
+    await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
+    final trips = tester.element(find.byType(TripsPage)).read<TripsCubit>();
+    final day = DateTime(2026, 12, 9);
+    final outbound = const FlightSearch().find(FlightNumber('WA 511'), day);
+    final homebound = const FlightSearch().find(FlightNumber('WA 518'), day);
+    if (outbound == null || homebound == null) {
+      fail('The timetable has same-day flights to Vienna and back.');
+    }
+    trips.add(
+      Trip(
+        id: TripId('vienna-day'),
+        city: 'Vienna',
+        booked: Itinerary(
+          outbound: outbound,
+          homebound: homebound,
+          meetings: const [],
+        ),
+      ),
+    );
+    await _settle(tester);
+
+    await tester.scrollUntilVisible(find.text('VIENNA'), 300);
+    await _settle(tester);
+    final card = find.ancestor(
+      of: find.text('VIENNA'),
+      matching: find.byType(WaypointListCard),
+    );
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.text('No hotel yet')),
+      findsNothing,
+    );
+  });
 
   testWidgets('a hotel confirmation in the inbox joins its trip', (
     tester,
@@ -110,7 +148,7 @@ void main() {
 
       expect(priceMarked(), isTrue);
 
-      await _enterInto(tester, 'Price', '190');
+      await _enterInto(tester, 'Total price', '190');
 
       expect(priceMarked(), isFalse);
       expect(_onSubmit(tester), isNotNull);
@@ -120,7 +158,7 @@ void main() {
 
       final trips = tester.element(find.text('COPENHAGEN')).read<TripsCubit>();
       expect(
-        trips.tripOrNull(TripId('copenhagen'))?.booked.hotel?.nightly,
+        trips.tripOrNull(TripId('copenhagen'))?.booked.hotel?.total,
         wholeMoney(190),
       );
     },
@@ -436,6 +474,80 @@ void main() {
     expect(find.text(_voided, skipOffstage: false), findsOneWidget);
   });
 
+  testWidgets('a stale manual Book action shows the current refusal', (
+    tester,
+  ) async {
+    await _pumpApp(
+      tester,
+      WaypointApp(
+        createAgents: () => Agents(
+          trip: ScriptedAgent.repeating(_asksOnce),
+          booking: scriptedBookingAgent(),
+          plan: scriptedPlanAgent(),
+          expenses: scriptedExpensesAgent(),
+          arrival: scriptedArrivalAgent(),
+        ),
+      ),
+      size: const Size(1440, 1000),
+      ratio: 1,
+    );
+    await tester.tap(find.text('Review the trip'));
+    await _settle(tester);
+    final submit = tester
+        .widget<WaypointSubmit>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is WaypointSubmit && widget.label == 'Book changes',
+          ),
+        )
+        .onSubmit;
+    if (submit == null) fail('The current changes can be booked.');
+    final trips = tester.element(find.byType(NewsForAgent)).read<TripsCubit>();
+
+    expect(trips.reserveBooking(TripId('berlin')), isTrue);
+    submit();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('The changes are already being booked.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    trips.releaseBooking(TripId('berlin'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('The changes are already being booked.'), findsNothing);
+  });
+
+  testWidgets('reverting every booking change does not ask the agent again', (
+    tester,
+  ) async {
+    final agent = ScriptedAgent.repeating(_asksOnce);
+    await _pumpApp(
+      tester,
+      WaypointApp(
+        createAgents: () => Agents(
+          trip: agent,
+          booking: scriptedBookingAgent(),
+          plan: scriptedPlanAgent(),
+          expenses: scriptedExpensesAgent(),
+          arrival: scriptedArrivalAgent(),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Review the trip'));
+    await _settle(tester);
+    final context = tester.element(find.byType(NewsForAgent));
+    final trip = context.read<TripCubit>()..setHotelNights(1);
+    await _settle(tester);
+
+    expect(trip.bookingChanges.items, isEmpty);
+    expect(find.text(_voided, skipOffstage: false), findsOneWidget);
+    expect([
+      for (final request in agent.requests)
+        for (final note in AgentRequest(request).newNotes)
+          if ('$note'.contains(_reask)) note,
+    ], isEmpty);
+  });
+
   testWidgets('a voided request is asked again only once', (tester) async {
     final trip = ScriptedAgent.repeating(_asksOnce);
     await _pumpApp(
@@ -651,6 +763,51 @@ void main() {
 
     expect(marked(), isFalse);
   });
+  testWidgets('a link to another trip replaces its local state and session', (
+    tester,
+  ) async {
+    await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
+    await _openLink(tester, '/trips/berlin');
+    final beforeContext = tester.element(find.byType(NewsForAgent));
+    final before = beforeContext.read<TripCubit>();
+    final previousSession = TandemSessionScope.of(beforeContext);
+    expect(before.info.id, TripId('berlin'));
+
+    await _openLink(tester, '/trips/copenhagen');
+
+    final afterContext = tester.element(find.byType(NewsForAgent));
+    final after = afterContext.read<TripCubit>();
+    expect(after.info.id, TripId('copenhagen'));
+    expect(
+      identical(previousSession, TandemSessionScope.of(afterContext)),
+      isFalse,
+    );
+    expect(after.bookingChanges.items, isEmpty);
+    expect(find.text('Change 2 bookings'), findsNothing);
+  });
+
+  testWidgets('a link to an invitation replaces the previous planning form', (
+    tester,
+  ) async {
+    await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
+    await _openLink(tester, '/trips/plan-trip');
+    final beforeContext = tester.element(find.byType(WaypointSubmit));
+    final before = beforeContext.read<PlanTripCubit>()..setCity('Berlin');
+    final previousSession = TandemSessionScope.of(beforeContext);
+
+    await _openLink(tester, '/trips/plan-trip?invitation=vienna');
+
+    final afterContext = tester.element(find.byType(WaypointSubmit));
+    final after = afterContext.read<PlanTripCubit>();
+    expect(after.invitation?.tripId, TripId('vienna'));
+    expect(after.form.city.fieldValue, 'Vienna');
+    expect(identical(before.form, after.form), isFalse);
+    expect(
+      identical(previousSession, TandemSessionScope.of(afterContext)),
+      isFalse,
+    );
+  });
+
   testWidgets('a link to a trip that is not there leads to the trips', (
     tester,
   ) async {

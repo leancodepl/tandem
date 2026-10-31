@@ -61,13 +61,13 @@ List<DayPlan> planOf(Itinerary now, Itinerary booked) {
     FlightItem('outbound', now.outbound, booked.outbound),
     if (now.hotel case final hotel?)
       HotelItem(hotel, booked.hotel)
-    else if (calendarDaysBetween(now.outbound.departs, now.homebound.departs) >
+    else if (calendarDaysBetween(now.outbound.arrives, now.homebound.departs) >
         0)
       NoHotelItem(
         DateTime(
-          now.outbound.departs.year,
-          now.outbound.departs.month,
-          now.outbound.departs.day,
+          now.outbound.arrives.year,
+          now.outbound.arrives.month,
+          now.outbound.arrives.day,
           15,
         ),
       ),

@@ -161,18 +161,14 @@ final class const _TripCard(
           ),
           maxLines: 1,
         ),
-        switch (booked.hotel) {
-          final hotel? => WaypointNote(
-            Icons.hotel_rounded,
-            hotel.name,
-            maxLines: 1,
-          ),
-          null => WaypointNote(
-            Icons.hotel_outlined,
-            l10n.noHotelYet,
-            tone: .warn,
-          ),
-        },
+        if (booked.hotel case final hotel?)
+          WaypointNote(Icons.hotel_rounded, hotel.name, maxLines: 1)
+        else if (calendarDaysBetween(
+              booked.outbound.arrives,
+              booked.homebound.departs,
+            ) >
+            0)
+          WaypointNote(Icons.hotel_outlined, l10n.noHotelYet, tone: .warn),
       ],
     );
   }

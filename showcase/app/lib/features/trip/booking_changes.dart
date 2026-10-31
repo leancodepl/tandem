@@ -36,7 +36,7 @@ final class const HotelNightsChange(
   String get id => 'hotel';
 
   @override
-  Money get cost => hotel.nightly * (hotel.nights.value - was.nights.value);
+  Money get cost => hotel.total - was.total;
 }
 
 final class const FlightHomeChange(

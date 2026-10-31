@@ -120,6 +120,7 @@ class PlanTripCubit({
     if (known == null) {
       _refuse('Waypoint flies only to Berlin, Copenhagen and Vienna.');
     }
+    _requireInvitationCity(known);
     form.city.select(known);
     _mark(.city);
   }
@@ -248,6 +249,7 @@ class PlanTripCubit({
 
     final plan = _fitted(state);
     final city = form.city.fieldValue;
+    _requireInvitationCity(city);
     final purpose = _purpose;
     final PlanTripState(:outbound, :homebound) = plan;
     if (city == null ||
@@ -278,16 +280,17 @@ class PlanTripCubit({
             outbound: outbound,
             homebound: homebound,
             hotel: switch ((plan.hotel, plan.nights)) {
-              (final hotel?, final nights?) when nights > 0 => HotelStay(
-                name: hotel.name,
-                address: hotel.address,
-                checkIn: _checkIn(outbound.arrives),
-                nights: NightCount(nights),
-                nightly: hotel.nightly,
-                confirmation: BookingReference(
-                  'WP-H${hotel.nightly.toInt()}${outbound.departs.day}',
+              (final hotel?, final nights?) when nights > 0 =>
+                HotelStay.atNightlyRate(
+                  name: hotel.name,
+                  address: hotel.address,
+                  checkIn: _checkIn(outbound.arrives),
+                  nights: NightCount(nights),
+                  nightlyRate: hotel.nightly,
+                  confirmation: BookingReference(
+                    'WP-H${hotel.nightly.toInt()}${outbound.departs.day}',
+                  ),
                 ),
-              ),
               _ => null,
             },
             meetings: plan.meetings,
@@ -369,6 +372,15 @@ class PlanTripCubit({
     if (city == null) return const CityNotSet();
     if (hotel.city != city) return HotelNotInCity(hotel, city);
     return BreaksPlanPolicy.of(Policy.checkNightly(hotel.nightly));
+  }
+
+  void _requireInvitationCity(String? city) {
+    if (invitation?.news case TripInvitation(city: final invitedCity)
+        when city != null && city != invitedCity) {
+      _refuse(
+        'This invitation is for $invitedCity. Keep its city when planning the trip.',
+      );
+    }
   }
 
   Flight _findFlight(String number, DateTime date) {

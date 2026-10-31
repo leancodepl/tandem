@@ -49,6 +49,7 @@ final class const PlanTripPage({
         onBack: () => context.router.navigate(const TripsRoute()),
       ),
       _ => ChangeNotifierProvider(
+        key: ValueKey(invitation?.tripId),
         create: (context) => PlanTripFormController(),
         child: BlocProvider(
           create: (context) => PlanTripCubit(

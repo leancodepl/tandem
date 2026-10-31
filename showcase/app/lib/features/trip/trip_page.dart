@@ -40,6 +40,7 @@ final class const TripPage({
         },
       )) {
         final trip? => MultiBlocProvider(
+          key: ValueKey(trip.id),
           providers: [
             BlocProvider(
               create: (context) => TripCubit(

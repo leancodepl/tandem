@@ -41,9 +41,10 @@ final class const ChangesBar({super.key, required final bool wide})
 final class const _ChangesBarContent({
   required final bool wide,
   required final TripPresentationEventChangesBooked? booked,
-}) extends StatelessWidget {
+}) extends HookWidget {
   @override
   Widget build(BuildContext context) {
+    final refused = useState<({TripState state, String reason})?>(null);
     final trip = context.watch<TripCubit>();
     final booking = trip.state.booking;
     final status = TandemSessionScope.of(context).status;
@@ -67,11 +68,18 @@ final class const _ChangesBarContent({
           l10n.changesNotBooked(changes.length),
           l10n.moneyDelta(trip.bookingChanges.totalCost),
         ),
-        onSubmit: status.isWorking || trip.changesBreach != null
+        onSubmit: status.isWorking || !trip.canBookChanges
             ? null
-            : () {
+            : () async {
+                refused.value = null;
                 context.read<MarksCubit>().clear();
-                trip.bookChanges();
+                try {
+                  await trip.bookChanges();
+                } on ToolCallRefused catch (error) {
+                  if (context.mounted) {
+                    refused.value = (state: trip.state, reason: error.message);
+                  }
+                }
               },
       ),
       (_, _, final confirmation?) => Align(
@@ -82,11 +90,24 @@ final class const _ChangesBarContent({
       _ => null,
     };
 
+    final failure = switch (refused.value) {
+      (:final state, :final reason) when state == trip.state => reason,
+      _ => null,
+    };
+    final child = content == null && failure == null
+        ? null
+        : Column(
+            key: content?.key ?? const ValueKey('refused'),
+            crossAxisAlignment: .stretch,
+            spacing: 12,
+            children: [?content, if (failure != null) InlineError(failure)],
+          );
+
     return AnimatedSize(
       duration: const Duration(milliseconds: 380),
       curve: Curves.easeOutCubic,
       alignment: .bottomCenter,
-      child: switch (content) {
+      child: switch (child) {
         // On a phone the assistant's dock is below the bar.
         final content? => WaypointActionBar(
           gutter: wide ? 36 : 20,

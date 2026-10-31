@@ -408,7 +408,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bookingCheckOut => 'Check-out';
 
   @override
-  String get bookingPrice => 'Price';
+  String get bookingPrice => 'Total price';
 
   @override
   String get bookingConfirmation => 'Confirmation';
@@ -422,11 +422,6 @@ class AppLocalizationsEn extends AppLocalizations {
       one: '1 night',
     );
     return '$day · $_temp0';
-  }
-
-  @override
-  String bookingNightly(String nightly) {
-    return '$nightly a night';
   }
 
   @override
