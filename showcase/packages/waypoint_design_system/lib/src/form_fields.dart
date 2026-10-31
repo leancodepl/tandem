@@ -129,40 +129,55 @@ final class const FormDateField<E extends Object>({
   Future<void> _pick(BuildContext context, DateTime? held) async {
     final firstDay = DateUtils.dateOnly(first);
     final lastDay = DateUtils.dateOnly(last);
+    final shownDay = DateUtils.dateOnly(held ?? initial ?? firstDay);
     final picked = await showDatePicker(
       context: context,
-      initialDate: switch (held ?? initial) {
-        null => firstDay,
+      initialDate: switch (shownDay) {
         final shown when shown.isBefore(firstDay) => firstDay,
         final shown when shown.isAfter(lastDay) => lastDay,
-        final shown => DateUtils.dateOnly(shown),
+        final shown => shown,
       },
       firstDate: firstDay,
       lastDate: lastDay,
     );
-    if (picked == null || !context.mounted) return;
+    if (picked == null) return;
 
-    var value = fromDay?.call(picked) ?? picked;
-    if (withTime) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(value),
-        builder: (context, picker) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: picker ?? const SizedBox.shrink(),
-        ),
-      );
-      if (time == null || !context.mounted) return;
-      value = DateTime(
-        value.year,
-        value.month,
-        value.day,
-        time.hour,
-        time.minute,
-      );
+    if (context.mounted && _canEdit(context)) {
+      var value = fromDay?.call(picked) ?? picked;
+      if (withTime) {
+        final time = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.fromDateTime(value),
+          builder: (context, picker) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: picker ?? const SizedBox.shrink(),
+          ),
+        );
+        if (time == null) return;
+        value = DateTime(
+          value.year,
+          value.month,
+          value.day,
+          time.hour,
+          time.minute,
+        );
+      }
+      if (context.mounted && _canEdit(context)) {
+        field.setValue(value);
+        onEdited?.call();
+      }
     }
-    field.setValue(value);
-    onEdited?.call();
+  }
+
+  bool _canEdit(BuildContext context) {
+    if (field.isDisposed || field.value.readOnly) return false;
+    return switch (context.widget) {
+      FormDateField<E>(field: final current, enabled: true) => identical(
+        current,
+        field,
+      ),
+      _ => false,
+    };
   }
 }
 

@@ -139,6 +139,8 @@ jobs:
       - name: Test the showcase travel domain
         run: flutter test
         working-directory: showcase/packages/waypoint_travel
+        env:
+          TZ: Europe/Warsaw
 
       - name: Test the showcase scripted agents
         run: flutter test
@@ -147,6 +149,8 @@ jobs:
       - name: Test showcase
         run: flutter test
         working-directory: showcase/app
+        env:
+          TZ: Europe/Warsaw
 
   codegen:
     name: Check the generated code

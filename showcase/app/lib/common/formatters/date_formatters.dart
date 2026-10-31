@@ -13,11 +13,14 @@ extension DateFormatters on AppLocalizations {
   String dayTime(DateTime at) =>
       DateFormat('E d MMM, HH:mm', localeName).format(at);
 
-  /// Wed 28 – Fri 30 Oct, without the first month when both are in one.
-  String dayRange(DateTime from, DateTime to) => dateRange(
-    from.month == to.month
-        ? DateFormat('E d', localeName).format(from)
-        : day(from),
-    day(to),
-  );
+  String dayRange(DateTime from, DateTime to) {
+    final sameYear = from.year == to.year;
+    final full = DateFormat(sameYear ? 'E d MMM' : 'E d MMM y', localeName);
+    return dateRange(
+      sameYear && from.month == to.month
+          ? DateFormat('E d', localeName).format(from)
+          : full.format(from),
+      full.format(to),
+    );
+  }
 }
