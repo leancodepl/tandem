@@ -99,12 +99,12 @@ final class BookingFormController({
       :final confirmation?,
     )
         when nights >= 1 && totalPrice > 0 =>
-      HotelStay(
+      HotelStay.forTotal(
         name: hotel,
         address: address,
         checkIn: checkIn,
         nights: NightCount(nights),
-        nightly: wholeMoney((totalPrice / nights).round()),
+        total: wholeMoney(totalPrice),
         confirmation: BookingReference(confirmation),
       ),
     _ => null,

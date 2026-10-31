@@ -67,14 +67,16 @@ final class const HotelSummary({
   required final String checkIn,
   required final String checkOut,
   required final int nights,
-  required final int nightly,
+  required final int? nightly,
+  required final int total,
 }) {
   factory of(HotelStay hotel) => HotelSummary(
     name: hotel.name,
     checkIn: forAgent(hotel.checkIn),
     checkOut: forAgent(hotel.checkOut, withTime: false),
     nights: hotel.nights.value,
-    nightly: hotel.nightly.toInt(),
+    nightly: hotel.nightlyRate?.toInt(),
+    total: hotel.total.toInt(),
   );
 }
 

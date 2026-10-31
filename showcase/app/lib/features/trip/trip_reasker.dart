@@ -26,7 +26,8 @@ final class const Reasker({super.key, required final Widget child})
   @override
   Widget build(BuildContext context) {
     final session = TandemSessionScope.of(context);
-    final trip = context.watch<TripCubit>().state;
+    final cubit = context.watch<TripCubit>();
+    final trip = cubit.state;
     final reasks = context.watch<ReasksCubit>();
     final last = session.items.whereType<ApprovalRequest>().lastOrNull;
     final voided = switch (last) {
@@ -36,10 +37,10 @@ final class const Reasker({super.key, required final Widget child})
     };
 
     useEffect(() {
-      if (voided == null) return null;
+      if (voided == null || !cubit.canBookChanges) return null;
 
       final timer = Timer(_settle, () {
-        if (session.status is Idle) {
+        if (session.status is Idle && cubit.canBookChanges) {
           _log.info('Asked the agent again for ${voided.tool}');
           reasks.add(voided);
           session

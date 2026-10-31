@@ -28,6 +28,54 @@ void main() {
     expect(itinerary.meetings.clear, throwsUnsupportedError);
   });
 
+  test('a meeting id identifies one meeting after construction or copy', () {
+    final booked = berlin.booked;
+    final kickoff = booked.meetings.first;
+    final ambiguous = [
+      ...booked.meetings,
+      kickoff.movedTo(kickoff.start.add(const Duration(hours: 1))),
+    ];
+
+    expect(
+      () => Itinerary(
+        outbound: booked.outbound,
+        homebound: booked.homebound,
+        hotel: booked.hotel,
+        meetings: ambiguous,
+      ),
+      throwsArgumentError,
+    );
+    expect(() => booked.copyWith(meetings: ambiguous), throwsArgumentError);
+  });
+
+  test('the flight home must depart after the outbound flight arrives', () {
+    final booked = berlin.booked;
+    for (final departure in [
+      booked.outbound.departs,
+      booked.outbound.arrives,
+      booked.outbound.arrives.toUtc(),
+    ]) {
+      final homebound = Flight(
+        number: booked.homebound.number,
+        origin: booked.homebound.origin,
+        destination: booked.homebound.destination,
+        departs: departure,
+        arrives: departure.add(const Duration(hours: 1)),
+        fare: booked.homebound.fare,
+      );
+
+      expect(
+        () => Itinerary(
+          outbound: booked.outbound,
+          homebound: homebound,
+          meetings: const [],
+        ),
+        throwsArgumentError,
+      );
+      expect(() => booked.copyWith(homebound: homebound), throwsArgumentError);
+    }
+  });
+
   test('a hotel checkout keeps its clock time across calendar nights', () {
     final hotel = berlin.booked.hotel;
     if (hotel == null) fail('The Berlin trip has a hotel.');
@@ -36,7 +84,7 @@ void main() {
       DateTime(2026, 3, 28, 15),
       DateTime(2026, 10, 24, 15),
     ]) {
-      final stay = hotel.copyWith(checkIn: checkIn, nights: NightCount(2));
+      final stay = hotel.withNights(NightCount(2)).copyWith(checkIn: checkIn);
 
       expect(
         stay.checkOut,

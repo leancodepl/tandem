@@ -15,6 +15,14 @@ final class ArrivalDay({
   required final DateTime roomReadyEarly,
   required List<Ride> rides,
 }) with Equatable {
+  this {
+    final ids = <RideId>{};
+    for (final ride in rides) {
+      if (ids.add(ride.id)) continue;
+      throw ArgumentError.value(ride.id, 'rides', 'Duplicate ride id');
+    }
+  }
+
   final List<Ride> rides = List.unmodifiable(rides);
 
   @override

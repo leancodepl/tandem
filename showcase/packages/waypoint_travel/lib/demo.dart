@@ -17,12 +17,12 @@ Trip _paris() {
     booked: Itinerary(
       outbound: _flight('WA 631', tuesday),
       homebound: _flight('WA 636', wednesday),
-      hotel: HotelStay(
+      hotel: HotelStay.atNightlyRate(
         name: 'Hôtel du Canal',
         address: 'Quai de Valmy 88, 75010 Paris',
         checkIn: DateTime(2026, 9, 15, 15),
         nights: NightCount(1),
-        nightly: wholeMoney(149),
+        nightlyRate: wholeMoney(149),
         confirmation: BookingReference('77310452'),
       ),
       meetings: [
@@ -55,12 +55,12 @@ Trip _berlin() {
     booked: Itinerary(
       outbound: _flight('WA 379', wednesday),
       homebound: _flight('WA 388', thursday),
-      hotel: HotelStay(
+      hotel: HotelStay.atNightlyRate(
         name: 'Spree Loft Hotel',
         address: 'Am Wriezener Bahnhof 2, Berlin',
         checkIn: DateTime(2026, 10, 28, 15),
         nights: NightCount(1),
-        nightly: wholeMoney(122),
+        nightlyRate: wholeMoney(122),
         confirmation: BookingReference('84213907'),
       ),
       meetings: [

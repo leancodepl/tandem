@@ -684,7 +684,7 @@ abstract class AppLocalizations {
   /// No description provided for @bookingPrice.
   ///
   /// In en, this message translates to:
-  /// **'Price'**
+  /// **'Total price'**
   String get bookingPrice;
 
   /// No description provided for @bookingConfirmation.
@@ -698,12 +698,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{day} · {count, plural, =1{1 night} other{{count} nights}}'**
   String bookingCheckOutDay(String day, int count);
-
-  /// No description provided for @bookingNightly.
-  ///
-  /// In en, this message translates to:
-  /// **'{nightly} a night'**
-  String bookingNightly(String nightly);
 
   /// No description provided for @bookingOutsideTrip.
   ///

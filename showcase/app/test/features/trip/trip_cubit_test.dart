@@ -4,6 +4,7 @@ import 'package:tandem/testing.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
+import 'package:waypoint/features/trip/trip_itinerary.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_travel/demo.dart';
@@ -55,6 +56,29 @@ void main() {
     expect(trip.itinerary.homebound, selected);
   });
 
+  test('moving every meeting earlier cannot put the return before arrival', () {
+    final selected = trip.itinerary.homebound;
+    for (final meeting in trip.itinerary.meetings) {
+      trip.moveMeeting(meeting.id.value, DateTime(2026, 10, 26, 9));
+    }
+
+    expect(
+      () => trip.setHomeboundFlight('WA 388', DateTime(2026, 10, 26)),
+      throwsA(isA<ToolCallRefused>()),
+    );
+    expect(trip.itinerary.homebound, selected);
+    expect(
+      trip.findFlights('BER', 'WAW', DateTime(2026, 10, 26)),
+      everyElement(
+        isA<FlightOption>().having(
+          (option) => option.unavailable,
+          'structural refusal',
+          contains('after the flight there lands'),
+        ),
+      ),
+    );
+  });
+
   test('a flight home before the last meeting ends is refused', () {
     trip.moveMeeting('workshop', DateTime(2026, 10, 30, 10));
 
@@ -85,7 +109,7 @@ void main() {
     if (hotel == null) fail('The Berlin trip has a hotel.');
     final change = HotelNightsChange(
       hotel,
-      was: hotel.copyWith(nights: NightCount(2)),
+      was: hotel.withNights(NightCount(2)),
     );
 
     expect(change.cost, wholeMoney(-122));
@@ -161,9 +185,13 @@ void main() {
       final original = trip.itinerary.hotel;
       if (original == null) fail('The Berlin trip has a hotel.');
       trip.setHotelNights(2);
-      final corrected = original.copyWith(
+      final corrected = HotelStay.atNightlyRate(
+        name: original.name,
         address: 'Corrected hotel address',
-        nightly: wholeMoney(130),
+        checkIn: original.checkIn,
+        nights: original.nights,
+        nightlyRate: wholeMoney(130),
+        confirmation: original.confirmation,
       );
 
       trips.confirmHotel(trip.info.id, corrected);
@@ -171,13 +199,12 @@ void main() {
 
       expect(trip.itinerary.hotel?.nights, NightCount(2));
       expect(trip.itinerary.hotel?.address, corrected.address);
-      expect(trip.itinerary.hotel?.nightly, corrected.nightly);
+      expect(trip.itinerary.hotel?.nightlyRate, corrected.nightlyRate);
       expect(trip.bookingChanges.totalCost, wholeMoney(130));
 
-      final replacement = corrected.copyWith(
-        confirmation: BookingReference('replacement'),
-        nights: NightCount(3),
-      );
+      final replacement = corrected
+          .copyWith(confirmation: BookingReference('replacement'))
+          .withNights(NightCount(3));
       trips.confirmHotel(trip.info.id, replacement);
       await Future<void>.delayed(Duration.zero);
 
@@ -210,12 +237,12 @@ void main() {
       addTearDown(copenhagen.close);
       copenhagen.setHomeboundFlight('WA 478', DateTime(2026, 11, 20));
       final flightBooking = copenhagen.bookChanges();
-      final hotel = HotelStay(
+      final hotel = HotelStay.atNightlyRate(
         name: 'Havnegade Loft',
         address: 'Havnegade 44, 1058 Copenhagen',
         checkIn: DateTime(2026, 11, 18, 15),
         nights: NightCount(2),
-        nightly: wholeMoney(168),
+        nightlyRate: wholeMoney(168),
         confirmation: BookingReference('55120873'),
       );
 
@@ -287,12 +314,12 @@ void main() {
     final booking = first.bookChanges();
     first.moveMeeting('review', DateTime(2026, 11, 20, 10));
     await booking;
-    final hotel = HotelStay(
+    final hotel = HotelStay.atNightlyRate(
       name: 'Havnegade Loft',
       address: 'Havnegade 44, Copenhagen',
       checkIn: DateTime(2026, 11, 18, 15),
       nights: NightCount(2),
-      nightly: wholeMoney(168),
+      nightlyRate: wholeMoney(168),
       confirmation: BookingReference('55120873'),
     );
 
@@ -306,6 +333,131 @@ void main() {
       DateTime(2026, 11, 20, 10),
     );
   });
+
+  test(
+    'a total-only hotel preserves its price and needs a quote for changes',
+    () {
+      final previous = trip.itinerary.hotel;
+      if (previous == null) fail('The Berlin trip has a hotel.');
+      trip.setHotelNights(2);
+      final imported = HotelStay.forTotal(
+        name: previous.name,
+        address: previous.address,
+        checkIn: previous.checkIn,
+        nights: previous.nights,
+        total: wholeMoney(245),
+        confirmation: previous.confirmation,
+      );
+      trip.addHotel(imported);
+
+      expect(trip.itinerary.hotel, imported);
+      expect(trip.trip.hotel?.total, 245);
+      expect(trip.trip.hotel?.nightly, isNull);
+      expect(trip.bookingChanges.items, isEmpty);
+      expect(tools(), isNot(contains('set_hotel_nights')));
+      expect(() => trip.setHotelNights(3), throwsA(isA<ToolCallRefused>()));
+      expect(trip.itinerary.hotel?.total, wholeMoney(245));
+
+      trip.setHomeboundFlight('WA 390', DateTime(2026, 10, 29));
+      expect(trip.canBookChanges, isTrue);
+    },
+  );
+
+  test(
+    'a hotel conflict refuses the whole booking and keeps later edits',
+    () async {
+      final previouslyBooked = trip.state.booked;
+      final hotel = previouslyBooked.hotel;
+      if (hotel == null) fail('The Berlin trip has a hotel.');
+      trip
+        ..setHotelNights(2)
+        ..setHomeboundFlight('WA 390', DateTime(2026, 10, 29));
+      final events = <TripPresentationEvent>[];
+      final subscription = trip.presentation.listen(events.add);
+      addTearDown(subscription.cancel);
+      final booking = trip.bookChanges();
+      trip
+        ..setHomeboundFlight('WA 388', DateTime(2026, 10, 30))
+        ..moveMeeting('kickoff', DateTime(2026, 10, 28, 12));
+      final replacement = HotelStay.forTotal(
+        name: 'Self-booked replacement',
+        address: hotel.address,
+        checkIn: hotel.checkIn,
+        nights: NightCount(2),
+        total: wholeMoney(245),
+        confirmation: BookingReference('external-confirmation'),
+      );
+      trips.confirmHotel(trip.info.id, replacement);
+
+      await expectLater(booking, throwsA(isA<ToolCallRefused>()));
+      await Future<void>.delayed(Duration.zero);
+
+      final confirmed = trips.tripOrNull(trip.info.id)?.booked;
+      expect(confirmed?.hotel, replacement);
+      expect(confirmed?.homebound, previouslyBooked.homebound);
+      expect(confirmed?.meeting(MeetingId('kickoff'))?.start.hour, 12);
+      expect(trip.itinerary.homebound.departs, DateTime(2026, 10, 30, 18, 5));
+      expect(trip.bookingChanges.items.single, isA<FlightHomeChange>());
+      expect(trip.state.booking, isFalse);
+      expect(events, isEmpty);
+    },
+  );
+
+  test('a night on the flight does not need a hotel at the destination', () {
+    final original = trip.info;
+    final booked = Itinerary(
+      outbound: Flight(
+        number: original.booked.outbound.number,
+        origin: original.booked.outbound.origin,
+        destination: original.booked.outbound.destination,
+        departs: DateTime(2026, 10, 28, 23),
+        arrives: DateTime(2026, 10, 29, 6),
+        fare: original.booked.outbound.fare,
+      ),
+      homebound: original.booked.homebound,
+      meetings: [
+        Meeting(
+          id: MeetingId('lunch'),
+          title: 'Client lunch',
+          place: 'Berlin',
+          start: DateTime(2026, 10, 29, 12),
+          end: DateTime(2026, 10, 29, 13),
+        ),
+      ],
+    );
+    final info = original.copyWith(booked: booked);
+    final store = TripsCubit([info], inbox: const Inbox());
+    final overnight = TripCubit(
+      info: info,
+      trips: store,
+      flights: const FlightSearch(),
+      traveller: demoTraveller(),
+    );
+    addTearDown(overnight.close);
+    addTearDown(store.close);
+
+    expect(overnight.warnings, isEmpty);
+    expect(
+      planOf(
+        booked,
+        booked,
+      ).expand((day) => day.items).whereType<NoHotelItem>(),
+      isEmpty,
+    );
+  });
+
+  test(
+    'a later hotel check-in warns about the first uncovered night',
+    () async {
+      final hotel = trip.itinerary.hotel;
+      if (hotel == null) fail('The Berlin trip has a hotel.');
+      trip.setHomeboundFlight('WA 388', DateTime(2026, 10, 30));
+      await trip.bookChanges();
+      trip.addHotel(hotel.copyWith(checkIn: DateTime(2026, 10, 29, 15)));
+
+      expect(trip.warnings, [NoHotelForNight(DateTime(2026, 10, 28))]);
+    },
+  );
 
   test('the warnings name what no longer fits the moved workshop', () {
     trip.moveMeeting('workshop', DateTime(2026, 10, 30, 10));
@@ -381,12 +533,12 @@ void main() {
         traveller: demoTraveller(),
       );
       addTearDown(copenhagen.close);
-      final stay = HotelStay(
+      final stay = HotelStay.atNightlyRate(
         name: 'Havnegade Loft',
         address: 'Havnegade 44, 1058 Copenhagen',
         checkIn: DateTime(2026, 11, 18, 15),
         nights: NightCount(1),
-        nightly: wholeMoney(168),
+        nightlyRate: wholeMoney(168),
         confirmation: BookingReference('55120873'),
       );
 
