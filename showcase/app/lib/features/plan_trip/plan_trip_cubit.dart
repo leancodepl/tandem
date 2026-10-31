@@ -7,6 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
+import 'package:waypoint/common/formatters/policy_agent_text.dart';
+import 'package:waypoint/common/tandem/flight_option.dart';
 import 'package:waypoint/common/tandem/form_changes.dart';
 import 'package:waypoint/features/plan_trip/plan_trip_form_controller.dart';
 import 'package:waypoint/features/plan_trip/plan_trip_summary.dart';
@@ -110,7 +112,7 @@ class PlanTripCubit({
   );
 
   /// The company's rules for every trip.
-  String get policy => Policy.forAgent;
+  String get policy => PolicyAgentText.trip;
 
   /// Sets the city of the trip: Berlin, Copenhagen or Vienna.
   void setCity(String city) {

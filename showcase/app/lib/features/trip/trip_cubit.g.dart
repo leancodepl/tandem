@@ -182,7 +182,7 @@ mixin _$TripCubit implements AgentSurface {
             return AgentResult(result).as(
               .list(
                 .object(
-                  id: 'package:waypoint_travel/src/flight_search.dart#FlightOption',
+                  id: 'package:waypoint/common/tandem/flight_option.dart#FlightOption',
                   description:
                       'A flight as find_flights gives it to the agent.',
                   fields: (field) => [

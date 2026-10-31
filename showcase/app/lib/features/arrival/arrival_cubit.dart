@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
+import 'package:waypoint/common/formatters/policy_agent_text.dart';
 import 'package:waypoint/features/arrival/arrival_arrangements_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
@@ -113,7 +114,7 @@ class ArrivalCubit({
       checkIn: trip.booked.hotel?.checkIn,
       roomReady: _roomReady,
     ),
-    policy: Policy.ridesForAgent,
+    policy: PolicyAgentText.rides,
   );
 
   /// Books the ride [rideId] from the airport and charges its fare to the

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
+import 'package:waypoint/common/tandem/flight_option.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
