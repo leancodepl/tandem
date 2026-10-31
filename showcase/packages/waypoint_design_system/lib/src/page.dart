@@ -26,7 +26,8 @@ final class const WaypointTopBar({
         spacing: 8,
         children: [
           WaypointBackButton(onPressed: onBack),
-          if (title case final title?) Text(title, style: AppText.title),
+          if (title case final title?)
+            Flexible(child: Text(title, style: AppText.title)),
           if (trailing case final trailing?)
             Expanded(
               child: Text(
@@ -58,10 +59,12 @@ final class const WaypointPageTitle(
         Text(above, style: AppText.label),
         const SizedBox(height: 4),
       ],
-      Row(
-        crossAxisAlignment: .end,
+      OverflowBar(
+        alignment: .spaceBetween,
+        overflowSpacing: 12,
+        spacing: 16,
         children: [
-          Expanded(child: Text(title, style: AppText.headline)),
+          Text(title, style: AppText.headline),
           if (trailing case final trailing?)
             Padding(padding: const .only(bottom: 10), child: trailing),
         ],

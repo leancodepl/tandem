@@ -562,6 +562,33 @@ void main() {
     );
   });
 
+  testWidgets(
+    'a small phone keeps enlarged actions and trip details readable',
+    (tester) async {
+      await _pumpApp(
+        tester,
+        WaypointApp(
+          createAgents: _scriptedAgents,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(2)),
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
+        size: const Size(320, 640),
+        ratio: 1,
+      );
+
+      await tester.tap(find.text('Inbox'));
+      await _settle(tester);
+      await _openLink(tester, '/trips/berlin');
+
+      expect(find.text('BERLIN'), findsOneWidget);
+      expect(find.text('Waiting for you'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('on an iPad the assistant works beside the trip', (tester) async {
     await _pumpApp(
       tester,

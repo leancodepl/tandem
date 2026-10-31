@@ -15,14 +15,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<DatePickerDialog>(find.byType(DatePickerDialog)).initialDate,
+      tester
+          .widget<DatePickerDialog>(find.byType(DatePickerDialog))
+          .initialDate,
       DateTime(2026, 10, 29),
     );
   });
 
-  testWidgets('a read-only field ignores a calendar already open', (tester) async {
+  testWidgets('a read-only field ignores a calendar already open', (
+    tester,
+  ) async {
     final held = DateTime(2026, 10, 28);
-    final field = AdvancedFieldController<DateTime?, String>(initialValue: held);
+    final field = AdvancedFieldController<DateTime?, String>(
+      initialValue: held,
+    );
     addTearDown(field.dispose);
     var edits = 0;
     await _pumpField(tester, field, onEdited: () => edits++);
@@ -38,7 +44,9 @@ void main() {
     expect(edits, 0);
   });
 
-  testWidgets('a replaced field ignores its old calendar result', (tester) async {
+  testWidgets('a replaced field ignores its old calendar result', (
+    tester,
+  ) async {
     final old = AdvancedFieldController<DateTime?, String>(
       initialValue: DateTime(2026, 10, 28),
     );

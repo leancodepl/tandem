@@ -11,6 +11,7 @@ final class const WaypointNote(
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
+    mainAxisSize: .min,
     crossAxisAlignment: .start,
     spacing: 8,
     children: [
@@ -18,7 +19,7 @@ final class const WaypointNote(
         padding: const .only(top: 1),
         child: Icon(icon, size: 16, color: tone.icon),
       ),
-      Expanded(
+      Flexible(
         child: Text(
           text,
           maxLines: maxLines,

@@ -34,10 +34,10 @@ final class const WaypointButton(
         clipBehavior: .antiAlias,
         child: InkWell(
           onTap: enabled ? onPressed : null,
-          child: SizedBox(
-            height: small ? 38 : 48,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: small ? 38 : 48),
             child: Padding(
-              padding: .symmetric(horizontal: small ? 14 : 18),
+              padding: .symmetric(horizontal: small ? 14 : 18, vertical: 8),
               child: Row(
                 mainAxisSize: .min,
                 mainAxisAlignment: .center,
@@ -53,11 +53,14 @@ final class const WaypointButton(
                     )
                   else if (icon case final icon?)
                     Icon(icon, size: 18, color: foreground),
-                  Text(
-                    label,
-                    style: AppText.button.copyWith(
-                      color: enabled || busy ? foreground : Palette.muted,
-                      fontSize: small ? 14 : 15,
+                  Flexible(
+                    child: Text(
+                      label,
+                      textAlign: .center,
+                      style: AppText.button.copyWith(
+                        color: enabled || busy ? foreground : Palette.muted,
+                        fontSize: small ? 14 : 15,
+                      ),
                     ),
                   ),
                 ],
