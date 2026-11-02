@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waypoint/features/expenses/expense_report.dart';
 import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
+import 'package:waypoint/features/expenses/expenses_reports_state.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {

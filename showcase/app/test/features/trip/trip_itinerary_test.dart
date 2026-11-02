@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:waypoint/features/trip/trip_itinerary.dart';
+import 'package:waypoint/features/trip/trip_plan.dart';
 import 'package:waypoint_travel/demo.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 

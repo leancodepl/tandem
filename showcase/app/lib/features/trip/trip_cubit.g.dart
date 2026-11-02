@@ -255,7 +255,7 @@ mixin _$TripCubit implements AgentSurface {
 
             return AgentResult(result).as(
               .object(
-                id: 'package:waypoint/features/trip/trip_cubit.dart#Booked',
+                id: 'package:waypoint/features/trip/trip_booking_result.dart#Booked',
                 description: 'What book_changes booked.',
                 fields: (field) => [
                   field(

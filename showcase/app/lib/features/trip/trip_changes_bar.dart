@@ -10,6 +10,8 @@ import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
+import 'package:waypoint/features/trip/trip_presentation_event.dart';
+import 'package:waypoint/features/trip/trip_state.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 

@@ -8,27 +8,12 @@ from datetime import date, datetime
 from typing import Any
 
 from waypoint_agent.instruction import Screen
+from waypoint_agent.script_message import Answer, Call, Message
 
 TRIP_REPLY = "This is a scripted assistant: it knows that the workshop in Berlin moves to Friday."
 BOOKING_REPLY = "This e-mail has no hotel booking."
 # What the app notes when the traveller's change voided an approval.
 REASK = "changed the trip on the screen"
-
-
-@dataclass(frozen=True)
-class Call:
-    name: str
-    args: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class Answer:
-    name: str
-    result: Any
-
-
-Part = str | Call | Answer
-Message = Sequence[Part]
 
 
 def play(

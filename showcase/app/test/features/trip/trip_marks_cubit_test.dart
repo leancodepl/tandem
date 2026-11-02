@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
-import 'package:waypoint/features/trip/trip_activity_cubit.dart';
+import 'package:waypoint/features/trip/trip_activity.dart';
+import 'package:waypoint/features/trip/trip_activity_state.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
-import 'package:waypoint/features/trip/trip_reasks_cubit.dart';
+import 'package:waypoint/features/trip/trip_marks_presentation_event.dart';
+import 'package:waypoint/features/trip/trip_marks_state.dart';
+import 'package:waypoint/features/trip/trip_reasks_state.dart';
 
 void main() {
   late MarksCubit marks;

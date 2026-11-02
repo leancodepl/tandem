@@ -1,7 +1,7 @@
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/common/formatters/policy_agent_text.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
-import 'package:waypoint/features/trip/trip_cubit.dart';
+import 'package:waypoint/features/trip/trip_warning.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 final class const TripSummary({

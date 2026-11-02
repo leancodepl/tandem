@@ -1,7 +1,8 @@
 import json
 
 from waypoint_agent.instruction import Screen
-from waypoint_agent.script import Answer, Call, play
+from waypoint_agent.script import play
+from waypoint_agent.script_message import Answer, Call
 
 
 def test_trip_uses_current_changes_and_never_books_after_a_failed_change() -> None:

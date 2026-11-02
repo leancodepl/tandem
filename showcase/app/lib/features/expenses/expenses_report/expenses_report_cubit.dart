@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:copy_with_extension/copy_with_extension.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
@@ -9,8 +7,14 @@ import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/common/formatters/policy_agent_text.dart';
 import 'package:waypoint/common/tandem/form_changes.dart';
+import 'package:waypoint/features/expenses/expense_report.dart';
 import 'package:waypoint/features/expenses/expenses_report/expenses_report_form_controller.dart';
+import 'package:waypoint/features/expenses/expenses_report/expenses_report_state.dart';
+import 'package:waypoint/features/expenses/expenses_report/receipt_claim_field.dart';
+import 'package:waypoint/features/expenses/expenses_report/report_submission.dart';
+import 'package:waypoint/features/expenses/expenses_report/report_summary.dart';
 import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
+import 'package:waypoint/features/expenses/expenses_reports_state.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 part 'expenses_report_cubit.g.dart';
@@ -206,63 +210,3 @@ class ExpensesReportCubit({
     throw ToolCallRefused(reason);
   }
 }
-
-/// What the expense report shows besides its claims.
-@CopyWith()
-final class const ExpensesReportState._({
-  /// The confirmation once the report is submitted.
-  final BookingReference? submitted,
-
-  /// The report is being submitted.
-  final bool submitting = false,
-
-  /// The receipts whose claim the agent filled in and the traveller has
-  /// not changed.
-  final Set<ReceiptId> marked = const {},
-}) with Equatable {
-  factory({
-    BookingReference? submitted,
-    bool submitting = false,
-    Set<ReceiptId> marked = const {},
-  }) => ExpensesReportState._(
-    submitted: submitted,
-    submitting: submitting,
-    marked: Set.unmodifiable(marked),
-  );
-
-  @override
-  List<Object?> get props => [submitted, submitting, marked];
-}
-
-final class const ReportSummary({
-  required final String trip,
-  required final List<ReceiptSummary> receipts,
-
-  /// Paid back in all, in euros.
-  required final int total,
-
-  /// The confirmation once the report is submitted.
-  final String? submitted,
-});
-
-final class const ReceiptSummary({
-  required final String id,
-  required final String merchant,
-  required final ExpenseCategory category,
-  required final String day,
-  required final int paid,
-
-  /// Paid back of it, or null while it is not in the report.
-  final int? claimed,
-
-  /// Why the screen marks the claim as wrong, such as more than was paid,
-  /// or null while it is right. The report cannot be submitted while a
-  /// claim has a problem.
-  final String? problem,
-});
-
-/// What submit_report submitted.
-final class const Submitted({
-  required final String confirmation,
-  required final int total,
-});

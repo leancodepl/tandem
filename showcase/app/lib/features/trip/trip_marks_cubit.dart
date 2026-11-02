@@ -1,7 +1,8 @@
 import 'package:bloc_presentation/bloc_presentation.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
+import 'package:waypoint/features/trip/trip_marks_presentation_event.dart';
+import 'package:waypoint/features/trip/trip_marks_state.dart';
 
 /// The items the assistant changed and the traveller has not touched or
 /// booked since: the screen marks them in blue. Not part of what the agent
@@ -37,15 +38,3 @@ final class MarksCubit()
     emitPresentation(MarksPresentationEventItemChanged(id));
   }
 }
-
-final class MarksState(Set<String> ids) with Equatable {
-  final Set<String> ids = Set.unmodifiable(ids);
-
-  @override
-  List<Object?> get props => [ids];
-}
-
-sealed class const MarksPresentationEvent();
-
-final class const MarksPresentationEventItemChanged(final String id)
-    extends MarksPresentationEvent;

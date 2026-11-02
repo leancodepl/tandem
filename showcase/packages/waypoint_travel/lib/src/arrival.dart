@@ -60,31 +60,3 @@ enum RideMode() {
   /// The S-Bahn and a short walk.
   train,
 }
-
-/// The arrival days Waypoint knows: Berlin, where Ola lands on Wednesday
-/// morning and has the kickoff with Studio Kraft at 11:00.
-final class const ArrivalDays() {
-  ArrivalDay? of(TripId tripId) => switch (tripId.value) {
-    'berlin' => ArrivalDay(
-      tripId: TripId('berlin'),
-      meetingId: MeetingId('kickoff'),
-      host: const Host('Lena Kraft', '+49 30 5557 1204'),
-      roomReadyEarly: DateTime(2026, 10, 28, 13),
-      rides: [
-        Ride(
-          id: RideId('taxi'),
-          mode: .taxi,
-          duration: const Duration(minutes: 35),
-          fare: wholeMoney(48),
-        ),
-        Ride(
-          id: RideId('train'),
-          mode: .train,
-          duration: const Duration(minutes: 52),
-          fare: wholeMoney(4),
-        ),
-      ],
-    ),
-    _ => null,
-  };
-}

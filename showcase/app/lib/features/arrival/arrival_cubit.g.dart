@@ -19,12 +19,12 @@ mixin _$ArrivalCubit implements AgentSurface {
           'arrival',
           'The arrival day as the traveller sees it: the first meeting, the ways there, the host and the hotel, with what is arranged already.',
           .object(
-            id: 'package:waypoint/features/arrival/arrival_cubit.dart#ArrivalSummary',
+            id: 'package:waypoint/features/arrival/arrival_summary.dart#ArrivalSummary',
             fields: (field) => [
               field('landing', (value) => value.landing).as(.string),
               field('meeting', (value) => value.meeting).as(
                 .object(
-                  id: 'package:waypoint/features/arrival/arrival_cubit.dart#MeetingNext',
+                  id: 'package:waypoint/features/arrival/arrival_summary.dart#MeetingNext',
                   fields: (field) => [
                     field('title', (value) => value.title).as(.string),
                     field('place', (value) => value.place).as(.string),
@@ -48,7 +48,7 @@ mixin _$ArrivalCubit implements AgentSurface {
               field('rides', (value) => value.rides).as(
                 .list(
                   .object(
-                    id: 'package:waypoint/features/arrival/arrival_cubit.dart#RideSummary',
+                    id: 'package:waypoint/features/arrival/arrival_summary.dart#RideSummary',
                     fields: (field) => [
                       field('id', (value) => value.id).as(.string),
                       field('mode', (value) => value.mode).as(
@@ -90,7 +90,7 @@ mixin _$ArrivalCubit implements AgentSurface {
               ),
               field('hotel', (value) => value.hotel).as(
                 .object(
-                  id: 'package:waypoint/features/arrival/arrival_cubit.dart#HotelNext',
+                  id: 'package:waypoint/features/arrival/arrival_summary.dart#HotelNext',
                   fields: (field) => [
                     field(
                       'name',

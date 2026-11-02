@@ -6,7 +6,8 @@ from google.adk.models import BaseLlm, LlmRequest, LlmResponse
 from google.genai import types
 
 from waypoint_agent.instruction import Screen
-from waypoint_agent.script import Answer, Call, Part, play
+from waypoint_agent.script import play
+from waypoint_agent.script_message import Answer, Call, Part
 
 
 class ScriptedLlm(BaseLlm):

@@ -1,5 +1,6 @@
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:waypoint/features/expenses/expense_report.dart';
+import 'package:waypoint/features/expenses/expenses_reports_state.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 final class ReportsCubit({required final Inbox inbox})
@@ -91,66 +92,3 @@ final class ReportsCubit({required final Inbox inbox})
   bool waits(TripId tripId) =>
       receipts(tripId).isNotEmpty && report(tripId).submitted == null;
 }
-
-final class ReportsState(
-  Map<TripId, ExpenseReport> reports, {
-  Set<TripId> submitting = const {},
-}) with Equatable {
-  final Map<TripId, ExpenseReport> reports = Map.unmodifiable(reports);
-  final Set<TripId> submitting = Set.unmodifiable(submitting);
-
-  @override
-  List<Object?> get props => [reports, submitting];
-}
-
-final class ExpenseLine({
-  required final Receipt receipt,
-
-  /// Paid back, in whole euros: the receipt's amount or less under the
-  /// policy.
-  required final Money claimed,
-}) with Equatable {
-  this {
-    requireSupportedWholeMoney(claimed, 'claimed');
-    if (claimed <= wholeMoney(0) || claimed > receipt.paid) {
-      throw ArgumentError.value(
-        claimed,
-        'claimed',
-        'Must be positive and no more than the receipt amount',
-      );
-    }
-  }
-
-  @override
-  List<Object?> get props => [receipt, claimed];
-}
-
-final class ExpenseReport({
-  List<ExpenseLine> lines = const [],
-  final BookingReference? submitted,
-}) with Equatable {
-  this {
-    final receiptIds = <ReceiptId>{};
-    for (final line in lines) {
-      if (receiptIds.add(line.receipt.id)) continue;
-      throw ArgumentError.value(
-        line.receipt.id,
-        'lines',
-        'A receipt appears only once in a report.',
-      );
-    }
-  }
-
-  final List<ExpenseLine> lines = List.unmodifiable(lines);
-
-  @override
-  List<Object?> get props => [lines, submitted];
-
-  Money get total =>
-      lines.fold(wholeMoney(0), (sum, line) => sum + line.claimed);
-
-  bool claims(ReceiptId receiptId) =>
-      lines.any((line) => line.receipt.id == receiptId);
-}
-
-final class const ReportLocked(final String reason) implements Exception;

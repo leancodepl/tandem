@@ -1,11 +1,13 @@
 import 'package:bloc_presentation/bloc_presentation.dart';
-import 'package:copy_with_extension/copy_with_extension.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/tandem/form_changes.dart';
+import 'package:waypoint/features/booking/booking_draft.dart';
+import 'package:waypoint/features/booking/booking_error.dart';
 import 'package:waypoint/features/booking/booking_form_controller.dart';
+import 'package:waypoint/features/booking/booking_presentation_event.dart';
+import 'package:waypoint/features/booking/booking_state.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 part 'booking_cubit.g.dart';
@@ -126,25 +128,3 @@ class BookingCubit({@override required final BookingFormController form})
     throw ToolCallRefused(reason);
   }
 }
-
-/// What the booking form shows besides its fields.
-@CopyWith()
-final class const BookingState._({
-  /// The parts the agent filled in and the traveller has not changed.
-  final Set<BookingPart> marked = const {},
-
-  /// The stay is being added to the trip.
-  final bool adding = false,
-}) with Equatable {
-  factory({Set<BookingPart> marked = const {}, bool adding = false}) =>
-      BookingState._(marked: Set.unmodifiable(marked), adding: adding);
-
-  @override
-  List<Object?> get props => [marked, adding];
-}
-
-sealed class const BookingPresentationEvent();
-
-/// The traveller added [stay] to the trip.
-final class const BookingPresentationEventAdded(final HotelStay stay)
-    extends BookingPresentationEvent;

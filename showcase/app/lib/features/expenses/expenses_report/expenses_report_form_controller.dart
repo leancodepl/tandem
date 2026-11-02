@@ -1,7 +1,7 @@
 import 'package:advanced_forms/advanced_forms.dart';
-import 'package:equatable/equatable.dart';
-import 'package:waypoint/common/formatters/policy_agent_text.dart';
-import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
+import 'package:waypoint/features/expenses/expense_report.dart';
+import 'package:waypoint/features/expenses/expenses_report/claim_error.dart';
+import 'package:waypoint/features/expenses/expenses_report/receipt_claim_field.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 /// The expense report form: what is claimed of each of the trip's
@@ -109,35 +109,4 @@ final class ExpensesReportFormController({
           wholeMoney(claimed),
         _ => null,
       };
-}
-
-final class const ReceiptClaimField({
-  required final Receipt receipt,
-  required final AdvancedTextFieldController<ClaimError> field,
-});
-
-/// Why a claim of the expense report is wrong.
-sealed class const ClaimError() with Equatable {
-  /// The error in English, for the agent.
-  String get forAgent;
-}
-
-/// The claim is not a whole number of euros between 1 and the [paid]
-/// amount of its receipt.
-final class const ClaimOutOfRange(final Money paid) extends ClaimError {
-  @override
-  List<Object?> get props => [paid];
-
-  @override
-  String get forAgent => 'Claim between €1 and the €${paid.toInt()} paid';
-}
-
-/// The claim breaks the company's policy.
-final class const ClaimOverPolicy(final PolicyBreach breach)
-    extends ClaimError {
-  @override
-  List<Object?> get props => [breach];
-
-  @override
-  String get forAgent => breach.forAgent;
 }

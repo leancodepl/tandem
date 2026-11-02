@@ -2,7 +2,7 @@
 
 // ignore_for_file: document_ignores, unnecessary_type_name_in_constructor, use_primary_constructors
 
-part of 'arrival_arrangements_cubit.dart';
+part of 'arrival_arrangements.dart';
 
 // **************************************************************************
 // CopyWithGenerator
