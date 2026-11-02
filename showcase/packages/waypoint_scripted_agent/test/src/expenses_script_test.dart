@@ -4,6 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waypoint_scripted_agent/waypoint_scripted_agent.dart';
 
 void main() {
+  test('adding receipts stops without requesting submission', () async {
+    final events = await _reply(userText: 'Add forwarded receipts.');
+
+    expect(_said(events), 'The report claims €12.');
+    expect(_calls(events), isEmpty);
+  });
+
   test(
     'failed expense changes do not trigger submission or claim success',
     () async {
@@ -116,6 +123,7 @@ Future<List<Map<String, Object?>>> _reply({
   List<String> tools = const ['submit_report'],
   List<Map<String, Object?>>? receipts,
   bool initial = false,
+  String userText = 'Submit my report.',
 }) => scriptedExpensesAgent().run({
   'threadId': 'expenses-test',
   'runId': 'expenses-reply',
@@ -143,9 +151,10 @@ Future<List<Map<String, Object?>>> _reply({
   ],
   'messages': initial
       ? [
-          {'role': 'user', 'content': 'Check the report'},
+          {'role': 'user', 'content': userText},
         ]
       : [
+          {'role': 'user', 'content': userText},
           {
             'role': 'assistant',
             'toolCalls': [

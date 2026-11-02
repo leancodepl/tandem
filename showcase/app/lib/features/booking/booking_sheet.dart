@@ -28,7 +28,7 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 
 final _log = Logger('Booking');
 
-/// Opens [email] immediately, or lets the traveller choose a confirmation.
+/// Selects [email], or lets the traveller choose a confirmation.
 /// Returns the hotel they added, or null.
 Future<HotelStay?> showBookingSheet(
   BuildContext context, {
@@ -139,27 +139,8 @@ final class const _BookingForm({
 }) extends HookWidget {
   @override
   Widget build(BuildContext context) {
-    final chosen = useState<ForwardedEmail?>(null);
-
-    void read(ForwardedEmail email, TandemSession session) {
-      chosen.value = email;
-      session.send(
-        'Fill in the hotel booking from this confirmation e-mail:\n\n'
-        '${email.body}',
-      );
-    }
-
-    useEffect(() {
-      if (email case final email?) {
-        // Once the session is in scope: it starts with the sheet.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) {
-            read(email, TandemSessionScope.of(context));
-          }
-        });
-      }
-      return null;
-    }, const []);
+    final chosen = useState(email);
+    final asked = useState(false);
 
     final form = context.watch<BookingFormController>();
     useListenable(form.onValuesChanged);
@@ -173,13 +154,17 @@ final class const _BookingForm({
           .map((part) => l10n.bookingPart(part.name))
           .join(l10n.listSeparator),
     );
-    final status = switch ((busy, chosen.value)) {
+    final status = switch ((busy, asked.value)) {
       (true, _) => l10n.bookingReading,
-      (_, _?) when missing.isEmpty => l10n.bookingFilled,
-      (_, _?) => stillMissing,
-      (_, null) when form.value.wasModified && missing.isNotEmpty =>
+      (_, true) when missing.isEmpty => l10n.bookingFilled,
+      (_, true) => stillMissing,
+      (_, false) when form.value.wasModified && missing.isNotEmpty =>
         stillMissing,
       _ => null,
+    };
+    final shownEmails = switch (chosen.value) {
+      final selected? => [selected],
+      null => emails,
     };
 
     return Column(
@@ -204,33 +189,49 @@ final class const _BookingForm({
                           : l10n.bookingFromEmails,
                       style: WPTextStyle.label,
                     ),
-                    for (final email in emails)
-                      if (chosen.value == null || chosen.value == email)
-                        WPMailCard(
-                          from: email.from,
-                          subject: email.subject,
-                          selected: chosen.value == email,
-                          onTap: busy || chosen.value == email
-                              ? null
-                              : () => read(email, session),
-                          trailing: chosen.value == email
-                              ? WPTextButton(
-                                  l10n.changeEmail,
-                                  onPressed: busy || session.failure != null
-                                      ? null
-                                      : () {
-                                          chosen.value = null;
-                                          cubit.clear();
-                                        },
-                                )
-                              : Text(
-                                  l10n.received(
-                                    email.received,
-                                    today: context.watch<Traveller>().today,
-                                  ),
-                                  style: WPTextStyle.label,
+                    for (final email in shownEmails)
+                      WPMailCard(
+                        from: email.from,
+                        subject: email.subject,
+                        selected: chosen.value == email,
+                        onTap: busy || chosen.value == email
+                            ? null
+                            : () => chosen.value = email,
+                        trailing: chosen.value == email
+                            ? WPTextButton(
+                                l10n.changeEmail,
+                                onPressed: busy || session.failure != null
+                                    ? null
+                                    : () {
+                                        chosen.value = null;
+                                        asked.value = false;
+                                      },
+                              )
+                            : Text(
+                                l10n.received(
+                                  email.received,
+                                  today: context.watch<Traveller>().today,
                                 ),
-                        ),
+                                style: WPTextStyle.label,
+                              ),
+                      ),
+                    if (chosen.value case final email?)
+                      WPButton(
+                        l10n.bookingFillFromEmail,
+                        onPressed:
+                            busy ||
+                                cubit.state.adding ||
+                                session.failure != null
+                            ? null
+                            : () {
+                                cubit.clear();
+                                asked.value = true;
+                                session.send(
+                                  'Fill in the hotel booking from this confirmation e-mail:\n\n'
+                                  '${email.body}',
+                                );
+                              },
+                      ),
                   ],
                 ),
               ),

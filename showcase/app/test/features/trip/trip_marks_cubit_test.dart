@@ -5,7 +5,6 @@ import 'package:waypoint/features/trip/trip_activity_state.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trip/trip_marks_presentation_event.dart';
 import 'package:waypoint/features/trip/trip_marks_state.dart';
-import 'package:waypoint/features/trip/trip_reasks_state.dart';
 
 void main() {
   late MarksCubit marks;
@@ -17,23 +16,15 @@ void main() {
   test('trip UI snapshots own their state collections', () {
     final ids = {'hotel'};
     final steps = <AgentStep>[const FlightsLookedUpStep(1)];
-    final toolCalls = {'call-1'};
     final marks = MarksState(ids);
     final activity = ActivityState(steps);
-    final reasks = ReasksState(toolCalls);
 
     ids.clear();
     steps.clear();
-    toolCalls.clear();
 
     expect(marks.ids, {'hotel'});
     expect(activity.steps, [const FlightsLookedUpStep(1)]);
-    expect(reasks.toolCallIds, {'call-1'});
-    for (final clear in [
-      marks.ids.clear,
-      activity.steps.clear,
-      reasks.toolCallIds.clear,
-    ]) {
+    for (final clear in [marks.ids.clear, activity.steps.clear]) {
       expect(clear, throwsUnsupportedError);
     }
   });

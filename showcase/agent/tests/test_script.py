@@ -91,23 +91,48 @@ def test_failed_expense_changes_do_not_trigger_submission_or_claim_success() -> 
     assert reply == ["I could not confirm the expense change. The change may have happened."]
 
 
+def test_adding_receipts_stops_without_requesting_submission() -> None:
+    report = {
+        "receipts": [{"id": "train", "category": "transport", "paid": 12, "claimed": 12}],
+        "total": 12,
+    }
+    assert play(
+        Screen.EXPENSES,
+        [["Add forwarded receipts."], [Answer("add_expense", None)]],
+        _context("report", report),
+        frozenset({"submit_report"}),
+        user_request="Add forwarded receipts.",
+    ) == ["The report claims €12."]
+
+
 def test_submission_describes_actual_claims_and_waits_for_missing_receipts() -> None:
     receipt = {"id": "train", "category": "transport", "paid": 12, "claimed": None}
     report = {"receipts": [receipt], "total": 0}
     tools = frozenset({"submit_report"})
     assert play(
-        Screen.EXPENSES, [[Answer("add_expense", None)]], _context("report", report), tools
+        Screen.EXPENSES,
+        [[Answer("add_expense", None)]],
+        _context("report", report),
+        tools,
+        user_request="Submit my report.",
     ) == ["Some receipts are not in the report. Review them before submitting."]
     report = {"receipts": [{**receipt, "claimed": 12}], "total": 12}
     assert play(
-        Screen.EXPENSES, [[Answer("add_expense", None)]], _context("report", report), tools
+        Screen.EXPENSES,
+        [[Answer("add_expense", None)]],
+        _context("report", report),
+        tools,
+        user_request="Submit my report.",
     ) == [
         "The report claims €12. Submit the report?",
         Call("submit_report", {}),
     ]
-    assert play(Screen.EXPENSES, [[Answer("add_expense", None)]], _context("report", report)) == [
-        "The report cannot be submitted right now. Check the current screen."
-    ]
+    assert play(
+        Screen.EXPENSES,
+        [[Answer("add_expense", None)]],
+        _context("report", report),
+        user_request="Submit my report.",
+    ) == ["The report cannot be submitted right now. Check the current screen."]
 
 
 def test_an_uncertain_submission_does_not_claim_that_nothing_was_submitted() -> None:

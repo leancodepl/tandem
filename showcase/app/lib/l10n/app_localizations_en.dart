@@ -79,6 +79,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get booking => 'Booking';
 
   @override
+  String get bookingFillFromEmail => 'Fill from email';
+
+  @override
+  String get planFromInvitationAction => 'Plan from invitation';
+
+  @override
+  String get arrivalPlanAction => 'Plan my arrival';
+
+  @override
+  String get reportAddReceiptsAction => 'Add forwarded receipts';
+
+  @override
   String get addToTrip => 'Add to trip';
 
   @override
@@ -620,11 +632,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The trip changed. Replaced by the request below.';
 
   @override
-  String get approvalUpdating => 'The trip changed. Updating the request…';
-
-  @override
   String get approvalVoided =>
-      'No longer valid. The trip changed after the assistant asked.';
+      'No longer valid. The trip changed after the assistant asked. Ask it to review your changes when you are ready.';
 
   @override
   String get assistant => 'Assistant';

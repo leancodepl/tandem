@@ -57,50 +57,13 @@ final class const ExpensesReportPage({
                 connection: context.watch<Agents>().expenses,
                 approvals: const .fromState(),
                 onEvent: (context, event, session) => _log.agentEvent(event),
-                child: const _ExpensesReportContent(),
+                child: const Scaffold(body: _ExpensesReportForm()),
               ),
             ),
           ),
         ),
         null => const UnknownTrip(),
       };
-}
-
-final class const _ExpensesReportContent() extends HookWidget {
-  @override
-  Widget build(BuildContext context) {
-    useEffect(() {
-      // Once the session is in scope: it starts with the screen.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          _tellAgent(context);
-        }
-      });
-      return null;
-    }, const []);
-
-    return const Scaffold(body: _ExpensesReportForm());
-  }
-
-  static void _tellAgent(BuildContext context) {
-    final cubit = context.read<ExpensesReportCubit>();
-    final missing = [
-      for (final receipt in cubit.receipts)
-        if (!cubit.form.isClaimed(receipt.id)) receipt.id,
-    ];
-    if (cubit.state.submitted != null || missing.isEmpty) {
-      return;
-    }
-
-    _log.fine('Told the agent of ${missing.length} receipts to add');
-    TandemSessionScope.of(context)
-      ..note(
-        'The traveller forwarded receipts of the trip that are not in the '
-        'report: ${missing.join(', ')}. Add them within the policy, then '
-        'ask to submit the report.',
-      )
-      ..wake();
-  }
 }
 
 final class const _ExpensesReportForm() extends HookWidget {
@@ -119,6 +82,15 @@ final class const _ExpensesReportForm() extends HookWidget {
       _ => said,
     };
     final trip = cubit.trip;
+    final missing = [
+      for (final receipt in form.receipts)
+        if (!form.isClaimed(receipt.id)) receipt.id,
+    ];
+    final canAddReceipts =
+        session.status is Idle &&
+        cubit.state.submitted == null &&
+        !cubit.state.submitting &&
+        missing.isNotEmpty;
 
     return Column(
       crossAxisAlignment: .stretch,
@@ -140,6 +112,17 @@ final class const _ExpensesReportForm() extends HookWidget {
                       trip.booked.outbound.departs,
                       trip.booked.homebound.departs,
                     ),
+                  ),
+                  trailing: WPButton(
+                    l10n.reportAddReceiptsAction,
+                    small: true,
+                    onPressed: canAddReceipts
+                        ? () => session.send(
+                            'Add these forwarded receipts to my report within '
+                            'the policy: '
+                            '${missing.join(', ')}.',
+                          )
+                        : null,
                   ),
                 ),
                 switch (session.failure) {
@@ -274,7 +257,7 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
     try {
       decision();
     } on ApprovalNotPending catch (error) {
-      // The report changed as the traveller tapped; the agent asks again.
+      // The report changed as the traveller tapped.
       _log.warning('$error');
     }
   }

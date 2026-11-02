@@ -3,12 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
-import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_asked_changes.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
-import 'package:waypoint/features/trip/trip_reasks_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 
@@ -112,21 +110,16 @@ void _decide(void Function() decision) {
   }
 }
 
-/// Why the request no longer counts, and what happens about it.
 final class const _VoidedLine(final ApprovalRequest request)
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = TandemSessionScope.of(context);
-    final asked = context.select<ReasksCubit, bool>(
-      (reasks) => reasks.state.contains(request),
-    );
     final replaced = session.items
         .whereType<ApprovalRequest>()
         .skipWhile((item) => item.toolCallId != request.toolCallId)
         .skip(1)
         .isNotEmpty;
-    final working = session.status.isWorking;
     final l10n = context.l10n;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
@@ -134,23 +127,17 @@ final class const _VoidedLine(final ApprovalRequest request)
       switchOutCurve: const Interval(.5, 1),
       layoutBuilder: (current, previous) =>
           Stack(alignment: .topLeft, children: [...previous, ?current]),
-      child: switch ((asked, replaced, working)) {
-        (_, true, _) => WPNote(
-          Icons.arrow_downward_rounded,
-          l10n.approvalReplaced,
-          key: const ValueKey('replaced'),
-        ),
-        (true, _, true) => WPWorkStatus(
-          l10n.approvalUpdating,
-          key: const ValueKey('updating'),
-          working: true,
-        ),
-        _ => WPNote(
-          Icons.info_outline_rounded,
-          l10n.approvalVoided,
-          key: const ValueKey('voided'),
-        ),
-      },
+      child: replaced
+          ? WPNote(
+              Icons.arrow_downward_rounded,
+              l10n.approvalReplaced,
+              key: const ValueKey('replaced'),
+            )
+          : WPNote(
+              Icons.info_outline_rounded,
+              l10n.approvalVoided,
+              key: const ValueKey('voided'),
+            ),
     );
   }
 }

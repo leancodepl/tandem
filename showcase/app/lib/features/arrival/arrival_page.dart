@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/agents.dart';
@@ -51,8 +50,8 @@ final class const ArrivalPage({
           surface: (context) => context.read<ArrivalCubit>(),
           connection: context.watch<Agents>().arrival,
           approvals: const .fromState(),
-          onEvent: _onEvent,
-          child: const _ArrivalContent(),
+          onEvent: (context, event, session) => _log.agentEvent(event),
+          child: const Scaffold(body: _Arrival()),
         ),
       ),
     ),
@@ -63,41 +62,6 @@ final class const ArrivalPage({
       onBack: () => context.router.navigate(TripRoute(tripId: tripId)),
     ),
   };
-
-  static void _onEvent(
-    BuildContext context,
-    TandemEvent event,
-    TandemSession session,
-  ) {
-    _log.agentEvent(event);
-    // A view's action does not wake the agent: here it should answer.
-    if (event case AgentCall(caller: .view)) {
-      session.wake();
-    }
-  }
-}
-
-final class const _ArrivalContent() extends HookWidget {
-  @override
-  Widget build(BuildContext context) {
-    useEffect(() {
-      // Once the session is in scope: it starts with the screen.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          _log.fine('Asked the agent to draw the arrival day');
-          TandemSessionScope.of(context)
-            ..note(
-              'The traveller opened their arrival day. Draw what they need '
-              'from landing to the first meeting.',
-            )
-            ..wake();
-        }
-      });
-      return null;
-    }, const []);
-
-    return const Scaffold(body: _Arrival());
-  }
 }
 
 final class const _Arrival() extends StatelessWidget {
@@ -131,6 +95,15 @@ final class const _Arrival() extends StatelessWidget {
                   below: l10n.arrivalDate(
                     l10n.day(cubit.lands),
                     l10n.time(cubit.lands),
+                  ),
+                  trailing: WPButton(
+                    l10n.arrivalPlanAction,
+                    small: true,
+                    onPressed: status is Idle
+                        ? () => session.send(
+                            'Plan my arrival from landing to the first meeting.',
+                          )
+                        : null,
                   ),
                 ),
                 switch (session.failure) {
@@ -218,7 +191,7 @@ final class const _ApprovalBar() extends StatelessWidget {
     try {
       decision();
     } on ApprovalNotPending catch (error) {
-      // The day changed as the traveller tapped; the agent asks again.
+      // The day changed as the traveller tapped.
       _log.warning('$error');
     }
   }

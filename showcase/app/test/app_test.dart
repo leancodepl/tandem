@@ -15,7 +15,7 @@ import 'package:waypoint/features/plan_trip/plan_trip_cubit.dart';
 import 'package:waypoint/features/plan_trip/plan_trip_state.dart';
 import 'package:waypoint/features/trip/trip_assistant_panel.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
-import 'package:waypoint/features/trip/trip_news_for_agent.dart';
+import 'package:waypoint/features/trip/trip_header.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint/features/trips/trips_page.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
@@ -23,16 +23,46 @@ import 'package:waypoint_scripted_agent/waypoint_scripted_agent.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
+  testWidgets('opening a trip neither runs the agent nor changes the trip', (
+    tester,
+  ) async {
+    final agent = scriptedTripAgent();
+    await _pumpApp(
+      tester,
+      WaypointApp(
+        createAgents: () => Agents(
+          trip: agent,
+          booking: scriptedBookingAgent(),
+          plan: scriptedPlanAgent(),
+          expenses: scriptedExpensesAgent(),
+          arrival: scriptedArrivalAgent(),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Review the trip'));
+    await _settle(tester);
+
+    final context = tester.element(find.byType(TripHeader));
+    final trip = context.read<TripCubit>();
+    expect((agent as ScriptedAgent).requests, isEmpty);
+    expect(TandemSessionScope.of(context).status, isA<Idle>());
+    expect(trip.itinerary, trip.state.booked);
+    expect(
+      trip.itinerary.meeting(MeetingId('workshop'))?.start,
+      DateTime(2026, 10, 29, 10),
+    );
+  });
+
   testWidgets(
-    'an e-mail that moves the workshop gets the trip fixed and booked',
+    'the traveller asks to fix the trip around the moved workshop and books it',
     (tester) async {
       await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
       expect(find.text('NEEDS YOU'), findsOneWidget);
 
       await tester.tap(find.text('Review the trip'));
       await _settle(tester);
+      await _askToAdjustTrip(tester);
 
-      // The assistant fits the trip around the e-mail without being asked.
       expect(find.text('Change 2 bookings'), findsOneWidget);
       expect(find.text('Was Thu 29 Oct, 18:05'), findsOneWidget);
 
@@ -103,6 +133,9 @@ void main() {
     await tester.ensureVisible(find.text('Add to trip'));
     await _settle(tester);
     await tester.tap(find.text('Add to trip'));
+    await _settle(tester);
+
+    await tester.tap(find.text('Fill from email'));
     await _settle(tester);
 
     expect(
@@ -214,6 +247,8 @@ void main() {
 
     await tester.tap(find.text('Plan the trip'));
     await _settle(tester);
+    await tester.tap(find.text('Plan from invitation'));
+    await _settle(tester);
 
     // Why it chose so, in the agent's words.
     expect(
@@ -281,6 +316,8 @@ void main() {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
     await tester.tap(find.text('Plan the trip'));
     await _settle(tester);
+    await tester.tap(find.text('Plan from invitation'));
+    await _settle(tester);
 
     await tester.tap(find.text('Berlin'));
     await _settle(tester);
@@ -299,6 +336,9 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('PARIS'));
     await _settle(tester);
+    await tester.tap(find.text('Add forwarded receipts'));
+    await _settle(tester);
+    await _askToSubmitReport(tester);
 
     // The dinner goes over the meal limit; the agent claims what is left.
     final dinner = tester.widget<WPFormAmountField<ClaimError>>(
@@ -333,6 +373,9 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('PARIS'));
     await _settle(tester);
+    await tester.tap(find.text('Add forwarded receipts'));
+    await _settle(tester);
+    await _askToSubmitReport(tester);
     expect(find.textContaining('Submit the report?'), findsOneWidget);
 
     await _enterInto(tester, 'G7 Taxi', '50', labelStartsWith: true);
@@ -350,6 +393,9 @@ void main() {
     await tester.scrollUntilVisible(find.text('PARIS'), 300);
     await tester.tap(find.text('PARIS'));
     await _settle(tester);
+    await tester.tap(find.text('Add forwarded receipts'));
+    await _settle(tester);
+    await _askToSubmitReport(tester);
 
     expect(
       find.text('The assistant asks to submit the report for €130.'),
@@ -369,6 +415,11 @@ void main() {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
 
     await _openArrivalDay(tester);
+
+    final agent =
+        tester.element(find.text('After you land')).read<Agents>().arrival
+            as ScriptedAgent;
+    final requestsBeforeBooking = agent.requests.length;
 
     // Drawn with Waypoint's widgets, from what the screen lists.
     expect(find.text('After you land'), findsOneWidget);
@@ -390,14 +441,17 @@ void main() {
     await _settle(tester);
 
     expect(find.text('S-Bahn ticket AB, valid for 2 hours'), findsOneWidget);
-    expect(find.textContaining('Booked: S-Bahn ticket AB'), findsOneWidget);
+    expect(find.textContaining('Booked: S-Bahn ticket AB'), findsNothing);
+    expect(agent.requests, hasLength(requestsBeforeBooking));
   });
 
-  testWidgets('a change of the traveller voids the request to book, and the '
-      'assistant asks again', (tester) async {
+  testWidgets('a changed trip gets another approval only after a new request', (
+    tester,
+  ) async {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
 
     await _openFlightHome(tester, 'WA 388');
     await _tapOption(tester, find.text('WA 390'));
@@ -405,6 +459,12 @@ void main() {
 
     expect(find.text(_voided, skipOffstage: false), findsOneWidget);
 
+    await _settle(tester);
+    expect(find.textContaining('The trip changed. Book'), findsNothing);
+    expect(find.text('Approve'), findsNothing);
+
+    TandemSessionScope.of(tester.element(find.byType(TripHeader)))
+        .send('I changed the trip on the screen. Book the current changes.');
     await _settle(tester);
 
     expect(find.textContaining('The trip changed. Book'), findsOneWidget);
@@ -450,8 +510,9 @@ void main() {
     );
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
 
-    final context = tester.element(find.byType(NewsForAgent));
+    final context = tester.element(find.byType(TripHeader));
     final trip = context.read<TripCubit>()..setHotelNights(2);
     final session = TandemSessionScope.of(context);
     var changed = false;
@@ -480,7 +541,7 @@ void main() {
       tester,
       WaypointApp(
         createAgents: () => Agents(
-          trip: ScriptedAgent.repeating(_asksOnce),
+          trip: ScriptedAgent.repeating(_asksToBookHotel),
           booking: scriptedBookingAgent(),
           plan: scriptedPlanAgent(),
           expenses: scriptedExpensesAgent(),
@@ -492,6 +553,7 @@ void main() {
     );
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
     final submit = tester
         .widget<WPSubmit>(
           find.byWidgetPredicate(
@@ -500,7 +562,7 @@ void main() {
         )
         .onSubmit;
     if (submit == null) fail('The current changes can be booked.');
-    final trips = tester.element(find.byType(NewsForAgent)).read<TripsCubit>();
+    final trips = tester.element(find.byType(TripHeader)).read<TripsCubit>();
 
     expect(trips.reserveBooking(TripId('berlin')), isTrue);
     submit();
@@ -518,7 +580,7 @@ void main() {
   testWidgets('reverting every booking change does not ask the agent again', (
     tester,
   ) async {
-    final agent = ScriptedAgent.repeating(_asksOnce);
+    final agent = ScriptedAgent.repeating(_asksToBookHotel);
     await _pumpApp(
       tester,
       WaypointApp(
@@ -533,21 +595,21 @@ void main() {
     );
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
-    final context = tester.element(find.byType(NewsForAgent));
+    await _askToAdjustTrip(tester);
+    final context = tester.element(find.byType(TripHeader));
+    final requestsBeforeChange = agent.requests.length;
     final trip = context.read<TripCubit>()..setHotelNights(1);
     await _settle(tester);
 
     expect(trip.bookingChanges.items, isEmpty);
     expect(find.text(_voided, skipOffstage: false), findsOneWidget);
-    expect([
-      for (final request in agent.requests)
-        for (final note in AgentRequest(request).newNotes)
-          if ('$note'.contains(_reask)) note,
-    ], isEmpty);
+    expect(agent.requests, hasLength(requestsBeforeChange));
   });
 
-  testWidgets('a voided request is asked again only once', (tester) async {
-    final trip = ScriptedAgent.repeating(_asksOnce);
+  testWidgets('a voided request never starts another run on its own', (
+    tester,
+  ) async {
+    final trip = ScriptedAgent.repeating(_asksToBookHotel);
     await _pumpApp(
       tester,
       WaypointApp(
@@ -562,6 +624,8 @@ void main() {
     );
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
+    final requestsBeforeChange = trip.requests.length;
 
     await _openFlightHome(tester, 'WA 388');
     await _tapOption(tester, find.text('WA 390'));
@@ -571,11 +635,8 @@ void main() {
     }
 
     expect(find.text(_voided, skipOffstage: false), findsOneWidget);
-    expect([
-      for (final request in trip.requests)
-        for (final note in AgentRequest(request).newNotes)
-          if ('$note'.contains(_reask)) note,
-    ], hasLength(1));
+    expect(trip.requests, hasLength(requestsBeforeChange));
+    expect(find.text('Approve'), findsNothing);
   });
 
   testWidgets('the traveller rejects the changes the assistant asks to book', (
@@ -584,6 +645,7 @@ void main() {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
 
     await tester.tap(find.text('Reject'));
     await _settle(tester);
@@ -599,6 +661,9 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('PARIS'));
     await _settle(tester);
+    await tester.tap(find.text('Add forwarded receipts'));
+    await _settle(tester);
+    await _askToSubmitReport(tester);
 
     await tester.tap(find.text('Reject'));
     await _settle(tester);
@@ -626,6 +691,7 @@ void main() {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
 
     await _openFlightHome(tester, 'WA 388');
 
@@ -651,6 +717,7 @@ void main() {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
     await _openFlightHome(tester, 'WA 388');
     final option = find.text('WA 390');
     await tester.ensureVisible(option);
@@ -692,6 +759,7 @@ void main() {
       await tester.tap(find.text('Inbox'));
       await _settle(tester);
       await _openLink(tester, '/trips/berlin');
+      await _askToAdjustTrip(tester);
 
       expect(find.text('BERLIN'), findsOneWidget);
       expect(find.text('Waiting for you'), findsOneWidget);
@@ -711,6 +779,7 @@ void main() {
 
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
+    await _askToAdjustTrip(tester);
 
     expect(find.byType(AssistantPanel), findsOneWidget);
     // Beside the assistant, the bar keeps the changes while the request waits.
@@ -741,6 +810,8 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('Your booking is confirmed: 55120873'));
     await _settle(tester);
+    await tester.tap(find.text('Fill from email'));
+    await _settle(tester);
     await tester.tap(find.text('Add to trip'));
     await _settle(tester);
 
@@ -766,14 +837,16 @@ void main() {
   ) async {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
     await _openLink(tester, '/trips/berlin');
-    final beforeContext = tester.element(find.byType(NewsForAgent));
+    await _askToAdjustTrip(tester);
+    final beforeContext = tester.element(find.byType(TripHeader));
     final before = beforeContext.read<TripCubit>();
     final previousSession = TandemSessionScope.of(beforeContext);
     expect(before.info.id, TripId('berlin'));
+    expect(before.bookingChanges.items, isNotEmpty);
 
     await _openLink(tester, '/trips/copenhagen');
 
-    final afterContext = tester.element(find.byType(NewsForAgent));
+    final afterContext = tester.element(find.byType(TripHeader));
     final after = afterContext.read<TripCubit>();
     expect(after.info.id, TripId('copenhagen'));
     expect(
@@ -798,7 +871,9 @@ void main() {
     final afterContext = tester.element(find.byType(WPSubmit));
     final after = afterContext.read<PlanTripCubit>();
     expect(after.invitation?.tripId, TripId('vienna'));
-    expect(after.form.city.fieldValue, 'Vienna');
+    expect(after.form.city.fieldValue, isNull);
+    expect(after.state, PlanTripState());
+    expect(TandemSessionScope.of(afterContext).items, isEmpty);
     expect(identical(before.form, after.form), isFalse);
     expect(
       identical(previousSession, TandemSessionScope.of(afterContext)),
@@ -852,24 +927,16 @@ void main() {
   });
 }
 
-const _voided = 'No longer valid. The trip changed after the assistant asked.';
+const _voided =
+    'No longer valid. The trip changed after the assistant asked. '
+    'Ask it to review your changes when you are ready.';
 
-/// What the app notes for the agent when it asks again.
-const _reask = 'changed the trip on the screen';
-
-/// A trip agent that answers the app's request to ask again without asking.
-List<AgentStep> _asksOnce(Map<String, Object?> raw) {
-  final request = AgentRequest(raw);
-  if (request.isUserMessage) {
-    if ('${request.newNotes}'.contains(_reask)) {
-      return const [AgentStep.say('Noted.')];
-    }
-    return const [
-      AgentStep.callTool('set_hotel_nights', {'nights': 2}),
-    ];
-  }
-  return const [AgentStep.callTool('book_changes')];
-}
+List<AgentStep> _asksToBookHotel(Map<String, Object?> raw) =>
+    AgentRequest(raw).isUserMessage
+    ? const [
+        AgentStep.callTool('set_hotel_nights', {'nights': 2}),
+      ]
+    : const [AgentStep.callTool('book_changes')];
 
 Agents _scriptedAgents() => Agents(
   trip: scriptedTripAgent(),
@@ -904,6 +971,8 @@ Future<void> _fillHotelFromInbox(WidgetTester tester) async {
   await tester.ensureVisible(find.text('Add to trip'));
   await _settle(tester);
   await tester.tap(find.text('Add to trip'));
+  await _settle(tester);
+  await tester.tap(find.text('Fill from email'));
   await _settle(tester);
 }
 
@@ -965,6 +1034,20 @@ Future<void> _openArrivalDay(WidgetTester tester) async {
   await tester.ensureVisible(find.text('Arrival day'));
   await _settle(tester);
   await tester.tap(find.text('Arrival day'));
+  await _settle(tester);
+  await tester.tap(find.text('Plan my arrival'));
+  await _settle(tester);
+}
+
+Future<void> _askToSubmitReport(WidgetTester tester) async {
+  TandemSessionScope.of(tester.element(find.byType(WPSubmit)))
+      .send('Submit my report.');
+  await _settle(tester);
+}
+
+Future<void> _askToAdjustTrip(WidgetTester tester) async {
+  TandemSessionScope.of(tester.element(find.byType(TripHeader)))
+      .send('Move the workshop to Friday and adjust the rest of my trip.');
   await _settle(tester);
 }
 

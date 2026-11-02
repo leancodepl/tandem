@@ -188,26 +188,22 @@ final class const _Thread({final bool shrinkWrap = false})
     final retry = session.failure == null ? null : session.retry;
     final entries = <Widget>[
       for (final (index, item) in items.indexed) ...[
-        // A wake-up of the app is for the agent, not the traveller.
-        if (item case UserMessage(fromApp: true))
-          const SizedBox.shrink()
-        else
-          switch (item) {
-            UserMessage(:final text) => WPBubble(text),
-            AgentMessage(:final text, :final stopped) => _AgentText(
-              text,
-              stopped: stopped,
-            ),
-            ChatNotice(:final kind) => _Notice(
-              kind,
-              onRetry: index == items.length - 1 ? retry : null,
-            ),
-            // A card of another call at the same index gets a new state.
-            final ApprovalRequest request => ApprovalCard(
-              request,
-              key: ValueKey((session, request.toolCallId)),
-            ),
-          },
+        switch (item) {
+          UserMessage(:final text) => WPBubble(text),
+          AgentMessage(:final text, :final stopped) => _AgentText(
+            text,
+            stopped: stopped,
+          ),
+          ChatNotice(:final kind) => _Notice(
+            kind,
+            onRetry: index == items.length - 1 ? retry : null,
+          ),
+          // A card of another call at the same index gets a new state.
+          final ApprovalRequest request => ApprovalCard(
+            request,
+            key: ValueKey((session, request.toolCallId)),
+          ),
+        },
         for (final step in steps)
           if (step.after == index + 1) _Step(step),
       ],

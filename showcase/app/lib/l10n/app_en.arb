@@ -64,6 +64,10 @@
     "description": "An approval request of a method that the screen has no own words for."
   },
   "booking": "Booking",
+  "bookingFillFromEmail": "Fill from email",
+  "planFromInvitationAction": "Plan from invitation",
+  "arrivalPlanAction": "Plan my arrival",
+  "reportAddReceiptsAction": "Add forwarded receipts",
   "addToTrip": "Add to trip",
   "adding": "Adding",
   "noHotelYet": "No hotel yet",
@@ -484,8 +488,7 @@
   "rejected": "Rejected",
   "cancelledByMessage": "Cancelled by your message",
   "approvalReplaced": "The trip changed. Replaced by the request below.",
-  "approvalUpdating": "The trip changed. Updating the request…",
-  "approvalVoided": "No longer valid. The trip changed after the assistant asked.",
+  "approvalVoided": "No longer valid. The trip changed after the assistant asked. Ask it to review your changes when you are ready.",
 
   "assistant": "Assistant",
   "waitingForYou": "Waiting for you",

@@ -91,6 +91,7 @@ class TripCubit({
     changes: bookingChanges,
     warnings: warnings,
     traveller: traveller,
+    forwardedEmails: trips.news(info.id),
   );
 
   BookingChanges get bookingChanges =>

@@ -178,6 +178,30 @@ abstract class AppLocalizations {
   /// **'Booking'**
   String get booking;
 
+  /// No description provided for @bookingFillFromEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill from email'**
+  String get bookingFillFromEmail;
+
+  /// No description provided for @planFromInvitationAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan from invitation'**
+  String get planFromInvitationAction;
+
+  /// No description provided for @arrivalPlanAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my arrival'**
+  String get arrivalPlanAction;
+
+  /// No description provided for @reportAddReceiptsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add forwarded receipts'**
+  String get reportAddReceiptsAction;
+
   /// No description provided for @addToTrip.
   ///
   /// In en, this message translates to:
@@ -925,16 +949,10 @@ abstract class AppLocalizations {
   /// **'The trip changed. Replaced by the request below.'**
   String get approvalReplaced;
 
-  /// No description provided for @approvalUpdating.
-  ///
-  /// In en, this message translates to:
-  /// **'The trip changed. Updating the request…'**
-  String get approvalUpdating;
-
   /// No description provided for @approvalVoided.
   ///
   /// In en, this message translates to:
-  /// **'No longer valid. The trip changed after the assistant asked.'**
+  /// **'No longer valid. The trip changed after the assistant asked. Ask it to review your changes when you are ready.'**
   String get approvalVoided;
 
   /// No description provided for @assistant.

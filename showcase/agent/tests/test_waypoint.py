@@ -208,6 +208,21 @@ OVER_THE_LIMIT = {
 }
 
 
+def test_adding_receipts_waits_for_a_separate_submission_request(agent_url: str) -> None:
+    thread = Thread(f"{agent_url}/agent/expenses", "report: The expense report", EXPENSE_TOOLS)
+    receipt = {"id": "train", "category": "transport", "paid": 12, "claimed": None}
+    added = thread.run({"receipts": [receipt], "total": 0}, "Add forwarded receipts.")
+    assert calls(added) == [("add_expense", {"receiptId": "train", "claimed": 12})]
+
+    report = {"receipts": [{**receipt, "claimed": 12}], "total": 12}
+    completed = thread.run(report, answers=answer(added, {"add_expense": None}))
+    assert calls(completed) == []
+    assert completed.text == "The report claims €12."
+
+    submitted = thread.run(report, "Submit my report.")
+    assert calls(submitted) == [("submit_report", {})]
+
+
 def test_a_meal_over_the_limit_is_claimed_as_far_as_the_policy_allows(agent_url: str) -> None:
     thread = Thread(f"{agent_url}/agent/expenses", "report: The expense report", EXPENSE_TOOLS)
     report = {"receipts": PARIS_RECEIPTS, "total": 18}
