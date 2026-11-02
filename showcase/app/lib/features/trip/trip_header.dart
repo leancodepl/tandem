@@ -118,7 +118,7 @@ final class const TripWarnings({super.key}) extends StatelessWidget {
               padding: const .only(top: 12),
               child: WPNote(
                 Icons.warning_amber_rounded,
-                l10n.warning(warning),
+                l10n.tripWarning(warning),
                 tone: .warn,
               ),
             ),
@@ -128,8 +128,7 @@ final class const TripWarnings({super.key}) extends StatelessWidget {
   }
 }
 
-/// The forwarded e-mails that change the trip and are not booked yet, so
-/// the traveller sees why the assistant is at work.
+/// The forwarded e-mails whose changes the trip does not follow yet.
 final class const TripNews({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -202,12 +201,4 @@ final class const ArrivalEntry({super.key}) extends StatelessWidget {
       ),
     );
   }
-}
-
-extension on AppLocalizations {
-  String warning(TripWarning warning) => switch (warning) {
-    NoHotelForNight(:final night) => warningNoHotelForNight(day(night)),
-    NoHotelBooked(:final nights) => warningNoHotelBooked(nights),
-    BreaksPolicy(:final breach) => policyBreach(breach),
-  };
 }

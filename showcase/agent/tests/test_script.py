@@ -42,6 +42,39 @@ def test_trip_skips_malformed_and_unavailable_flights_and_handles_an_empty_searc
     ]
 
 
+def test_a_failed_meeting_move_stops_dependent_trip_changes() -> None:
+    tools = frozenset({"move_meeting", "set_hotel_nights", "find_flights"})
+    initial = play(Screen.TRIP, [["Move the workshop to Friday."]], "", tools)
+    assert [step.name for step in initial if isinstance(step, Call)] == ["move_meeting"]
+
+    for status in ("refused", "failed"):
+        reply = play(
+            Screen.TRIP,
+            [[Answer("move_meeting", {"status": status, "reason": "Move not confirmed."})]],
+            "",
+            tools,
+        )
+        assert reply == ["I could not confirm the meeting change. Move not confirmed."]
+
+
+def test_a_failed_hotel_search_reports_its_problem_instead_of_selecting_options() -> None:
+    for status in ("refused", "failed"):
+        reply = play(
+            Screen.PLAN,
+            [
+                [
+                    Answer("find_flights", []),
+                    Answer("find_flights", []),
+                    Answer(
+                        "find_hotels", {"status": status, "reason": "Hotel provider unavailable."}
+                    ),
+                ]
+            ],
+            "",
+        )
+        assert reply == ["I could not finish planning. Hotel provider unavailable."]
+
+
 def test_arrival_uses_the_current_meeting_and_only_offered_actions() -> None:
     instruction = _context("arrival", _ARRIVAL)
     reply = play(
@@ -59,6 +92,25 @@ def test_arrival_uses_the_current_meeting_and_only_offered_actions() -> None:
     assert play(Screen.ARRIVAL, [["Book a taxi"]], instruction) == [
         "Ride booking is not available right now. Check the current screen."
     ]
+
+
+def test_a_taxi_outside_the_policy_is_refused_before_requesting_a_booking() -> None:
+    for over_policy in (True, False):
+        arrival = {
+            **_ARRIVAL,
+            "rides": [{"id": "taxi", "mode": "taxi", "overPolicy": over_policy}],
+        }
+        reply = play(
+            Screen.ARRIVAL,
+            [["Book a taxi"]],
+            _context("arrival", arrival),
+            frozenset({"book_ride"}),
+        )
+        assert reply == (
+            ["This taxi is outside the company policy. Choose an allowed route."]
+            if over_policy
+            else [Call("book_ride", {"rideId": "taxi"})]
+        )
 
 
 def test_arrival_reports_action_results_without_promising_failed_early_check_in() -> None:
@@ -210,11 +262,11 @@ def test_a_total_only_hotel_stays_unchanged_while_flight_approval_names_its_warn
     tools = frozenset({"move_meeting", "find_flights", "set_homebound_flight", "book_changes"})
 
     moved = play(Screen.TRIP, [["The workshop moved to Friday"]], instruction, tools)
-    assert [part.name for part in moved if isinstance(part, Call)] == [
-        "move_meeting",
-        "find_flights",
-    ]
-    assert "needs a nightly quote" in str(moved[-1])
+    assert [part.name for part in moved if isinstance(part, Call)] == ["move_meeting"]
+
+    fitting = play(Screen.TRIP, [[Answer("move_meeting", None)]], instruction, tools)
+    assert [part.name for part in fitting if isinstance(part, Call)] == ["find_flights"]
+    assert "needs a nightly quote" in str(fitting[-1])
 
     asking = play(Screen.TRIP, [[Answer("set_homebound_flight", None)]], instruction, tools)
     assert asking[-1] == Call("book_changes", {})

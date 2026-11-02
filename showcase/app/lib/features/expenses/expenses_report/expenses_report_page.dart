@@ -43,6 +43,7 @@ final class const ExpensesReportPage({
             return ExpensesReportFormController(
               receipts: reports.receipts(trip.id),
               stored: reports.report(trip.id),
+              inputs: reports.draftInputs(trip.id),
             );
           },
           child: BlocProvider(

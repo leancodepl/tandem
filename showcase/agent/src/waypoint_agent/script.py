@@ -63,11 +63,15 @@ def _trip(
             return ["OK, I won't book them."]
         case {"book_changes": result} if _tool_problem(result):
             return [f"I could not confirm the booking. {_tool_problem(result)}"]
+        case {"move_meeting": result} if _tool_problem(result):
+            return [f"I could not confirm the meeting change. {_tool_problem(result)}"]
         case {"find_flights": flights}:
             return [
                 _choose_flight(flights, "set_homebound_flight")
                 or "No flight home fits after the workshop."
             ]
+        case {"move_meeting": _}:
+            return _fit_trip(trip, offered_tools)
         case {"set_homebound_flight": result} if _tool_problem(result):
             return [f"I could not confirm the flight change. {_tool_problem(result)}"]
         case {"set_homebound_flight": _}:
@@ -75,25 +79,25 @@ def _trip(
     if REASK in text:
         return _ask_to_book(trip, offered_tools, "The trip changed.")
     if "workshop" in text.lower():
-        steps: list[str | Call] = [
+        return [
             Call("move_meeting", {"meetingId": "workshop", "start": "2026-10-30T10:00:00"}),
         ]
-        if "set_hotel_nights" in offered_tools:
-            steps.append(Call("set_hotel_nights", {"nights": 2}))
-        steps.append(
-            Call(
-                "find_flights",
-                {
-                    "origin": "BER",
-                    "destination": "WAW",
-                    "date": "2026-10-30",
-                },
-            )
-        )
-        if notice := _hotel_notice(trip):
-            steps.append(notice)
-        return steps
     return [TRIP_REPLY]
+
+
+def _fit_trip(trip: dict[str, Any], offered_tools: frozenset[str]) -> list[str | Call]:
+    steps: list[str | Call] = []
+    if "set_hotel_nights" in offered_tools:
+        steps.append(Call("set_hotel_nights", {"nights": 2}))
+    steps.append(
+        Call(
+            "find_flights",
+            {"origin": "BER", "destination": "WAW", "date": "2026-10-30"},
+        )
+    )
+    if notice := _hotel_notice(trip):
+        steps.append(notice)
+    return steps
 
 
 def _ask_to_book(
@@ -264,6 +268,11 @@ def _plan(last: Message, text: str, instruction: str) -> list[str | Call]:
         if "Vienna" in text or "Alpenlicht" in text:
             return _READ_THE_INVITATION
         return [PLAN_REPLY]
+    for answer in answers:
+        if answer.name in ("find_flights", "find_hotels") and (
+            problem := _tool_problem(answer.result)
+        ):
+            return [f"I could not finish planning. {problem}"]
     flights = [answer.result for answer in answers if answer.name == "find_flights"]
     hotels = [answer.result for answer in answers if answer.name == "find_hotels"]
     if len(flights) == 2 and len(hotels) == 1:
@@ -444,6 +453,14 @@ def _arrival(
         return [_arrival_answer(answer.name, status, note, arrival, offered_tools)]
     if "taxi" in text.lower() and "app_notes" not in text:
         if "book_ride" in offered_tools:
+            match arrival:
+                case {"rides": list(rides)} if any(
+                    isinstance(ride, dict)
+                    and ride.get("id") == "taxi"
+                    and ride.get("overPolicy") is True
+                    for ride in rides
+                ):
+                    return ["This taxi is outside the company policy. Choose an allowed route."]
             return [Call("book_ride", {"rideId": "taxi"})]
         return ["Ride booking is not available right now. Check the current screen."]
     reply: list[str | Call] = []

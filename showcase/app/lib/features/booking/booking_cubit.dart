@@ -55,15 +55,17 @@ class BookingCubit({@override required final BookingFormController form})
 
   /// Sets the day and the earliest time of the check-in.
   void setCheckIn(DateTime at) {
-    _refuseIf(form.checkInError(at));
-    form.checkIn.setValue(at);
+    final local = travelDateTime(at);
+    _refuseIf(form.checkInError(local));
+    form.checkIn.setValue(local);
     _mark(.checkIn);
   }
 
   /// Sets the day of the check-out.
   void setCheckOut(DateTime day) {
-    _refuseIf(form.checkOutError(day));
-    form.checkOut.setValue(day);
+    final local = travelDateTime(day);
+    _refuseIf(form.checkOutError(local));
+    form.checkOut.setValue(local);
     _mark(.checkOut);
   }
 

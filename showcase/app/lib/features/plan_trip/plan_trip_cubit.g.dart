@@ -58,16 +58,19 @@ mixin _$PlanTripCubit implements AgentSurface {
                     id: 'package:waypoint/features/trip/trip_summary.dart#FlightSummary',
                     fields: (field) => [
                       field('number', (value) => value.number).as(.string),
-                      field('from', (value) => value.from).as(.string),
-                      field('to', (value) => value.to).as(.string),
+                      field('origin', (value) => value.origin).as(.string),
+                      field(
+                        'destination',
+                        (value) => value.destination,
+                      ).as(.string),
                       field('departs', (value) => value.departs).as(.string),
                       field('arrives', (value) => value.arrives).as(.string),
                       field('fare', (value) => value.fare).as(.integer),
                     ],
                     build: (values) => .new(
                       number: values('number'),
-                      from: values('from'),
-                      to: values('to'),
+                      origin: values('origin'),
+                      destination: values('destination'),
                       departs: values('departs'),
                       arrives: values('arrives'),
                       fare: values('fare'),
@@ -85,16 +88,19 @@ mixin _$PlanTripCubit implements AgentSurface {
                     id: 'package:waypoint/features/trip/trip_summary.dart#FlightSummary',
                     fields: (field) => [
                       field('number', (value) => value.number).as(.string),
-                      field('from', (value) => value.from).as(.string),
-                      field('to', (value) => value.to).as(.string),
+                      field('origin', (value) => value.origin).as(.string),
+                      field(
+                        'destination',
+                        (value) => value.destination,
+                      ).as(.string),
                       field('departs', (value) => value.departs).as(.string),
                       field('arrives', (value) => value.arrives).as(.string),
                       field('fare', (value) => value.fare).as(.integer),
                     ],
                     build: (values) => .new(
                       number: values('number'),
-                      from: values('from'),
-                      to: values('to'),
+                      origin: values('origin'),
+                      destination: values('destination'),
                       departs: values('departs'),
                       arrives: values('arrives'),
                       fare: values('fare'),
@@ -167,8 +173,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         AgentTool(
           surface.addMeeting,
           name: 'add_meeting',
-          description:
-              'Adds a meeting of the trip, from [start] to [end], at [place].',
+          description: 'Adds a meeting from [start] to [end] at [place]. An identical meeting already in the plan is kept once.',
           parameters: [
             const AgentParameter<String>('title', .string),
             const AgentParameter<String>('place', .string),
@@ -182,6 +187,39 @@ mixin _$PlanTripCubit implements AgentSurface {
               args.read('start'),
               args.read('end'),
             );
+            return null;
+          },
+        ),
+        AgentTool(
+          surface.updateMeeting,
+          name: 'update_meeting',
+          description:
+              'Updates the existing meeting [meetingId], keeping its identity.',
+          parameters: [
+            const AgentParameter<String>('meetingId', .string),
+            const AgentParameter<String>('title', .string),
+            const AgentParameter<String>('place', .string),
+            const AgentParameter<DateTime>('start', .dateTime),
+            const AgentParameter<DateTime>('end', .dateTime),
+          ],
+          invoke: (args) {
+            surface.updateMeeting(
+              args.read('meetingId'),
+              args.read('title'),
+              args.read('place'),
+              args.read('start'),
+              args.read('end'),
+            );
+            return null;
+          },
+        ),
+        AgentTool(
+          surface.removeMeeting,
+          name: 'remove_meeting',
+          description: 'Removes the meeting [meetingId] from the plan.',
+          parameters: [const AgentParameter<String>('meetingId', .string)],
+          invoke: (args) {
+            surface.removeMeeting(args.read('meetingId'));
             return null;
           },
         ),
@@ -321,6 +359,8 @@ extension on PlanTripCubit {
       .calls(setCity),
       .calls(setPurpose),
       .calls(addMeeting),
+      .calls(updateMeeting),
+      .calls(removeMeeting),
       .calls(findFlights),
       .calls(setOutboundFlight),
       .calls(setHomeboundFlight),

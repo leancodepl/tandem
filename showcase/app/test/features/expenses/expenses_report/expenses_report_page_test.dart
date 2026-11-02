@@ -5,12 +5,71 @@ import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 import 'package:waypoint/agents.dart';
 import 'package:waypoint/app.dart';
+import 'package:waypoint/features/expenses/expenses_report/claim_error.dart';
 import 'package:waypoint/features/expenses/expenses_report/expenses_report_cubit.dart';
 import 'package:waypoint/features/expenses/expenses_report/expenses_report_page.dart';
 import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
+  testWidgets(
+    'an invalid manual claim survives other additions and reopening',
+    (tester) async {
+      await tester.pumpWidget(const WaypointApp(createAgents: _idleAgents));
+      await _settle(tester);
+      await _open(tester, '/expenses/paris/report');
+      final context = tester.element(find.byType(TandemScope).last);
+      final first = context.read<ExpensesReportCubit>();
+      final reports = context.read<ReportsCubit>();
+      final agent = context.read<Agents>().expenses as ScriptedAgent;
+      first
+        ..addExpense('R-0915-1', 58)
+        ..addExpense('R-0915-2', 18);
+      first.form.claims[ReceiptId('R-0915-2')]?.field.textController.text =
+          '018';
+      final meal = first.form.claims[ReceiptId('R-0915-3')]?.field;
+      if (meal == null) fail('The Paris report has the Bistrot receipt.');
+      meal.textController.text = '4';
+      meal.textController.text = '45';
+      expect(meal.error, isA<ClaimOverPolicy>());
+      first.form.claims[ReceiptId('R-0915-1')]?.field.textController.text = '';
+      first.addExpense('R-0916-1', 12);
+
+      await _open(tester, '/expenses/berlin/report');
+      await _open(tester, '/expenses/paris/report');
+      final reopened = tester
+          .element(find.byType(TandemScope).last)
+          .read<ExpensesReportCubit>();
+
+      expect(first.form.isDisposed, isTrue);
+      expect(
+        reopened.form.claims[ReceiptId('R-0915-3')]?.field.fieldValue,
+        '45',
+      );
+      expect(
+        reopened.form.claims[ReceiptId('R-0915-3')]?.field.error,
+        isA<ClaimOverPolicy>(),
+      );
+      expect(
+        reopened.form.claims[ReceiptId('R-0916-1')]?.field.fieldValue,
+        '12',
+      );
+      expect(
+        reopened.form.claims[ReceiptId('R-0915-1')]?.field.fieldValue,
+        isEmpty,
+      );
+      expect(
+        reopened.form.claims[ReceiptId('R-0915-2')]?.field.fieldValue,
+        '018',
+      );
+      expect(reopened.ready, isFalse);
+      expect(await reopened.submit(), isNull);
+      expect(reports.report(TripId('paris')).total, wholeMoney(80));
+      expect(agent.requests, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('receipts are added only after an explicit request', (
     tester,
   ) async {

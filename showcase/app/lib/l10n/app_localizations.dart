@@ -400,6 +400,30 @@ abstract class AppLocalizations {
   /// **'For a trip not planned yet'**
   String get emailNoTrip;
 
+  /// No description provided for @emailNotInReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in your {city} expense report yet'**
+  String emailNotInReport(String city);
+
+  /// No description provided for @tripBookingAlreadyInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'The changes are already being booked.'**
+  String get tripBookingAlreadyInProgress;
+
+  /// No description provided for @tripBookingNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no booking changes.'**
+  String get tripBookingNoChanges;
+
+  /// No description provided for @tripBookingHotelChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The hotel booking changed while these changes were being booked. Review the current trip before booking again.'**
+  String get tripBookingHotelChanged;
+
   /// No description provided for @planTheTrip.
   ///
   /// In en, this message translates to:

@@ -7,7 +7,7 @@ Ola travels to her clients, and Waypoint keeps her trips, reads the e-mails she 
 - **Trips** (`lib/features/trips`) lists Ola's trips and, on top, the forwarded e-mails that change one of them or ask for a new one.
 - **Trip** (`lib/features/trip`) shows a trip day by day with its assistant beside it on an iPad and under it on a phone. Forwarded e-mails are context for the assistant. Ola asks for the changes she wants, including a different date from the e-mail. Booking waits for her approval. Editing the trip voids an old request; Ola can ask the assistant to review it again.
 - **Inbox** (`lib/features/inbox`) holds the forwarded e-mails, each with its trip. Ola opens a hotel's confirmation and chooses **Fill from email** in the booking form (`lib/features/booking`).
-- **Plan a trip** (`lib/features/plan_trip`) lets Ola ask to plan from an invitation or from what she writes. The agent fills in the form with the app's `find_flights` and `find_hotels` and chooses within the company policy (`packages/waypoint_travel`), which the app's methods enforce: they refuse a choice outside it, with the reason. Ola books the trip with her own tap.
+- **Plan a trip** (`lib/features/plan_trip`) lets Ola ask to plan from an invitation or from what she writes, then revise or remove meetings. Repeating the invitation keeps identical meetings once. The agent fills in the form with the app's `find_flights` and `find_hotels` and chooses within the company policy (`packages/waypoint_travel`), which the app's methods enforce: they refuse a choice outside it, with the reason. Ola books the trip with her own tap.
 - **Arrival day** (`lib/features/arrival`) opens from the trip. Ola chooses **Plan my arrival** or writes a request. The agent draws the day with `tandem_show_view` and Waypoint's own widgets, listed in `ArrivalCatalog` with `@TandemCatalog`: the first meeting, the ways from the airport, the host and the hotel. The view's buttons call the screen's methods with the same approvals and refusals as the agent's calls, so the policy that rules out a taxi shows on the view, and booking the S-Bahn waits for Ola's approval.
 - **Expenses** (`lib/features/expenses`) holds the reports of past trips. Ola chooses **Add forwarded receipts** to ask the agent to fill a report. A meal over the daily limit is refused with what is left for that day, and the agent claims that much. Ola checks the claims and submits the report with her own tap. An explicit request to the agent to submit waits for approval in the screen's own bar.
 - [agent](agent) is the agent behind it, on Google ADK and Gemini.
@@ -16,6 +16,8 @@ Ola travels to her clients, and Waypoint keeps her trips, reads the e-mails she 
 - [waypoint_design_system](packages/waypoint_design_system) is Waypoint's look: its colours, fonts and shared widgets.
 
 The demo's today is Saturday, 24 October 2026. Ola's receipts from Paris in September wait for their report, on Wednesday she flies to Berlin for a workshop that Studio Kraft has just moved to Friday, in November she pitches in Copenhagen, and Alpenlicht has just invited her to Vienna in December.
+
+Travel dates use the Central European clock (`Europe/Warsaw`, CET/CEST), shared by these destinations. Inputs with UTC offsets are converted to that clock; inputs without offsets already use it. See the civil-time limits in [GLOSSARY.md](GLOSSARY.md).
 
 ## Run
 

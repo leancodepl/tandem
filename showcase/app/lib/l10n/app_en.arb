@@ -191,6 +191,13 @@
     }
   },
   "emailNoTrip": "For a trip not planned yet",
+  "emailNotInReport": "Not in your {city} expense report yet",
+  "@emailNotInReport": {
+    "placeholders": { "city": {"type": "String"} }
+  },
+  "tripBookingAlreadyInProgress": "The changes are already being booked.",
+  "tripBookingNoChanges": "There are no booking changes.",
+  "tripBookingHotelChanged": "The hotel booking changed while these changes were being booked. Review the current trip before booking again.",
   "planTheTrip": "Plan the trip",
   "reviewTheTrip": "Review the trip",
   "openTheReport": "Open the report",

@@ -4,6 +4,8 @@ publish_to: none
 environment:
   sdk: ^3.13.0
 
+# The generator resolves separately because its test dependency conflicts with
+# Flutter's test_api pin.
 workspace:
   - packages/tandem
   - example

@@ -65,16 +65,16 @@ final class const ForwardedEmailSummary({
 
 final class const FlightSummary({
   required final String number,
-  required final String from,
-  required final String to,
+  required final String origin,
+  required final String destination,
   required final String departs,
   required final String arrives,
   required final int fare,
 }) {
   factory of(Flight flight) => FlightSummary(
     number: flight.number.value,
-    from: flight.origin.value,
-    to: flight.destination.value,
+    origin: flight.origin.value,
+    destination: flight.destination.value,
     departs: forAgent(flight.departs),
     arrives: forAgent(flight.arrives),
     fare: flight.fare.toInt(),

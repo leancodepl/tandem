@@ -68,8 +68,8 @@ Trip _berlin() {
           id: MeetingId('kickoff'),
           title: 'Kickoff with Studio Kraft',
           place: 'Studio Kraft, Köpenicker Str. 70',
-          start: DateTime(2026, 10, 28, 11),
-          end: DateTime(2026, 10, 28, 12, 30),
+          start: DateTime(2026, 10, 28, 13),
+          end: DateTime(2026, 10, 28, 14, 30),
         ),
         Meeting(
           id: MeetingId('dinner'),

@@ -220,6 +220,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emailNoTrip => 'For a trip not planned yet';
 
   @override
+  String emailNotInReport(String city) {
+    return 'Not in your $city expense report yet';
+  }
+
+  @override
+  String get tripBookingAlreadyInProgress =>
+      'The changes are already being booked.';
+
+  @override
+  String get tripBookingNoChanges => 'There are no booking changes.';
+
+  @override
+  String get tripBookingHotelChanged =>
+      'The hotel booking changed while these changes were being booked. Review the current trip before booking again.';
+
+  @override
   String get planTheTrip => 'Plan the trip';
 
   @override

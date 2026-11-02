@@ -5,6 +5,7 @@ import 'package:waypoint/common/tandem/flight_option.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
+import 'package:waypoint/features/trip/trip_item_id.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trip/trip_plan.dart';
 import 'package:waypoint/features/trip/trip_presentation_event.dart';
@@ -87,6 +88,17 @@ void main() {
     expect(trip.state.booked.homebound.departs.day, 29);
   });
 
+  test('an offset meeting time follows the travel clock and its e-mail', () {
+    trip.moveMeeting('workshop', DateTime.parse('2026-10-30T09:00:00Z'));
+
+    expect(
+      trip.itinerary.meeting(MeetingId('workshop'))?.start,
+      DateTime(2026, 10, 30, 10),
+    );
+    expect(trips.news(TripId('berlin')), isEmpty);
+    expect(trip.warnings.whereType<BreaksPolicy>(), isNotEmpty);
+  });
+
   test('moving every meeting earlier cannot put the return before arrival', () {
     final selected = trip.itinerary.homebound;
     for (final meeting in trip.itinerary.meetings) {
@@ -131,7 +143,10 @@ void main() {
         for (final change in trip.bookingChanges.items)
           (change.id, change.cost),
       ],
-      [('hotel', wholeMoney(122)), ('homebound', wholeMoney(52))],
+      [
+        (TripItemId.hotel, wholeMoney(122)),
+        (TripItemId.homebound, wholeMoney(52)),
+      ],
     );
   });
 
@@ -180,8 +195,8 @@ void main() {
 
   test('editing pending changes preserves the edit and its mark', () async {
     final marks = MarksCubit()
-      ..mark('hotel')
-      ..mark('homebound');
+      ..mark(TripItemId.hotel)
+      ..mark(TripItemId.homebound);
     addTearDown(marks.close);
     trip
       ..setHotelNights(2)
@@ -207,7 +222,7 @@ void main() {
         for (final change in trip.bookingChanges.items) change.id,
       },
     );
-    expect(marks.state.ids, {'hotel'});
+    expect(marks.state.ids, {TripItemId.hotel});
   });
 
   test(

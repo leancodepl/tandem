@@ -1,8 +1,7 @@
 import 'package:waypoint_travel/src/arrival.dart';
 import 'package:waypoint_travel/src/value_objects.dart';
 
-/// The arrival days Waypoint knows: Berlin, where Ola lands on Wednesday
-/// morning and has the kickoff with Studio Kraft at 11:00.
+/// Arrival-day details are available only for the Berlin trip.
 final class const ArrivalDays() {
   ArrivalDay? of(TripId tripId) => switch (tripId.value) {
     'berlin' => ArrivalDay(

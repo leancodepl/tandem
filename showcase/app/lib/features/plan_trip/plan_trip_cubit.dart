@@ -56,6 +56,7 @@ class PlanTripCubit({
 
   late final StreamSubscription<TripsState> _bookings;
   TripId? _notifiedBookedTrip;
+  var _nextMeetingNumber = 1;
 
   void _synchronizeInvitation() {
     if (isClosed) return;
@@ -97,6 +98,8 @@ class PlanTripCubit({
       .calls(setCity),
       .calls(setPurpose),
       .calls(addMeeting),
+      .calls(updateMeeting),
+      .calls(removeMeeting),
       .calls(findFlights),
       .calls(setOutboundFlight),
       .calls(setHomeboundFlight),
@@ -136,26 +139,58 @@ class PlanTripCubit({
     _mark(.purpose);
   }
 
-  /// Adds a meeting of the trip, from [start] to [end], at [place].
+  /// Adds a meeting from [start] to [end] at [place]. An identical meeting
+  /// already in the plan is kept once.
   void addMeeting(String title, String place, DateTime start, DateTime end) {
-    if (!end.isAfter(start)) {
-      _refuse('A meeting ends after it starts.');
-    }
-    final meeting = Meeting(
-      id: MeetingId('meeting-${state.meetings.length + 1}'),
+    final meeting = _meeting(
+      id: MeetingId('meeting-$_nextMeetingNumber'),
       title: title,
       place: place,
       start: start,
       end: end,
     );
-    emit(
-      _fitted(
-        state.copyWith(
-          meetings: [...state.meetings, meeting]
-            ..sort((a, b) => a.start.compareTo(b.start)),
-        ),
-      ),
+    if (state.meetings.any(
+      (existing) =>
+          existing.title == meeting.title &&
+          existing.place == meeting.place &&
+          existing.start == meeting.start &&
+          existing.end == meeting.end,
+    )) {
+      return;
+    }
+    _nextMeetingNumber++;
+    _setMeetings([...state.meetings, meeting]);
+  }
+
+  /// Updates the existing meeting [meetingId], keeping its identity.
+  void updateMeeting(
+    String meetingId,
+    String title,
+    String place,
+    DateTime start,
+    DateTime end,
+  ) {
+    final previous = _existingMeeting(meetingId);
+    final updated = _meeting(
+      id: previous.id,
+      title: title,
+      place: place,
+      start: start,
+      end: end,
     );
+    _setMeetings([
+      for (final meeting in state.meetings)
+        if (meeting.id == previous.id) updated else meeting,
+    ]);
+  }
+
+  /// Removes the meeting [meetingId] from the plan.
+  void removeMeeting(String meetingId) {
+    final removed = _existingMeeting(meetingId);
+    _setMeetings([
+      for (final meeting in state.meetings)
+        if (meeting.id != removed.id) meeting,
+    ]);
   }
 
   // `origin`, not `from`: ag-ui-adk names the parameters in Python.
@@ -327,6 +362,43 @@ class PlanTripCubit({
   void _refit() {
     if (!isClosed) emit(_fitted(state));
   }
+
+  Meeting _meeting({
+    required MeetingId id,
+    required String title,
+    required String place,
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final begins = travelDateTime(start);
+    final ends = travelDateTime(end);
+    if (!ends.isAfter(begins)) {
+      _refuse('A meeting ends after it starts.');
+    }
+    return Meeting(
+      id: id,
+      title: title,
+      place: place,
+      start: begins,
+      end: ends,
+    );
+  }
+
+  Meeting _existingMeeting(String meetingId) {
+    final id = MeetingId.tryParse(meetingId);
+    final meeting = state.meetings
+        .where((meeting) => meeting.id == id)
+        .firstOrNull;
+    return meeting ?? _refuse('There is no meeting $meetingId in the plan.');
+  }
+
+  void _setMeetings(List<Meeting> meetings) => emit(
+    _fitted(
+      state.copyWith(
+        meetings: meetings..sort((a, b) => a.start.compareTo(b.start)),
+      ),
+    ),
+  );
 
   PlanTripState _fitted(PlanTripState plan) {
     final fitted = plan.copyWith(

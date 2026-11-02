@@ -197,11 +197,15 @@ class ExpensesReportCubit({
     }
   }
 
-  /// Keeps the report in the store while it is open and every claim is
-  /// right, so the store only ever holds a report that could be submitted.
   void _save() {
-    if (_open && form.value.canSubmit) {
-      reports.saveDraft(trip.id, ExpenseReport(lines: form.lines));
+    if (_open) {
+      reports.saveDraft(
+        trip.id,
+        inputs: form.inputs,
+        validated: form.value.canSubmit
+            ? ExpenseReport(lines: form.lines)
+            : null,
+      );
     }
   }
 

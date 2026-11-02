@@ -3,6 +3,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/features/inbox/inbox_email_action.dart';
+import 'package:waypoint/features/trip/trip_policy_breach_text.dart';
+import 'package:waypoint/features/trip/trip_warning.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint/navigation/app_router.dart';
@@ -161,13 +163,17 @@ final class const _TripCard(
           maxLines: 1,
         ),
         if (booked.hotel case final hotel?)
-          WPNote(Icons.hotel_rounded, hotel.name, maxLines: 1)
-        else if (calendarDaysBetween(
-              booked.outbound.arrives,
-              booked.homebound.departs,
-            ) >
-            0)
-          WPNote(Icons.hotel_outlined, l10n.noHotelYet, tone: .warn),
+          WPNote(Icons.hotel_rounded, hotel.name, maxLines: 1),
+        for (final warning in tripWarnings(booked))
+          WPNote(
+            warning is NoHotelBooked
+                ? Icons.hotel_outlined
+                : Icons.warning_amber_rounded,
+            warning is NoHotelBooked
+                ? l10n.noHotelYet
+                : l10n.tripWarning(warning),
+            tone: .warn,
+          ),
       ],
     );
   }

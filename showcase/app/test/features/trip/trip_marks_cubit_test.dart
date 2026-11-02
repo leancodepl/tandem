@@ -2,9 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_activity.dart';
 import 'package:waypoint/features/trip/trip_activity_state.dart';
+import 'package:waypoint/features/trip/trip_item_id.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trip/trip_marks_presentation_event.dart';
 import 'package:waypoint/features/trip/trip_marks_state.dart';
+import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
   late MarksCubit marks;
@@ -14,7 +16,7 @@ void main() {
   tearDown(() => marks.close());
 
   test('trip UI snapshots own their state collections', () {
-    final ids = {'hotel'};
+    final ids = {TripItemId.hotel};
     final steps = <AgentStep>[const FlightsLookedUpStep(1)];
     final marks = MarksState(ids);
     final activity = ActivityState(steps);
@@ -22,7 +24,7 @@ void main() {
     ids.clear();
     steps.clear();
 
-    expect(marks.ids, {'hotel'});
+    expect(marks.ids, {TripItemId.hotel});
     expect(activity.steps, [const FlightsLookedUpStep(1)]);
     for (final clear in [marks.ids.clear, activity.steps.clear]) {
       expect(clear, throwsUnsupportedError);
@@ -30,7 +32,7 @@ void main() {
   });
 
   test('a change of the agent marks its item and shows it', () async {
-    final shown = <String>[];
+    final shown = <TripItemId>[];
     final listening = marks.presentation.listen(
       (event) => switch (event) {
         MarksPresentationEventItemChanged(:final id) => shown.add(id),
@@ -48,8 +50,28 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     await listening.cancel();
 
-    expect(marks.state.ids, {'workshop', 'hotel', 'homebound'});
-    expect(shown, ['workshop', 'hotel', 'homebound']);
+    expect(marks.state.ids, {
+      TripItemId.meeting(MeetingId('workshop')),
+      TripItemId.hotel,
+      TripItemId.homebound,
+    });
+    expect(shown, [
+      TripItemId.meeting(MeetingId('workshop')),
+      TripItemId.hotel,
+      TripItemId.homebound,
+    ]);
+  });
+
+  test('a meeting named hotel keeps its own mark', () {
+    marks
+      ..markAction(
+        _action('move_meeting', {'meetingId': 'hotel'}),
+        unbookedItems: {},
+      )
+      ..markAction(_action('set_hotel_nights'), unbookedItems: {})
+      ..unmark(.hotel);
+
+    expect(marks.state.ids, {TripItemId.meeting(MeetingId('hotel'))});
   });
 
   test('booking the changes clears the marks', () {

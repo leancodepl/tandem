@@ -9,10 +9,11 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 final class ExpensesReportFormController({
   required List<Receipt> receipts,
   required ExpenseReport stored,
+  Map<ReceiptId, String> inputs = const {},
 }) extends AdvancedFormController {
   this : super(validationMode: .onUserInteraction) {
     // Seeded before registerFields: touched, but not validated.
-    restore(stored);
+    restore(stored, inputs: inputs);
     registerFields([for (final claim in claims.values) claim.field]);
     for (final ReceiptClaimField(:receipt, :field) in claims.values) {
       if (receipt.category == .meal) {
@@ -39,13 +40,20 @@ final class ExpensesReportFormController({
       ),
   });
 
-  void restore(ExpenseReport report) {
+  Map<ReceiptId, String> get inputs => {
+    for (final entry in claims.entries) entry.key: entry.value.field.fieldValue,
+  };
+
+  void restore(
+    ExpenseReport report, {
+    Map<ReceiptId, String> inputs = const {},
+  }) {
     final saved = {
       for (final line in report.lines) line.receipt.id: line.claimed,
     };
     for (final MapEntry(key: id, value: claim) in claims.entries) {
       final amount = saved[id];
-      final text = amount == null ? '' : '${amount.toInt()}';
+      final text = inputs[id] ?? (amount == null ? '' : '${amount.toInt()}');
       if (claim.field.fieldValue != text) {
         claim.field.setValue(text, force: true);
       }

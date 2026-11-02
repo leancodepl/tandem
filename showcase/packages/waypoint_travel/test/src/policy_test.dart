@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waypoint_travel/demo.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
@@ -17,6 +18,22 @@ void main() {
     start: start,
     end: end,
   );
+
+  test('the booked demo trips satisfy the flight policy', () {
+    for (final trip in demoTrips()) {
+      final booked = trip.booked;
+      expect(
+        Policy.checkOutbound(booked.outbound, booked.meetings),
+        isNull,
+        reason: trip.id.value,
+      );
+      expect(
+        Policy.checkHomebound(booked.homebound, booked.meetings),
+        isNull,
+        reason: trip.id.value,
+      );
+    }
+  });
 
   test('a meeting before noon needs a flight the day before', () {
     final workshop = meeting(
@@ -50,6 +67,46 @@ void main() {
     );
     expect(
       Policy.checkOutbound(flight('WA 511', DateTime(2026, 12, 9)), [lunch]),
+      isNull,
+    );
+  });
+
+  test('a late flight reports lateness before the overnight requirement', () {
+    final morning = meeting(
+      'Workshop',
+      DateTime(2026, 12, 9, 9, 30),
+      DateTime(2026, 12, 9, 17),
+    );
+    for (final date in [DateTime(2026, 12, 9), DateTime(2026, 12, 10)]) {
+      final late = flight('WA 517', date);
+
+      expect(
+        Policy.checkOutbound(late, [morning]),
+        LandsTooLate(late, morning),
+      );
+    }
+  });
+
+  test('offset meeting times use the same clock as the flight timetable', () {
+    final workshop = meeting(
+      'Workshop',
+      travelDateTime(DateTime.parse('2026-12-09T12:30:00+01:00')),
+      travelDateTime(DateTime.parse('2026-12-09T17:00:00Z')),
+    );
+    final earlyHome = flight('WA 518', DateTime(2026, 12, 9));
+
+    expect(
+      Policy.checkOutbound(flight('WA 511', DateTime(2026, 12, 9)), [workshop]),
+      isNull,
+    );
+    expect(
+      Policy.checkHomebound(earlyHome, [workshop]),
+      LeavesTooEarly(earlyHome, workshop),
+    );
+    expect(
+      Policy.checkHomebound(flight('WA 520', DateTime(2026, 12, 9)), [
+        workshop,
+      ]),
       isNull,
     );
   });

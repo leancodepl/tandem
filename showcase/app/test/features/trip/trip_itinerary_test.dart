@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waypoint/features/trip/trip_item_id.dart';
 import 'package:waypoint/features/trip/trip_plan.dart';
 import 'package:waypoint_travel/demo.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
@@ -23,8 +24,13 @@ void main() {
         for (final day in days) [for (final item in day.items) item.id],
       ],
       [
-        ['outbound', 'kickoff', 'hotel', 'dinner'],
-        ['workshop', 'homebound'],
+        [
+          TripItemId.outbound,
+          TripItemId.meeting(MeetingId('kickoff')),
+          TripItemId.hotel,
+          TripItemId.meeting(MeetingId('dinner')),
+        ],
+        [TripItemId.meeting(MeetingId('workshop')), TripItemId.homebound],
       ],
     );
   });
@@ -46,7 +52,9 @@ void main() {
     final days = planOf(current, booked);
 
     expect(days.last.date, DateTime(2026, 10, 30));
-    expect(days.last.items.map((item) => item.id), ['workshop']);
+    expect(days.last.items.map((item) => item.id), [
+      TripItemId.meeting(MeetingId('workshop')),
+    ]);
   });
 
   test('UTC meeting dates and local flight dates share calendar days', () {
@@ -66,8 +74,10 @@ void main() {
     final days = planOf(current, booked);
 
     expect(days.map((day) => day.date.day), [27, 28, 29]);
-    expect(days.first.items.map((item) => item.id), ['workshop']);
-    expect(days.last.items.map((item) => item.id), ['homebound']);
+    expect(days.first.items.map((item) => item.id), [
+      TripItemId.meeting(MeetingId('workshop')),
+    ]);
+    expect(days.last.items.map((item) => item.id), [TripItemId.homebound]);
   });
 
   test('an outlying meeting adds its day without years of empty days', () {
@@ -88,7 +98,9 @@ void main() {
 
     expect(days, hasLength(3));
     expect(days.last.date, DateTime(2100));
-    expect(days.last.items.map((item) => item.id), ['workshop']);
+    expect(days.last.items.map((item) => item.id), [
+      TripItemId.meeting(MeetingId('workshop')),
+    ]);
   });
 
   test('empty travel days use one section even with a distant return', () {
@@ -112,7 +124,7 @@ void main() {
       expect(gap.date, DateTime(2026, 10, 30));
       expect(gap.endDate, rangeEnd);
       expect(days.last.date, returnDate);
-      expect(days.last.items.map((item) => item.id), ['homebound']);
+      expect(days.last.items.map((item) => item.id), [TripItemId.homebound]);
     }
   });
 
