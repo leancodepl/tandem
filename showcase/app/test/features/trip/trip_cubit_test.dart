@@ -59,6 +59,34 @@ void main() {
     expect(trip.itinerary.homebound, selected);
   });
 
+  test('requested Saturday changes are independent of the Friday e-mail', () {
+    expect(trip.trip.forwardedEmails.single.body, contains('Friday'));
+    final saturday = DateTime(2026, 10, 31);
+
+    trip
+      ..moveMeeting('workshop', DateTime(2026, 10, 31, 10))
+      ..setHotelNights(3);
+    final options = trip.findFlights('BER', 'WAW', saturday);
+    expect(options, isNotEmpty);
+    expect(
+      options.every((flight) => flight.departs.contains('2026-10-31')),
+      isTrue,
+    );
+
+    trip.setHomeboundFlight('WA 388', saturday);
+
+    expect(
+      trip.itinerary.meeting(MeetingId('workshop'))?.start,
+      DateTime(2026, 10, 31, 10),
+    );
+    expect(trip.itinerary.homebound.departs, DateTime(2026, 10, 31, 18, 5));
+    final hotel = trip.itinerary.hotel;
+    if (hotel == null) fail('The trip has a hotel.');
+    expect(calendarDay(hotel.checkOut), saturday);
+    expect(trip.canBookChanges, isTrue);
+    expect(trip.state.booked.homebound.departs.day, 29);
+  });
+
   test('moving every meeting earlier cannot put the return before arrival', () {
     final selected = trip.itinerary.homebound;
     for (final meeting in trip.itinerary.meetings) {

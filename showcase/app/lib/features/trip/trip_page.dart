@@ -17,9 +17,6 @@ import 'package:waypoint/features/trip/trip_item_keys.dart';
 import 'package:waypoint/features/trip/trip_itinerary.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trip/trip_marks_presentation_event.dart';
-import 'package:waypoint/features/trip/trip_news_for_agent.dart';
-import 'package:waypoint/features/trip/trip_reasker.dart';
-import 'package:waypoint/features/trip/trip_reasks_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint/features/trips/trips_unknown_trip.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
@@ -53,7 +50,6 @@ final class const TripPage({
             ),
             BlocProvider(create: (context) => MarksCubit()),
             BlocProvider(create: (context) => ActivityCubit()),
-            BlocProvider(create: (context) => ReasksCubit()),
           ],
           child: MultiRepositoryProvider(
             providers: [
@@ -112,9 +108,8 @@ final class const TripPage({
 
 final class const _TripContent() extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => NewsForAgent(
-    child: Reasker(
-      child: BlocPresentationListener<MarksCubit, MarksPresentationEvent>(
+  Widget build(BuildContext context) =>
+      BlocPresentationListener<MarksCubit, MarksPresentationEvent>(
         listener: _revealChanged,
         child: Scaffold(
           body: LayoutBuilder(
@@ -182,9 +177,7 @@ final class const _TripContent() extends StatelessWidget {
             },
           ),
         ),
-      ),
-    ),
-  );
+      );
 
   static void _revealChanged(
     BuildContext context,

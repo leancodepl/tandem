@@ -2,6 +2,8 @@
 
 The agent behind Waypoint ([../README.md](../README.md)), on [Google ADK](https://google.github.io/adk-docs/) with [ag-ui-adk](https://pypi.org/project/ag-ui-adk/). `POST /agent` serves the trip, `POST /agent/booking` the booking form, `POST /agent/plan` a new trip, `POST /agent/expenses` an expense report and `POST /agent/arrival` the arrival day, each with its own instruction ([trip.txt](src/waypoint_agent/trip.txt), [booking.txt](src/waypoint_agent/booking.txt), [plan.txt](src/waypoint_agent/plan.txt), [expenses.txt](src/waypoint_agent/expenses.txt), [arrival.txt](src/waypoint_agent/arrival.txt)). All its tools are the app's: the screen reaches the model as the AG-UI `context` of each run, and the app's methods as the run's `tools`. Gemini's turns stream through [adk-streaming](../../example/agents/adk-streaming), which the order desk agent on ADK uses too.
 
+The agent works on an explicit request from the traveller. Screen data and forwarded e-mails provide context; they do not start work. The latest request determines the dates and scope, even when an e-mail proposes something else. Financial actions still wait for approval in the app.
+
 Needs [uv](https://docs.astral.sh/uv/).
 
 ## Run
@@ -9,14 +11,16 @@ Needs [uv](https://docs.astral.sh/uv/).
 With Gemini, after copying `.env.example` to `.env` and setting `GOOGLE_API_KEY` in it:
 
 ```sh
-uv run waypoint-agent
+WAYPOINT_FAKE_LLM=0 uv run waypoint-agent
 ```
 
-With the scripted model, which plays the demo without a model and without an API key:
+With the scripted model, which plays fixed demo scenarios without a model and without an API key:
 
 ```sh
 WAYPOINT_FAKE_LLM=1 uv run waypoint-agent
 ```
+
+The scripted model is an explicit test/demo option. Its Berlin scenario moves the workshop to Friday; it does not interpret arbitrary date requests. With `WAYPOINT_FAKE_LLM=0`, every screen uses the configured Gemini model. There is no scripted fallback when Gemini fails.
 
 The server listens on `127.0.0.1:8010`. Threads live in memory, so a restart forgets them.
 

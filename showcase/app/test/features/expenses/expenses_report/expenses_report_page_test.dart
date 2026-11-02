@@ -11,6 +11,58 @@ import 'package:waypoint/features/expenses/expenses_reports_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
+  testWidgets('receipts are added only after an explicit request', (
+    tester,
+  ) async {
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('add_expense', {
+          'receiptId': 'R-0916-1',
+          'claimed': 12,
+        }),
+      ],
+      (_) => const [AgentStep.say('Added the receipt.')],
+    ]);
+    AgentConnection idle() =>
+        ScriptedAgent.repeating((_) => const [AgentStep.say('Ready.')]);
+    await tester.pumpWidget(
+      WaypointApp(
+        createAgents: () => Agents(
+          trip: idle(),
+          booking: idle(),
+          plan: idle(),
+          expenses: agent,
+          arrival: idle(),
+        ),
+      ),
+    );
+    await _settle(tester);
+    await _open(tester, '/expenses/paris/report');
+    final context = tester.element(find.byType(TandemScope).last);
+    final cubit = context.read<ExpensesReportCubit>();
+    final reports = context.read<ReportsCubit>();
+    expect(agent.requests, isEmpty);
+    expect(cubit.form.lines, isEmpty);
+    expect(reports.report(TripId('paris')).lines, isEmpty);
+
+    await tester.tap(find.text('Add forwarded receipts'));
+    await _settle(tester);
+
+    expect(agent.requests, isNotEmpty);
+    expect(
+      agent.requests.first['messages'],
+      contains(
+        allOf(
+          containsPair('content', startsWith('Add these forwarded receipts')),
+          containsPair('content', isNot(contains('submit'))),
+        ),
+      ),
+    );
+    expect(cubit.form.isClaimed(ReceiptId('R-0916-1')), isTrue);
+    expect(reports.report(TripId('paris')).lines, hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'a new report deep link owns a new form while submission completes',
     (tester) async {

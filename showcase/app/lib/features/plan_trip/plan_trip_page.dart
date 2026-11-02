@@ -123,21 +123,6 @@ final class const _PlanTripForm() extends HookWidget {
       session.send(text);
     }
 
-    useEffect(() {
-      if (invitation == null) return null;
-
-      // Once the session is in scope: it starts with the screen.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) {
-          ask(
-            'Plan the trip for this invitation:\n\n${invitation.body}',
-            TandemSessionScope.of(context),
-          );
-        }
-      });
-      return null;
-    }, const []);
-
     final form = context.watch<PlanTripFormController>();
     useListenable(form.onValuesChanged);
     final session = TandemSessionScope.of(context);
@@ -176,9 +161,24 @@ final class const _PlanTripForm() extends HookWidget {
               keyboardDismissBehavior: .onDrag,
               children: [
                 switch (invitation) {
-                  final invitation? => WPMailCard(
-                    from: invitation.from,
-                    subject: invitation.subject,
+                  final invitation? => Column(
+                    crossAxisAlignment: .stretch,
+                    spacing: 10,
+                    children: [
+                      WPMailCard(
+                        from: invitation.from,
+                        subject: invitation.subject,
+                      ),
+                      WPButton(
+                        l10n.planFromInvitationAction,
+                        onPressed: busy || plan.booking
+                            ? null
+                            : () => ask(
+                                'Plan the trip for this invitation:\n\n${invitation.body}',
+                                session,
+                              ),
+                      ),
+                    ],
                   ),
                   null => _Words(
                     words,

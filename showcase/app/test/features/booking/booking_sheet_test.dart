@@ -17,6 +17,50 @@ import 'package:waypoint_design_system/waypoint_design_system.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {
+  testWidgets('a selected confirmation waits for an explicit fill request', (
+    tester,
+  ) async {
+    final context = await _openTrip(tester, tripId: 'copenhagen');
+    final trip = context.read<TripCubit>().info;
+    final email = const Inbox().emails.singleWhere(
+      (email) => email.tripId == trip.id && email.news is HotelConfirmation,
+    );
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('set_hotel', {'name': 'Chosen hotel'}),
+      ],
+      (_) => const [AgentStep.say('Filled in.')],
+    ]);
+    await _showSheet(tester, context, trip, connection: agent, email: email);
+    await _settle(tester);
+    final booking = _booking(tester);
+
+    expect(agent.requests, isEmpty);
+    expect(_session(tester).items, isEmpty);
+    expect(booking.form.missing, hasLength(6));
+    expect(booking.form.value.wasModified, isFalse);
+
+    booking.form.hotel.setValue('Manual draft');
+    await tester.pump();
+    await tester.tap(find.text('Change'));
+    await _settle(tester);
+    await tester.tap(find.text(email.subject));
+    await _settle(tester);
+
+    expect(agent.requests, isEmpty);
+    expect(booking.form.hotel.fieldValue, 'Manual draft');
+
+    await tester.tap(find.text('Fill from email'));
+    await _settle(tester);
+
+    expect(agent.requests, isNotEmpty);
+    final request = _session(tester).items.whereType<UserMessage>().single;
+    expect(request.fromApp, isFalse);
+    expect(request.text, contains(email.body));
+    expect(booking.form.hotel.fieldValue, 'Chosen hotel');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a booking sheet opens with the latest confirmed trip dates', (
     tester,
   ) async {
@@ -113,13 +157,16 @@ void main() {
   );
 }
 
-Future<BuildContext> _openTrip(WidgetTester tester) async {
+Future<BuildContext> _openTrip(
+  WidgetTester tester, {
+  String tripId = 'berlin',
+}) async {
   await tester.pumpWidget(const WaypointApp(createAgents: _idleAgents));
   await _settle(tester);
   await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
     SystemChannels.navigation.name,
     SystemChannels.navigation.codec.encodeMethodCall(
-      const MethodCall('pushRouteInformation', {'location': '/trips/berlin'}),
+      MethodCall('pushRouteInformation', {'location': '/trips/$tripId'}),
     ),
     (data) {},
   );
@@ -130,9 +177,18 @@ Future<BuildContext> _openTrip(WidgetTester tester) async {
 Future<void> _showSheet(
   WidgetTester tester,
   BuildContext context,
-  Trip trip,
-) async {
-  unawaited(showBookingSheet(context, connection: _idle(), trip: trip));
+  Trip trip, {
+  AgentConnection? connection,
+  ForwardedEmail? email,
+}) async {
+  unawaited(
+    showBookingSheet(
+      context,
+      connection: connection ?? _idle(),
+      trip: trip,
+      email: email,
+    ),
+  );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 300));
 }

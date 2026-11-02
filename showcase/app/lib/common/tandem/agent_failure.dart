@@ -19,16 +19,13 @@ extension SessionFailure on TandemSession {
     _ => null,
   };
 
-  /// Repeats the request of the run that failed. A failed run leaves the
-  /// app's notes new, so waking the agent again repeats a request of the app.
+  /// Repeats the traveller's request from the failed run.
   void retry() {
-    switch (items.whereType<UserMessage>().lastOrNull) {
-      case UserMessage(fromApp: true):
-        wake();
-      case UserMessage(:final text):
-        send(text);
-      case null:
-        break;
+    if (items.whereType<UserMessage>().lastOrNull case UserMessage(
+      fromApp: false,
+      :final text,
+    )) {
+      send(text);
     }
   }
 }

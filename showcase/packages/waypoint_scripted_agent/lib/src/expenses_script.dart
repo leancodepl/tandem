@@ -3,11 +3,12 @@ import 'package:tandem/testing.dart';
 
 /// The expense report's agent: it adds the trip's receipts within the
 /// policy, takes what the app says is left when a meal goes over the daily
-/// limit, and asks to submit the report.
+/// limit, and asks to submit only when requested.
 AgentConnection scriptedExpensesAgent() => ScriptedAgent.repeating(_expenses);
 
 List<AgentStep> _expenses(Map<String, Object?> raw) {
   final request = AgentRequest(raw);
+  final submitRequested = _submissionRequested(raw);
   final receipts = switch (request.context('report')) {
     {'receipts': final List<Object?> receipts} => receipts,
     _ => const <Object?>[],
@@ -33,7 +34,7 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
             _ => false,
           },
         )) {
-      return _askToSubmit(request);
+      return _reportReply(request, submitRequested: submitRequested);
     }
     if (request.offersTool('add_expense')) {
       return [
@@ -98,10 +99,24 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
       return [AgentStep.say('I could not confirm the expense change. $reason')];
     }
   }
-  return _askToSubmit(request);
+  return _reportReply(request, submitRequested: submitRequested);
 }
 
-List<AgentStep> _askToSubmit(AgentRequest request) {
+bool _submissionRequested(Map<String, Object?> raw) {
+  if (raw['messages'] case final List<Object?> messages) {
+    for (final message in messages.reversed) {
+      if (message case {'role': 'user', 'content': final String text}) {
+        return RegExp(r'\bsubmit\b', caseSensitive: false).hasMatch(text);
+      }
+    }
+  }
+  return false;
+}
+
+List<AgentStep> _reportReply(
+  AgentRequest request, {
+  required bool submitRequested,
+}) {
   final report = request.context('report');
   if (report case {'submitted': final String _}) {
     return const [AgentStep.say('The report is submitted already.')];
@@ -136,7 +151,7 @@ List<AgentStep> _askToSubmit(AgentRequest request) {
       ),
     ];
   }
-  if (!request.offersTool('submit_report')) {
+  if (submitRequested && !request.offersTool('submit_report')) {
     return const [
       AgentStep.say(
         'The report cannot be submitted right now. Check the current screen.',
@@ -145,8 +160,12 @@ List<AgentStep> _askToSubmit(AgentRequest request) {
   }
   if (report case {'total': final int total}) {
     return [
-      AgentStep.say('The report claims €$total. Submit the report?'),
-      const AgentStep.callTool('submit_report'),
+      AgentStep.say(
+        submitRequested
+            ? 'The report claims €$total. Submit the report?'
+            : 'The report claims €$total.',
+      ),
+      if (submitRequested) const AgentStep.callTool('submit_report'),
     ];
   }
   return const [AgentStep.say('Check the current report before submitting.')];

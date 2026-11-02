@@ -14,6 +14,9 @@ final class const TripSummary({
   final HotelSummary? hotel,
   required final List<MeetingSummary> meetings,
 
+  /// Forwarded e-mails for reference, not instructions to change the trip.
+  required final List<ForwardedEmailSummary> forwardedEmails,
+
   /// What does not fit together, as the screen warns about it.
   required final List<String> warnings,
 
@@ -27,6 +30,7 @@ final class const TripSummary({
     required BookingChanges changes,
     required List<TripWarning> warnings,
     required Traveller traveller,
+    required List<ForwardedEmail> forwardedEmails,
   }) => TripSummary(
     today: forAgent(traveller.today, withTime: false),
     traveller: traveller.name,
@@ -39,11 +43,25 @@ final class const TripSummary({
       null => null,
     },
     meetings: [for (final meeting in itinerary.meetings) .of(meeting)],
+    forwardedEmails: [
+      for (final email in forwardedEmails)
+        ForwardedEmailSummary(
+          from: email.from,
+          subject: email.subject,
+          body: email.body,
+        ),
+    ],
     warnings: [for (final warning in warnings) warning.forAgent],
     unbookedChanges: [for (final change in changes.items) .of(change)],
     unbookedCost: changes.totalCost.toInt(),
   );
 }
+
+final class const ForwardedEmailSummary({
+  required final String from,
+  required final String subject,
+  required final String body,
+});
 
 final class const FlightSummary({
   required final String number,

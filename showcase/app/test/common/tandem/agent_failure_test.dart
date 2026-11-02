@@ -48,7 +48,7 @@ void main() {
     expect(_lastUserText(agent.requests.last), 'Fill in the booking.');
   });
 
-  testWidgets("Retry wakes the agent again for the app's notes", (
+  testWidgets('Retry repeats an explicit request after a lost connection', (
     tester,
   ) async {
     final agent = ScriptedAgent([
@@ -57,9 +57,7 @@ void main() {
     ]);
     final session = await _open(tester, agent);
 
-    session
-      ..note('The traveller opened the form.')
-      ..wake();
+    session.send('Fill in the booking.');
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isA<_Offline>());
@@ -69,8 +67,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final request = agent.requests.last;
-    expect(_lastUserText(request), contains('The app sent this'));
-    expect('${request['context']}', contains('The traveller opened the form.'));
+    expect(_lastUserText(request), 'Fill in the booking.');
   });
 }
 

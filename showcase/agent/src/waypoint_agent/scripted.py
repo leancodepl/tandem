@@ -21,9 +21,24 @@ class ScriptedLlm(BaseLlm):
         if not isinstance(instruction, str):
             raise TypeError("The system instruction is not a string.")
         messages = [_parts(content) for content in llm_request.contents]
+        user_request = next(
+            (
+                text
+                for content in reversed(llm_request.contents)
+                if content.role == "user"
+                if (text := " ".join(part.text for part in content.parts or [] if part.text))
+            ),
+            "",
+        )
         parts = [
             _part(step)
-            for step in play(self.screen, messages, instruction, frozenset(llm_request.tools_dict))
+            for step in play(
+                self.screen,
+                messages,
+                instruction,
+                frozenset(llm_request.tools_dict),
+                user_request=user_request,
+            )
         ]
         if not stream:
             yield LlmResponse(content=types.Content(role="model", parts=parts))

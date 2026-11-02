@@ -21,6 +21,8 @@ def play(
     messages: Sequence[Message],
     instruction: str,
     offered_tools: frozenset[str] = frozenset(),
+    *,
+    user_request: str | None = None,
 ) -> list[str | Call]:
     """Messages are oldest first; the instruction contains screen state and app notes."""
     last = messages[-1] if messages else ()
@@ -41,7 +43,12 @@ def play(
         case Screen.PLAN:
             return _plan(last, text, instruction)
         case Screen.EXPENSES:
-            return _expenses(last, instruction, offered_tools)
+            return _expenses(
+                last,
+                instruction,
+                offered_tools,
+                user_request if user_request is not None else text,
+            )
         case Screen.ARRIVAL:
             return _arrival(last, text, instruction, offered_tools)
 
@@ -332,7 +339,10 @@ def _plan_summary(instruction: str) -> str:
     )
 
 
-def _expenses(last: Message, instruction: str, offered_tools: frozenset[str]) -> list[str | Call]:
+def _expenses(
+    last: Message, instruction: str, offered_tools: frozenset[str], user_request: str
+) -> list[str | Call]:
+    submit_requested = re.search(r"\bsubmit\b", user_request, re.IGNORECASE) is not None
     report = _context(instruction, "report")
     missing = [
         receipt
@@ -342,7 +352,7 @@ def _expenses(last: Message, instruction: str, offered_tools: frozenset[str]) ->
     answers = [part for part in last if isinstance(part, Answer)]
     if not answers:
         if any(receipt.get("problem") for receipt in report.get("receipts", [])):
-            return _ask_to_submit(report, offered_tools)
+            return _report_reply(report, offered_tools, submit_requested=submit_requested)
         if missing:
             if "add_expense" in offered_tools:
                 return [
@@ -350,7 +360,7 @@ def _expenses(last: Message, instruction: str, offered_tools: frozenset[str]) ->
                     for receipt in missing
                 ]
             return ["Expenses cannot be added right now. Check the current screen."]
-        return _ask_to_submit(report, offered_tools)
+        return _report_reply(report, offered_tools, submit_requested=submit_requested)
     if answers[-1].name == "submit_report":
         match answers[-1].result:
             case {"confirmation": confirmation, "total": total}:
@@ -384,10 +394,12 @@ def _expenses(last: Message, instruction: str, offered_tools: frozenset[str]) ->
                 return [f"The expense was not added: {reason}"]
         if problem := _tool_problem(answer.result):
             return [f"I could not confirm the expense change. {problem}"]
-    return _ask_to_submit(report, offered_tools)
+    return _report_reply(report, offered_tools, submit_requested=submit_requested)
 
 
-def _ask_to_submit(report: dict[str, Any], offered_tools: frozenset[str]) -> list[str | Call]:
+def _report_reply(
+    report: dict[str, Any], offered_tools: frozenset[str], *, submit_requested: bool
+) -> list[str | Call]:
     if report.get("submitted"):
         return ["The report is submitted already."]
     problems = [
@@ -402,11 +414,16 @@ def _ask_to_submit(report: dict[str, Any], offered_tools: frozenset[str]) -> lis
         ]
     if any(receipt.get("claimed") is None for receipt in report.get("receipts", [])):
         return ["Some receipts are not in the report. Review them before submitting."]
-    if "submit_report" not in offered_tools:
+    if submit_requested and "submit_report" not in offered_tools:
         return ["The report cannot be submitted right now. Check the current screen."]
     match report:
         case {"total": int(total)}:
-            return [f"The report claims €{total}. Submit the report?", Call("submit_report", {})]
+            if submit_requested:
+                return [
+                    f"The report claims €{total}. Submit the report?",
+                    Call("submit_report", {}),
+                ]
+            return [f"The report claims €{total}."]
     return ["Check the current report before submitting."]
 
 
