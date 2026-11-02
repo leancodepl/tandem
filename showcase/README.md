@@ -40,3 +40,27 @@ cd app && fvm flutter run
 ```
 
 Another endpoint than `http://localhost:8010/agent`, or `http://10.0.2.2:8010/agent` on an Android emulator: `--dart-define=AGENT=<url>`.
+
+### macOS
+
+Requires Xcode. The macOS runner is included, so no platform generation is needed.
+
+Without a server or an API key:
+
+```sh
+cd app && fvm flutter run -d macos --dart-define=SCRIPTED=true
+```
+
+To try the HTTP connection without an API key, start the scripted backend:
+
+```sh
+cd agent && WAYPOINT_FAKE_LLM=1 uv run waypoint-agent
+```
+
+Then, in another terminal:
+
+```sh
+cd app && fvm flutter run -d macos
+```
+
+For Gemini, start the agent as described in [agent/README.md](agent/README.md) and use the same app command.
