@@ -1,3 +1,22 @@
+## 0.3.0
+
+- **Breaking:** Run `dart run build_runner build` again after upgrading both packages.
+- **Breaking:** Hand-written schemas use `AgentType`, `AgentView.of(() => value).as(...)` and `AgentTool(parameters: [AgentParameter(...)])`. Read JSON with `AgentTool.read`; `ToolArgs` now provides typed `read` and `readOr` instead of JSON constructors and collection readers.
+- **Breaking:** Mark an object parameter `@TandemInput()` when the agent creates its value; otherwise, list the objects it may choose with `.sees` and pass a path to one of them.
+- **Breaking:** Write every `.sees` inside `agentCapabilities` itself and remove `super` from that getter.
+- **Breaking:** Handle `Caller.view` in switches over `Caller`.
+- **Breaking:** Pass the screen's `context` from `ext.tandem.describe` to `ext.tandem.call` when its arguments contain object paths.
+- `@TandemCatalog([...])` and `TandemView(catalog:)` let the in-app agent draw with the app's own widgets through `tandem_show_view`. Bindings follow the current `.sees` data, and components whose required value or action is missing stay hidden until it returns.
+- A drawn view's buttons call listed methods with the session's checks and approvals, and fields pass the user's entry to methods that need none. Their answers reach `app_notes` before `onEvent`.
+- Views are checked before drawing, with one line per problem and the previous view kept; after three refusals, `tandem_show_view` stays off until the next message. `whenUnavailable` shows when the expanded view exceeds 500 components.
+- `Thinking(drawing: true)` reports that the agent is drawing a view.
+- `AgentType` shares one description between reading, writing and JSON Schema, including `Uri`, `Set`, token classes and generic classes.
+- `@TandemAgent(converters:)` and `@TandemCatalog(converters:)` take `JsonConverter<T, S>`, with built-in converters for colors, insets and alignments. `tandem` depends on `json_annotation` for it.
+- Object paths are checked against what the run saw, and approval requests freeze their resolved arguments so the approved method gets what the request showed.
+- `.sees` entries can depend on the state or route through `if`, `switch` and spreads, with getters kept distinct even when their values are equal or null.
+- A turn that only draws accepted views ends without another model run; its tool answers go with the next message.
+- The README and Agent Skills cover app catalogs, object paths, converters, dynamic agent lists and a coding agent's `context`.
+
 ## 0.2.3
 
 - `TandemScope(thread:)` goes on with a `TandemThread` that the app keeps: the chat, the history and the agent state. The newest session goes on with it, and an older one refuses calls.
