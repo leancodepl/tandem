@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
+import 'package:waypoint/features/trip/trip_activity.dart';
 import 'package:waypoint/features/trip/trip_activity_cubit.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';

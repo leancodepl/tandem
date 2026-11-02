@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:bloc_presentation/bloc_presentation.dart';
-import 'package:copy_with_extension/copy_with_extension.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
@@ -10,9 +8,14 @@ import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/common/formatters/policy_agent_text.dart';
 import 'package:waypoint/common/tandem/flight_option.dart';
 import 'package:waypoint/common/tandem/form_changes.dart';
+import 'package:waypoint/features/plan_trip/hotel_option.dart';
 import 'package:waypoint/features/plan_trip/plan_trip_form_controller.dart';
+import 'package:waypoint/features/plan_trip/plan_trip_presentation_event.dart';
+import 'package:waypoint/features/plan_trip/plan_trip_refusal.dart';
+import 'package:waypoint/features/plan_trip/plan_trip_state.dart';
 import 'package:waypoint/features/plan_trip/plan_trip_summary.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
+import 'package:waypoint/features/trips/trips_state.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 part 'plan_trip_cubit.g.dart';
@@ -399,119 +402,6 @@ class PlanTripCubit({
   }
 }
 
-@CopyWith()
-final class const PlanTripState._({
-  final List<Meeting> meetings = const [],
-  final Flight? outbound,
-  final Flight? homebound,
-  final Hotel? hotel,
-
-  final bool booking = false,
-
-  final Set<PlanTripInput> marked = const {},
-}) with Equatable {
-  factory({
-    List<Meeting> meetings = const [],
-    Flight? outbound,
-    Flight? homebound,
-    Hotel? hotel,
-    bool booking = false,
-    Set<PlanTripInput> marked = const {},
-  }) => ._(
-    meetings: List.unmodifiable(meetings),
-    outbound: outbound,
-    homebound: homebound,
-    hotel: hotel,
-    booking: booking,
-    marked: Set.unmodifiable(marked),
-  );
-
-  @override
-  List<Object?> get props => [
-    meetings,
-    outbound,
-    homebound,
-    hotel,
-    booking,
-    marked,
-  ];
-
-  int? get nights => switch ((outbound, homebound)) {
-    (final out?, final home?) => calendarDaysBetween(out.arrives, home.departs),
-    _ => null,
-  };
-
-  Money get total =>
-      (outbound?.fare ?? wholeMoney(0)) +
-      (homebound?.fare ?? wholeMoney(0)) +
-      (hotel?.nightly ?? wholeMoney(0)) * (nights ?? 0);
-
-  List<PlanPart> get missingPicks => [
-    if (meetings.isEmpty) .meetings,
-    if (outbound == null) .outbound,
-    if (homebound == null) .homebound,
-    if (hotel == null && (nights ?? 1) > 0) .hotel,
-  ];
-}
-
-enum PlanTripInput() {
-  city,
-  purpose,
-}
-
-enum PlanPart(
-  /// The part in English, for the agent.
-  final String forAgent,
-) {
-  city('the city'),
-  meetings('the meetings'),
-  outbound('the flight there'),
-  homebound('the flight home'),
-  hotel('the hotel'),
-}
-
-sealed class const PlanTripPresentationEvent();
-
-final class const PlanTripPresentationEventBooked(final TripId tripId)
-    extends PlanTripPresentationEvent;
-
-sealed class const PlanRefusal() {
-  /// The refusal in English, for the agent.
-  String get forAgent;
-}
-
-final class const CityNotSet() extends PlanRefusal {
-  @override
-  String get forAgent => 'Set the city first';
-}
-
-final class const WrongRoute(
-  final Flight flight, {
-  required final AirportCode origin,
-  required final AirportCode destination,
-}) extends PlanRefusal {
-  @override
-  String get forAgent =>
-      'Flight ${flight.number} does not fly from $origin to $destination';
-}
-
-final class const HotelNotInCity(final Hotel hotel, final String city)
-    extends PlanRefusal {
-  @override
-  String get forAgent => '${hotel.name} is not in $city';
-}
-
-final class const BreaksPlanPolicy(final PolicyBreach breach)
-    extends PlanRefusal {
-  static BreaksPlanPolicy? of(PolicyBreach? breach) => switch (breach) {
-    final breach? => BreaksPlanPolicy(breach),
-    null => null,
-  };
-
-  @override
-  String get forAgent => breach.forAgent;
-}
-
 /// Check-in from 15:00, or an hour after landing when the flight lands
 /// later.
 DateTime _checkIn(DateTime lands) {
@@ -519,14 +409,3 @@ DateTime _checkIn(DateTime lands) {
   final arrival = lands.add(const Duration(hours: 1));
   return arrival.isAfter(afternoon) ? arrival : afternoon;
 }
-
-/// A hotel as find_hotels gives it to the agent.
-final class const HotelOption({
-  required final String id,
-  required final String name,
-  required final int nightly,
-  required final int walkMinutes,
-
-  /// Why the traveller cannot take it, or null when they can.
-  final String? unavailable,
-});

@@ -1,4 +1,4 @@
-import 'package:waypoint/features/plan_trip/plan_trip_cubit.dart';
+import 'package:waypoint/features/plan_trip/plan_trip_state.dart';
 import 'package:waypoint/features/trip/trip_summary.dart';
 
 final class const PlanSummary({

@@ -1,7 +1,8 @@
 import pytest
 
 from waypoint_agent.instruction import Screen
-from waypoint_agent.script import Call, play
+from waypoint_agent.script import play
+from waypoint_agent.script_message import Call
 
 
 @pytest.mark.parametrize(

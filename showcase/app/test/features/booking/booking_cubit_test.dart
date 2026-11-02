@@ -2,7 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 import 'package:waypoint/features/booking/booking_cubit.dart';
+import 'package:waypoint/features/booking/booking_draft.dart';
+import 'package:waypoint/features/booking/booking_error.dart';
 import 'package:waypoint/features/booking/booking_form_controller.dart';
+import 'package:waypoint/features/booking/booking_presentation_event.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 void main() {

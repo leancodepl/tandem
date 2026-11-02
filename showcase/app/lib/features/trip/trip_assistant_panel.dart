@@ -6,6 +6,7 @@ import 'package:waypoint/common/tandem/agent_failure.dart';
 import 'package:waypoint/common/tandem/session_composer.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
+import 'package:waypoint/features/trip/trip_activity.dart';
 import 'package:waypoint/features/trip/trip_activity_cubit.dart';
 import 'package:waypoint/features/trip/trip_approval_card.dart';
 import 'package:waypoint/l10n/l10n.dart';

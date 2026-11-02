@@ -6,23 +6,13 @@ import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
+import 'package:waypoint/features/trip/trip_asked_changes.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_reasks_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 
 final _log = Logger('Trip');
-
-final class AskedChanges() {
-  final _asked = <String, BookingChanges>{};
-
-  void remember(ApprovalRequest request, BookingChanges changes) =>
-      _asked.putIfAbsent(request.toolCallId, () => changes);
-
-  BookingChanges of(ApprovalRequest request) =>
-      _asked[request.toolCallId] ??
-      (throw StateError('The approval has no captured booking changes.'));
-}
 
 /// The approval of [TripCubit.bookChanges]: what the assistant asked to book,
 /// as the screen was when it asked.

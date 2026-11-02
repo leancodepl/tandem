@@ -1,13 +1,16 @@
 import 'dart:async';
 
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/common/formatters/policy_agent_text.dart';
+import 'package:waypoint/features/arrival/arrival_arrangements.dart';
 import 'package:waypoint/features/arrival/arrival_arrangements_cubit.dart';
+import 'package:waypoint/features/arrival/arrival_state.dart';
+import 'package:waypoint/features/arrival/arrival_summary.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
+import 'package:waypoint/features/trips/trips_state.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 part 'arrival_cubit.g.dart';
@@ -230,58 +233,3 @@ class ArrivalCubit({
     throw ToolCallRefused(reason);
   }
 }
-
-final class const ArrivalState({
-  required final Trip trip,
-  required final ArrivalArrangements arrangements,
-}) with Equatable {
-  @override
-  List<Object?> get props => [trip, arrangements];
-}
-
-final class const ArrivalSummary({
-  required final String landing,
-  required final MeetingNext meeting,
-  required final List<RideSummary> rides,
-  required final HotelNext hotel,
-
-  /// The company's rule for rides.
-  required final String policy,
-});
-
-final class const MeetingNext({
-  required final String title,
-  required final String place,
-  required final DateTime start,
-  required final String host,
-
-  /// Whether the traveller texted the host when they arrive.
-  required final bool hostTold,
-});
-
-final class const RideSummary({
-  required final String id,
-  required final RideMode mode,
-  required final int minutes,
-
-  /// In whole euros.
-  required final int fare,
-  required final DateTime arrives,
-
-  /// The booking's reference once booked: the taxi's plate or the ticket's
-  /// fare zone.
-  final String? booked,
-
-  /// Whether the company's rule for rides rules it out.
-  required final bool overPolicy,
-});
-
-final class const HotelNext({
-  /// Null without a hotel booked.
-  final String? name,
-  final DateTime? checkIn,
-
-  /// When the room is ready, once the traveller asked for an early
-  /// check-in.
-  final DateTime? roomReady,
-});

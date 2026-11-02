@@ -1,5 +1,5 @@
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:waypoint/features/trips/trips_state.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
@@ -118,23 +118,4 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
   int get waiting =>
       invitations.length +
       state.trips.fold(0, (count, trip) => count + news(trip.id).length);
-}
-
-final class TripsState(
-  List<Trip> trips, {
-  Set<TripId> pendingBookings = const {},
-}) with Equatable {
-  this {
-    final ids = <TripId>{};
-    for (final trip in trips) {
-      if (ids.add(trip.id)) continue;
-      throw ArgumentError.value(trip.id, 'trips', 'Duplicate trip id');
-    }
-  }
-
-  final List<Trip> trips = List.unmodifiable(trips);
-  final Set<TripId> pendingBookings = Set.unmodifiable(pendingBookings);
-
-  @override
-  List<Object?> get props => [trips, pendingBookings];
 }

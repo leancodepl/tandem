@@ -9,7 +9,7 @@ import 'package:tandem/testing.dart';
 import 'package:waypoint/agents.dart';
 import 'package:waypoint/app.dart';
 import 'package:waypoint/features/booking/booking_cubit.dart';
-import 'package:waypoint/features/booking/booking_form_controller.dart';
+import 'package:waypoint/features/booking/booking_error.dart';
 import 'package:waypoint/features/booking/booking_sheet.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
