@@ -2,20 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:waypoint_design_system/l10n/wp_localizations.dart';
 import 'package:waypoint_design_system/src/atoms/wp_buttons.dart';
 import 'package:waypoint_design_system/src/atoms/wp_note.dart';
-import 'package:waypoint_design_system/src/components/layout/wp_page.dart';
 import 'package:waypoint_design_system/src/foundations/wp_text_style.dart';
 
 final class const WPErrorView(
   final String message, {
   super.key,
 
-  /// Where [onBack] takes the traveller, such as "Your trips".
-  required final String back,
+  required final String backLabel,
   required final VoidCallback onBack,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => WPPage(
-    child: SafeArea(
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
       child: Center(
         child: Padding(
           padding: const .symmetric(horizontal: 24),
@@ -24,7 +22,7 @@ final class const WPErrorView(
             spacing: 16,
             children: [
               Text(message, textAlign: .center, style: WPTextStyle.title),
-              WPButton(back, onPressed: onBack),
+              WPButton(backLabel, onPressed: onBack),
             ],
           ),
         ),

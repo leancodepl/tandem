@@ -2,8 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
-/// The expense reports of the traveller's trips, for every screen of the
-/// app.
 final class ReportsCubit({required final Inbox inbox})
     extends Cubit<ReportsState> {
   this : super(ReportsState({}));
@@ -82,8 +80,7 @@ final class ReportsCubit({required final Inbox inbox})
     }
   }
 
-  /// The receipts forwarded for the trip [tripId], in the order of their
-  /// numbers, which follow the days.
+  /// Receipt numbers follow their days.
   List<Receipt> receipts(TripId tripId) => [
     for (final email in inbox.emails)
       if (email case ForwardedEmail(news: final Receipt receipt)
@@ -91,8 +88,6 @@ final class ReportsCubit({required final Inbox inbox})
         receipt,
   ]..sort((a, b) => a.id.value.compareTo(b.id.value));
 
-  /// Whether the trip [tripId] has receipts and its report is not
-  /// submitted.
   bool waits(TripId tripId) =>
       receipts(tripId).isNotEmpty && report(tripId).submitted == null;
 }
@@ -108,8 +103,6 @@ final class ReportsState(
   List<Object?> get props => [reports, submitting];
 }
 
-/// An expense of a report: what a receipt shows and what the company pays
-/// back of it.
 final class ExpenseLine({
   required final Receipt receipt,
 
@@ -132,7 +125,6 @@ final class ExpenseLine({
   List<Object?> get props => [receipt, claimed];
 }
 
-/// The expenses of one trip, and its confirmation once submitted.
 final class ExpenseReport({
   List<ExpenseLine> lines = const [],
   final BookingReference? submitted,

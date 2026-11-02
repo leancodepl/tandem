@@ -11,14 +11,8 @@ abstract final class WPColors() {
   static const ink = Color(0xFFF1EEE8);
   static const muted = Color(0xFF98A0AA);
 
-  /// Tandem's blue, the site's accent: the assistant's marks.
   static const ai = Color(0xFF0187FD);
-
-  /// The border of a card the assistant changed: [line] 70 % of the way to
-  /// [ai].
   static const aiLine = Color(0xFF0B6BC0);
-
-  /// The assistant's blue for text on the dark surfaces.
   static const aiText = Color(0xFF4AA8FF);
   static const warn = Color(0xFFE5A94A);
 

@@ -32,7 +32,6 @@ final class const ForwardedEmail({
 /// What an e-mail changes for its trip.
 sealed class const EmailNews() with Equatable;
 
-/// A meeting of the trip moved.
 final class const MeetingMoved({
   required final MeetingId meetingId,
   required final DateTime start,

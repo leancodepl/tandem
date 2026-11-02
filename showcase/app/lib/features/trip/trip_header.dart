@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_policy_breach_text.dart';
@@ -19,8 +18,8 @@ final class const TripHeader({super.key, required final bool wide})
       (trip) => trip.itinerary,
     );
     final info = context.select<TripCubit, Trip>((trip) => trip.info);
-    final out = dateOnly(itinerary.outbound.departs);
-    final home = dateOnly(itinerary.homebound.departs);
+    final out = calendarDay(itinerary.outbound.departs);
+    final home = calendarDay(itinerary.homebound.departs);
     final l10n = context.l10n;
     final dates = l10n.tripDates(
       l10n.dayRange(out, home),

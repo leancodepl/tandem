@@ -1,7 +1,3 @@
-/// Waypoint's look: its colours, type and fonts, and the widgets its
-/// screens share.
-library;
-
 export 'package:flutter/material.dart' show Icons;
 
 export 'l10n/wp_localizations.dart' show WPLocalizations;
@@ -32,7 +28,6 @@ export 'src/components/forms/wp_filled_fields.dart';
 export 'src/components/forms/wp_form_fields.dart';
 export 'src/components/forms/wp_option.dart';
 export 'src/components/layout/wp_divided_column.dart';
-export 'src/components/layout/wp_page.dart';
 export 'src/components/layout/wp_page_title.dart';
 export 'src/components/layout/wp_readable.dart';
 export 'src/components/layout/wp_section.dart';

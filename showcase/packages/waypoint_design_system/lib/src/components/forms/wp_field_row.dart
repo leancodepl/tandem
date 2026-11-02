@@ -3,11 +3,6 @@ import 'package:waypoint_design_system/src/atoms/wp_marker.dart';
 import 'package:waypoint_design_system/src/foundations/wp_colors.dart';
 import 'package:waypoint_design_system/src/foundations/wp_text_style.dart';
 
-/// A row of a form: its label, what it holds, and under it the [error]
-/// or else the [note]. The blue bar marks what the assistant filled in.
-/// [onTap] takes a tap anywhere on the row. With [action] as well, the row
-/// shows that icon at its end and is a button, unless it [holdsInput]: a
-/// tap on a row with its own text input only focuses that input.
 final class const WPFieldRow({
   super.key,
   required final String label,
@@ -17,6 +12,8 @@ final class const WPFieldRow({
   required final bool marked,
   final VoidCallback? onTap,
   final IconData? action,
+
+  /// A text row's tap focuses its input instead of acting as a button.
   final bool holdsInput = false,
 }) extends StatelessWidget {
   @override

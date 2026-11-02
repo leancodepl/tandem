@@ -3,7 +3,6 @@ import 'package:equatable/equatable.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
-/// The hotel booking form, for a trip from [tripStart] to [tripEnd].
 final class BookingFormController({
   required DateTime tripStart,
   required DateTime tripEnd,
@@ -74,7 +73,6 @@ final class BookingFormController({
     };
   }
 
-  /// The booking as the form holds it, with blank text as not filled in.
   BookingDraft get draft => BookingDraft(
     hotel: _filled(hotel.fieldValue),
     address: _filled(address.fieldValue),
@@ -84,7 +82,6 @@ final class BookingFormController({
     confirmation: _filled(confirmation.fieldValue),
   );
 
-  /// What is still missing before the stay can join the trip.
   List<BookingPart> get missing {
     final draft = this.draft;
     return [
@@ -103,7 +100,6 @@ final class BookingFormController({
     return DateTime(day.year, day.month, day.day, at.hour, at.minute);
   }
 
-  /// The stay to add to the trip, once every field is filled in.
   HotelStay? get stay => switch (draft) {
     BookingDraft(
       :final hotel?,
@@ -155,7 +151,6 @@ final class const BookingDraft({
   };
 }
 
-/// What a hotel booking can miss.
 enum BookingPart() {
   hotel,
   address,
@@ -165,14 +160,11 @@ enum BookingPart() {
   confirmation,
 }
 
-/// Why a field of the booking form holds a wrong value.
 sealed class const BookingError() with Equatable {
   /// The error in English, for the agent.
   String get forAgent;
 }
 
-/// [day] cannot be part of the stay: the trip runs from [tripStart] to
-/// [tripEnd].
 final class const OutsideTrip(
   final DateTime day, {
   required final DateTime tripStart,
@@ -187,7 +179,6 @@ final class const OutsideTrip(
       '${dayRangeForAgent(tripStart, tripEnd)}';
 }
 
-/// The check-in is on or after the [checkOut] day.
 final class const CheckInNotBeforeCheckOut(final DateTime checkOut)
     extends BookingError {
   @override
@@ -199,7 +190,6 @@ final class const CheckInNotBeforeCheckOut(final DateTime checkOut)
       'to move the stay later, set the check-out first';
 }
 
-/// The check-out is on or before the [checkIn] day.
 final class const CheckOutNotAfterCheckIn(final DateTime checkIn)
     extends BookingError {
   @override
@@ -210,7 +200,6 @@ final class const CheckOutNotAfterCheckIn(final DateTime checkIn)
       'The check-out must be after the check-in, ${_dayForAgent(checkIn)}';
 }
 
-/// The price is not a whole number of euros above 0.
 final class const PriceNotPositive() extends BookingError {
   @override
   List<Object?> get props => [];

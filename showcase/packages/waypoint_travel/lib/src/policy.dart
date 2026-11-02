@@ -15,7 +15,6 @@ abstract final class Policy() {
 
   static final mealsPerDay = wholeMoney(60);
 
-  /// Why the policy rules out [flight] to a trip with [meetings], or null.
   static PolicyBreach? checkOutbound(Flight flight, List<Meeting> meetings) {
     final first = meetings.fold<Meeting?>(
       null,
@@ -35,8 +34,6 @@ abstract final class Policy() {
     return null;
   }
 
-  /// Why the policy rules out [flight] home from a trip with [meetings], or
-  /// null.
   static PolicyBreach? checkHomebound(Flight flight, List<Meeting> meetings) {
     final last = meetings.fold<Meeting?>(
       null,
@@ -51,12 +48,10 @@ abstract final class Policy() {
     return null;
   }
 
-  /// Why the policy rules out a hotel at [nightly] euros a night, or null.
   static PolicyBreach? checkNightly(Money nightly) =>
       nightly > maxNightly ? OverNightly(nightly) : null;
 
-  /// Why the policy rules out paying back [claimed] euros of a meal on a day
-  /// whose other meals pay back [claimedThatDay], or null.
+  /// [claimedThatDay] excludes the current meal.
   static PolicyBreach? checkMeals({
     required Money claimed,
     required Money claimedThatDay,
@@ -81,7 +76,6 @@ abstract final class Policy() {
   };
 }
 
-/// What a booking breaks of the company [Policy].
 sealed class const PolicyBreach() with Equatable;
 
 /// The flight there lands on the day of a meeting that starts in the
@@ -118,7 +112,6 @@ final class const OverMealsPerDay(final Money left) extends PolicyBreach {
   List<Object?> get props => [left];
 }
 
-/// A taxi, though the train gets the traveller to the meeting in time.
 final class const TaxiNotNeeded({
   required final DateTime trainArrives,
   required final DateTime meetingStarts,

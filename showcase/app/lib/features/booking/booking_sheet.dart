@@ -8,7 +8,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:tandem/tandem.dart';
-import 'package:waypoint/common/dates/date_only.dart';
+import 'package:waypoint/common/dates/days_after.dart';
 import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/common/logging/agent_event_log.dart';
@@ -24,9 +24,8 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 
 final _log = Logger('Booking');
 
-/// Opens the booking form that a forwarded confirmation e-mail fills in,
-/// without a chat: [email] at once, or the one the traveller picks of the
-/// trip's confirmations. Returns the hotel the traveller added, or null.
+/// Opens [email] immediately, or lets the traveller choose a confirmation.
+/// Returns the hotel they added, or null.
 Future<HotelStay?> showBookingSheet(
   BuildContext context, {
   required AgentConnection connection,

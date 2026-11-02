@@ -9,8 +9,8 @@ import 'package:waypoint/l10n/app_localizations.dart';
 
 void main() {
   test('a lost connection and a failed run are failures, a stop is not', () {
-    expect(AgentFailure.of(.connectionLost), isA<AgentUnreachable>());
-    expect(AgentFailure.of(.runFailed), isA<AgentRunFailed>());
+    expect(AgentFailure.of(.connectionLost), AgentFailure.unreachable);
+    expect(AgentFailure.of(.runFailed), AgentFailure.runFailed);
     expect(AgentFailure.of(.stopped), isNull);
     expect(AgentFailure.of(.startedOver), isNull);
   });
@@ -19,11 +19,11 @@ void main() {
     final l10n = lookupAppLocalizations(const Locale('en'));
 
     expect(
-      l10n.agentFailure(const AgentUnreachable()),
+      l10n.agentFailure(AgentFailure.unreachable),
       'Waypoint cannot reach the assistant. Check your connection.',
     );
     expect(
-      l10n.agentFailure(const AgentRunFailed()),
+      l10n.agentFailure(AgentFailure.runFailed),
       'The assistant ran into a problem.',
     );
   });
@@ -39,7 +39,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isA<AgentRunException>());
-    expect(session.failure, isA<AgentRunFailed>());
+    expect(session.failure, AgentFailure.runFailed);
 
     session.retry();
     await tester.pumpAndSettle();
@@ -63,7 +63,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isA<_Offline>());
-    expect(session.failure, isA<AgentUnreachable>());
+    expect(session.failure, AgentFailure.unreachable);
 
     session.retry();
     await tester.pumpAndSettle();

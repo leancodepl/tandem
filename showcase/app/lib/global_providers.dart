@@ -7,7 +7,6 @@ import 'package:waypoint/features/trips/trips_cubit.dart';
 import 'package:waypoint_travel/demo.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
-/// What every screen of the app reads, for the app's life.
 final class const GlobalProviders({
   super.key,
 

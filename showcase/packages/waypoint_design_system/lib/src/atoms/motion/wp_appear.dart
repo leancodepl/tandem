@@ -1,8 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-/// Grows, fades and slides its child into place when it first shows, if
-/// [enabled].
+/// Animates only on first appearance.
 final class const WPAppear({
   super.key,
   required final bool enabled,
@@ -39,7 +38,6 @@ final class const WPAppear({
   }
 }
 
-/// Fades and slides its child in when it first shows.
 final class const WPSlideIn({super.key, required final Widget child})
     extends HookWidget {
   @override
