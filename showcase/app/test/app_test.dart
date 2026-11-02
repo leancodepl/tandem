@@ -83,7 +83,7 @@ void main() {
     await _settle(tester);
     final card = find.ancestor(
       of: find.text('VIENNA'),
-      matching: find.byType(WaypointListCard),
+      matching: find.byType(WPListCard),
     );
     expect(card, findsOneWidget);
     expect(
@@ -141,8 +141,8 @@ void main() {
       await _fillHotelFromInbox(tester);
 
       bool priceMarked() => tester
-          .widget<FormAmountField<BookingError>>(
-            find.byType(FormAmountField<BookingError>),
+          .widget<WPFormAmountField<BookingError>>(
+            find.byType(WPFormAmountField<BookingError>),
           )
           .marked;
 
@@ -192,7 +192,7 @@ void main() {
     final keyboardTop = tester.view.physicalSize.height / 3 - 336;
     final confirmation = find.descendant(
       of: find.byWidgetPredicate(
-        (widget) => widget is FormTextField && widget.label == 'Confirmation',
+        (widget) => widget is WPFormTextField && widget.label == 'Confirmation',
       ),
       matching: find.byType(TextField),
     );
@@ -248,7 +248,7 @@ void main() {
     await _settle(tester);
     await tester.enterText(
       find.descendant(
-        of: find.byType(WaypointTextField),
+        of: find.byType(WPTextField),
         matching: find.byType(TextField),
       ),
       'The Alpenlicht workshop in Vienna',
@@ -271,9 +271,7 @@ void main() {
     ]);
     // The traveller asks again for the new city.
     expect(
-      tester
-          .widget<WaypointButton>(find.widgetWithText(WaypointButton, 'Plan'))
-          .onPressed,
+      tester.widget<WPButton>(find.widgetWithText(WPButton, 'Plan')).onPressed,
       isNotNull,
     );
   });
@@ -302,10 +300,10 @@ void main() {
     await _settle(tester);
 
     // The dinner goes over the meal limit; the agent claims what is left.
-    final dinner = tester.widget<FormAmountField<ClaimError>>(
+    final dinner = tester.widget<WPFormAmountField<ClaimError>>(
       find.byWidgetPredicate(
         (widget) =>
-            widget is FormAmountField &&
+            widget is WPFormAmountField &&
             widget.label.startsWith('Bistrot du Canal'),
       ),
     );
@@ -494,10 +492,9 @@ void main() {
     await tester.tap(find.text('Review the trip'));
     await _settle(tester);
     final submit = tester
-        .widget<WaypointSubmit>(
+        .widget<WPSubmit>(
           find.byWidgetPredicate(
-            (widget) =>
-                widget is WaypointSubmit && widget.label == 'Book changes',
+            (widget) => widget is WPSubmit && widget.label == 'Book changes',
           ),
         )
         .onSubmit;
@@ -747,10 +744,10 @@ void main() {
     await _settle(tester);
 
     bool marked() => tester
-        .widget<WaypointCard>(
+        .widget<WPCard>(
           find.ancestor(
             of: find.text('Havnegade Loft'),
-            matching: find.byType(WaypointCard),
+            matching: find.byType(WPCard),
           ),
         )
         .marked;
@@ -791,13 +788,13 @@ void main() {
   ) async {
     await _pumpApp(tester, const WaypointApp(createAgents: _scriptedAgents));
     await _openLink(tester, '/trips/plan-trip');
-    final beforeContext = tester.element(find.byType(WaypointSubmit));
+    final beforeContext = tester.element(find.byType(WPSubmit));
     final before = beforeContext.read<PlanTripCubit>()..setCity('Berlin');
     final previousSession = TandemSessionScope.of(beforeContext);
 
     await _openLink(tester, '/trips/plan-trip?invitation=vienna');
 
-    final afterContext = tester.element(find.byType(WaypointSubmit));
+    final afterContext = tester.element(find.byType(WPSubmit));
     final after = afterContext.read<PlanTripCubit>();
     expect(after.invitation?.tripId, TripId('vienna'));
     expect(after.form.city.fieldValue, 'Vienna');
@@ -921,8 +918,8 @@ Future<void> _enterInto(
   final input = find.descendant(
     of: find.byWidgetPredicate(
       (widget) =>
-          (widget is FormTextField && labelled(widget.label)) ||
-          (widget is FormAmountField && labelled(widget.label)),
+          (widget is WPFormTextField && labelled(widget.label)) ||
+          (widget is WPFormAmountField && labelled(widget.label)),
     ),
     matching: find.byType(TextField),
   );
@@ -935,7 +932,7 @@ Future<void> _enterInto(
 /// under [label], as the traveller.
 Future<void> _pickDay(WidgetTester tester, String label, String day) async {
   final field = find.byWidgetPredicate(
-    (widget) => widget is FormDateField && widget.label == label,
+    (widget) => widget is WPFormDateField && widget.label == label,
   );
   await tester.ensureVisible(field);
   await tester.tap(field);
@@ -952,7 +949,7 @@ Future<void> _pickDay(WidgetTester tester, String label, String day) async {
 
 /// The form's submit, null while it is disabled.
 VoidCallback? _onSubmit(WidgetTester tester) =>
-    tester.widget<WaypointSubmit>(find.byType(WaypointSubmit)).onSubmit;
+    tester.widget<WPSubmit>(find.byType(WPSubmit)).onSubmit;
 
 Future<void> _settle(WidgetTester tester) async {
   for (var frame = 0; frame < 20; frame++) {

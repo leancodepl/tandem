@@ -12,15 +12,15 @@ final class const ArrivalCard({
   required final List<Widget> children,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => WaypointCard(
-    border: Palette.aiLine,
+  Widget build(BuildContext context) => WPCard(
+    border: WPColors.aiLine,
     child: Column(
       crossAxisAlignment: .stretch,
       spacing: 14,
       children: [
-        Text(title, style: AppText.title),
+        Text(title, style: WPTextStyle.title),
         for (final (index, child) in children.indexed) ...[
-          if (index > 0) const WaypointDivider(),
+          if (index > 0) const WPDivider(),
           child,
         ],
       ],
@@ -49,14 +49,14 @@ final class const NextStop({
   Widget build(BuildContext context) => Row(
     spacing: 12,
     children: [
-      Text(context.l10n.time(start), style: AppText.time),
+      Text(context.l10n.time(start), style: WPTextStyle.time),
       Expanded(
         child: Column(
           crossAxisAlignment: .start,
           spacing: 2,
           children: [
-            Text(title, style: AppText.title),
-            Text(place, style: AppText.label),
+            Text(title, style: WPTextStyle.title),
+            Text(place, style: WPTextStyle.label),
           ],
         ),
       ),
@@ -89,7 +89,7 @@ final class const RideOption({
       crossAxisAlignment: .stretch,
       spacing: 2,
       children: [
-        WaypointTile(
+        WPTile(
           title: l10n.rideMode(mode.name),
           subtitle: l10n.rideLine(
             minutes,
@@ -98,16 +98,16 @@ final class const RideOption({
           ),
           dimmed: overPolicy,
           trailing: booked == null && !overPolicy
-              ? WaypointButton(l10n.book, small: true, onPressed: onBook)
+              ? WPButton(l10n.book, small: true, onPressed: onBook)
               : null,
         ),
         switch ((booked, overPolicy)) {
-          (final reference?, _) => WaypointNote(
+          (final reference?, _) => WPNote(
             Icons.check_rounded,
             l10n.rideBooked(mode.name, reference),
             tone: .ai,
           ),
-          (_, true) => WaypointNote(
+          (_, true) => WPNote(
             Icons.warning_amber_rounded,
             l10n.rideOverPolicy,
             tone: .warn,
@@ -130,12 +130,12 @@ final class const HostNote({
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return WaypointTile(
+    return WPTile(
       icon: Icons.person_outline_rounded,
       title: told ? l10n.hostTold(name) : l10n.hostExpects(name),
       trailing: told
           ? null
-          : WaypointButton(
+          : WPButton(
               l10n.textHost(name.split(' ').first),
               small: true,
               primary: false,
@@ -160,7 +160,7 @@ final class const HotelNote({
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return WaypointTile(
+    return WPTile(
       icon: Icons.hotel_outlined,
       title: name ?? l10n.noHotel,
       subtitle: switch ((roomReady, checkIn)) {
@@ -169,7 +169,7 @@ final class const HotelNote({
         _ => l10n.noCheckIn,
       },
       trailing: name != null && roomReady == null
-          ? WaypointButton(
+          ? WPButton(
               l10n.roomEarly,
               small: true,
               primary: false,

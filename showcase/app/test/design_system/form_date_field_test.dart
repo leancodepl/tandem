@@ -78,7 +78,7 @@ Future<void> _pumpField(
 }) => tester.pumpWidget(
   MaterialApp(
     home: Scaffold(
-      body: FormDateField(
+      body: WPFormDateField(
         field: field,
         label: 'Check-in',
         format: (at) => at.toIso8601String(),

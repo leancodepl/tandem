@@ -59,12 +59,11 @@ final class const _ChangesBarContent({
         : null;
 
     final Widget? content = switch ((changes, booking, confirmation)) {
-      ([_, ...], _, _) ||
-      (_, true, _) when !(awaiting && !wide) => WaypointSubmit(
+      ([_, ...], _, _) || (_, true, _) when !(awaiting && !wide) => WPSubmit(
         key: const ValueKey('changes'),
         label: booking ? l10n.booking : l10n.bookChanges,
         busy: booking,
-        total: WaypointTotal(
+        total: WPTotal(
           l10n.changesNotBooked(changes.length),
           l10n.moneyDelta(trip.bookingChanges.totalCost),
         ),
@@ -85,7 +84,7 @@ final class const _ChangesBarContent({
       (_, _, final confirmation?) => Align(
         key: const ValueKey('booked'),
         alignment: .centerLeft,
-        child: WaypointConfirmation(l10n.changesBooked(confirmation.value)),
+        child: WPConfirmation(l10n.changesBooked(confirmation.value)),
       ),
       _ => null,
     };
@@ -100,7 +99,7 @@ final class const _ChangesBarContent({
             key: content?.key ?? const ValueKey('refused'),
             crossAxisAlignment: .stretch,
             spacing: 12,
-            children: [?content, if (failure != null) InlineError(failure)],
+            children: [?content, if (failure != null) WPInlineError(failure)],
           );
 
     return AnimatedSize(
@@ -109,7 +108,7 @@ final class const _ChangesBarContent({
       alignment: .bottomCenter,
       child: switch (child) {
         // On a phone the assistant's dock is below the bar.
-        final content? => WaypointActionBar(
+        final content? => WPActionBar(
           gutter: wide ? 36 : 20,
           bottom: wide,
           child: AnimatedSwitcher(

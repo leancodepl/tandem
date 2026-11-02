@@ -15,7 +15,7 @@ import 'package:waypoint_design_system/waypoint_design_system.dart';
 final class const AssistantPanel({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const ColoredBox(
-    color: Palette.panel,
+    color: WPColors.panel,
     child: SafeArea(
       left: false,
       child: Column(
@@ -40,9 +40,9 @@ final class const AssistantDock({super.key}) extends StatelessWidget {
     final screen = MediaQuery.sizeOf(context).height;
     return DecoratedBox(
       decoration: const BoxDecoration(
-        color: Palette.panel,
-        borderRadius: BorderRadius.vertical(top: Radii.sheet),
-        border: Border(top: BorderSide(color: Palette.lineStrong)),
+        color: WPColors.panel,
+        borderRadius: BorderRadius.vertical(top: WPRadii.sheet),
+        border: Border(top: BorderSide(color: WPColors.lineStrong)),
       ),
       child: SafeArea(
         top: false,
@@ -102,18 +102,18 @@ final class const _Header({required final double minHeight})
                 spacing: 12,
                 overflowSpacing: 8,
                 children: [
-                  Text(l10n.assistant, style: AppText.title),
+                  Text(l10n.assistant, style: WPTextStyle.title),
                   if (waiting)
                     Row(
                       mainAxisSize: .min,
                       spacing: 6,
                       children: [
-                        const WaypointDot(),
+                        const WPDot(),
                         Flexible(
                           child: Text(
                             l10n.waitingForYou,
-                            style: AppText.label.copyWith(
-                              color: Palette.aiText,
+                            style: WPTextStyle.label.copyWith(
+                              color: WPColors.aiText,
                             ),
                           ),
                         ),
@@ -124,7 +124,7 @@ final class const _Header({required final double minHeight})
             ),
           ),
         ),
-        const WaypointDivider(),
+        const WPDivider(),
       ],
     );
   }
@@ -175,7 +175,7 @@ final class const _Thread({final bool shrinkWrap = false})
         padding: const .all(20),
         child: Align(
           alignment: .bottomLeft,
-          child: Text(context.l10n.assistantEmpty, style: AppText.label),
+          child: Text(context.l10n.assistantEmpty, style: WPTextStyle.label),
         ),
       );
     }
@@ -192,7 +192,7 @@ final class const _Thread({final bool shrinkWrap = false})
           const SizedBox.shrink()
         else
           switch (item) {
-            UserMessage(:final text) => WaypointBubble(text),
+            UserMessage(:final text) => WPBubble(text),
             AgentMessage(:final text, :final stopped) => _AgentText(
               text,
               stopped: stopped,
@@ -233,20 +233,16 @@ final class const _Thread({final bool shrinkWrap = false})
 /// One thing the agent did to the trip.
 final class const _Step(final AgentStep step) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => SlideIn(
-    child: WaypointNote(
-      Icons.check_rounded,
-      context.l10n.step(step),
-      tone: .done,
-    ),
+  Widget build(BuildContext context) => WPSlideIn(
+    child: WPNote(Icons.check_rounded, context.l10n.step(step), tone: .done),
   );
 }
 
 /// The agent at work, at the end of the thread.
 final class const _Working() extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => SlideIn(
-    child: WorkStatus(
+  Widget build(BuildContext context) => WPSlideIn(
+    child: WPWorkStatus(
       context.l10n.status(TandemSessionScope.of(context).status),
       working: true,
     ),
@@ -260,8 +256,8 @@ final class const _AgentText(final String text, {final bool stopped = false})
     crossAxisAlignment: .start,
     spacing: 4,
     children: [
-      Text(text, style: AppText.body),
-      if (stopped) Text(context.l10n.stopped, style: AppText.label),
+      Text(text, style: WPTextStyle.body),
+      if (stopped) Text(context.l10n.stopped, style: WPTextStyle.label),
     ],
   );
 }
@@ -274,13 +270,13 @@ final class const _Notice(
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return switch (AgentFailure.of(kind)) {
-      final failure? => InlineError(
+      final failure? => WPInlineError(
         l10n.agentFailure(failure),
         onRetry: onRetry,
       ),
       null => Text(
         kind == .stopped ? l10n.noticeStopped : l10n.noticeStartedOver,
-        style: AppText.label,
+        style: WPTextStyle.label,
       ),
     };
   }
@@ -293,7 +289,7 @@ final class const _TripComposer() extends HookWidget {
     final text = useTextEditingController();
     final session = TandemSessionScope.of(context);
     final status = session.status;
-    return WaypointComposer(
+    return WPComposer(
       controller: text,
       hint: context.l10n.tripComposerHint,
       working: status.isRunning,

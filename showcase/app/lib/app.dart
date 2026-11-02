@@ -33,11 +33,11 @@ final class const AppCore({super.key, final TransitionBuilder? builder})
       onGenerateTitle: (context) => context.l10n.appTitle,
       localizationsDelegates: const [
         ...AppLocalizations.localizationsDelegates,
-        DesignSystemLocalizations.delegate,
+        WPLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       debugShowCheckedModeBanner: false,
-      theme: waypointTheme(),
+      theme: wpTheme(),
       builder: builder,
       routerConfig: router.config(navigatorObservers: () => [NavigationLog()]),
     );

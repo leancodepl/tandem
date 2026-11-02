@@ -24,22 +24,22 @@ final class const HomePage({super.key}) extends StatelessWidget {
           .length;
       final l10n = context.l10n;
 
-      return WaypointNavigationScaffold(
+      return WPNavigationScaffold(
         selectedIndex: tabs.activeIndex,
         onSelected: tabs.setActiveIndex,
         destinations: [
-          WaypointDestination(
+          WPDestination(
             Icons.luggage_outlined,
             Icons.luggage_rounded,
             l10n.tabTrips,
           ),
-          WaypointDestination(
+          WPDestination(
             Icons.mail_outline_rounded,
             Icons.mail_rounded,
             l10n.tabInbox,
             count: unread,
           ),
-          WaypointDestination(
+          WPDestination(
             Icons.receipt_long_outlined,
             Icons.receipt_long_rounded,
             l10n.tabExpenses,
