@@ -16,9 +16,7 @@ _RETRY = types.HttpRetryOptions(
 
 
 def build_app(settings: Settings, screen: Screen) -> App:
-    """The agent of one screen. Each screen has its own instruction, because the trip's rules
-    make the model slow on the booking form. All its tools are the app's, so the screen changes
-    only through the app's methods."""
+    """Separate instructions keep the trip's rules from slowing down the booking form."""
     agent = LlmAgent(
         name=f"waypoint_{screen}",
         model=_model(settings, screen),

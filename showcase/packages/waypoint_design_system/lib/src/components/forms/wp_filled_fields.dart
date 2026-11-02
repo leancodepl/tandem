@@ -21,9 +21,7 @@ final class const WPFilledFields(
   );
 }
 
-/// A field of the form. A value the agent filled shows a moment after the
-/// one above it, so the eye can follow the form filling in, and stays marked
-/// in blue.
+/// Reveals newly filled values in order so the traveller can follow each change.
 final class const WPFilledField(
   final String label,
   final String? value, {

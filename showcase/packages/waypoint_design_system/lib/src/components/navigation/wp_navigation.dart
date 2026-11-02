@@ -3,7 +3,6 @@ import 'package:waypoint_design_system/src/atoms/wp_divider.dart';
 import 'package:waypoint_design_system/src/foundations/wp_colors.dart';
 import 'package:waypoint_design_system/src/foundations/wp_layout.dart';
 
-/// A tab, with the number of what waits in it.
 final class const WPDestination(
   final IconData icon,
   final IconData selectedIcon,
@@ -11,8 +10,6 @@ final class const WPDestination(
   final int count = 0,
 });
 
-/// The app's tabs around [child]: a bar at the bottom on a phone, a rail on
-/// a tablet.
 final class const WPNavigationScaffold({
   super.key,
   required final List<WPDestination> destinations,

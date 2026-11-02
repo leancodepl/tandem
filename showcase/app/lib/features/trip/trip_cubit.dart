@@ -5,7 +5,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
-import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/common/formatters/policy_agent_text.dart';
 import 'package:waypoint/common/tandem/flight_option.dart';
@@ -116,8 +115,8 @@ class TripCubit({
 
   List<TripWarning> get warnings {
     final hotel = itinerary.hotel;
-    final home = dateOnly(itinerary.homebound.departs);
-    final out = dateOnly(itinerary.outbound.arrives);
+    final home = calendarDay(itinerary.homebound.departs);
+    final out = calendarDay(itinerary.outbound.arrives);
     final nights = calendarDaysBetween(out, home);
     return [
       if (hotel != null && nights > 0) ...[
@@ -126,7 +125,7 @@ class TripCubit({
           NoHotelForNight(
             calendarDaysBetween(hotel.checkOut, out) > 0
                 ? out
-                : dateOnly(hotel.checkOut),
+                : calendarDay(hotel.checkOut),
           ),
       ],
       if (hotel == null && nights > 0) NoHotelBooked(nights),

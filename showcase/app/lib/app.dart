@@ -21,7 +21,6 @@ final class const WaypointApp({
   );
 }
 
-/// The router and the app on it, under the global providers.
 final class const AppCore({super.key, final TransitionBuilder? builder})
     extends HookWidget {
   @override

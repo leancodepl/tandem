@@ -13,9 +13,6 @@ import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 
-/// What is changed on the screen and not booked, with the same Book button
-/// the assistant's [TripCubit.bookChanges] stands for. Once booked, the
-/// confirmation shows for a few seconds.
 final class const ChangesBar({super.key, required final bool wide})
     extends HookWidget {
   @override
@@ -48,18 +45,19 @@ final class const _ChangesBarContent({
     final trip = context.watch<TripCubit>();
     final booking = trip.state.booking;
     final status = TandemSessionScope.of(context).status;
-    final awaiting = status is AwaitingApproval;
+    final showBookingControls = wide || status is! AwaitingApproval;
     final l10n = context.l10n;
     // On a phone the approval card shows the same, right below.
-    final changes = !wide && awaiting
-        ? const <BookingChange>[]
-        : trip.bookingChanges.items;
+    final changes = showBookingControls
+        ? trip.bookingChanges.items
+        : const <BookingChange>[];
     final confirmation = changes.isEmpty && !booking
         ? booked?.confirmation
         : null;
 
-    final Widget? content = switch ((changes, booking, confirmation)) {
-      ([_, ...], _, _) || (_, true, _) when !(awaiting && !wide) => WPSubmit(
+    final Widget? content;
+    if (showBookingControls && (changes.isNotEmpty || booking)) {
+      content = WPSubmit(
         key: const ValueKey('changes'),
         label: booking ? l10n.booking : l10n.bookChanges,
         busy: booking,
@@ -80,14 +78,16 @@ final class const _ChangesBarContent({
                   }
                 }
               },
-      ),
-      (_, _, final confirmation?) => Align(
+      );
+    } else if (confirmation case final confirmation?) {
+      content = Align(
         key: const ValueKey('booked'),
         alignment: .centerLeft,
         child: WPConfirmation(l10n.changesBooked(confirmation.value)),
-      ),
-      _ => null,
-    };
+      );
+    } else {
+      content = null;
+    }
 
     final failure = switch (refused.value) {
       (:final state, :final reason) when state == trip.state => reason,
@@ -110,7 +110,7 @@ final class const _ChangesBarContent({
         // On a phone the assistant's dock is below the bar.
         final content? => WPActionBar(
           gutter: wide ? 36 : 20,
-          bottom: wide,
+          includeBottomInset: wide,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 260),
             child: content,

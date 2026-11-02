@@ -7,7 +7,6 @@ abstract final class WPTextStyle() {
   static const _package = 'waypoint_design_system';
   static const _figures = [FontFeature.tabularFigures()];
 
-  /// The city, in capitals.
   static const display = TextStyle(
     fontFamily: _condensed,
     package: _package,
@@ -18,7 +17,6 @@ abstract final class WPTextStyle() {
     color: WPColors.ink,
   );
 
-  /// A page's title, and the city of a trip on a phone.
   static const headline = TextStyle(
     fontFamily: _condensed,
     package: _package,

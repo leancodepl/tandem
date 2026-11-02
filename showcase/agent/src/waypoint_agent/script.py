@@ -1,9 +1,4 @@
-"""What the scripted model plays in place of a real model: Waypoint's demo.
-
-Like a real model it decides only from the request, so it keeps no count of runs. On the trip, the
-workshop in Berlin moves to Friday, the hotel and the flight home follow, and the traveller approves
-the booking. On the booking form, it reads a hotel's confirmation e-mail.
-"""
+"""Scripted turns depend only on the request, never a saved run counter."""
 
 import json
 import re
@@ -42,8 +37,7 @@ def play(
     instruction: str,
     offered_tools: frozenset[str] = frozenset(),
 ) -> list[str | Call]:
-    """The next turn of the model, oldest message first. The last message holds the user's text
-    or the answers the model waits for. The instruction holds the screen and the app's notes."""
+    """Messages are oldest first; the instruction contains screen state and app notes."""
     last = messages[-1] if messages else ()
     answers = {part.name: part.result for part in last if isinstance(part, Answer)}
     text = " ".join(part for part in last if isinstance(part, str))
@@ -78,7 +72,10 @@ def _trip(
         case {"book_changes": result} if _tool_problem(result):
             return [f"I could not confirm the booking. {_tool_problem(result)}"]
         case {"find_flights": flights}:
-            return [_home_after_the_workshop(flights)]
+            return [
+                _choose_flight(flights, "set_homebound_flight")
+                or "No flight home fits after the workshop."
+            ]
         case {"set_homebound_flight": result} if _tool_problem(result):
             return [f"I could not confirm the flight change. {_tool_problem(result)}"]
         case {"set_homebound_flight": _}:
@@ -181,18 +178,6 @@ def _allowed_flights(value: object) -> Iterator[_FlightChoice]:
                     continue
                 if at.isoformat(timespec="minutes") == f"{day}T{time}":
                     yield _FlightChoice(number, at)
-
-
-def _home_after_the_workshop(flights: object) -> str | Call:
-    for flight in _allowed_flights(flights):
-        return Call(
-            "set_homebound_flight",
-            {
-                "number": flight.number,
-                "date": flight.departs.date().isoformat(),
-            },
-        )
-    return "No flight home fits after the workshop."
 
 
 def _booking(answers: dict[str, Any], text: str) -> list[str | Call]:

@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:logging/logging.dart';
@@ -23,9 +23,6 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 
 final _log = Logger('Expenses');
 
-/// The expense report of a past trip. The agent fills it in from the trip's
-/// receipts and asks to submit it; the request shows in the screen's own
-/// bar, not in a chat.
 @RoutePage()
 final class const ExpensesReportPage({
   super.key,
@@ -66,16 +63,7 @@ final class const ExpensesReportPage({
       };
 }
 
-final class const _ExpensesReportContent() extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) =>
-      const WPPage(child: _ReceiptsForAgent(child: _ExpensesReportForm()));
-}
-
-/// Tells the agent, when the report opens, about the receipts it does not
-/// hold yet, and wakes it to add them.
-final class const _ReceiptsForAgent({required final Widget child})
-    extends HookWidget {
+final class const _ExpensesReportContent() extends HookWidget {
   @override
   Widget build(BuildContext context) {
     useEffect(() {
@@ -88,7 +76,7 @@ final class const _ReceiptsForAgent({required final Widget child})
       return null;
     }, const []);
 
-    return child;
+    return const Scaffold(body: _ExpensesReportForm());
   }
 
   static void _tellAgent(BuildContext context) {
@@ -189,7 +177,6 @@ final class const _ExpensesReportForm() extends HookWidget {
   }
 }
 
-/// One claim for each receipt of the trip, which the traveller can change.
 final class const _Claims({required final bool enabled})
     extends StatelessWidget {
   @override
@@ -231,8 +218,6 @@ final class const _Claims({required final bool enabled})
   }
 }
 
-/// The total, and the way to submit: the agent's request to approve, the
-/// traveller's own button, or the confirmation once submitted.
 final class const _SubmitBar({required final bool busy}) extends HookWidget {
   @override
   Widget build(BuildContext context) {
@@ -262,7 +247,6 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
               WPConfirmation(l10n.submitted, reference: confirmation.value),
             ],
           ),
-          // The agent's request, in the screen's own bar.
           (final request?, _) => WPApproval(
             l10n.reportAskToSubmit(l10n.money(form.total)),
             onApprove: () => _decide(() => session.approve(request)),

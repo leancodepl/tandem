@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/common/tandem/agent_failure.dart';
+import 'package:waypoint/common/tandem/session_composer.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_activity_cubit.dart';
@@ -11,19 +11,21 @@ import 'package:waypoint/features/trip/trip_approval_card.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_design_system/waypoint_design_system.dart';
 
-/// The assistant beside the trip on an iPad or a Mac.
 final class const AssistantPanel({super.key}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => const ColoredBox(
+  Widget build(BuildContext context) => ColoredBox(
     color: WPColors.panel,
     child: SafeArea(
       left: false,
       child: Column(
         crossAxisAlignment: .stretch,
         children: [
-          _Header(minHeight: 60),
-          Expanded(child: _Thread()),
-          Padding(padding: .fromLTRB(16, 8, 16, 16), child: _TripComposer()),
+          const _Header(minHeight: 60),
+          const Expanded(child: _Thread()),
+          Padding(
+            padding: const .fromLTRB(16, 8, 16, 16),
+            child: SessionComposer(hint: context.l10n.tripComposerHint),
+          ),
         ],
       ),
     ),
@@ -68,9 +70,9 @@ final class const AssistantDock({super.key}) extends StatelessWidget {
                     )
                   : const SizedBox(width: double.infinity),
             ),
-            const Padding(
-              padding: .fromLTRB(12, 10, 12, 8),
-              child: _TripComposer(),
+            Padding(
+              padding: const .fromLTRB(12, 10, 12, 8),
+              child: SessionComposer(hint: context.l10n.tripComposerHint),
             ),
           ],
         ),
@@ -183,8 +185,6 @@ final class const _Thread({final bool shrinkWrap = false})
     // A call the traveller approved shows as its busy button instead.
     final working = session.status.isStoppable;
     final retry = session.failure == null ? null : session.retry;
-    // The items with the agent's steps after the item each followed, and the
-    // agent at work last, where its answer will show.
     final entries = <Widget>[
       for (final (index, item) in items.indexed) ...[
         // A wake-up of the app is for the agent, not the traveller.
@@ -230,7 +230,6 @@ final class const _Thread({final bool shrinkWrap = false})
   }
 }
 
-/// One thing the agent did to the trip.
 final class const _Step(final AgentStep step) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => WPSlideIn(
@@ -238,7 +237,6 @@ final class const _Step(final AgentStep step) extends StatelessWidget {
   );
 }
 
-/// The agent at work, at the end of the thread.
 final class const _Working() extends StatelessWidget {
   @override
   Widget build(BuildContext context) => WPSlideIn(
@@ -279,27 +277,5 @@ final class const _Notice(
         style: WPTextStyle.label,
       ),
     };
-  }
-}
-
-/// The composer, bound to the trip's session.
-final class const _TripComposer() extends HookWidget {
-  @override
-  Widget build(BuildContext context) {
-    final text = useTextEditingController();
-    final session = TandemSessionScope.of(context);
-    final status = session.status;
-    return WPComposer(
-      controller: text,
-      hint: context.l10n.tripComposerHint,
-      working: status.isRunning,
-      onSend: () {
-        session.send(text.text);
-        text.clear();
-        // On a phone the keyboard would hide the trip the assistant changes.
-        FocusScope.of(context).unfocus();
-      },
-      onStop: status.isStoppable ? session.stop : null,
-    );
   }
 }

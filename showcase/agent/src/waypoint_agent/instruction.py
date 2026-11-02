@@ -7,8 +7,6 @@ from google.adk.agents.readonly_context import ReadonlyContext
 
 
 class Screen(StrEnum):
-    """A screen of the app with an agent of its own."""
-
     TRIP = "trip"
     BOOKING = "booking"
     PLAN = "plan"

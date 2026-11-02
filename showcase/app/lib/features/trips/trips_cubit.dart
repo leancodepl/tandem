@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
-/// The traveller's trips as booked, for every screen of the app.
 final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     extends Cubit<TripsState> {
   this : super(TripsState(trips));
@@ -10,7 +9,6 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
   Trip? tripOrNull(TripId? id) =>
       state.trips.where((trip) => trip.id == id).firstOrNull;
 
-  /// An id that no trip has yet, for a new trip to [city].
   TripId newId(String city) {
     final name = city.toLowerCase();
     var count = 1;
@@ -21,7 +19,6 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     return TripId('$name-$count');
   }
 
-  /// Records what is now booked for the trip [id].
   void book(TripId id, Itinerary booked) => emit(
     TripsState([
       for (final trip in state.trips)
@@ -29,7 +26,6 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     ], pendingBookings: state.pendingBookings),
   );
 
-  /// Adds a trip planned and booked in the app, in the order of departure.
   void add(Trip trip) {
     emit(
       TripsState(
@@ -100,8 +96,7 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     return true;
   }
 
-  /// The forwarded e-mails that the trip [id] does not follow yet.
-  /// Receipts are for the trip's expense report instead.
+  /// Receipts belong to the expense report.
   List<ForwardedEmail> news(TripId id) => switch (tripOrNull(id)) {
     final trip? => [
       for (final email in inbox.emails)
@@ -113,7 +108,6 @@ final class TripsCubit(List<Trip> trips, {required final Inbox inbox})
     null => const [],
   };
 
-  /// The invitations whose trip is not planned yet.
   List<ForwardedEmail> get invitations => [
     for (final email in inbox.emails)
       if (email.news is TripInvitation && tripOrNull(email.tripId) == null)

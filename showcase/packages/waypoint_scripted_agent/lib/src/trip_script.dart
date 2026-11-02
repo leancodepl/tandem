@@ -48,10 +48,8 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
     ],
     {'book_changes': {'status': _} && final result} => [
       AgentStep.say(switch (result) {
-        {'reason': final String reason} =>
-          'I could not confirm the booking: $reason',
-        {'error': final String error} =>
-          'I could not confirm the booking: $error',
+        {'reason': final String detail} || {'error': final String detail} =>
+          'I could not confirm the booking: $detail',
         _ => 'I could not confirm the booking. Check the current trip.',
       }),
     ],
@@ -64,10 +62,8 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
         AgentStep.say(switch (result) {
           {'status': 'refused', 'reason': final String reason} =>
             'The flight was not changed: $reason',
-          {'reason': final String reason} =>
-            'I could not confirm the flight change: $reason',
-          {'error': final String error} =>
-            'I could not confirm the flight change: $error',
+          {'reason': final String detail} || {'error': final String detail} =>
+            'I could not confirm the flight change: $detail',
           _ => 'The flight change was not confirmed. Check the trip before booking.',
         }),
       ],

@@ -10,7 +10,7 @@ final class const UnknownTrip({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => WPErrorView(
     context.l10n.unknownTrip,
-    back: context.l10n.yourTrips,
+    backLabel: context.l10n.yourTrips,
     onBack: () => context.router.navigate(const TripsRoute()),
   );
 }

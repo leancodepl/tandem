@@ -1,24 +1,16 @@
 import 'package:tandem/tandem.dart';
 import 'package:waypoint/l10n/app_localizations.dart';
 
-/// Why the agent did not answer, as a screen tells the traveller next to
-/// its Retry.
-sealed class const AgentFailure() {
-  /// The failure that a notice of [kind] reports, or null for a notice that
-  /// reports none.
+enum AgentFailure() {
+  unreachable,
+  runFailed;
+
   static AgentFailure? of(ChatNoticeKind kind) => switch (kind) {
-    .connectionLost => const AgentUnreachable(),
-    .runFailed => const AgentRunFailed(),
+    .connectionLost => .unreachable,
+    .runFailed => .runFailed,
     .stopped || .startedOver => null,
   };
 }
-
-/// The run broke off. The agent is Waypoint's only peer on the network, so
-/// whether the device is online would not tell why.
-final class const AgentUnreachable() extends AgentFailure;
-
-/// The agent's run ended with an error.
-final class const AgentRunFailed() extends AgentFailure;
 
 extension SessionFailure on TandemSession {
   /// The failure of the last run, while nothing happened after it.
@@ -42,9 +34,8 @@ extension SessionFailure on TandemSession {
 }
 
 extension AgentFailureText on AppLocalizations {
-  /// What the screen tells the traveller about [failure].
   String agentFailure(AgentFailure failure) => switch (failure) {
-    AgentUnreachable() => agentUnreachable,
-    AgentRunFailed() => agentRunFailed,
+    .unreachable => agentUnreachable,
+    .runFailed => agentRunFailed,
   };
 }

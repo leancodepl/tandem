@@ -5,7 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 /// The content that cards move within, so that scrolling is not a move.
 final class const WPFlipArea({super.key, required final Widget child})
     extends HookWidget {
-  static RenderBox? of(BuildContext context) =>
+  static RenderBox? _of(BuildContext context) =>
       context
               .getInheritedWidgetOfExactType<_FlipAreaScope>()
               ?.area
@@ -58,7 +58,7 @@ final class const WPFlip({
         return;
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final area = context.mounted ? WPFlipArea.of(context) : null;
+        final area = context.mounted ? WPFlipArea._of(context) : null;
         if (area == null || !painted.attached || !painted.hasSize) {
           return;
         }
@@ -74,7 +74,7 @@ final class const WPFlip({
 
     return _Probe(
       key: probe,
-      area: () => WPFlipArea.of(context),
+      area: () => WPFlipArea._of(context),
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, child) =>
@@ -85,7 +85,6 @@ final class const WPFlip({
   }
 }
 
-/// Remembers where it was painted, before any move of its child.
 final class const _Probe({
   super.key,
   required final RenderBox? Function() area,

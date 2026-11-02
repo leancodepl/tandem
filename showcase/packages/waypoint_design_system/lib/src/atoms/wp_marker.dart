@@ -1,8 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:waypoint_design_system/src/foundations/wp_colors.dart';
 
-/// The blue bar at the left edge of what the assistant filled in or
-/// changed. It grows in when [marked] and out when not.
 final class const WPMarker({super.key, required final bool marked})
     extends StatelessWidget {
   @override

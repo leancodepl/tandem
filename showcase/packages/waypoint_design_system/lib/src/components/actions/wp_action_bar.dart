@@ -9,8 +9,7 @@ final class const WPActionBar({
   final bool active = false,
   final double gutter = 20,
 
-  /// Keeps clear of the screen's bottom edge, when nothing is below the bar.
-  final bool bottom = true,
+  final bool includeBottomInset = true,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -25,7 +24,7 @@ final class const WPActionBar({
         gutter,
         14,
         gutter,
-        14 + (bottom ? MediaQuery.paddingOf(context).bottom : 0),
+        14 + (includeBottomInset ? MediaQuery.paddingOf(context).bottom : 0),
       ),
       child: WPReadable(child: child),
     ),

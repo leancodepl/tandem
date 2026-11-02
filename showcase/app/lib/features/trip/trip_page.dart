@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:bloc_presentation/bloc_presentation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
 import 'package:tandem/tandem.dart';
@@ -115,8 +115,8 @@ final class const _TripContent() extends StatelessWidget {
     child: Reasker(
       child: BlocPresentationListener<MarksCubit, MarksPresentationEvent>(
         listener: _revealChanged,
-        child: WPPage(
-          child: LayoutBuilder(
+        child: Scaffold(
+          body: LayoutBuilder(
             builder: (context, constraints) {
               final beside = constraints.maxWidth >= WPWidths.readable;
               final wide =

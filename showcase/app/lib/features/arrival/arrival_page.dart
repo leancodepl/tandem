@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:logging/logging.dart';
@@ -9,6 +9,7 @@ import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/common/logging/agent_event_log.dart';
 import 'package:waypoint/common/tandem/agent_failure.dart';
+import 'package:waypoint/common/tandem/session_composer.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/arrival/arrival_action.dart';
 import 'package:waypoint/features/arrival/arrival_arrangements_cubit.dart';
@@ -23,9 +24,6 @@ import 'package:waypoint_travel/waypoint_travel.dart';
 
 final _log = Logger('Arrival');
 
-/// The traveller's arrival day, which the agent draws with Waypoint's own
-/// widgets. The view's buttons call the screen's methods, with the same
-/// approvals as the agent's calls.
 @RoutePage()
 final class const ArrivalPage({
   super.key,
@@ -61,7 +59,7 @@ final class const ArrivalPage({
     (null, _) => const UnknownTrip(),
     (_, null) => WPErrorView(
       context.l10n.noArrivalDay,
-      back: context.l10n.backToTrip,
+      backLabel: context.l10n.backToTrip,
       onBack: () => context.router.navigate(TripRoute(tripId: tripId)),
     ),
   };
@@ -79,15 +77,7 @@ final class const ArrivalPage({
   }
 }
 
-final class const _ArrivalContent() extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) =>
-      const WPPage(child: _DayForAgent(child: _Arrival()));
-}
-
-/// Asks the agent, when the screen opens, to draw the day.
-final class const _DayForAgent({required final Widget child})
-    extends HookWidget {
+final class const _ArrivalContent() extends HookWidget {
   @override
   Widget build(BuildContext context) {
     useEffect(() {
@@ -106,7 +96,7 @@ final class const _DayForAgent({required final Widget child})
       return null;
     }, const []);
 
-    return child;
+    return const Scaffold(body: _Arrival());
   }
 }
 
@@ -160,12 +150,12 @@ final class const _Arrival() extends StatelessWidget {
           ),
         ),
         const _ApprovalBar(),
-        const SafeArea(
+        SafeArea(
           top: false,
           child: WPReadable(
             child: Padding(
-              padding: .fromLTRB(16, 8, 16, 12),
-              child: _ArrivalComposer(),
+              padding: const .fromLTRB(16, 8, 16, 12),
+              child: SessionComposer(hint: l10n.arrivalComposerHint),
             ),
           ),
         ),
@@ -194,8 +184,6 @@ extension on AppLocalizations {
       };
 }
 
-/// What a button of the view or the agent asks to do in the traveller's
-/// name, to approve or reject.
 final class const _ApprovalBar() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -214,7 +202,7 @@ final class const _ApprovalBar() extends StatelessWidget {
         // The composer is below the bar.
         final request? => WPActionBar(
           active: true,
-          bottom: false,
+          includeBottomInset: false,
           child: WPApproval(
             context.l10n.ask(request, cubit.day),
             onApprove: () => _decide(() => session.approve(request)),
@@ -233,27 +221,5 @@ final class const _ApprovalBar() extends StatelessWidget {
       // The day changed as the traveller tapped; the agent asks again.
       _log.warning('$error');
     }
-  }
-}
-
-/// The composer, bound to the arrival day's session.
-final class const _ArrivalComposer() extends HookWidget {
-  @override
-  Widget build(BuildContext context) {
-    final text = useTextEditingController();
-    final session = TandemSessionScope.of(context);
-    final status = session.status;
-    return WPComposer(
-      controller: text,
-      hint: context.l10n.arrivalComposerHint,
-      working: status.isRunning,
-      onSend: () {
-        session.send(text.text);
-        text.clear();
-        // On a phone the keyboard would hide the day the assistant draws.
-        FocusScope.of(context).unfocus();
-      },
-      onStop: status.isStoppable ? session.stop : null,
-    );
   }
 }

@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:waypoint/common/dates/date_only.dart';
 import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/features/inbox/inbox_email_action.dart';
 import 'package:waypoint/features/trips/trips_cubit.dart';
@@ -140,8 +139,8 @@ final class const _TripCard(
   @override
   Widget build(BuildContext context) {
     final Trip(:city, :purpose, :booked) = trip;
-    final out = dateOnly(booked.outbound.departs);
-    final home = dateOnly(booked.homebound.departs);
+    final out = calendarDay(booked.outbound.departs);
+    final home = calendarDay(booked.homebound.departs);
     final l10n = context.l10n;
 
     return WPListCard(

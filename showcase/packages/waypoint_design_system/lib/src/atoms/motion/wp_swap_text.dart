@@ -1,6 +1,5 @@
 import 'package:flutter/widgets.dart';
 
-/// A text that slides up into place when it changes.
 final class const WPSwapText(
   final String text, {
   super.key,

@@ -10,8 +10,6 @@ from waypoint_agent.script import Answer, Call, Part, play
 
 
 class ScriptedLlm(BaseLlm):
-    """Plays the screen's script in place of a model, with no network and no API key."""
-
     model: str = "scripted"
     screen: Screen
 
