@@ -5,6 +5,7 @@ import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/features/trip/trip_add_hotel.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
+import 'package:waypoint/features/trip/trip_item_id.dart';
 import 'package:waypoint/features/trip/trip_item_keys.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trip/trip_plan.dart';
@@ -25,7 +26,7 @@ final class const ItineraryView({super.key, required final bool wide})
     final dates = {for (final day in days) day.date};
     final newItems = switch (usePrevious(ids)) {
       final shown? => ids.difference(shown),
-      null => const <String>{},
+      null => const <TripItemId>{},
     };
     final newDays = switch (usePrevious(dates)) {
       final shown? => dates.difference(shown),
@@ -108,7 +109,7 @@ final class const _AnimatedColumn({
 
 final class const _Day(
   final DayPlan day, {
-  required final Set<String> newItems,
+  required final Set<TripItemId> newItems,
   required final bool wide,
 }) extends StatelessWidget {
   @override
@@ -140,7 +141,7 @@ final class const _Day(
               child: WPAppear(
                 enabled: newItems.contains(item.id),
                 child: switch (item) {
-                  FlightItem(id: 'homebound') => _HomeboundCard(item),
+                  FlightItem(id: TripItemId.homebound) => _HomeboundCard(item),
                   final FlightItem flight => _FlightCard(flight),
                   final HotelItem hotel => _HotelCard(hotel),
                   final MeetingItem meeting => _MeetingCard(meeting),
@@ -171,7 +172,9 @@ final class const _FlightBody(final FlightItem item) extends StatelessWidget {
       children: [
         _CardHead(
           l10n.flightNumber(flight.number.value),
-          trailing: item.id == 'outbound' ? l10n.flightOut : l10n.flightHome,
+          trailing: item.id == TripItemId.outbound
+              ? l10n.flightOut
+              : l10n.flightHome,
         ),
         const SizedBox(height: 4),
         WPSwapText(
@@ -212,7 +215,7 @@ final class const _HomeboundCard(final FlightItem item) extends HookWidget {
       refused.value = context.read<TripCubit>().changeHomeboundFlight(flight);
       if (refused.value != null) return;
 
-      context.read<MarksCubit>().unmark('homebound');
+      context.read<MarksCubit>().unmark(.homebound);
       Future<void>.delayed(const Duration(milliseconds: 380), () {
         if (context.mounted) {
           open.value = false;
@@ -387,7 +390,7 @@ final class const _MeetingCard(final MeetingItem item) extends StatelessWidget {
 /// A card of the timeline, marked in blue while the assistant's change of it
 /// stands.
 final class const _Card({
-  required final String id,
+  required final TripItemId id,
   required final Widget child,
   final VoidCallback? onTap,
 }) extends StatelessWidget {

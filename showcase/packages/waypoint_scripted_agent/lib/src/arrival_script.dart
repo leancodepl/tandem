@@ -18,15 +18,29 @@ List<AgentStep> _arrival(Map<String, Object?> raw) {
 
   if (request.isUserMessage) {
     if (lastUserText(raw).toLowerCase().contains('taxi')) {
-      return request.offersTool('book_ride')
-          ? const [
-              AgentStep.callTool('book_ride', {'rideId': 'taxi'}),
-            ]
-          : const [
-              AgentStep.say(
-                'Ride booking is not available right now. Check the current screen.',
-              ),
-            ];
+      if (request.offersTool('book_ride')) {
+        if (request.context('arrival') case {
+          'rides': final List<Object?> rides,
+        }) {
+          for (final ride in rides) {
+            if (ride case {'id': 'taxi', 'overPolicy': true}) {
+              return const [
+                AgentStep.say(
+                  'This taxi is outside the company policy. Choose an allowed route.',
+                ),
+              ];
+            }
+          }
+        }
+        return const [
+          AgentStep.callTool('book_ride', {'rideId': 'taxi'}),
+        ];
+      }
+      return const [
+        AgentStep.say(
+          'Ride booking is not available right now. Check the current screen.',
+        ),
+      ];
     }
     return [
       if (request.offersTool('tandem_show_view'))

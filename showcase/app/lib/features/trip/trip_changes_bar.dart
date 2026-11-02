@@ -8,8 +8,10 @@ import 'package:tandem/tandem.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
 import 'package:waypoint/common/tandem/session_status.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
+import 'package:waypoint/features/trip/trip_booking_failure.dart';
 import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
+import 'package:waypoint/features/trip/trip_policy_breach_text.dart';
 import 'package:waypoint/features/trip/trip_presentation_event.dart';
 import 'package:waypoint/features/trip/trip_state.dart';
 import 'package:waypoint/l10n/l10n.dart';
@@ -43,7 +45,9 @@ final class const _ChangesBarContent({
 }) extends HookWidget {
   @override
   Widget build(BuildContext context) {
-    final refused = useState<({TripState state, String reason})?>(null);
+    final refused = useState<({TripState state, TripBookingFailure failure})?>(
+      null,
+    );
     final trip = context.watch<TripCubit>();
     final booking = trip.state.booking;
     final status = TandemSessionScope.of(context).status;
@@ -73,10 +77,10 @@ final class const _ChangesBarContent({
                 refused.value = null;
                 context.read<MarksCubit>().clear();
                 try {
-                  await trip.bookChanges();
-                } on ToolCallRefused catch (error) {
+                  await trip.bookCurrentChanges();
+                } on TripBookingFailure catch (failure) {
                   if (context.mounted) {
-                    refused.value = (state: trip.state, reason: error.message);
+                    refused.value = (state: trip.state, failure: failure);
                   }
                 }
               },
@@ -92,7 +96,8 @@ final class const _ChangesBarContent({
     }
 
     final failure = switch (refused.value) {
-      (:final state, :final reason) when state == trip.state => reason,
+      (:final state, :final failure) when state == trip.state =>
+        l10n.bookingFailure(failure),
       _ => null,
     };
     final child = content == null && failure == null
@@ -122,4 +127,14 @@ final class const _ChangesBarContent({
       },
     );
   }
+}
+
+extension on AppLocalizations {
+  String bookingFailure(TripBookingFailure failure) => switch (failure) {
+    TripBookingUnavailable(problem: .alreadyBooking) =>
+      tripBookingAlreadyInProgress,
+    TripBookingUnavailable(problem: .noChanges) => tripBookingNoChanges,
+    TripBookingUnavailable(problem: .hotelChanged) => tripBookingHotelChanged,
+    TripBookingPolicyViolation(:final breach) => policyBreach(breach),
+  };
 }

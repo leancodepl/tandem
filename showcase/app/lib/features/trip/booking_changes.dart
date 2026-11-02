@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:waypoint/features/trip/trip_item_id.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 final class BookingChanges._(final List<BookingChange> items) with Equatable {
@@ -20,7 +21,7 @@ final class BookingChanges._(final List<BookingChange> items) with Equatable {
 }
 
 sealed class const BookingChange() with Equatable {
-  String get id;
+  TripItemId get id;
 
   Money get cost;
 }
@@ -33,7 +34,7 @@ final class const HotelNightsChange(
   List<Object?> get props => [hotel, was];
 
   @override
-  String get id => 'hotel';
+  TripItemId get id => .hotel;
 
   @override
   Money get cost => hotel.total - was.total;
@@ -47,7 +48,7 @@ final class const FlightHomeChange(
   List<Object?> get props => [flight, was];
 
   @override
-  String get id => 'homebound';
+  TripItemId get id => .homebound;
 
   static final changeFee = wholeMoney(40);
 

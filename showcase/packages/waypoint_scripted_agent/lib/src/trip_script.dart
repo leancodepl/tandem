@@ -20,7 +20,12 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
       return _askToBook(request, 'The trip changed.');
     }
     if (said.toLowerCase().contains('workshop')) {
-      return _moveTheWorkshop(request);
+      return const [
+        AgentStep.callTool('move_meeting', {
+          'meetingId': 'workshop',
+          'start': '2026-10-30T10:00:00',
+        }),
+      ];
     }
     return const [
       AgentStep.say(
@@ -53,9 +58,19 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
         _ => 'I could not confirm the booking. Check the current trip.',
       }),
     ],
+    {'move_meeting': {'status': final String status} && final result}
+        when status != 'returned' =>
+      [
+        AgentStep.say(switch (result) {
+          {'reason': final String detail} || {'error': final String detail} =>
+            'I could not confirm the meeting change: $detail',
+          _ => 'The meeting change was not confirmed. Check the trip before changing bookings.',
+        }),
+      ],
     {'find_flights': final List<Object?> flights} => [
       _firstFlightAllowed(flights),
     ],
+    {'move_meeting': _} => _fitTheTrip(request),
     {'set_homebound_flight': {'status': final String status} && final result}
         when status != 'returned' =>
       [
@@ -75,11 +90,7 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
   };
 }
 
-List<AgentStep> _moveTheWorkshop(AgentRequest request) => [
-  const AgentStep.callTool('move_meeting', {
-    'meetingId': 'workshop',
-    'start': '2026-10-30T10:00:00',
-  }),
+List<AgentStep> _fitTheTrip(AgentRequest request) => [
   if (request.offersTool('set_hotel_nights'))
     const AgentStep.callTool('set_hotel_nights', {'nights': 2}),
   const AgentStep.callTool('find_flights', {

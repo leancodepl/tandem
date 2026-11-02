@@ -1,3 +1,4 @@
+import 'package:waypoint_travel/src/travel_date_time.dart';
 import 'package:waypoint_travel/src/trip.dart';
 import 'package:waypoint_travel/src/value_objects.dart';
 
@@ -171,20 +172,19 @@ final class const FlightSearch() {
   static String airport(AirportCode code) =>
       _airports[code.value] ?? code.value;
 
-  List<Flight> on(
-    AirportCode origin,
-    AirportCode destination,
-    DateTime date,
-  ) => [
-    for (final scheduled in _timetable)
-      if (scheduled.origin == origin && scheduled.destination == destination)
-        scheduled.on(date),
-  ];
+  List<Flight> on(AirportCode origin, AirportCode destination, DateTime date) {
+    final day = travelDateTime(date);
+    return [
+      for (final scheduled in _timetable)
+        if (scheduled.origin == origin && scheduled.destination == destination)
+          scheduled.on(day),
+    ];
+  }
 
   Flight? find(FlightNumber number, DateTime date) => _timetable
       .where((scheduled) => scheduled.number == number)
       .firstOrNull
-      ?.on(date);
+      ?.on(travelDateTime(date));
 }
 
 /// A flight of the timetable, which flies every day.

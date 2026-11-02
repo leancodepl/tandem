@@ -24,12 +24,12 @@ abstract final class Policy() {
     );
     if (first == null) return null;
 
+    if (flight.arrives.add(toAirport).isAfter(first.start)) {
+      return LandsTooLate(flight, first);
+    }
     final needsNight = first.start.hour < morningUntil;
     if (needsNight && calendarDaysBetween(flight.arrives, first.start) < 1) {
       return LandsOnMeetingDay(flight, first);
-    }
-    if (flight.arrives.add(toAirport).isAfter(first.start)) {
-      return LandsTooLate(flight, first);
     }
     return null;
   }

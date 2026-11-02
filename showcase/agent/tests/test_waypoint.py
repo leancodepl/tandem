@@ -65,11 +65,15 @@ def answer(run: Run, results: dict[str, object]) -> dict[str, str]:
 
 
 def test_a_moved_workshop_moves_the_meeting_and_looks_up_flights(agent_url: str) -> None:
-    run = trip(agent_url).run(TRIP, ASK)
+    thread = trip(agent_url)
+    moved = thread.run(TRIP, ASK)
+    run = thread.run(TRIP, answers=answer(moved, {}))
 
+    assert calls(moved) == [
+        ("move_meeting", {"meetingId": "workshop", "start": "2026-10-30T10:00:00"}),
+    ]
     assert "RUN_ERROR" not in run.types
     assert calls(run) == [
-        ("move_meeting", {"meetingId": "workshop", "start": "2026-10-30T10:00:00"}),
         ("set_hotel_nights", {"nights": 2}),
         ("find_flights", {"origin": "BER", "destination": "WAW", "date": "2026-10-30"}),
     ]
@@ -78,8 +82,9 @@ def test_a_moved_workshop_moves_the_meeting_and_looks_up_flights(agent_url: str)
 def test_the_flight_home_is_the_first_one_the_app_allows(agent_url: str) -> None:
     thread = trip(agent_url)
     first = thread.run(TRIP, ASK)
+    fitted = thread.run(TRIP, answers=answer(first, {}))
 
-    run = thread.run(TRIP, answers=answer(first, {"find_flights": FRIDAY_FLIGHTS}))
+    run = thread.run(TRIP, answers=answer(fitted, {"find_flights": FRIDAY_FLIGHTS}))
 
     assert calls(run) == [("set_homebound_flight", {"number": "WA 388", "date": "2026-10-30"})]
 
@@ -87,7 +92,8 @@ def test_the_flight_home_is_the_first_one_the_app_allows(agent_url: str) -> None
 def test_the_agent_asks_to_book_and_reports_the_confirmation(agent_url: str) -> None:
     thread = trip(agent_url)
     first = thread.run(TRIP, ASK)
-    flight = thread.run(TRIP, answers=answer(first, {"find_flights": FRIDAY_FLIGHTS}))
+    fitted = thread.run(TRIP, answers=answer(first, {}))
+    flight = thread.run(TRIP, answers=answer(fitted, {"find_flights": FRIDAY_FLIGHTS}))
 
     changed_trip = {
         **TRIP,
@@ -109,9 +115,15 @@ def test_an_e_mail_that_moves_the_workshop_wakes_the_agent_to_fix_the_trip(
 ) -> None:
     note = "The traveller forwarded an e-mail from Jonas Weber: it moves Design workshop to Fri."
 
-    run = trip(agent_url).run(TRIP, WAKE, notes=[note])
+    thread = trip(agent_url)
+    moved = thread.run(TRIP, WAKE, notes=[note])
+    run = thread.run(TRIP, answers=answer(moved, {}))
 
-    assert [name for name, _ in calls(run)] == ["move_meeting", "set_hotel_nights", "find_flights"]
+    assert [name for name, _ in [*calls(moved), *calls(run)]] == [
+        "move_meeting",
+        "set_hotel_nights",
+        "find_flights",
+    ]
 
 
 def test_a_hotel_confirmation_fills_every_field_of_the_booking(agent_url: str) -> None:

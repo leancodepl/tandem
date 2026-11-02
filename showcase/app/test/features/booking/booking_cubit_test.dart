@@ -33,6 +33,17 @@ void main() {
     ..setTotalPrice(122)
     ..setConfirmation(' 84213907 ');
 
+  test('offset hotel dates follow the travel calendar', () {
+    booking
+      ..setCheckIn(DateTime.parse('2026-10-28T14:00:00Z'))
+      ..setCheckOut(DateTime.parse('2026-10-28T23:30:00Z'));
+
+    expect(form.checkIn.fieldValue, DateTime(2026, 10, 28, 15));
+    final checkOut = form.checkOut.fieldValue;
+    if (checkOut == null) fail('The offset check-out was accepted.');
+    expect(calendarDay(checkOut), DateTime(2026, 10, 29));
+  });
+
   test('a day outside the trip is refused', () {
     expect(
       () => booking.setCheckOut(DateTime(2026, 10, 31)),

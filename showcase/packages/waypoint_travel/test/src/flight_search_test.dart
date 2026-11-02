@@ -30,4 +30,20 @@ void main() {
       isNull,
     );
   });
+
+  test('flight searches use the travel day of an offset instant', () {
+    final input = DateTime.parse('2026-10-29T23:30:00Z');
+    final found = flights.find(FlightNumber('WA 388'), input);
+    final offered = flights.on(AirportCode('BER'), AirportCode('WAW'), input);
+
+    expect(found?.departs, DateTime(2026, 10, 30, 18, 5));
+    expect(found?.fare, wholeMoney(164));
+    expect(offered, isNotEmpty);
+    expect(
+      offered.every(
+        (flight) => calendarDay(flight.departs) == DateTime(2026, 10, 30),
+      ),
+      isTrue,
+    );
+  });
 }

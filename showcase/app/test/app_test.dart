@@ -250,6 +250,12 @@ void main() {
     await tester.tap(find.text('Plan from invitation'));
     await _settle(tester);
 
+    final planner = tester.element(find.text('Berlin')).read<PlanTripCubit>();
+    expect(planner.state.meetings, hasLength(2));
+    await tester.tap(find.text('Plan from invitation'));
+    await _settle(tester);
+    expect(planner.state.meetings, hasLength(2));
+
     // Why it chose so, in the agent's words.
     expect(
       find.textContaining("Planned from Mira's invitation"),
@@ -653,6 +659,13 @@ void main() {
     expect(find.text('Rejected', skipOffstage: false), findsOneWidget);
     expect(find.text("OK, I won't book them."), findsOneWidget);
     expect(find.textContaining('Booked · confirmation'), findsNothing);
+
+    await tester.tap(find.byTooltip('Back'));
+    await _settle(tester);
+    expect(
+      find.textContaining('WA 388 leaves less than an hour'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a rejected expense report stays unsubmitted', (tester) async {

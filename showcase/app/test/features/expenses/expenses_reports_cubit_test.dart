@@ -17,13 +17,20 @@ void main() {
     final lines = [ExpenseLine(receipt: receipt, claimed: receipt.paid)];
     final report = ExpenseReport(lines: lines);
     final source = {tripId: report};
-    final snapshot = ReportsState(source);
+    final inputs = {receipt.id: ' 045 '};
+    final drafts = {tripId: inputs};
+    final snapshot = ReportsState(source, drafts: drafts);
 
     lines.clear();
     source.clear();
+    inputs.clear();
+    drafts.clear();
 
     expect(snapshot.reports[tripId]?.total, receipt.paid);
+    expect(snapshot.drafts[tripId], {receipt.id: ' 045 '});
     expect(snapshot.reports.clear, throwsUnsupportedError);
+    expect(snapshot.drafts.clear, throwsUnsupportedError);
+    expect(snapshot.drafts[tripId]?.clear, throwsUnsupportedError);
     expect(report.lines.clear, throwsUnsupportedError);
   });
 
@@ -46,9 +53,20 @@ void main() {
     final draft = ExpenseReport(
       lines: [ExpenseLine(receipt: receipt, claimed: receipt.paid)],
     );
-    final submitted = await reports.submit(tripId, draft);
+    final inputs = {receipt.id: '${receipt.paid.toInt()}'};
+    final otherTrip = TripId('berlin');
+    reports
+      ..saveDraft(tripId, inputs: inputs, validated: draft)
+      ..saveDraft(otherTrip, inputs: {ReceiptId('other'): 'invalid'});
+    final submission = reports.submit(tripId, draft);
 
-    expect(reports.saveDraft(tripId, ExpenseReport()), isFalse);
+    expect(reports.draftInputs(tripId), inputs);
+    expect(reports.saveDraft(tripId, inputs: const {}), isFalse);
+    final submitted = await submission;
+
+    expect(reports.draftInputs(tripId), isEmpty);
+    expect(reports.draftInputs(otherTrip), {ReceiptId('other'): 'invalid'});
+    expect(reports.saveDraft(tripId, inputs: const {}), isFalse);
     expect(reports.report(tripId), submitted);
     await expectLater(
       reports.submit(tripId, draft),

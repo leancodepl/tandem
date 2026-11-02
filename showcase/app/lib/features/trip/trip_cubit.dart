@@ -8,6 +8,7 @@ import 'package:waypoint/common/formatters/agent_formatters.dart';
 import 'package:waypoint/common/formatters/policy_agent_text.dart';
 import 'package:waypoint/common/tandem/flight_option.dart';
 import 'package:waypoint/features/trip/booking_changes.dart';
+import 'package:waypoint/features/trip/trip_booking_failure.dart';
 import 'package:waypoint/features/trip/trip_booking_result.dart';
 import 'package:waypoint/features/trip/trip_presentation_event.dart';
 import 'package:waypoint/features/trip/trip_state.dart';
@@ -118,26 +119,7 @@ class TripCubit({
     return null;
   }
 
-  List<TripWarning> get warnings {
-    final hotel = itinerary.hotel;
-    final home = calendarDay(itinerary.homebound.departs);
-    final out = calendarDay(itinerary.outbound.arrives);
-    final nights = calendarDaysBetween(out, home);
-    return [
-      if (hotel != null && nights > 0) ...[
-        if (calendarDaysBetween(out, hotel.checkIn) > 0) NoHotelForNight(out),
-        if (calendarDaysBetween(hotel.checkOut, home) > 0)
-          NoHotelForNight(
-            calendarDaysBetween(hotel.checkOut, out) > 0
-                ? out
-                : calendarDay(hotel.checkOut),
-          ),
-      ],
-      if (hotel == null && nights > 0) NoHotelBooked(nights),
-      if (_homeboundBreach(itinerary.homebound) case final breach?)
-        BreaksPolicy(breach),
-    ];
-  }
+  List<TripWarning> get warnings => tripWarnings(itinerary);
 
   List<(Flight, PolicyBreach?)> get homeboundOptions => [
     for (final flight in flights.on(
@@ -185,7 +167,7 @@ class TripCubit({
     if (meeting == null) {
       _refuse('There is no meeting $meetingId on this trip.');
     }
-    trips.moveMeeting(info.id, meeting.movedTo(start));
+    trips.moveMeeting(info.id, meeting.movedTo(travelDateTime(start)));
     _adoptConfirmed(trips.state);
   }
 
@@ -250,15 +232,29 @@ class TripCubit({
   /// Books every change exactly as it is on the screen and charges its cost
   /// to the company card. Returns what was booked, to tell the traveller.
   Future<Booked> bookChanges() async {
+    try {
+      return await bookCurrentChanges();
+    } on TripBookingFailure catch (failure) {
+      throw ToolCallRefused(failure.forAgent);
+    }
+  }
+
+  Future<Booked> bookCurrentChanges() async {
     _adoptConfirmed(trips.state);
-    if (state.booking) _refuse('The changes are already being booked.');
+    if (state.booking) {
+      _refuseBooking(const TripBookingUnavailable(.alreadyBooking));
+    }
     final changes = bookingChanges;
-    if (changes.items.isEmpty) _refuse('There are no booking changes.');
-    if (changesBreach case final breach?) _refuse('${breach.forAgent}.');
+    if (changes.items.isEmpty) {
+      _refuseBooking(const TripBookingUnavailable(.noChanges));
+    }
+    if (changesBreach case final breach?) {
+      _refuseBooking(TripBookingPolicyViolation(breach));
+    }
     final booking = itinerary;
     final previouslyBooked = state.booked;
     if (!trips.reserveBooking(info.id)) {
-      _refuse('The changes are already being booked.');
+      _refuseBooking(const TripBookingUnavailable(.alreadyBooking));
     }
     _adoptConfirmed(trips.state);
     try {
@@ -274,10 +270,7 @@ class TripCubit({
         requested: booking,
       );
       if (!completed) {
-        _refuse(
-          'The hotel booking changed while these changes were being booked. '
-          'Review the current trip before booking again.',
-        );
+        _refuseBooking(const TripBookingUnavailable(.hotelChanged));
       }
       _adoptConfirmed(trips.state);
       _log.info('Booked the changes of trip ${info.id} as $confirmation');
@@ -319,5 +312,10 @@ class TripCubit({
   Never _refuse(String reason) {
     _log.warning('Refused: $reason');
     throw ToolCallRefused(reason);
+  }
+
+  Never _refuseBooking(TripBookingFailure failure) {
+    _log.warning('Refused: ${failure.forAgent}');
+    throw failure;
   }
 }

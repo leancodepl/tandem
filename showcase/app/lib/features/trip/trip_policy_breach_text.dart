@@ -1,10 +1,17 @@
 import 'package:intl/intl.dart';
 import 'package:waypoint/common/formatters/date_formatters.dart';
 import 'package:waypoint/common/formatters/money_formatters.dart';
+import 'package:waypoint/features/trip/trip_warning.dart';
 import 'package:waypoint/l10n/l10n.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 extension PolicyBreachText on AppLocalizations {
+  String tripWarning(TripWarning warning) => switch (warning) {
+    NoHotelForNight(:final night) => warningNoHotelForNight(day(night)),
+    NoHotelBooked(:final nights) => warningNoHotelBooked(nights),
+    BreaksPolicy(:final breach) => policyBreach(breach),
+  };
+
   /// What [breach] breaks of the policy, as the screens say it.
   String policyBreach(PolicyBreach breach) => switch (breach) {
     LandsOnMeetingDay(:final flight, :final meeting) => breachLandsOnMeetingDay(
@@ -32,7 +39,6 @@ extension PolicyBreachText on AppLocalizations {
       breachTaxiNotNeeded(time(trainArrives), time(meetingStarts)),
   };
 
-  /// 09:00, the [Policy.morningUntil] hour.
   String get policyMorningUntil =>
       DateFormat.Hm(localeName).format(DateTime(0, 1, 1, Policy.morningUntil));
 }

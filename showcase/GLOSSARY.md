@@ -21,6 +21,17 @@ _Avoid_: from
 The airport a flight arrives at.
 _Avoid_: to
 
+**Travel time**:
+A civil date and time in Central Europe (`Europe/Warsaw`, CET/CEST), shared
+by the demo's destinations. An input with an explicit UTC offset denotes an
+instant and is converted to this zone; an input without one already denotes
+the travel clock time. The in-memory domain keeps these civil clock fields,
+not distinct instants for repeated hours at the autumn DST transition.
+If the device's time zone cannot represent a converted clock time because
+its own clock skips it, the conversion refuses that input instead of shifting
+it. Parsing a raw time without an offset can already normalize a local DST
+gap before this conversion; this civil model does not validate that raw input.
+
 **Money**:
 An amount in a currency. A booking change can have a negative amount when it
 reduces the cost. Waypoint currently uses whole currency units.

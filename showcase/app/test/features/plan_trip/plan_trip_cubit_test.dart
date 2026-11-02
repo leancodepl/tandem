@@ -90,6 +90,37 @@ void main() {
     );
   });
 
+  test('meeting edits use travel time and keep their identity', () {
+    final original = plan.state.meetings.single;
+
+    plan.updateMeeting(
+      original.id.value,
+      original.title,
+      original.place,
+      DateTime.parse('2026-12-09T12:30:00+01:00'),
+      DateTime.parse('2026-12-09T17:00:00+01:00'),
+    );
+
+    expect(plan.state.meetings.single.id, original.id);
+    expect(plan.state.meetings.single.start, DateTime(2026, 12, 9, 12, 30));
+    plan.setOutboundFlight('WA 511', DateTime(2026, 12, 9));
+    expect(plan.state.outbound, isNotNull);
+
+    plan.removeMeeting(original.id.value);
+    expect(plan.state.meetings, isEmpty);
+    plan.addMeeting(
+      'Review',
+      original.place,
+      DateTime(2026, 12, 9, 13),
+      DateTime(2026, 12, 9, 14),
+    );
+    expect(plan.state.meetings.single.id, isNot(original.id));
+    expect(
+      () => plan.removeMeeting(original.id.value),
+      throwsA(isA<ToolCallRefused>()),
+    );
+  });
+
   test('a hotel waits for both flights, which set its nights', () {
     expect(() => plan.setHotel('spittelberg'), throwsA(isA<ToolCallRefused>()));
 

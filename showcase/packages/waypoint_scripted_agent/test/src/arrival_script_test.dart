@@ -46,6 +46,40 @@ void main() {
   );
 
   test(
+    'a taxi outside the policy is refused before requesting a booking',
+    () async {
+      for (final overPolicy in [true, false]) {
+        final events = await _run(
+          messages: const [
+            {'role': 'user', 'content': 'Book a taxi'},
+          ],
+          tools: const ['book_ride'],
+          arrival: {
+            ..._arrival,
+            'rides': [
+              {
+                'id': 'taxi',
+                'mode': 'taxi',
+                'arrives': '2026-10-29T12:10:00',
+                'overPolicy': overPolicy,
+              },
+            ],
+          },
+        );
+        final calls = events.where(
+          (event) => event['type'] == 'TOOL_CALL_START',
+        );
+        if (overPolicy) {
+          expect(calls, isEmpty);
+          expect(_said(events), contains('outside the company policy'));
+        } else {
+          expect(calls.single['toolCallName'], 'book_ride');
+        }
+      }
+    },
+  );
+
+  test(
     'failed early check-in is reported without promising a ready room',
     () async {
       final events = await _run(
@@ -103,6 +137,7 @@ void main() {
 Future<List<Map<String, Object?>>> _run({
   required List<Map<String, Object?>> messages,
   List<String> tools = const [],
+  Map<String, Object?> arrival = _arrival,
   Map<String, Object?>? note,
 }) => scriptedArrivalAgent().run({
   'threadId': 'arrival-test',
@@ -111,7 +146,7 @@ Future<List<Map<String, Object?>>> _run({
     for (final tool in tools) {'name': tool},
   ],
   'context': [
-    {'description': 'arrival: The arrival day', 'value': jsonEncode(_arrival)},
+    {'description': 'arrival: The arrival day', 'value': jsonEncode(arrival)},
     if (note != null)
       {
         'description': 'app_notes: What happened in the app',

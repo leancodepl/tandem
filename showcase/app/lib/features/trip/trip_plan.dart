@@ -1,13 +1,14 @@
+import 'package:waypoint/features/trip/trip_item_id.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 sealed class const PlanItem() {
-  String get id;
+  TripItemId get id;
 
   DateTime get at;
 }
 
 final class const FlightItem(
-  @override final String id,
+  @override final TripItemId id,
   final Flight flight,
   final Flight booked,
 ) extends PlanItem {
@@ -18,7 +19,7 @@ final class const FlightItem(
 final class const HotelItem(final HotelStay hotel, final HotelStay? booked)
     extends PlanItem {
   @override
-  String get id => 'hotel';
+  TripItemId get id => .hotel;
 
   @override
   DateTime get at => hotel.checkIn;
@@ -27,7 +28,7 @@ final class const HotelItem(final HotelStay hotel, final HotelStay? booked)
 final class const MeetingItem(final Meeting meeting, final Meeting? booked)
     extends PlanItem {
   @override
-  String get id => meeting.id.value;
+  TripItemId get id => .meeting(meeting.id);
 
   @override
   DateTime get at => meeting.start;
@@ -35,7 +36,7 @@ final class const MeetingItem(final Meeting meeting, final Meeting? booked)
 
 final class const NoHotelItem(@override final DateTime at) extends PlanItem {
   @override
-  String get id => 'hotel';
+  TripItemId get id => .hotel;
 }
 
 final class const DayPlan(
@@ -46,7 +47,7 @@ final class const DayPlan(
 
 List<DayPlan> planOf(Itinerary now, Itinerary booked) {
   final items = <PlanItem>[
-    FlightItem('outbound', now.outbound, booked.outbound),
+    FlightItem(.outbound, now.outbound, booked.outbound),
     if (now.hotel case final hotel?)
       HotelItem(hotel, booked.hotel)
     else if (calendarDaysBetween(now.outbound.arrives, now.homebound.departs) >
@@ -61,7 +62,7 @@ List<DayPlan> planOf(Itinerary now, Itinerary booked) {
       ),
     for (final meeting in now.meetings)
       MeetingItem(meeting, booked.meeting(meeting.id)),
-    FlightItem('homebound', now.homebound, booked.homebound),
+    FlightItem(.homebound, now.homebound, booked.homebound),
   ];
   final byDay = <DateTime, List<PlanItem>>{};
   for (final item in items) {

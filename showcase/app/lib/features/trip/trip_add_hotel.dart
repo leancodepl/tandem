@@ -27,11 +27,11 @@ Future<void> addHotelFromEmail(BuildContext context) async {
   trip.addHotel(hotel);
   _log.info('Added a hotel of ${hotel.nights} nights to trip ${trip.info.id}');
   // Filled in by the agent: marked until the traveller has seen it.
-  marks.mark('hotel');
+  marks.mark(.hotel);
   await Future<void>.delayed(const Duration(seconds: 6));
   if (marks.isClosed) {
     return;
   }
 
-  marks.unmark('hotel');
+  marks.unmark(.hotel);
 }

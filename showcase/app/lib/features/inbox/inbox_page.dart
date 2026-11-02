@@ -103,6 +103,7 @@ final class const _EmailCard(
                   (MeetingMoved(), final trip?) => l10n.emailChangesTrip(
                     trip.city,
                   ),
+                  (Receipt(), final trip?) => l10n.emailNotInReport(trip.city),
                   (_, final trip?) => l10n.emailNotOnTrip(trip.city),
                   _ => l10n.emailNoTrip,
                 }, tone: .ai),

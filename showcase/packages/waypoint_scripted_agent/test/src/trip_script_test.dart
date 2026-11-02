@@ -9,6 +9,17 @@ void main() {
     () async {
       for (final (tool, result) in [
         (
+          'move_meeting',
+          {'status': 'refused', 'reason': 'There is no meeting workshop.'},
+        ),
+        (
+          'move_meeting',
+          {
+            'status': 'failed',
+            'error': 'The calendar did not confirm the move.',
+          },
+        ),
+        (
           'set_homebound_flight',
           {
             'status': 'refused',
@@ -177,8 +188,22 @@ void main() {
     final moved = await run(const [
       {'role': 'user', 'content': 'The workshop moved to Friday'},
     ]);
-    expect(_toolNames(moved), ['move_meeting', 'find_flights']);
-    expect(_said(moved), contains('needs a nightly quote'));
+    expect(_toolNames(moved), ['move_meeting']);
+
+    final fitting = await run([
+      {
+        'role': 'assistant',
+        'toolCalls': [
+          {
+            'id': 'meeting',
+            'function': {'name': 'move_meeting'},
+          },
+        ],
+      },
+      {'role': 'tool', 'toolCallId': 'meeting', 'content': 'null'},
+    ]);
+    expect(_toolNames(fitting), ['find_flights']);
+    expect(_said(fitting), contains('needs a nightly quote'));
 
     final asking = await run([
       {

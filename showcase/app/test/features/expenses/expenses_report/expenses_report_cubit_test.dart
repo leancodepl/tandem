@@ -22,6 +22,7 @@ void main() {
     form = ExpensesReportFormController(
       receipts: reports.receipts(paris.id),
       stored: reports.report(paris.id),
+      inputs: reports.draftInputs(paris.id),
     );
     report = ExpensesReportCubit(trip: paris, reports: reports, form: form);
   }
@@ -84,7 +85,11 @@ void main() {
     final stored = ExpenseReport(
       lines: [ExpenseLine(receipt: taxi, claimed: taxi.paid)],
     );
-    reports.saveDraft(paris.id, stored);
+    reports.saveDraft(
+      paris.id,
+      inputs: {taxi.id: '${taxi.paid.toInt()}'},
+      validated: stored,
+    );
     final corrected = Receipt(
       id: taxi.id,
       merchant: taxi.merchant,
@@ -238,6 +243,7 @@ void main() {
       final otherForm = ExpensesReportFormController(
         receipts: reports.receipts(paris.id),
         stored: reports.report(paris.id),
+        inputs: reports.draftInputs(paris.id),
       );
       final other = ExpensesReportCubit(
         trip: paris,

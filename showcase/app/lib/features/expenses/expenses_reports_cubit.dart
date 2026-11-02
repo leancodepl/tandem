@@ -10,25 +10,33 @@ final class ReportsCubit({required final Inbox inbox})
   ExpenseReport report(TripId tripId) =>
       state.reports[tripId] ?? ExpenseReport();
 
+  Map<ReceiptId, String> draftInputs(TripId tripId) =>
+      state.drafts[tripId] ?? const {};
+
   bool isSubmitting(TripId tripId) => state.submitting.contains(tripId);
 
   bool isEditable(TripId tripId) =>
       report(tripId).submitted == null && !isSubmitting(tripId);
 
-  bool saveDraft(TripId tripId, ExpenseReport draft) {
-    if (draft.submitted != null) {
+  bool saveDraft(
+    TripId tripId, {
+    required Map<ReceiptId, String> inputs,
+    ExpenseReport? validated,
+  }) {
+    if (validated?.submitted != null) {
       throw ArgumentError.value(
-        draft,
-        'draft',
+        validated,
+        'validated',
         'A draft has no submission reference.',
       );
     }
     if (isEditable(tripId)) {
       emit(
-        ReportsState({
-          ...state.reports,
-          tripId: draft,
-        }, submitting: state.submitting),
+        ReportsState(
+          {...state.reports, tripId: ?validated},
+          submitting: state.submitting,
+          drafts: {...state.drafts, tripId: inputs},
+        ),
       );
       return true;
     }
@@ -49,6 +57,7 @@ final class ReportsCubit({required final Inbox inbox})
       ReportsState(
         {...state.reports, tripId: draft},
         submitting: {...state.submitting, tripId},
+        drafts: state.drafts,
       ),
     );
     try {
@@ -62,10 +71,11 @@ final class ReportsCubit({required final Inbox inbox})
       );
       if (!isClosed) {
         emit(
-          ReportsState({
-            ...state.reports,
-            tripId: confirmed,
-          }, submitting: {...state.submitting}..remove(tripId)),
+          ReportsState(
+            {...state.reports, tripId: confirmed},
+            submitting: {...state.submitting}..remove(tripId),
+            drafts: {...state.drafts}..remove(tripId),
+          ),
         );
       }
       return confirmed;
@@ -75,6 +85,7 @@ final class ReportsCubit({required final Inbox inbox})
           ReportsState(
             state.reports,
             submitting: {...state.submitting}..remove(tripId),
+            drafts: state.drafts,
           ),
         );
       }
