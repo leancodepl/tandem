@@ -24,10 +24,10 @@ final class const TripsPage({super.key}) extends StatelessWidget {
     final traveller = context.watch<Traveller>();
     final l10n = context.l10n;
 
-    return WaypointTabPage(
+    return WPTabPage(
       title: l10n.tripsTitle,
       above: l10n.tripsGreeting(traveller.name.split(' ').first),
-      trailing: WaypointButton(
+      trailing: WPButton(
         l10n.planATrip,
         small: true,
         primary: false,
@@ -36,7 +36,7 @@ final class const TripsPage({super.key}) extends StatelessWidget {
       ),
       children: [
         if (news.isNotEmpty) ...[
-          Text(l10n.tripsNeedsYou, style: AppText.day),
+          Text(l10n.tripsNeedsYou, style: WPTextStyle.day),
           const SizedBox(height: 10),
           for (final (trip, email) in news)
             Padding(
@@ -45,7 +45,7 @@ final class const TripsPage({super.key}) extends StatelessWidget {
             ),
           const SizedBox(height: 20),
         ],
-        Text(l10n.tripsUpcoming, style: AppText.day),
+        Text(l10n.tripsUpcoming, style: WPTextStyle.day),
         const SizedBox(height: 10),
         for (final trip in trips.state.trips)
           if (!trip.isPastOn(traveller.today))
@@ -58,7 +58,7 @@ final class const TripsPage({super.key}) extends StatelessWidget {
               ),
             ),
         const SizedBox(height: 20),
-        Text(l10n.tripsPast, style: AppText.day),
+        Text(l10n.tripsPast, style: WPTextStyle.day),
         const SizedBox(height: 10),
         for (final trip in trips.state.trips)
           if (trip.isPastOn(traveller.today))
@@ -106,8 +106,8 @@ final class const _NewsCard(final Trip? trip, final ForwardedEmail email)
     };
     final (action, act) = emailAction(context, email, trip);
 
-    return WaypointCard(
-      border: Palette.aiLine,
+    return WPCard(
+      border: WPColors.aiLine,
       child: Column(
         crossAxisAlignment: .start,
         spacing: 6,
@@ -118,14 +118,14 @@ final class const _NewsCard(final Trip? trip, final ForwardedEmail email)
               const Icon(
                 Icons.mail_outline_rounded,
                 size: 18,
-                color: Palette.aiText,
+                color: WPColors.aiText,
               ),
-              Expanded(child: Text(title, style: AppText.title)),
+              Expanded(child: Text(title, style: WPTextStyle.title)),
             ],
           ),
-          Text(text, style: AppText.label),
+          Text(text, style: WPTextStyle.label),
           const SizedBox(height: 6),
-          WaypointButton(action, small: true, onPressed: act),
+          WPButton(action, small: true, onPressed: act),
         ],
       ),
     );
@@ -144,7 +144,7 @@ final class const _TripCard(
     final home = dateOnly(booked.homebound.departs);
     final l10n = context.l10n;
 
-    return WaypointListCard(
+    return WPListCard(
       onTap: onTap,
       title: city.toUpperCase(),
       subtitle: l10n.tripDates(
@@ -153,7 +153,7 @@ final class const _TripCard(
       ),
       caption: purpose ?? l10n.clientWork,
       footer: [
-        WaypointNote(
+        WPNote(
           Icons.flight_rounded,
           l10n.flightAt(
             booked.outbound.number.value,
@@ -162,13 +162,13 @@ final class const _TripCard(
           maxLines: 1,
         ),
         if (booked.hotel case final hotel?)
-          WaypointNote(Icons.hotel_rounded, hotel.name, maxLines: 1)
+          WPNote(Icons.hotel_rounded, hotel.name, maxLines: 1)
         else if (calendarDaysBetween(
               booked.outbound.arrives,
               booked.homebound.departs,
             ) >
             0)
-          WaypointNote(Icons.hotel_outlined, l10n.noHotelYet, tone: .warn),
+          WPNote(Icons.hotel_outlined, l10n.noHotelYet, tone: .warn),
       ],
     );
   }

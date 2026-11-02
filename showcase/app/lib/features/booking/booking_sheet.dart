@@ -44,7 +44,7 @@ Future<HotelStay?> showBookingSheet(
     ],
     email: email,
   );
-  return showWaypointSheet(context, child: sheet);
+  return showWPSheet(context, child: sheet);
 }
 
 final class const _BookingSheet({
@@ -117,9 +117,9 @@ final class const _BookingSheetContent({
         child: Row(
           children: [
             Expanded(
-              child: Text(context.l10n.bookingTitle, style: AppText.title),
+              child: Text(context.l10n.bookingTitle, style: WPTextStyle.title),
             ),
-            WaypointCloseButton(onPressed: context.router.maybePop),
+            WPCloseButton(onPressed: context.router.maybePop),
           ],
         ),
       ),
@@ -199,11 +199,11 @@ final class const _BookingForm({
                       chosen.value == null
                           ? l10n.bookingPick
                           : l10n.bookingFromEmails,
-                      style: AppText.label,
+                      style: WPTextStyle.label,
                     ),
                     for (final email in emails)
                       if (chosen.value == null || chosen.value == email)
-                        WaypointMailCard(
+                        WPMailCard(
                           from: email.from,
                           subject: email.subject,
                           selected: chosen.value == email,
@@ -211,7 +211,7 @@ final class const _BookingForm({
                               ? null
                               : () => read(email, session),
                           trailing: chosen.value == email
-                              ? WaypointTextButton(
+                              ? WPTextButton(
                                   l10n.changeEmail,
                                   onPressed: busy || session.failure != null
                                       ? null
@@ -225,27 +225,27 @@ final class const _BookingForm({
                                     email.received,
                                     today: context.watch<Traveller>().today,
                                   ),
-                                  style: AppText.label,
+                                  style: WPTextStyle.label,
                                 ),
                         ),
                   ],
                 ),
               ),
               switch (session.failure) {
-                final failure? => InlineError(
+                final failure? => WPInlineError(
                   l10n.agentFailure(failure),
                   onRetry: session.retry,
                 ),
-                null => WorkStatus(status, working: busy),
+                null => WPWorkStatus(status, working: busy),
               },
               const SizedBox(height: 18),
               _BookingFields(enabled: !busy),
             ],
           ),
         ),
-        WaypointActionBar(
+        WPActionBar(
           gutter: 24,
-          child: WaypointSubmit(
+          child: WPSubmit(
             label: cubit.state.adding ? l10n.adding : l10n.addToTrip,
             busy: cubit.state.adding,
             onSubmit: cubit.ready && !busy
@@ -272,9 +272,9 @@ final class const _BookingFields({required final bool enabled})
     final l10n = context.l10n;
     // A stay takes a night: no check-in on the trip's last day, and no
     // check-out on its first.
-    return WaypointGroup(
+    return WPGroup(
       children: [
-        FormTextField(
+        WPFormTextField(
           field: form.hotel,
           label: l10n.hotel,
           enabled: enabled,
@@ -284,7 +284,7 @@ final class const _BookingFields({required final bool enabled})
           translateError: l10n.bookingError,
           onEdited: () => cubit.unmark(.hotel),
         ),
-        FormTextField(
+        WPFormTextField(
           field: form.address,
           label: l10n.bookingAddress,
           enabled: enabled,
@@ -295,7 +295,7 @@ final class const _BookingFields({required final bool enabled})
           translateError: l10n.bookingError,
           onEdited: () => cubit.unmark(.address),
         ),
-        FormDateField(
+        WPFormDateField(
           field: form.checkIn,
           label: l10n.bookingCheckIn,
           format: l10n.dayTime,
@@ -309,7 +309,7 @@ final class const _BookingFields({required final bool enabled})
           translateError: l10n.bookingError,
           onEdited: () => cubit.unmark(.checkIn),
         ),
-        FormDateField(
+        WPFormDateField(
           field: form.checkOut,
           label: l10n.bookingCheckOut,
           format: (day) => switch (nights) {
@@ -331,7 +331,7 @@ final class const _BookingFields({required final bool enabled})
           translateError: l10n.bookingError,
           onEdited: () => cubit.unmark(.checkOut),
         ),
-        FormAmountField(
+        WPFormAmountField(
           field: form.totalPrice,
           label: l10n.bookingPrice,
           symbol: l10n.currencySymbol(supportedCurrency),
@@ -341,7 +341,7 @@ final class const _BookingFields({required final bool enabled})
           translateError: l10n.bookingError,
           onEdited: () => cubit.unmark(.price),
         ),
-        FormTextField(
+        WPFormTextField(
           field: form.confirmation,
           label: l10n.bookingConfirmation,
           enabled: enabled,

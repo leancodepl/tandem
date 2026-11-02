@@ -68,9 +68,8 @@ final class const ExpensesReportPage({
 
 final class const _ExpensesReportContent() extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => const WaypointPage(
-    child: _ReceiptsForAgent(child: _ExpensesReportForm()),
-  );
+  Widget build(BuildContext context) =>
+      const WPPage(child: _ReceiptsForAgent(child: _ExpensesReportForm()));
 }
 
 /// Tells the agent, when the report opens, about the receipts it does not
@@ -133,17 +132,17 @@ final class const _ExpensesReportForm() extends HookWidget {
     return Column(
       crossAxisAlignment: .stretch,
       children: [
-        WaypointTopBar(
+        WPTopBar(
           trailing: trip.purpose ?? l10n.clientWork,
           onBack: context.router.maybePop,
         ),
         Expanded(
-          child: Readable(
+          child: WPReadable(
             child: ListView(
               padding: const .fromLTRB(20, 0, 20, 24),
               keyboardDismissBehavior: .onDrag,
               children: [
-                WaypointPageTitle(
+                WPPageTitle(
                   trip.city.toUpperCase(),
                   below: l10n.reportDates(
                     l10n.dayRange(
@@ -153,19 +152,16 @@ final class const _ExpensesReportForm() extends HookWidget {
                   ),
                 ),
                 switch (session.failure) {
-                  final failure? => InlineError(
+                  final failure? => WPInlineError(
                     l10n.agentFailure(failure),
                     onRetry: session.retry,
                   ),
-                  null => WorkStatus(status, working: busy),
+                  null => WPWorkStatus(status, working: busy),
                 },
                 const SizedBox(height: 20),
-                WaypointSection(
-                  l10n.reportReceipts,
-                  child: _Claims(enabled: !busy),
-                ),
+                WPSection(l10n.reportReceipts, child: _Claims(enabled: !busy)),
                 const SizedBox(height: 18),
-                WaypointNote(
+                WPNote(
                   Icons.verified_user_outlined,
                   l10n.companyPolicy(
                     l10n.expensesPolicy(l10n.money(Policy.mealsPerDay)),
@@ -201,11 +197,11 @@ final class const _Claims({required final bool enabled})
     final form = context.watch<ExpensesReportFormController>();
     final cubit = context.watch<ExpensesReportCubit>();
     final l10n = context.l10n;
-    return WaypointGroup(
+    return WPGroup(
       children: [
         for (final (order, ReceiptClaimField(:receipt, field: claim))
             in form.claims.values.indexed)
-          FormAmountField(
+          WPFormAmountField(
             field: claim,
             label: l10n.receiptLine(
               receipt.merchant,
@@ -250,9 +246,9 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
         .where((request) => request.status == .pending)
         .lastOrNull;
     final l10n = context.l10n;
-    final total = WaypointTotal(l10n.paidBack, l10n.money(form.total));
+    final total = WPTotal(l10n.paidBack, l10n.money(form.total));
 
-    return WaypointActionBar(
+    return WPActionBar(
       active: request != null,
       child: AnimatedSize(
         duration: const Duration(milliseconds: 320),
@@ -263,19 +259,16 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
             spacing: 16,
             children: [
               Expanded(child: total),
-              WaypointConfirmation(
-                l10n.submitted,
-                reference: confirmation.value,
-              ),
+              WPConfirmation(l10n.submitted, reference: confirmation.value),
             ],
           ),
           // The agent's request, in the screen's own bar.
-          (final request?, _) => WaypointApproval(
+          (final request?, _) => WPApproval(
             l10n.reportAskToSubmit(l10n.money(form.total)),
             onApprove: () => _decide(() => session.approve(request)),
             onReject: () => _decide(() => session.reject(request)),
           ),
-          _ => WaypointSubmit(
+          _ => WPSubmit(
             label: submitting ? l10n.submitting : l10n.submit,
             busy: submitting,
             total: total,

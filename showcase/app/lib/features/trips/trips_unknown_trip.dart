@@ -8,7 +8,7 @@ import 'package:waypoint_design_system/waypoint_design_system.dart';
 /// such as from an old link.
 final class const UnknownTrip({super.key}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => ErrorView(
+  Widget build(BuildContext context) => WPErrorView(
     context.l10n.unknownTrip,
     back: context.l10n.yourTrips,
     onBack: () => context.router.navigate(const TripsRoute()),

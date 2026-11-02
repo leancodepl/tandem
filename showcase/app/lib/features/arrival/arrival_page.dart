@@ -59,7 +59,7 @@ final class const ArrivalPage({
       ),
     ),
     (null, _) => const UnknownTrip(),
-    (_, null) => ErrorView(
+    (_, null) => WPErrorView(
       context.l10n.noArrivalDay,
       back: context.l10n.backToTrip,
       onBack: () => context.router.navigate(TripRoute(tripId: tripId)),
@@ -82,7 +82,7 @@ final class const ArrivalPage({
 final class const _ArrivalContent() extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
-      const WaypointPage(child: _DayForAgent(child: _Arrival()));
+      const WPPage(child: _DayForAgent(child: _Arrival()));
 }
 
 /// Asks the agent, when the screen opens, to draw the day.
@@ -127,16 +127,16 @@ final class const _Arrival() extends StatelessWidget {
     return Column(
       crossAxisAlignment: .stretch,
       children: [
-        WaypointTopBar(
+        WPTopBar(
           trailing: trip.purpose ?? l10n.clientWork,
           onBack: context.router.maybePop,
         ),
         Expanded(
-          child: Readable(
+          child: WPReadable(
             child: ListView(
               padding: const .fromLTRB(20, 0, 20, 24),
               children: [
-                WaypointPageTitle(
+                WPPageTitle(
                   trip.city.toUpperCase(),
                   below: l10n.arrivalDate(
                     l10n.day(cubit.lands),
@@ -144,11 +144,11 @@ final class const _Arrival() extends StatelessWidget {
                   ),
                 ),
                 switch (session.failure) {
-                  final failure? => InlineError(
+                  final failure? => WPInlineError(
                     l10n.agentFailure(failure),
                     onRetry: session.retry,
                   ),
-                  null => WorkStatus(
+                  null => WPWorkStatus(
                     busy ? l10n.work(status) : said,
                     working: busy,
                   ),
@@ -162,7 +162,7 @@ final class const _Arrival() extends StatelessWidget {
         const _ApprovalBar(),
         const SafeArea(
           top: false,
-          child: Readable(
+          child: WPReadable(
             child: Padding(
               padding: .fromLTRB(16, 8, 16, 12),
               child: _ArrivalComposer(),
@@ -212,10 +212,10 @@ final class const _ApprovalBar() extends StatelessWidget {
       alignment: .bottomCenter,
       child: switch (request) {
         // The composer is below the bar.
-        final request? => WaypointActionBar(
+        final request? => WPActionBar(
           active: true,
           bottom: false,
-          child: WaypointApproval(
+          child: WPApproval(
             context.l10n.ask(request, cubit.day),
             onApprove: () => _decide(() => session.approve(request)),
             onReject: () => _decide(() => session.reject(request)),
@@ -243,7 +243,7 @@ final class const _ArrivalComposer() extends HookWidget {
     final text = useTextEditingController();
     final session = TandemSessionScope.of(context);
     final status = session.status;
-    return WaypointComposer(
+    return WPComposer(
       controller: text,
       hint: context.l10n.arrivalComposerHint,
       working: status.isRunning,

@@ -2,7 +2,7 @@ import 'package:tandem/tandem.dart';
 
 extension SessionWork on SessionStatus {
   /// The agent thinks or a method of the screen runs, so the screen shows
-  /// its work in a `WorkStatus`.
+  /// its work in a `WPWorkStatus`.
   bool get isWorking => this is Thinking || this is Calling;
 
   /// A run is under way, also while it stops, so the composer shows Stop

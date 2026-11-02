@@ -18,7 +18,7 @@ final class const InboxPage({super.key}) extends StatelessWidget {
   Widget build(BuildContext context) {
     final trips = context.watch<TripsCubit>();
 
-    return WaypointTabPage(
+    return WPTabPage(
       title: context.l10n.inboxTitle,
       above: context.l10n.inboxAbove,
       children: [
@@ -51,9 +51,9 @@ final class const _EmailCard(
     final l10n = context.l10n;
     final city = trip?.city ?? '';
 
-    return WaypointCard(
+    return WPCard(
       onTap: () => open.value = !open.value,
-      border: done ? Palette.line : Palette.aiLine,
+      border: done ? WPColors.line : WPColors.aiLine,
       padding: const .fromLTRB(16, 14, 16, 14),
       child: Column(
         crossAxisAlignment: .stretch,
@@ -61,17 +61,17 @@ final class const _EmailCard(
         children: [
           Row(
             children: [
-              Expanded(child: Text(email.from, style: AppText.title)),
+              Expanded(child: Text(email.from, style: WPTextStyle.title)),
               Text(
                 l10n.received(
                   email.received,
                   today: context.watch<Traveller>().today,
                 ),
-                style: AppText.label,
+                style: WPTextStyle.label,
               ),
             ],
           ),
-          Text(email.subject, style: AppText.body),
+          Text(email.subject, style: WPTextStyle.body),
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
@@ -81,14 +81,14 @@ final class const _EmailCard(
                     padding: const .symmetric(vertical: 10),
                     child: Text(
                       email.body,
-                      style: AppText.label.copyWith(color: Palette.ink),
+                      style: WPTextStyle.label.copyWith(color: WPColors.ink),
                     ),
                   )
                 : const SizedBox(width: double.infinity),
           ),
           const SizedBox(height: 6),
           if (done)
-            WaypointNote(Icons.check_rounded, switch (email.news) {
+            WPNote(Icons.check_rounded, switch (email.news) {
               Receipt() => l10n.emailInReport(city),
               _ => l10n.emailOnTrip(city),
             }, maxLines: 1)
@@ -98,10 +98,7 @@ final class const _EmailCard(
               spacing: 10,
               overflowSpacing: 10,
               children: [
-                WaypointNote(Icons.mail_outline_rounded, switch ((
-                  email.news,
-                  trip,
-                )) {
+                WPNote(Icons.mail_outline_rounded, switch ((email.news, trip)) {
                   (TripInvitation(:final city), _) => l10n.emailToPlan(city),
                   (MeetingMoved(), final trip?) => l10n.emailChangesTrip(
                     trip.city,
@@ -109,7 +106,7 @@ final class const _EmailCard(
                   (_, final trip?) => l10n.emailNotOnTrip(trip.city),
                   _ => l10n.emailNoTrip,
                 }, tone: .ai),
-                WaypointButton(action, small: true, onPressed: act),
+                WPButton(action, small: true, onPressed: act),
               ],
             ),
         ],

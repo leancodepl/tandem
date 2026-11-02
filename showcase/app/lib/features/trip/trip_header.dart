@@ -26,7 +26,7 @@ final class const TripHeader({super.key, required final bool wide})
       l10n.dayRange(out, home),
       calendarDaysBetween(out, home),
     );
-    final display = wide ? AppText.display : AppText.headline;
+    final display = wide ? WPTextStyle.display : WPTextStyle.headline;
     final route = _Route(
       itinerary.outbound.origin,
       itinerary.outbound.destination,
@@ -44,7 +44,7 @@ final class const TripHeader({super.key, required final bool wide})
                 spacing: 8,
                 children: [
                   Text(info.city.toUpperCase(), style: display),
-                  WaypointSwapText(dates, style: AppText.subtitle),
+                  WPSwapText(dates, style: WPTextStyle.subtitle),
                 ],
               ),
             ),
@@ -74,22 +74,26 @@ final class const _Route(
       overflowSpacing: 8,
       spacing: 12,
       children: [
-        Text(origin.value, style: AppText.route),
+        Text(origin.value, style: WPTextStyle.route),
         const SizedBox(
           width: 56,
           child: Row(
             spacing: 8,
             children: [
-              Expanded(child: WaypointDivider(color: Palette.lineStrong)),
+              Expanded(child: WPDivider(color: WPColors.lineStrong)),
               RotatedBox(
                 quarterTurns: 1,
-                child: Icon(Icons.flight_rounded, size: 18, color: Palette.ink),
+                child: Icon(
+                  Icons.flight_rounded,
+                  size: 18,
+                  color: WPColors.ink,
+                ),
               ),
-              Expanded(child: WaypointDivider(color: Palette.lineStrong)),
+              Expanded(child: WPDivider(color: WPColors.lineStrong)),
             ],
           ),
         ),
-        Text(destination.value, style: AppText.route),
+        Text(destination.value, style: WPTextStyle.route),
       ],
     ),
   );
@@ -112,7 +116,7 @@ final class const TripWarnings({super.key}) extends StatelessWidget {
           for (final warning in warnings)
             Padding(
               padding: const .only(top: 12),
-              child: WaypointNote(
+              child: WPNote(
                 Icons.warning_amber_rounded,
                 l10n.warning(warning),
                 tone: .warn,
@@ -143,7 +147,7 @@ final class const TripNews({super.key}) extends StatelessWidget {
           for (final email in news)
             Padding(
               padding: const .only(top: 12),
-              child: WaypointNote(
+              child: WPNote(
                 Icons.mail_outline_rounded,
                 context.l10n.tripInboxNews(email.from, email.subject),
                 tone: .ai,
@@ -158,7 +162,7 @@ final class const TripNews({super.key}) extends StatelessWidget {
 final class const TripTopBar({super.key, required final bool wide})
     extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => WaypointTopBar(
+  Widget build(BuildContext context) => WPTopBar(
     onBack: context.router.maybePop,
     trailing:
         context.select<TripCubit, String?>((trip) => trip.info.purpose) ??
@@ -183,11 +187,11 @@ final class const ArrivalEntry({super.key}) extends StatelessWidget {
         overflowSpacing: 10,
         spacing: 10,
         children: [
-          WaypointNote(
+          WPNote(
             Icons.flight_land_rounded,
             l10n.tripLands(l10n.day(lands), l10n.time(lands)),
           ),
-          WaypointButton(
+          WPButton(
             l10n.arrivalDay,
             small: true,
             primary: false,

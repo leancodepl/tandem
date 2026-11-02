@@ -43,7 +43,7 @@ final class const PlanTripPage({
       null => null,
     };
     return switch ((invitationTripId, invitation)) {
-      (_?, null) => ErrorView(
+      (_?, null) => WPErrorView(
         context.l10n.unknownInvitation,
         back: context.l10n.yourTrips,
         onBack: () => context.router.navigate(const TripsRoute()),
@@ -94,11 +94,11 @@ final class const PlanTripPage({
 
 final class const _PlanTripContent() extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => WaypointPage(
+  Widget build(BuildContext context) => WPPage(
     child: Column(
       crossAxisAlignment: .stretch,
       children: [
-        WaypointTopBar(
+        WPTopBar(
           title: context.l10n.planATrip,
           onBack: context.router.maybePop,
         ),
@@ -162,19 +162,19 @@ final class const _PlanTripForm() extends HookWidget {
         stillMissing,
       _ => null,
     };
-    final wide = MediaQuery.sizeOf(context).width >= Widths.wide;
+    final wide = MediaQuery.sizeOf(context).width >= WPWidths.wide;
 
     return Column(
       crossAxisAlignment: .stretch,
       children: [
         Expanded(
-          child: Readable(
+          child: WPReadable(
             child: ListView(
               padding: .fromLTRB(20, wide ? 12 : 4, 20, 24),
               keyboardDismissBehavior: .onDrag,
               children: [
                 switch (invitation) {
-                  final invitation? => WaypointMailCard(
+                  final invitation? => WPMailCard(
                     from: invitation.from,
                     subject: invitation.subject,
                   ),
@@ -186,22 +186,22 @@ final class const _PlanTripForm() extends HookWidget {
                   ),
                 },
                 switch (session.failure) {
-                  final failure? => InlineError(
+                  final failure? => WPInlineError(
                     l10n.agentFailure(failure),
                     onRetry: plan.booking ? null : session.retry,
                   ),
-                  null => WorkStatus(status, working: busy),
+                  null => WPWorkStatus(status, working: busy),
                 },
                 const SizedBox(height: 20),
                 Column(
                   crossAxisAlignment: .stretch,
                   spacing: 18,
                   children: [
-                    WaypointSection(
+                    WPSection(
                       l10n.planTrip,
-                      child: WaypointGroup(
+                      child: WPGroup(
                         children: [
-                          FormSelectField(
+                          WPFormSelectField(
                             field: form.city,
                             label: l10n.planCity,
                             optionLabel: (city) => city,
@@ -211,7 +211,7 @@ final class const _PlanTripForm() extends HookWidget {
                             order: 0,
                             onEdited: () => cubit.unmark(.city),
                           ),
-                          FormTextField(
+                          WPFormTextField(
                             field: form.purpose,
                             label: l10n.planPurpose,
                             enabled: !busy,
@@ -224,9 +224,9 @@ final class const _PlanTripForm() extends HookWidget {
                         ],
                       ),
                     ),
-                    WaypointSection(
+                    WPSection(
                       l10n.planMeetings,
-                      child: FilledFields([
+                      child: WPFilledFields([
                         if (plan.meetings.isEmpty)
                           (l10n.planMeetingsField, null),
                         for (final meeting in plan.meetings)
@@ -240,16 +240,16 @@ final class const _PlanTripForm() extends HookWidget {
                           ),
                       ]),
                     ),
-                    WaypointSection(
+                    WPSection(
                       l10n.planFlights,
-                      child: FilledFields([
+                      child: WPFilledFields([
                         (l10n.planThere, l10n.flightLine(plan.outbound)),
                         (l10n.planHome, l10n.flightLine(plan.homebound)),
                       ]),
                     ),
-                    WaypointSection(
+                    WPSection(
                       l10n.planHotel,
-                      child: FilledFields([
+                      child: WPFilledFields([
                         (
                           l10n.hotel,
                           switch ((plan.hotel, plan.nights)) {
@@ -264,7 +264,7 @@ final class const _PlanTripForm() extends HookWidget {
                         ),
                       ]),
                     ),
-                    WaypointNote(
+                    WPNote(
                       Icons.verified_user_outlined,
                       l10n.companyPolicy(
                         l10n.tripPolicy(
@@ -279,11 +279,11 @@ final class const _PlanTripForm() extends HookWidget {
             ),
           ),
         ),
-        WaypointActionBar(
-          child: WaypointSubmit(
+        WPActionBar(
+          child: WPSubmit(
             label: plan.booking ? l10n.booking : l10n.bookTrip,
             busy: plan.booking,
-            total: WaypointTotal(l10n.planTotal, l10n.money(plan.total)),
+            total: WPTotal(l10n.planTotal, l10n.money(plan.total)),
             onSubmit: cubit.ready && !busy
                 ? () async {
                     await cubit.book();
@@ -304,12 +304,12 @@ final class const _Words(
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: text,
-    builder: (context, _) => WaypointTextField(
+    builder: (context, _) => WPTextField(
       controller: text,
       hint: context.l10n.planWordsHint,
       minLines: 2,
       maxLines: 8,
-      trailing: WaypointButton(
+      trailing: WPButton(
         context.l10n.plan,
         small: true,
         onPressed: text.text.trim().isEmpty ? null : onSend,

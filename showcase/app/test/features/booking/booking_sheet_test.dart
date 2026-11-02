@@ -143,18 +143,18 @@ BookingCubit _booking(WidgetTester tester) =>
 TandemSession _session(WidgetTester tester) =>
     TandemSessionScope.of(tester.element(find.text('Check-out')));
 
-FormDateField<BookingError> _dateField(WidgetTester tester, String label) =>
+WPFormDateField<BookingError> _dateField(WidgetTester tester, String label) =>
     tester.widget(
       find.byWidgetPredicate(
         (widget) =>
-            widget is FormDateField<BookingError> && widget.label == label,
+            widget is WPFormDateField<BookingError> && widget.label == label,
       ),
     );
 
 VoidCallback? _submit(WidgetTester tester) => tester
-    .widget<WaypointSubmit>(
+    .widget<WPSubmit>(
       find.byWidgetPredicate(
-        (widget) => widget is WaypointSubmit && widget.label == 'Add to trip',
+        (widget) => widget is WPSubmit && widget.label == 'Add to trip',
       ),
     )
     .onSubmit;

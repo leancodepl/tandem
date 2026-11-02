@@ -37,11 +37,11 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
     final pending = status == .pending;
     final void_ = status == .invalidated;
     final struck = void_ || status == .rejected || status == .cancelled;
-    final strike = struck ? AppText.struck : null;
+    final strike = struck ? WPTextStyle.struck : null;
     final l10n = context.l10n;
 
-    return WaypointCard(
-      border: pending ? Palette.ai : Palette.line,
+    return WPCard(
+      border: pending ? WPColors.ai : WPColors.line,
       padding: const .fromLTRB(16, 14, 16, 14),
       child: AnimatedSize(
         duration: const Duration(milliseconds: 360),
@@ -67,11 +67,11 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
                             changes.items.length,
                           ),
                           _ => l10n.approvalFallback,
-                        }, style: AppText.title.merge(strike)),
+                        }, style: WPTextStyle.title.merge(strike)),
                       ),
                       Text(
                         l10n.moneyDelta(cost),
-                        style: AppText.title.merge(strike),
+                        style: WPTextStyle.title.merge(strike),
                       ),
                     ],
                   ),
@@ -81,12 +81,12 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
                         Expanded(
                           child: Text(
                             l10n.bookingChange(change),
-                            style: AppText.label,
+                            style: WPTextStyle.label,
                           ),
                         ),
                         Text(
                           l10n.moneyDelta(change.cost),
-                          style: AppText.label,
+                          style: WPTextStyle.label,
                         ),
                       ],
                     ),
@@ -94,14 +94,14 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
               ),
             ),
             switch (status) {
-              .pending => WaypointDecision(
+              .pending => WPDecision(
                 onApprove: () => _decide(() => session.approve(request)),
                 onReject: () => _decide(() => session.reject(request)),
               ),
               .invalidated => _VoidedLine(request),
-              .approved => WaypointNote(Icons.check_rounded, l10n.approved),
-              .rejected => WaypointNote(Icons.close_rounded, l10n.rejected),
-              .cancelled => WaypointNote(
+              .approved => WPNote(Icons.check_rounded, l10n.approved),
+              .rejected => WPNote(Icons.close_rounded, l10n.rejected),
+              .cancelled => WPNote(
                 Icons.close_rounded,
                 l10n.cancelledByMessage,
               ),
@@ -145,17 +145,17 @@ final class const _VoidedLine(final ApprovalRequest request)
       layoutBuilder: (current, previous) =>
           Stack(alignment: .topLeft, children: [...previous, ?current]),
       child: switch ((asked, replaced, working)) {
-        (_, true, _) => WaypointNote(
+        (_, true, _) => WPNote(
           Icons.arrow_downward_rounded,
           l10n.approvalReplaced,
           key: const ValueKey('replaced'),
         ),
-        (true, _, true) => WorkStatus(
+        (true, _, true) => WPWorkStatus(
           l10n.approvalUpdating,
           key: const ValueKey('updating'),
           working: true,
         ),
-        _ => WaypointNote(
+        _ => WPNote(
           Icons.info_outline_rounded,
           l10n.approvalVoided,
           key: const ValueKey('voided'),

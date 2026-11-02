@@ -32,10 +32,10 @@ void main() {
             BlocProvider(create: (context) => ReportsCubit(inbox: inbox)),
           ],
           child: MaterialApp(
-            theme: waypointTheme(),
+            theme: wpTheme(),
             localizationsDelegates: const [
               ...AppLocalizations.localizationsDelegates,
-              DesignSystemLocalizations.delegate,
+              WPLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
             builder: (context, child) => MediaQuery(

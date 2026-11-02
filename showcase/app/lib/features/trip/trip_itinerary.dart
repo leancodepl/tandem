@@ -131,7 +131,7 @@ final class const ItineraryView({super.key, required final bool wide})
         crossAxisAlignment: .stretch,
         children: [
           for (final day in days)
-            Appear(
+            WPAppear(
               key: ValueKey(day.date),
               enabled: newDays.contains(day.date),
               child: column(day),
@@ -150,7 +150,7 @@ final class const ItineraryView({super.key, required final bool wide})
                 key: ValueKey(day.date),
                 width: width,
                 animateIn: newDays.contains(day.date),
-                child: WaypointDividedColumn(
+                child: WPDividedColumn(
                   first: index == 0,
                   child: Padding(
                     padding: .only(
@@ -218,18 +218,18 @@ final class const _Day(
               final end? => l10n.dayRange(day.date, end),
               null => l10n.day(day.date),
             }.toUpperCase(),
-            style: AppText.day,
+            style: WPTextStyle.day,
           ),
           if (day.items.isEmpty)
             Padding(
               padding: const .symmetric(vertical: 8),
-              child: Text(l10n.nothingPlanned, style: AppText.label),
+              child: Text(l10n.nothingPlanned, style: WPTextStyle.label),
             ),
           for (final (index, item) in day.items.indexed)
-            Flip(
+            WPFlip(
               key: keys[item.id],
               slot: (day.date, index),
-              child: Appear(
+              child: WPAppear(
                 enabled: newItems.contains(item.id),
                 child: switch (item) {
                   FlightItem(id: 'homebound') => _HomeboundCard(item),
@@ -266,12 +266,12 @@ final class const _FlightBody(final FlightItem item) extends StatelessWidget {
           trailing: item.id == 'outbound' ? l10n.flightOut : l10n.flightHome,
         ),
         const SizedBox(height: 4),
-        WaypointSwapText(
+        WPSwapText(
           l10n.flightTimes(
             l10n.time(flight.departs),
             l10n.time(flight.arrives),
           ),
-          style: AppText.time,
+          style: WPTextStyle.time,
         ),
         const SizedBox(height: 2),
         Text(
@@ -279,7 +279,7 @@ final class const _FlightBody(final FlightItem item) extends StatelessWidget {
             FlightSearch.airport(flight.origin),
             FlightSearch.airport(flight.destination),
           ),
-          style: AppText.label,
+          style: WPTextStyle.label,
         ),
         _Was(changed ? l10n.dayTime(booked.departs) : null),
       ],
@@ -353,7 +353,7 @@ final class const _HomeboundCard(final FlightItem item) extends HookWidget {
                           onPick: pick,
                         ),
                         if (refused.value case final breach?)
-                          InlineError(context.l10n.policyBreach(breach)),
+                          WPInlineError(context.l10n.policyBreach(breach)),
                       ],
                     ),
                   )
@@ -373,12 +373,12 @@ final class const _FlightPicker(
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return WaypointGroup(
+    return WPGroup(
       color: null,
-      border: Palette.lineStrong,
+      border: WPColors.lineStrong,
       children: [
         for (final (flight, breach) in options)
-          WaypointOption(
+          WPOption(
             lead: l10n.time(flight.departs),
             label: breach == null ? flight.number.value : l10n.tooEarly,
             trailing: l10n.money(flight.fare),
@@ -403,11 +403,11 @@ final class const _HotelCard(final HotelItem item) extends StatelessWidget {
         children: [
           _CardHead(l10n.hotel, trailing: l10n.nights(hotel.nights.value)),
           const SizedBox(height: 4),
-          Text(hotel.name, style: AppText.title),
+          Text(hotel.name, style: WPTextStyle.title),
           const SizedBox(height: 2),
-          WaypointSwapText(
+          WPSwapText(
             l10n.hotelTimes(l10n.time(hotel.checkIn), l10n.day(hotel.checkOut)),
-            style: AppText.label,
+            style: WPTextStyle.label,
           ),
           _Was(changed ? l10n.nights(booked.nights.value) : null),
         ],
@@ -420,20 +420,20 @@ final class const _NoHotelCard() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return WaypointCard(
+    return WPCard(
       color: null,
-      border: Palette.lineStrong,
+      border: WPColors.lineStrong,
       padding: const .fromLTRB(16, 12, 14, 14),
       child: Column(
         crossAxisAlignment: .start,
         children: [
           _CardHead(l10n.hotel),
           const SizedBox(height: 4),
-          Text(l10n.noHotelYet, style: AppText.title),
+          Text(l10n.noHotelYet, style: WPTextStyle.title),
           const SizedBox(height: 2),
-          Text(l10n.noHotelText, style: AppText.label),
+          Text(l10n.noHotelText, style: WPTextStyle.label),
           const SizedBox(height: 12),
-          WaypointButton(
+          WPButton(
             l10n.addFromEmail,
             small: true,
             primary: false,
@@ -459,15 +459,15 @@ final class const _MeetingCard(final MeetingItem item) extends StatelessWidget {
         children: [
           _CardHead(l10n.meeting),
           const SizedBox(height: 4),
-          Text(meeting.title, style: AppText.title),
+          Text(meeting.title, style: WPTextStyle.title),
           const SizedBox(height: 2),
-          WaypointSwapText(
+          WPSwapText(
             l10n.meetingTimes(
               l10n.time(meeting.start),
               l10n.time(meeting.end),
               meeting.place.split(',').first,
             ),
-            style: AppText.label,
+            style: WPTextStyle.label,
           ),
           _Was(moved ? l10n.dayTime(booked.start) : null),
         ],
@@ -488,7 +488,7 @@ final class const _Card({
     final marked = context.select<MarksCubit, bool>(
       (marks) => marks.state.ids.contains(id),
     );
-    return WaypointCard(
+    return WPCard(
       onTap: onTap,
       marked: marked,
       padding: const .fromLTRB(16, 12, 14, 14),
@@ -502,9 +502,8 @@ final class const _CardHead(final String label, {final String? trailing})
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Expanded(child: Text(label, style: AppText.label)),
-      if (trailing case final text?)
-        WaypointSwapText(text, style: AppText.label),
+      Expanded(child: Text(label, style: WPTextStyle.label)),
+      if (trailing case final text?) WPSwapText(text, style: WPTextStyle.label),
     ],
   );
 }
@@ -520,7 +519,7 @@ final class const _Was(final String? was) extends StatelessWidget {
         padding: const .only(top: 6),
         child: Text(
           context.l10n.was(text),
-          style: AppText.label.merge(AppText.struck),
+          style: WPTextStyle.label.merge(WPTextStyle.struck),
         ),
       ),
       null => const SizedBox(width: double.infinity),

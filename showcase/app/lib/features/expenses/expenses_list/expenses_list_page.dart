@@ -26,11 +26,11 @@ final class const ExpensesListPage({super.key}) extends StatelessWidget {
     final reports = context.watch<ReportsCubit>();
     final l10n = context.l10n;
 
-    return WaypointTabPage(
+    return WPTabPage(
       title: l10n.expensesTitle,
       above: l10n.expensesAbove,
       children: [
-        if (past.isEmpty) Text(l10n.expensesNone, style: AppText.label),
+        if (past.isEmpty) Text(l10n.expensesNone, style: WPTextStyle.label),
         for (final trip in past)
           Padding(
             padding: const .only(bottom: 12),
@@ -51,21 +51,21 @@ final class const _ReportCard(
     final receipts = reports.receipts(trip.id).length;
     final l10n = context.l10n;
     final status = switch (report.submitted) {
-      final confirmation? => WaypointNote(
+      final confirmation? => WPNote(
         Icons.check_rounded,
         l10n.reportSubmittedLine(l10n.money(report.total), confirmation.value),
       ),
-      null => WaypointNote(
+      null => WPNote(
         Icons.receipt_long_rounded,
         l10n.reportToSubmit(receipts),
         tone: .ai,
       ),
     };
 
-    return WaypointListCard(
+    return WPListCard(
       onTap: () =>
           context.router.navigate(ExpensesReportRoute(tripId: trip.id.value)),
-      border: report.submitted == null ? Palette.aiLine : Palette.line,
+      border: report.submitted == null ? WPColors.aiLine : WPColors.line,
       title: trip.city.toUpperCase(),
       subtitle: l10n.dayRange(
         trip.booked.outbound.departs,

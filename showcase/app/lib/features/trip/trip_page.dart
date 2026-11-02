@@ -115,12 +115,13 @@ final class const _TripContent() extends StatelessWidget {
     child: Reasker(
       child: BlocPresentationListener<MarksCubit, MarksPresentationEvent>(
         listener: _revealChanged,
-        child: WaypointPage(
+        child: WPPage(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final beside = constraints.maxWidth >= Widths.readable;
+              final beside = constraints.maxWidth >= WPWidths.readable;
               final wide =
-                  constraints.maxWidth - Widths.sidePanel >= Widths.readable;
+                  constraints.maxWidth - WPWidths.sidePanel >=
+                  WPWidths.readable;
               final trip = Column(
                 crossAxisAlignment: .stretch,
                 children: [
@@ -136,7 +137,7 @@ final class const _TripContent() extends StatelessWidget {
                           beside ? 36 : 20,
                           24,
                         ),
-                        child: FlipArea(
+                        child: WPFlipArea(
                           child: Column(
                             crossAxisAlignment: .stretch,
                             children: [
@@ -145,7 +146,7 @@ final class const _TripContent() extends StatelessWidget {
                               const ArrivalEntry(),
                               const TripWarnings(),
                               SizedBox(height: wide ? 22 : 10),
-                              if (wide) const WaypointDivider(),
+                              if (wide) const WPDivider(),
                               ItineraryView(wide: wide),
                             ],
                           ),
@@ -162,9 +163,9 @@ final class const _TripContent() extends StatelessWidget {
                   crossAxisAlignment: .stretch,
                   children: [
                     Expanded(child: trip),
-                    const WaypointDivider(vertical: true),
+                    const WPDivider(vertical: true),
                     const SizedBox(
-                      width: Widths.sidePanel - 1,
+                      width: WPWidths.sidePanel - 1,
                       child: AssistantPanel(),
                     ),
                   ],
