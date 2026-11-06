@@ -436,10 +436,10 @@ packages:
     dependency: "direct dev"
     description:
       name: leancode_lint
-      sha256: "23148aecd1a7b9cbf1c435dc3423a86875f15f76ff020e13fa901138d428b444"
+      sha256: "5563f15c2e298bfce5c7cfd8dea5050261fc1f4bd74349a9aa85c6e2a616cd55"
       url: "https://pub.dev"
     source: hosted
-    version: "27.0.0"
+    version: "28.0.0"
   logging:
     dependency: transitive
     description:
@@ -524,10 +524,10 @@ packages:
     dependency: transitive
     description:
       name: pigeon
-      sha256: "9c4b979de1ed662c8f66a921b7b42ab31c366da5141f3996590c52a8a70baf74"
+      sha256: "9d355b97019c8278498fd5d89b63ea346cdfa740ab128c342a7968e61fdafd0c"
       url: "https://pub.dev"
     source: hosted
-    version: "29.0.11"
+    version: "29.1.0"
   pool:
     dependency: transitive
     description:
