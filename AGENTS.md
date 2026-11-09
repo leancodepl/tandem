@@ -26,6 +26,7 @@ fvm dart format --set-exit-if-changed .
 (cd fixtures/kit_ds && fvm dart run build_runner build) && (cd fixtures/greenhouse_app && fvm dart run build_runner build)
 (cd packages/tandem && fvm dart run pigeon --input pigeons/apple_api.dart && fvm dart format lib test)  # the Swift bridge's API
 (cd example && fvm flutter test)
+(cd packages/tandem && fvm flutter test --platform chrome && fvm flutter test --platform chrome --wasm) && (cd example && fvm flutter test --platform chrome && fvm flutter build web --wasm)
 (cd fixtures/greenhouse_app && fvm flutter test)
 (cd showcase/packages/waypoint_design_system && fvm flutter gen-l10n) && (cd showcase/packages/waypoint_travel && fvm dart run build_runner build && fvm flutter test) && (cd showcase/packages/waypoint_scripted_agent && fvm flutter test) && (cd showcase/app && fvm flutter gen-l10n && fvm dart run build_runner build && fvm flutter test)  # then git diff --exit-code
 bash tool/check_apple.sh                           # macOS 26+, no inference

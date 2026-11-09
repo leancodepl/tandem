@@ -561,7 +561,7 @@ To send the user's token, give `HttpAgentConnection` an `http.Client` that adds 
 
 ## Project status
 
-Each release of Tandem is checked on iOS and Android. Other platforms are outside this release gate. Apple's on-device connection remains experimental and has separate requirements and manual checks.
+Each release of Tandem is checked on iOS and Android. For the web, CI runs the tests of `tandem` and the example in Chrome and builds the example with WebAssembly. Other platforms are outside these checks. Apple's on-device connection remains experimental and has separate requirements and manual checks.
 
 Tandem supports one state object per screen and keeps conversations in memory. Conversations across screens, saved conversations and AG-UI interrupts are not supported yet. An interrupt fails the run. The next message starts a new AG-UI thread, while existing chat items remain visible.
 
