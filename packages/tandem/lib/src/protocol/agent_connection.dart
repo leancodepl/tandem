@@ -23,6 +23,26 @@ abstract interface class AgentConnection {
   Stream<JsonObject> run(JsonObject input);
 }
 
+/// An [AgentConnection] whose transport can tell the server to stop a run,
+/// such as with the cancel message of a WebSocket protocol.
+///
+/// When the user stops a run that still streams, the session calls [stop]
+/// once and goes on reading the run. The server must still end the run on
+/// that stream, with `RUN_FINISHED` and the outcome `cancelled` or with
+/// `RUN_ERROR`. Both end a stopped run quietly, and the session still reports
+/// the code and message of a `RUN_ERROR`. If [stop] throws, a `RUN_ERROR`
+/// fails the run. A stream that ends without either counts as a lost
+/// connection, so a transport that can only close should not implement this.
+/// Dispose does not call [stop]: it cancels the run's stream.
+// ignore: use_primary_constructors
+abstract interface class StoppableAgentConnection implements AgentConnection {
+  /// Tells the server to stop the run that [run] started with [input], the
+  /// same object. The cancel message names that run. Return without an error
+  /// also when the server ended the run already or has not seen it yet. The
+  /// session does not wait for it, and reports its error.
+  Future<void> stop(JsonObject input);
+}
+
 /// Talks to an AG-UI endpoint over HTTP and reads the run's events as
 /// server-sent events. Give it a [client] that adds headers, such as the
 /// user's token.

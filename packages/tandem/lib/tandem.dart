@@ -67,7 +67,7 @@ export 'src/genui/agent_catalog.dart'
 export 'src/genui/tandem_view.dart' show TandemView;
 export 'src/protocol/ag_ui_run.dart' show agUiRun;
 export 'src/protocol/agent_connection.dart'
-    show AgentConnection, HttpAgentConnection;
+    show AgentConnection, HttpAgentConnection, StoppableAgentConnection;
 export 'src/protocol/on_device_agent.dart'
     show OnDeviceAgent, OnDeviceAvailability, OnDeviceErrorCode;
 export 'src/session/approvals.dart' show ApprovalCallback, TandemApprovals;

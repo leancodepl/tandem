@@ -77,7 +77,7 @@ What a session does now: idle, thinking, calling a method, awaiting approval or 
 _Avoid_: state, running, busy
 
 **Stop**:
-The user's end of a run. The run is still read to its end, but its later text is hidden and none of its remaining calls runs.
+The user's end of a run. The run is still read to its end, but its later text is hidden and none of its remaining calls runs. When the connection can, it also tells the server to stop.
 _Avoid_: abort, disconnect
 
 **In-app agent**:

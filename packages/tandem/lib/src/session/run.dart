@@ -1,8 +1,10 @@
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
+import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/view_tool.dart';
@@ -20,9 +22,17 @@ final class Run(
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
 
+  /// The body the connection got, which a Stop sends back to it.
+  late final JsonObject input;
+
   /// The calls that run in the app.
   final calls = <String, ToolCall>{};
   bool stopped = false;
+
+  /// Whether the connection was told to stop the run on its server and did
+  /// not fail, so a `RUN_ERROR` may be the server's answer.
+  bool get toldToStop => _toldToStop;
+  var _toldToStop = false;
 
   /// Whether what the agent sees differed from what this run sent, at any
   /// check since it started, even when it changed back.
@@ -43,6 +53,22 @@ final class Run(
   /// The id of the latest call of a tool that is not a listed method, until
   /// the agent's next text or call, or its result.
   String? _used;
+
+  /// Tells the server of [connection] to stop this run, if the connection
+  /// can and the server has not ended the run yet. Reports the error of a
+  /// connection that fails to.
+  Future<void> stopOnServer(AgentConnection connection) async {
+    if (ended || connection is! StoppableAgentConnection) {
+      return;
+    }
+    _toldToStop = true;
+    try {
+      await connection.stop(input);
+    } catch (err, st) {
+      _toldToStop = false;
+      report(err, st);
+    }
+  }
 
   /// Adds the [text] to the agent's message. Returns the message as it grew
   /// and the one it replaces, null for a new message.
