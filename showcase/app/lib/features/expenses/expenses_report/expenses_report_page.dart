@@ -236,6 +236,7 @@ final class const _SubmitBar({required final bool busy}) extends HookWidget {
           ),
           (final request?, _) => WPApproval(
             l10n.reportAskToSubmit(l10n.money(form.total)),
+            key: ValueKey(request.key),
             onApprove: () => _decide(() => session.approve(request)),
             onReject: () => _decide(() => session.reject(request)),
           ),

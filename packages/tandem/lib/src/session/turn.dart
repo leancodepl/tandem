@@ -116,7 +116,7 @@ final class Turn(final List<ToolCall> calls) {
   }
 
   ToolCall? _pendingCall(ApprovalRequest request) => calls
-      .where((call) => call.pending && call.id == request.toolCallId)
+      .where((call) => call.pending && call.request?.key == request.key)
       .firstOrNull;
 
   List<ToolCall> _decideUndecided(ApprovalStatus status) {

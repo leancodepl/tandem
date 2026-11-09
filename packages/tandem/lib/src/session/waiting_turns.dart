@@ -65,7 +65,7 @@ final class WaitingTurns() {
   /// The turn that [request] belongs to. A request of no turn that waits gets
   /// the agent's turn, which finds no pending call for it.
   Turn turnOf(ApprovalRequest request) => _others.values.firstWhere(
-    (turn) => turn.calls.any((call) => call.id == request.toolCallId),
+    (turn) => turn.calls.any((call) => call.request?.key == request.key),
     orElse: () => _agent,
   );
 
