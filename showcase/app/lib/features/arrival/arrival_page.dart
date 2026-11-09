@@ -178,6 +178,7 @@ final class const _ApprovalBar() extends StatelessWidget {
           includeBottomInset: false,
           child: WPApproval(
             context.l10n.ask(request, cubit.day),
+            key: ValueKey(request.key),
             onApprove: () => _decide(() => session.approve(request)),
             onReject: () => _decide(() => session.reject(request)),
           ),
