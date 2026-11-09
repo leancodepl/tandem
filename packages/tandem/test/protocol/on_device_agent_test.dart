@@ -1,3 +1,8 @@
+// The bridge runs only on iOS and macOS. On the web, Pigeon's codec lacks
+// Int64, and a test gets no answer to a platform message.
+@TestOn('vm')
+library;
+
 import 'dart:async';
 import 'dart:convert';
 

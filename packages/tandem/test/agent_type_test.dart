@@ -18,25 +18,29 @@ void main() {
     expect(AgentType.list(page).name, 'Pair<String, C?>[]');
   });
 
-  test('an int refuses a whole double past 2^53 - 1, not an exact int', () {
+  test('integer arguments reject imprecise whole JSON numbers', () {
     T read<T>(AgentType<T> type, String json) =>
         type.read(jsonDecode(json), const AgentReading('n', objects: .fields));
 
     expect(read(.integer, '9007199254740991.0'), 9007199254740991);
-    expect('${read(.integer, '9007199254740993')}', '9007199254740993');
     expect(read(.number, '1e30'), 1e30);
     expect(read(.nullable(AgentType.numeric), '1e30'), 1e30);
+    final refused = throwsA(
+      isA<ToolCallRefused>().having(
+        (error) => error.message,
+        'message',
+        startsWith('n: expected int, got '),
+      ),
+    );
     for (final type in <AgentType<int?>>[.integer, .nullable(.integer)]) {
-      expect(
-        () => read(type, '9007199254740993.0'),
-        throwsA(
-          isA<ToolCallRefused>().having(
-            (error) => error.message,
-            'message',
-            'n: expected int, got 9007199254740992.0',
-          ),
-        ),
-      );
+      expect(() => read(type, '9007199254740993.0'), refused);
+    }
+
+    // Dart compiled to JavaScript rounds this integer while decoding JSON.
+    if (identical(0, 0.0)) {
+      expect(() => read(.integer, '9007199254740993'), refused);
+    } else {
+      expect(read(.integer, '9007199254740993').toString(), '9007199254740993');
     }
   });
 
