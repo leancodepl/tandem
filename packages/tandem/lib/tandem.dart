@@ -80,5 +80,6 @@ export 'src/session/tandem_event.dart'
 export 'src/session/tandem_scope.dart' show TandemScope;
 export 'src/session/tandem_session.dart' show TandemSession;
 export 'src/session/tandem_thread.dart' show TandemThread;
+export 'src/session/thread_id.dart' show ThreadId;
 export 'src/tandem_agent.dart' show TandemAgent, TandemCatalog, TandemInput;
 export 'src/tool_args.dart' show ToolArgs;
