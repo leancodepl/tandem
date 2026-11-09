@@ -397,6 +397,51 @@ void main() {
     expect(agent.requests, hasLength(2));
   });
 
+  for (final (ending, end) in [
+    (
+      'the outcome cancelled',
+      {
+        'type': 'RUN_FINISHED',
+        'outcome': {'type': 'cancelled'},
+      },
+    ),
+    ('RUN_ERROR', {'type': 'RUN_ERROR', 'message': 'Cancelled.'}),
+  ]) {
+    test('Stop tells a stoppable connection once, and the run its server ends '
+        'with $ending stops quietly', () async {
+      final connection = _StoppableAgent(end);
+      final session = open(connection)..send('go');
+      await pumpEventQueue();
+
+      session
+        ..stop()
+        ..stop();
+      expect(session.status, isA<Stopping>());
+      await pumpEventQueue();
+
+      expect(connection.stopped, [connection.requests.single]);
+      expect(session.status, isA<Idle>());
+      expect(_shown(session.items), [('user', 'go'), ChatNoticeKind.stopped]);
+      expect(events, [isA<RunStopped>()]);
+    });
+  }
+
+  test('a run the server cancels on its own does not tell a stoppable '
+      'connection to stop', () async {
+    final connection = _StoppableAgent(const {
+      'type': 'RUN_FINISHED',
+      'outcome': {'type': 'cancelled'},
+    });
+    open(connection).send('go');
+    await pumpEventQueue();
+
+    await connection.end();
+    await pumpEventQueue();
+
+    expect(connection.stopped, isEmpty);
+    expect(events, [isA<RunStopped>()]);
+  });
+
   test(
     'a ToolCallRefused is refused, others are reported; the next message works',
     () async {
@@ -2239,6 +2284,32 @@ final class _ThrowsFirst(final ScriptedAgent _agent)
       throw StateError('No token.');
     }
     return _agent.run(input);
+  }
+}
+
+/// Keeps its run open until a Stop or [end], then ends it with [ending], as
+/// an AG-UI server with a cancel message does.
+final class _StoppableAgent(final Map<String, Object?> ending)
+    implements StoppableAgentConnection {
+  final requests = <Map<String, Object?>>[];
+  final stopped = <Map<String, Object?>>[];
+  final _events = StreamController<Map<String, Object?>>();
+
+  @override
+  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
+    requests.add(input);
+    return _events.stream;
+  }
+
+  @override
+  Future<void> stop(Map<String, Object?> input) async {
+    stopped.add(input);
+    await end();
+  }
+
+  Future<void> end() async {
+    _events.add(ending);
+    await _events.close();
   }
 }
 
