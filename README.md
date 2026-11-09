@@ -566,6 +566,8 @@ For another transport, such as a WebSocket, implement `AgentConnection`. In `run
 
 The connection handles timeouts and cleans up that request when the session cancels the stream, as when the session is disposed during a run. Stop does not cancel the stream: the session reads the stopped run to its end. `HttpAgentConnection` fails a run whose transport goes quiet for 60 seconds.
 
+A connection whose transport can cancel a run, such as a WebSocket protocol with a cancel message, can implement `StoppableAgentConnection`. On `session.stop()`, unless the server ended the run already, the session calls its `stop` once with the run's input. It still reads the run until the server ends it with `RUN_FINISHED` and the outcome `cancelled`, or with `RUN_ERROR`. Both end the stopped run quietly, and the session still reports the code and message of a `RUN_ERROR`. After a `stop` that threw, a `RUN_ERROR` fails the run. A stream that ends without either counts as a lost connection, so a transport that can only close should not implement it.
+
 ## Project status
 
 Each release of Tandem is checked on iOS and Android. For the web, CI runs the tests of `tandem` and the example in Chrome and builds the example with WebAssembly. Other platforms are outside these checks. Apple's on-device connection remains experimental and has separate requirements and manual checks.
