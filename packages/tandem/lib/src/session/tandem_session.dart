@@ -774,17 +774,14 @@ final class TandemSession({
   };
 
   /// The app may hold an older copy of [request], with an older status.
-  ApprovalRequest _latest(ApprovalRequest request) =>
-      _items.whereType<ApprovalRequest>().lastWhere(
-        (item) => item.toolCallId == request.toolCallId,
-        orElse: () => request,
-      );
+  ApprovalRequest _latest(ApprovalRequest request) => _items
+      .whereType<ApprovalRequest>()
+      .lastWhere((item) => item.key == request.key, orElse: () => request);
 
   void _showDecision(ToolCall call) {
     if (call.request case final decided?) {
       final shown = _items.indexWhere(
-        (item) =>
-            item is ApprovalRequest && item.toolCallId == decided.toolCallId,
+        (item) => item is ApprovalRequest && item.key == decided.key,
       );
       _items[shown] = decided;
     }

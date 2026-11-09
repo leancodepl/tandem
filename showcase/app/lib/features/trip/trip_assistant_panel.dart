@@ -201,7 +201,7 @@ final class const _Thread({final bool shrinkWrap = false})
           // A card of another call at the same index gets a new state.
           final ApprovalRequest request => ApprovalCard(
             request,
-            key: ValueKey((session, request.toolCallId)),
+            key: ValueKey((session, request.key)),
           ),
         },
         for (final step in steps)

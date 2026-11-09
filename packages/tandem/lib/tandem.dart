@@ -31,6 +31,7 @@ export 'src/agent_type.dart'
 export 'src/chat/chat_item.dart'
     show
         AgentMessage,
+        ApprovalKey,
         ApprovalRequest,
         ApprovalStatus,
         ChatItem,

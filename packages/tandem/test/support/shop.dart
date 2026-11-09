@@ -29,6 +29,7 @@ final class Shop() implements AgentSurface {
 
   /// Makes [agentCapabilities] throw, as a bug in the list would.
   bool listThrows = false;
+  bool asksBeforeAdding = false;
 
   @override
   List<AgentCapability> get agentCapabilities {
@@ -37,7 +38,7 @@ final class Shop() implements AgentSurface {
     }
     return [
       .sees(items),
-      .calls(add),
+      if (asksBeforeAdding) .callsWithApproval(add) else .calls(add),
       .calls(removeAt),
       .calls(refresh),
       if (items.isNotEmpty) .callsWithApproval(clear),

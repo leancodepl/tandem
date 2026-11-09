@@ -63,7 +63,7 @@ final class const OrderChatScreen({super.key}) extends StatelessWidget {
 }
 ```
 
-[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. `approvals: const .fromState()` lets the chat draw the card for `place_order`, and [`showOrderMessages`](https://github.com/leancodepl/tandem/blob/main/example/lib/order_messages.dart) shows a snackbar when the order is placed or a run fails. Start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
+[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. `approvals: const .fromState()` lets the chat draw the card for `place_order`. Use `request.key` for each card so it keeps its identity when the status changes. [`showOrderMessages`](https://github.com/leancodepl/tandem/blob/main/example/lib/order_messages.dart) shows a snackbar when the order is placed or a run fails. Start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
 
 One line in `main()` lets your coding agent, such as Claude Code, fill the same screens while the app runs in debug, with the skill `tandem-coding-agent`:
 

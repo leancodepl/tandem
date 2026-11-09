@@ -2,7 +2,9 @@ import 'package:tandem/src/chat/chat_item.dart';
 
 /// Thrown by `approve` and `reject` for a request that no longer waits for
 /// the user: one that was invalidated, cancelled or decided the other way.
-/// [request] has its current status.
+/// [request] has its current status. Also thrown for a request the session
+/// did not issue, such as one built with `ApprovalRequest()`. [request] then
+/// has the status it was built with.
 final class const ApprovalNotPending(final ApprovalRequest request)
     implements Exception {
   @override

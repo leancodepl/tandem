@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
 import 'package:tandem/src/session/caller.dart';
 
 /// Immutable: the session replaces an item to change it.
@@ -64,10 +65,15 @@ enum ApprovalStatus() {
   cancelled,
 }
 
+/// The identity of an [ApprovalRequest] in the app. Two keys are equal only
+/// for one request and its copies with another status, also when a backend
+/// repeats the request's `toolCallId`.
+extension type ApprovalKey._(Object _identity) implements Object;
+
 /// A call of a method listed with `.callsWithApproval`.
-final class const ApprovalRequest({
-  /// The id of the call. It stays the same when the status changes, so a UI
-  /// can key the request's card by it.
+final class const ApprovalRequest._({
+  /// The id of the tool call on the wire. A backend can repeat it in a later
+  /// run, so key a card by [key].
   required final String toolCallId,
 
   /// The method's name in snake_case.
@@ -77,11 +83,52 @@ final class const ApprovalRequest({
   /// own text, picked by [tool].
   required final String description,
   required final String _argumentsJson,
-  final ApprovalStatus status = .pending,
+  required final ApprovalStatus status,
 
   /// Who asked, so the card can say what happens next.
-  final Caller caller = .inAppAgent,
+  required final Caller caller,
+  required final ApprovalKey? _key,
 }) extends ChatItem {
+  /// A request for tests and previews. The session never decides it, and its
+  /// [key] matches only this request and its copies from [withStatus].
+  const new({
+    required String toolCallId,
+    required String tool,
+    required String description,
+    required String argumentsJson,
+    ApprovalStatus status = .pending,
+    Caller caller = .inAppAgent,
+  }) : this._(
+         toolCallId: toolCallId,
+         tool: tool,
+         description: description,
+         argumentsJson: argumentsJson,
+         status: status,
+         caller: caller,
+         key: null,
+       );
+
+  @internal
+  new issued({
+    required String toolCallId,
+    required String tool,
+    required String description,
+    required String argumentsJson,
+    required Caller caller,
+  }) : this._(
+         toolCallId: toolCallId,
+         tool: tool,
+         description: description,
+         argumentsJson: argumentsJson,
+         status: .pending,
+         caller: caller,
+         key: ApprovalKey._(Object()),
+       );
+
+  /// The local identity of this request. Use it for widget keys and caches.
+  /// The same request keeps its key when its status changes.
+  ApprovalKey get key => _key ?? ApprovalKey._(this);
+
   /// Decoded again on every read, so changing the map changes nothing the
   /// method gets.
   Map<String, Object?> get arguments =>
@@ -89,12 +136,13 @@ final class const ApprovalRequest({
 
   /// A copy with [status], as the session makes when it decides. A test can
   /// use it for a request in any status.
-  ApprovalRequest withStatus(ApprovalStatus status) => ApprovalRequest(
+  ApprovalRequest withStatus(ApprovalStatus status) => ApprovalRequest._(
     toolCallId: toolCallId,
     tool: tool,
     description: description,
     argumentsJson: _argumentsJson,
     status: status,
     caller: caller,
+    key: key,
   );
 }
