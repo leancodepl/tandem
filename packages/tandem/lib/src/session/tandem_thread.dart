@@ -8,17 +8,23 @@ import 'package:tandem/src/session/tandem_session.dart';
 /// again: its chat, and the AG-UI thread with its messages and the agent's
 /// state. It lives in memory.
 ///
-/// One session goes on with it at a time: the newest. A run that breaks
-/// off, `session.startOver()`, a screen that changed while no session had
-/// it, and a session closed while a run is open or an approved method runs
-/// move it to a new AG-UI thread. The chat stays.
-final class TandemThread() {
+/// One session goes on with it at a time: the newest. Starting over clears
+/// the local history and agent state. The chat stays. A thread with an ID
+/// from the app keeps that ID. After `session.startOver()` or a screen change
+/// between sessions, it also keeps completed calls whose answers are still
+/// waiting to go out.
+final class TandemThread({
+  /// The AG-UI thread id of a conversation that the backend keeps, such as
+  /// its own conversation id. Every run sends it, and Tandem never changes
+  /// it. Without it, Tandem picks one.
+  String? id,
+}) {
   /// Oldest first.
   @internal
   final items = <ChatItem>[];
 
   @internal
-  final agUiThread = AgUiThread();
+  final agUiThread = AgUiThread(id: id);
 
   TandemSession? _session;
 

@@ -29,14 +29,14 @@ final class const RunStopped() extends TandemEvent;
 
 /// A run ended with an error, or the app's agent list threw. The error goes
 /// to `FlutterError.reportError`. After a run Tandem cannot follow, such as
-/// one that ends with an interrupt, the next message goes to a new thread,
-/// without the earlier history.
+/// one that ends with an interrupt, the next message goes without the
+/// earlier history, to a new thread unless the app gave the thread's id.
 final class const RunFailed({
   /// The `code` of the backend's `RUN_ERROR`, or one of Tandem's own. Null
   /// when the error has none, such as when the agent list threw.
   final RunErrorCode? code,
 }) extends TandemEvent;
 
-/// A run broke off. The next message goes to a new thread, without the
-/// earlier history.
+/// A run broke off. The next message goes without the earlier history, to a
+/// new thread unless the app gave the thread's id.
 final class const ConnectionLost() extends TandemEvent;

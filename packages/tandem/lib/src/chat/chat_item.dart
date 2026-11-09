@@ -31,14 +31,14 @@ enum ChatNoticeKind() {
 
   /// The run ended with an error, or the app's agent list threw. After a
   /// run Tandem cannot follow, such as one that ends with an interrupt, the
-  /// next message starts a new conversation.
+  /// next message goes without the earlier history.
   runFailed,
 
-  /// The run broke off; the next message starts a new conversation.
+  /// The run broke off; the next message goes without the earlier history.
   connectionLost,
 
-  /// The app called `session.startOver`; the agent no longer has the
-  /// messages above.
+  /// The thread cleared its local history, such as after `session.startOver`.
+  /// A backend with an app-supplied thread ID may still have the conversation.
   startedOver,
 }
 

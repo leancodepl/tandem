@@ -21,7 +21,7 @@ One screen's time with a thread, from opening the screen to closing it, as a `Ta
 _Avoid_: conversation
 
 **Thread**:
-The conversation of a screen with the agent, as a `TandemThread`: the chat, and the AG-UI thread with its messages and the agent state. The app can keep it and give it to the next session of the screen. A run that breaks off and `startOver` move it to a new AG-UI thread, and the chat stays.
+The conversation of a screen with the agent, as a `TandemThread`: the chat, and the AG-UI thread with its messages and the agent state. The app can keep it and give it to the next session of the screen. A reset clears the local history and agent state. The chat stays. Tandem rotates an ID it generated and keeps an ID the app supplied.
 _Avoid_: history
 
 **Run**:

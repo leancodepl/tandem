@@ -576,6 +576,88 @@ void main() {
     expect(_lines(agent.requests.last), ['user: again']);
   });
 
+  for (final reopen in [false, true]) {
+    test('an app-id thread sends unsent results with their calls after '
+        '${reopen ? 'reopening on a changed screen' : 'startOver'}', () async {
+      shop.add('milk');
+      final agent = ScriptedAgent([
+        (_) => const [
+          AgentStep.say('Checking the list.'),
+          AgentStep.stateSnapshot({'step': 1}),
+          AgentStep.callTool('refresh'),
+          AgentStep.callTool('clear'),
+        ],
+        (_) => const [AgentStep.say('Kept.')],
+      ]);
+      final thread = TandemThread(id: 'case-5411');
+      final first =
+          (reopen ? openToClose(thread, agent) : open(agent, thread: thread))
+            ..send('clear it');
+      await pumpEventQueue();
+      expect(_card(first).status, ApprovalStatus.pending);
+
+      final TandemSession next;
+      if (reopen) {
+        first.dispose();
+        shop.add('eggs');
+        next = open(agent, thread: thread);
+      } else {
+        first.startOver();
+        next = first;
+      }
+      next.send('keep it');
+      await pumpEventQueue();
+
+      expect(_card(next).status, ApprovalStatus.cancelled);
+      expect(
+        next.items.whereType<ChatNotice>().single.kind,
+        ChatNoticeKind.startedOver,
+      );
+      expect(shop.refreshes, 1);
+      expect(shop.items, contains('milk'));
+      final [firstRun, secondRun] = agent.requests;
+      expect(secondRun['threadId'], firstRun['threadId']);
+      expect(secondRun['state'], isEmpty);
+      expect(_lines(secondRun), [
+        'asst-call-1 refresh {}',
+        'asst-call-2 clear {}',
+        'tool-call-1 null',
+        'tool-call-2 {"status":"cancelled"}',
+        'user: keep it',
+      ]);
+    });
+  }
+
+  test('an app-id thread that started over and closed before the next message '
+      'starts over only once on a changed screen', () async {
+    shop.add('milk');
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('clear')],
+      (_) => const [AgentStep.say('Kept.')],
+    ]);
+    final thread = TandemThread(id: 'case-5411');
+    final first = openToClose(thread, agent)..send('clear it');
+    await pumpEventQueue();
+    expect(_card(first).status, ApprovalStatus.pending);
+
+    first
+      ..startOver()
+      ..dispose();
+    shop.add('eggs');
+    final next = open(agent, thread: thread)..send('keep it');
+    await pumpEventQueue();
+
+    expect(
+      next.items.whereType<ChatNotice>().single.kind,
+      ChatNoticeKind.startedOver,
+    );
+    expect(_lines(agent.requests.last), [
+      'asst-call-1 clear {}',
+      'tool-call-1 {"status":"cancelled"}',
+      'user: keep it',
+    ]);
+  });
+
   test('a throwing onEvent is reported; the next message works', () async {
     final agent = ScriptedAgent([
       (_) => const [
@@ -1507,6 +1589,45 @@ void main() {
     open(agent, thread: thread).send('b');
     await pumpEventQueue();
     expect(agent.requests[1]['threadId'], agent.requests[0]['threadId']);
+  });
+
+  test('a broken run keeps the app ID and clears state and answers '
+      'that may have reached the backend', () async {
+    _collectReports();
+    shop.add('milk');
+    final response = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.stateSnapshot({'step': 1}),
+        AgentStep.callTool('clear'),
+      ],
+      (_) => [AgentStep.waitFor(response.future)],
+      (_) => const [AgentStep.say('Back')],
+    ]);
+    final session = open(agent, thread: TandemThread(id: 'case-5411'))
+      ..send('a');
+    await pumpEventQueue();
+    session.send('b');
+    await pumpEventQueue();
+
+    response.completeError(StateError('Connection lost.'));
+    await pumpEventQueue();
+    session.send('c');
+    await pumpEventQueue();
+
+    expect(agent.requests.map((run) => run['threadId']), [
+      'case-5411',
+      'case-5411',
+      'case-5411',
+    ]);
+    expect(_lines(agent.requests[1]), [
+      'user: a',
+      'asst-call-1 clear {}',
+      'tool-call-1 {"status":"cancelled"}',
+      'user: b',
+    ]);
+    expect(_lines(agent.requests[2]), ['user: c']);
+    expect(agent.requests[2]['state'], isEmpty);
   });
 
   test('wake starts a run with a message from the app, which waits while a '
