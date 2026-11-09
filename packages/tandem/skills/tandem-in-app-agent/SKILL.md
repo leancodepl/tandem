@@ -39,8 +39,9 @@ TandemScope(
 ```
 
 - Read the address from the app's configuration, as the app reads its other servers.
-- The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk, ag-ui-langgraph and Pydantic AI do not on their own; the agents in `example/agents` show how) and accept `tools` on every run. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement in both entitlement files.
+- The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk, ag-ui-langgraph and Pydantic AI do not on their own; the agents in `example/agents` show how) and accept `tools` on every run. Its `RUN_STARTED` must repeat the input's `threadId` and `runId`, as these three adapters do. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement in both entitlement files.
 - For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field.
+- For another transport, implement an `AgentConnection` whose `run` passes `agUiRun(input)` only the decoded frames of that run's request, with an `input` that carries the IDs the server will echo. Follow the [transport rules](https://github.com/leancodepl/tandem#the-agent-backend) for routing, timeouts and cancellation. Pass the connection to `TandemScope.connected` and keep it in a field.
 
 For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connected` as `connection`; calling it in `build` is fine. Offer it only when `await OnDeviceAgent.apple().availability()` is `available`. On `RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)`, call `session.startOver()`. [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).
 
