@@ -1,6 +1,7 @@
 import 'package:example/agent_chat.dart';
 import 'package:example/desk/data/emails.dart';
 import 'package:example/desk/ui/order_desk_app.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
@@ -71,7 +72,7 @@ void main() {
       final url = find.widgetWithText(TextField, 'Agent URL');
       expect(
         tester.widget<TextField>(url).controller?.text,
-        'http://10.0.2.2:8000/agent',
+        kIsWeb ? 'http://localhost:8000/agent' : 'http://10.0.2.2:8000/agent',
       );
 
       await tester.enterText(url, 'not a URL');
