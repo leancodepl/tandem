@@ -31,6 +31,8 @@ fvm dart format --set-exit-if-changed .
 (cd showcase/packages/waypoint_design_system && fvm flutter gen-l10n) && (cd showcase/packages/waypoint_travel && fvm dart run build_runner build && fvm flutter test) && (cd showcase/packages/waypoint_scripted_agent && fvm flutter test) && (cd showcase/app && fvm flutter gen-l10n && fvm dart run build_runner build && fvm flutter test)  # then git diff --exit-code
 bash tool/check_apple.sh                           # macOS 26+, no inference
 (cd example/agents/adk && uv sync --locked && uv run ruff check . ../order-desk ../adk-streaming && uv run ruff format --check . ../order-desk ../adk-streaming && uv run pytest)  # and lang-graph, pydantic-ai without ../adk-streaming
+(cd example/agents/adk && TANDEM_FAKE_LLM=1 uv run order-agent)  # in its own terminal; and lang-graph, pydantic-ai
+(cd example && fvm flutter test test/desk/agent_server_test.dart --dart-define=AGENT_URL=http://127.0.0.1:8000/agent)  # while that agent runs
 (cd showcase/agent && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run pytest)
 ```
 
@@ -47,7 +49,7 @@ CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` a
 - Few tests. One focused test per behaviour or fixed defect, in the existing test file when there is one. No test that restates the implementation. Integration tests use Patrol.
 - build_runner stays 2.16.x. leancode_lint 28 lints the `.g.dart` files too.
 - Before writing a helper, look for it in Dart, Flutter or a maintained package. A new dependency of `packages/tandem` lands in every app. The PR says why it is worth that and what it pulls in.
-- Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`). A change to what the model reads, such as a tool description, an instruction or the schema, says in the PR how it was checked on a real model.
+- Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`). `example/test/desk/agent_server_test.dart` runs the order desk over a real socket against an agent in `example/agents`, which plays its scripted model. A change to what the model reads, such as a tool description, an instruction or the schema, says in the PR how it was checked on a real model.
 - A tool that Tandem itself offers the agent starts with `tandem_`. The app's methods name the other tools, so the prefix keeps the two apart.
 - When the API changes, change `README.md`, `packages/tandem/README.md` (a copy, except the media under "Try it without a key"), `packages/tandem/example/example.md`, the skills in `packages/tandem/skills` and `skills/tandem`, the code in `example` that they quote, and `showcase`. When a session rule changes, change `doc/design.md`.
 - Never read, print or create a `.env` file. No API keys in the repo.

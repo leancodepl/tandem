@@ -282,7 +282,7 @@ jobs:
   result:
     name: Test and analyze
 
-    needs: [changes, analyze, test, web, codegen, publish, agent, showcase-agent]
+    needs: [changes, analyze, test, web, codegen, publish, agent, agent-client, showcase-agent]
     if: ${{ !cancelled() }}
 
     runs-on: ubuntu-latest
@@ -346,6 +346,66 @@ jobs:
       # The tests play the order desk with the scripted model: no API key, no network.
       - name: Test the agent
         run: uv run pytest
+
+  # The agent's tests use a Python client. This job plays the same script
+  # with Tandem's own client, so it runs on a change to either side.
+  agent-client:
+    name: Play the order desk with the ${{ matrix.agent }} agent
+
+    needs: changes
+    if: needs.changes.outputs.dart == 'true' || needs.changes.outputs.agent == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: [adk, lang-graph, pydantic-ai]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: '0.12.23'
+          python-version: '3.14'
+          working-directory: example/agents/${{ matrix.agent }}
+
+      - name: Download Python dependencies
+        run: uv sync --locked
+        working-directory: example/agents/${{ matrix.agent }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.x
+          cache: true
+
+      - name: Download pub dependencies
+        run: flutter pub get
+
+      # The scripted model: no API key, no network. The server keeps running
+      # for the next steps.
+      - name: Start the agent
+        run: TANDEM_FAKE_LLM=1 uv run order-agent > "$RUNNER_TEMP/agent.log" 2>&1 &
+        working-directory: example/agents/${{ matrix.agent }}
+
+      # Any HTTP status, here 405 for a GET, means the server listens.
+      - name: Wait for the agent
+        run: curl --silent --show-error --max-time 5 --output /dev/null --retry 60 --retry-delay 1 --retry-connrefused http://127.0.0.1:8000/agent
+
+      - name: Play the order desk against the agent
+        run: flutter test test/desk/agent_server_test.dart --run-skipped --dart-define=AGENT_URL=http://127.0.0.1:8000/agent
+        working-directory: example
+
+      - name: Show the agent's log
+        if: failure()
+        run: cat "$RUNNER_TEMP/agent.log"
 
   showcase-agent:
     name: Test and lint the showcase agent
