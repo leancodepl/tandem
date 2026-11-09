@@ -152,6 +152,48 @@ jobs:
         env:
           TZ: Europe/Warsaw
 
+  web:
+    name: Test in Chrome and build for the web
+
+    needs: changes
+    if: needs.changes.outputs.dart == 'true'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.x
+          cache: true
+
+      - name: Download pub dependencies
+        run: flutter pub get
+
+      # flutter test finds the runner's Google Chrome and runs it headless.
+      - name: Test tandem in Chrome
+        run: flutter test --platform chrome
+        working-directory: packages/tandem
+
+      # Wasm keeps 64-bit ints and JS does not, so both compilers run.
+      - name: Test tandem in Chrome with Wasm
+        run: flutter test --platform chrome --wasm
+        working-directory: packages/tandem
+
+      - name: Test example in Chrome
+        run: flutter test --platform chrome
+        working-directory: example
+
+      - name: Build the example for the web
+        run: flutter build web --wasm
+        working-directory: example
+
   codegen:
     name: Check the generated code
 
@@ -240,7 +282,7 @@ jobs:
   result:
     name: Test and analyze
 
-    needs: [changes, analyze, test, codegen, publish, agent, showcase-agent]
+    needs: [changes, analyze, test, web, codegen, publish, agent, showcase-agent]
     if: ${{ !cancelled() }}
 
     runs-on: ubuntu-latest
