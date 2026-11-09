@@ -44,7 +44,7 @@ CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` a
 - No `Widget _buildX()` methods: write a private `StatelessWidget` with a const constructor.
 - The code explains itself. Write a comment only for a why the code cannot show (a protocol quirk, an upstream bug, an invariant), in one short line, with a link when there is one. A doc comment says more than the name and type, or it is not written. In `example`, only the code that shows Tandem gets comments. The same holds for the Python agent: docstrings only where they add something, type hints, ruff clean. It reads the environment once, through `Settings`.
 - Few tests. One focused test per behaviour or fixed defect, in the existing test file when there is one. No test that restates the implementation. Integration tests use Patrol.
-- build_runner stays 2.16.x. leancode_lint 27 lints the `.g.dart` files too.
+- build_runner stays 2.16.x. leancode_lint 28 lints the `.g.dart` files too.
 - Before writing a helper, look for it in Dart, Flutter or a maintained package. A new dependency of `packages/tandem` lands in every app. The PR says why it is worth that and what it pulls in.
 - Nothing talks to a real model. Tests use `ScriptedAgent`, and the agent's tests use its scripted model (`Settings(fake_llm=True)`). A change to what the model reads, such as a tool description, an instruction or the schema, says in the PR how it was checked on a real model.
 - A tool that Tandem itself offers the agent starts with `tandem_`. The app's methods name the other tools, so the prefix keeps the two apart.
