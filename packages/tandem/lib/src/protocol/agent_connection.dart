@@ -4,20 +4,22 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
-import 'package:tandem/src/protocol/chunk_events.dart';
+import 'package:tandem/src/protocol/ag_ui_run.dart';
 import 'package:tandem/src/protocol/sse.dart';
 
 /// One AG-UI run per call, over a transport or a fake agent.
 // The experimental lint asks for a primary constructor on an interface too.
 // ignore: use_primary_constructors
 abstract interface class AgentConnection {
-  /// Starts a run with [input] and streams it as decoded JSON.
+  /// Starts a run with [input] and streams its events as decoded JSON. The
+  /// stream closes after `RUN_FINISHED` or `RUN_ERROR`. An earlier end or
+  /// stream error means the run broke.
   ///
-  /// Skips replayed runs, expands text and tool-call chunks, and closes after
-  /// `RUN_FINISHED` or `RUN_ERROR`. An ambiguous chunk fails with a
-  /// [FormatException]. An earlier end or stream error means the run broke.
-  /// Cancelling aborts even pending response headers and waits for cleanup.
-  /// Drain a stopped run to keep the agent's thread consistent.
+  /// A connection to an AG-UI server passes [agUiRun] with [input] only the
+  /// decoded frames of this run's request. Cancelling the stream ends the
+  /// request, even before the response arrives, and waits for its cleanup.
+  /// The session does not cancel a stopped run: it reads it to the end, to
+  /// keep the agent's thread consistent.
   Stream<JsonObject> run(JsonObject input);
 }
 
@@ -78,8 +80,7 @@ final class HttpAgentConnection(
       // Delegation keeps cancellation responsive while waiting for events.
       yield* parseSse(bytes)
           .map((event) => jsonDecode(event) as JsonObject)
-          .transform(_requestedRun(input))
-          .expand(ChunkExpander().call);
+          .transform(agUiRun(input));
     } on http.RequestAbortedException {
       // The caller cancelled the run: nobody is left to hear of it.
     } finally {
@@ -106,54 +107,4 @@ final class HttpAgentConnection(
       ..addError(TimeoutException('No bytes from the agent', _idleTimeout))
       ..close();
   }
-}
-
-// Closing the sink cancels a response the server may leave open.
-StreamTransformer<JsonObject, JsonObject> _requestedRun(JsonObject input) {
-  var acceptingEvents = input[AgUiFields.runId] is! String;
-  var awaitingRunStart = true;
-
-  return StreamTransformer.fromHandlers(
-    handleData: (event, sink) {
-      if (event[AgUiFields.type] == AgUiEventTypes.runStarted) {
-        awaitingRunStart = false;
-        acceptingEvents = _isRequestedRun(event, input: input);
-      }
-
-      final isOpeningError =
-          awaitingRunStart && _isRunErrorFor(event, input: input);
-      if (acceptingEvents || isOpeningError) {
-        sink.add(event);
-        if (event[AgUiFields.type]
-            case AgUiEventTypes.runFinished || AgUiEventTypes.runError) {
-          sink.close();
-        }
-      }
-    },
-  );
-}
-
-bool _isRequestedRun(JsonObject event, {required JsonObject input}) {
-  if (input[AgUiFields.runId] is! String) {
-    return true;
-  }
-
-  return event[AgUiFields.runId] == input[AgUiFields.runId] &&
-      event[AgUiFields.threadId] == input[AgUiFields.threadId];
-}
-
-bool _isRunErrorFor(JsonObject event, {required JsonObject input}) {
-  if (event[AgUiFields.type] != AgUiEventTypes.runError) {
-    return false;
-  }
-  if (event.containsKey(AgUiFields.runId) &&
-      event[AgUiFields.runId] != input[AgUiFields.runId]) {
-    return false;
-  }
-  if (event.containsKey(AgUiFields.threadId) &&
-      event[AgUiFields.threadId] != input[AgUiFields.threadId]) {
-    return false;
-  }
-
-  return true;
 }
