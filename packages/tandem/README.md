@@ -559,6 +559,8 @@ On the web, configure CORS to allow the app's origin. The reference agents do no
 
 To send the user's token, give `HttpAgentConnection` an `http.Client` that adds the token, then pass the connection to `TandemScope.connected`. Keep the connection in a field, because a new connection starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the backend.
 
+A connection whose transport can cancel a run, such as a WebSocket protocol with a cancel message, can implement `StoppableAgentConnection`. On `session.stop()`, unless the server ended the run already, the session calls its `stop` once with the run's input. It still reads the run until the server ends it with `RUN_FINISHED` and the outcome `cancelled`, or with `RUN_ERROR`, and both end the stopped run quietly. A stream that ends without either counts as a lost connection, so a transport that can only close should not implement it.
+
 ## Project status
 
 Each release of Tandem is checked on iOS and Android. For the web, CI runs the tests of `tandem` and the example in Chrome and builds the example with WebAssembly. Other platforms are outside these checks. Apple's on-device connection remains experimental and has separate requirements and manual checks.

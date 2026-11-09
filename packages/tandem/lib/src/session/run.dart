@@ -20,6 +20,9 @@ final class Run(
   /// The agent's messages as the chat shows them, by message id.
   final texts = <String, AgentMessage>{};
 
+  /// The body the connection got, which a Stop sends back to it.
+  late final JsonObject input;
+
   /// The calls that run in the app.
   final calls = <String, ToolCall>{};
   bool stopped = false;

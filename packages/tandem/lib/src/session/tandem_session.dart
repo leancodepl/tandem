@@ -186,8 +186,9 @@ final class TandemSession({
   /// Stops the open run: its later text is hidden, none of its remaining
   /// calls runs, and no run follows it. The run is still read to its end,
   /// because ADK goes on anyway and only that keeps the thread consistent.
-  /// Does nothing unless [status] is [Thinking] or [Calling] a method the
-  /// user did not approve.
+  /// A [StoppableAgentConnection] is also told to stop the run on its
+  /// server, once, unless the server ended it already. Does nothing unless
+  /// [status] is [Thinking] or [Calling] a method the user did not approve.
   void stop() {
     final run = _run;
     if (run == null || run.stopped) {
@@ -201,6 +202,7 @@ final class TandemSession({
     }
     notifyListeners();
     _emit(const RunStopped());
+    unawaited(_stopOnServer(run));
   }
 
   /// Calls the method of [request]. Once it returned, the next request of
@@ -422,13 +424,13 @@ final class TandemSession({
     try {
       final listing = AgentListing.of(_surface);
       final run = _run = Run(listing, view: _offeredView(listing));
-      final input = _agUiThread.input(
+      run.input = _agUiThread.input(
         tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
         userText: _queue.text,
       );
       _runSubscription = _connection
-          .run(input)
+          .run(run.input)
           .listen(
             (json) {
               try {
@@ -498,7 +500,12 @@ final class TandemSession({
       case RunError(:final code, :final message):
         run.ended = true;
         _agUiThread.addFailedRun(run);
-        _runFailed(AgentRunException(code, message), .current);
+        // A server may end a run it was told to stop with RUN_ERROR.
+        if (run.stopped && _connection is StoppableAgentConnection) {
+          _endRunAndGoOn();
+        } else {
+          _runFailed(AgentRunException(code, message), .current);
+        }
       case _:
     }
   }
@@ -704,6 +711,18 @@ final class TandemSession({
   void _emit(TandemEvent event) {
     try {
       _onEvent?.call(event);
+    } catch (err, st) {
+      report(err, st);
+    }
+  }
+
+  Future<void> _stopOnServer(Run run) async {
+    final connection = _connection;
+    if (run.ended || connection is! StoppableAgentConnection) {
+      return;
+    }
+    try {
+      await connection.stop(run.input);
     } catch (err, st) {
       report(err, st);
     }
