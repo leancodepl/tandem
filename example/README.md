@@ -17,8 +17,8 @@ cd example
 fvm flutter run
 ```
 
-Choose an iOS simulator, an Android emulator or a connected device. For desktop, run
-`fvm flutter run -d macos`.
+Choose an iOS simulator, an Android emulator or a connected device. On macOS, run
+`fvm flutter run -d macos`. In Chrome, run `fvm flutter run -d chrome`.
 
 Tap the sample e-mail in the chat, and the agent fills the order and draws a summary below it with
 `TandemView` and the desk's own widgets. Change a quantity, then place the order from the summary or
@@ -48,6 +48,8 @@ TANDEM_FAKE_LLM=1 uv run order-agent
 Tap **Use backend** and enter the agent's URL:
 
 - iOS simulator, or macOS on the same Mac: `http://localhost:8000/agent`.
+- Chrome on the same computer: `http://localhost:8000/agent`. Add CORS middleware to the example
+  backend to allow the browser's origin.
 - Android emulator: `http://10.0.2.2:8000/agent`.
 - Physical device: your computer's address on the local network. Start the backend with
   `TANDEM_HOST=0.0.0.0 TANDEM_FAKE_LLM=1 uv run order-agent` and allow port 8000 through your
@@ -72,8 +74,8 @@ For a real model, Ollama or Gemini, see [agents/README.md](agents/README.md#run)
 fvm flutter run -d macos -t lib/main_apple.dart
 ```
 
-For an iPhone, select it instead of `macos`. Unlike the order desk's script, this asks the real
-model.
+For an iPhone, select it instead of `macos`. This asks Apple's on-device model, which is unavailable
+on the web.
 
 An invoice list with a search field. Search for `May invoice` and four invoices match their titles. Turn on smart input with the brain, enter `Archive invoices issued in May` and press Return. Now six invoices match by their issue date, two of them without May in the title. Nothing is archived until you choose **Archive**, and **Undo** brings the invoices back.
 
@@ -88,5 +90,4 @@ fvm flutter create --empty --platforms=windows .
 fvm flutter run -d windows
 ```
 
-For Linux, use `linux`. For a browser, use `--platforms=web` and `-d chrome`. The example backend
-has no CORS middleware, so a browser build cannot reach it without adding one.
+For Linux, use `linux`.
