@@ -1,13 +1,14 @@
 name: tandem
-description: Makes an existing Flutter screen agent-aware over AG-UI. The agent sees what its state class lists and calls its methods; important actions wait for approval.
+description: Add an AI agent to a Flutter screen with AG-UI. Choose which data and methods to expose and which calls need approval. Render A2UI components with your widgets.
 version: 0.3.0
+homepage: https://tandem.leancode.co
 repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem
 issue_tracker: https://github.com/leancodepl/tandem/issues
 topics:
   - ai
   - agent
-  - llm
   - ag-ui
+  - a2ui
   - generative-ai
 
 # The plugin registers only on iOS and macOS. Remote connections work on every
