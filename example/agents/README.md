@@ -76,3 +76,9 @@ uv run pytest
 ```
 
 In `adk`, both ruff commands also take `../adk-streaming`. The tests of [order-desk/tests](order-desk/tests) play the script over HTTP with the scripted model, through a client that keeps the thread the way Tandem's session does ([tandem_thread.py](order-desk/tests/tandem_thread.py)). Each agent runs them, and its own tests in `tests`. The ADK agent also runs the tests of [adk-streaming](adk-streaming/tests). CI runs the checks for each agent.
+
+CI also plays the order desk against each agent with Tandem's own client, in [agent_server_test.dart](../test/desk/agent_server_test.dart). It runs only with the URL of an agent that plays the scripted model. In `example`, while the agent runs:
+
+```sh
+fvm flutter test test/desk/agent_server_test.dart --dart-define=AGENT_URL=http://127.0.0.1:8000/agent
+```
