@@ -4,22 +4,22 @@ import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/agent_state.dart';
 import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
+import 'package:tandem/src/session/thread_id.dart';
 import 'package:tandem/src/session/turn.dart';
-import 'package:uuid/uuid.dart';
 
 /// The AG-UI thread of a `TandemThread`: its id, and the messages and the
 /// agent's state that every run sends again.
-final class AgUiThread() {
-  var _id = const Uuid().v4();
+final class AgUiThread(var ThreadId _id) {
   final _messages = <AgUiMessage>[];
+  final _unsentCallMessages = <AgUiMessage>[];
   final agentState = AgentState();
 
   /// What the screen gave the agent when the last session of the thread let
-  /// it go, null for a thread without history.
+  /// it go, null for a thread without history beyond its unsent calls.
   SeesSnapshot? get seenAtLeave => _seenAtLeave;
   SeesSnapshot? _seenAtLeave;
 
-  String get id => _id;
+  String get id => _id.value;
 
   /// The user's message of the last [input], until its run goes out.
   AgUiMessage? _outgoing;
@@ -35,7 +35,7 @@ final class AgUiThread() {
     _outgoing = userText == null ? null : .user(userText);
     agentState.startRun();
     return RunInput(
-      threadId: _id,
+      threadId: _id.value,
       messages: [..._messages, ?_outgoing],
       state: agentState.value,
       tools: tools,
@@ -43,8 +43,10 @@ final class AgUiThread() {
     );
   }
 
-  /// The run of the last [input] went out, with the user's message.
+  /// The run of the last [input] went out, with the user's message and
+  /// any buffered tool answers.
   void wentOut() {
+    _unsentCallMessages.clear();
     if (_outgoing case final message?) {
       _messages.add(message);
     }
@@ -62,25 +64,23 @@ final class AgUiThread() {
       if (message.text == null && calls.isEmpty) {
         continue;
       }
-      _messages
-        ..add(
-          .assistant(
-            message.id,
-            text: message.text,
-            toolCalls: [
-              for (final call in calls)
-                AgUiToolCall(call.id, call.tool, call.arguments),
-            ],
-          ),
-        )
-        ..addAll([
-          for (final call in calls)
-            if (call.result case ToolCallResult(
-              :final messageId,
-              :final content,
-            ))
-              .toolResult(messageId, call.id, content),
-        ]);
+      final messages = <AgUiMessage>[
+        .assistant(
+          message.id,
+          text: message.text,
+          toolCalls: [
+            for (final call in calls)
+              AgUiToolCall(call.id, call.tool, call.arguments),
+          ],
+        ),
+        for (final call in calls)
+          if (call.result case ToolCallResult(:final messageId, :final content))
+            .toolResult(messageId, call.id, content),
+      ];
+      _messages.addAll(messages);
+      if (_hasAppId && calls.any((call) => call.inApp)) {
+        _unsentCallMessages.addAll(messages);
+      }
     }
   }
 
@@ -92,19 +92,40 @@ final class AgUiThread() {
   ]);
 
   /// The session that went on with the thread lets it go while the screen
-  /// gives the agent [seen].
-  void leave(SeesSnapshot seen) =>
-      _seenAtLeave = _messages.isEmpty ? null : seen;
+  /// gives the agent [seen]. The unsent calls are part of the history, and
+  /// alone they do not tie the thread to [seen].
+  void leave(SeesSnapshot seen) => _seenAtLeave =
+      _messages.length > _unsentCallMessages.length ? seen : null;
 
   /// The answers of [turn], for the next run.
-  void addAnswers(Turn turn) => _messages.addAll(turn.answers);
+  void addAnswers(Turn turn) {
+    final answers = turn.answers;
+    _messages.addAll(answers);
+    if (_hasAppId) {
+      _unsentCallMessages.addAll(answers);
+    }
+  }
 
-  /// A new thread without the earlier messages and state, for when what ADK
-  /// kept of a run is unknown.
-  void startOver() {
-    _id = const Uuid().v4();
+  /// Clears the local history and state. An app-supplied id stays. Set
+  /// [keepUnsentCalls] after closing a known turn to keep its calls and
+  /// answers for the next run under that id.
+  void startOver({bool keepUnsentCalls = false}) {
+    _id = switch (_id) {
+      AppThreadId() => _id,
+      GeneratedThreadId() => GeneratedThreadId(),
+    };
     _messages.clear();
+    if (keepUnsentCalls) {
+      _messages.addAll(_unsentCallMessages);
+    } else {
+      _unsentCallMessages.clear();
+    }
     agentState.clear();
     _seenAtLeave = null;
   }
+
+  /// Whether the app supplied the id. The backend then still holds the
+  /// conversation after a reset, so the thread keeps the calls whose answers
+  /// have not gone out.
+  bool get _hasAppId => _id is AppThreadId;
 }

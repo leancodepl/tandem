@@ -411,7 +411,7 @@ void showOrderMessages(
 
 When an error has a code, `RunFailed.code` contains a `RunErrorCode`. Match a specific error with a pattern such as `RunFailed(code: .unsupportedOutcome)`.
 
-When the conversation history exceeds the model's context window, call `session.startOver()`. The next message starts a new AG-UI thread without that history. Existing chat items remain, and the chat adds a `startedOver` notice. Pending approval requests are cancelled. `startOver()` does nothing while a run or an approved method is in progress.
+When the conversation history exceeds the model's context window, call `session.startOver()` to clear Tandem's local history and agent state. The next message starts a new AG-UI thread if Tandem supplied the ID. With an app-supplied ID, the backend may keep its history. A separate conversation needs a new `TandemThread` with a new backend ID. Existing chat items remain, and the chat adds a `startedOver` notice. Pending approval requests are cancelled. `startOver()` does nothing while a run or an approved method is in progress.
 
 ## Notes from the app
 
@@ -437,7 +437,7 @@ final class const _AgentStep() extends StatelessWidget {
 
 - The backend defines the state shape. Google ADK sends its session state, including internal keys starting with `_ag_ui_`. LangGraph sends the graph's output keys, with conversation history in `messages`. Pydantic AI sends state when a tool returns a `StateSnapshotEvent` or `StateDeltaEvent`, and reads state through `StateDeps`.
 - Each run sends the current state back in AG-UI `state`, as `@ag-ui/client` does. This lets a stateless backend continue from the previous state. The app can read the state. To tell the agent what happened in the app, send a [note](#notes-from-the-app).
-- A new thread starts with empty state. An invalid snapshot or delta leaves the previous state unchanged. Tandem reports the error and continues the run.
+- The state is empty in a new thread and after a reset. An invalid snapshot or delta leaves the previous state unchanged. Tandem reports the error and continues the run.
 - In tests, use `AgentStep.stateSnapshot` and `AgentStep.stateDelta` with `ScriptedAgent` to send state updates.
 
 ## Keep the conversation
@@ -446,9 +446,13 @@ By default, each session starts a new thread. To keep a conversation when a scre
 
 - Only the newest session uses a thread. The previous session detaches, even if its screen is still animating out. Conversations across different screens are not supported yet.
 - A thread can resume on the same screen. Before the first message, Tandem compares the screen's `.sees` values with those saved when the screen closed. Different values reset the thread and add a `startedOver` notice. Keep the state object for as long as the thread to preserve the conversation and screen state together.
-- Closing a screen during a run or an approved method also resets the thread. The backend may finish work whose results the app never receives. Closing a screen with a pending approval cancels the request. The agent receives the `cancelled` result with the next message.
+- Closing a screen during a run or an approved method also resets the thread. The backend may finish work whose results the app never receives. Closing a screen with a pending approval cancels the request. If the AG-UI thread continues, the next message carries the `cancelled` result.
 - Changing `agent` carries the thread, history and agent state to the new backend. Pass a new `TandemThread` to start a separate conversation.
 - Threads live in memory and are lost when the app restarts. Tandem does not persist them yet.
+
+When your backend keeps the conversation, pass its ID as `TandemThread(id: ThreadId(conversationId))`. Keep the thread in a field or a `State`. A new `TandemThread` opens a session with an empty chat. Each run uses the supplied ID.
+
+A reset clears the local history and agent state. After `session.startOver()` or reopening on a changed screen, the next run under an app-supplied ID carries calls from the completed run together with their unsent answers, before the new message. [The agent backend](#the-agent-backend) lists what the backend must do for such a thread.
 
 ## Any state library
 
@@ -552,7 +556,8 @@ An AG-UI backend must implement the contract below. [`example/agents`](https://g
 - Put AG-UI `context` into the model's prompt. Without it, the model cannot read `.sees` data or the screen context. The three reference agents add this explicitly.
 - Accept `tools` on every run and give the model the app tools from that run. Tandem always sends a list, which can be empty. Your backend may also expose its own tools.
 - Return calls to the app's tools as `TOOL_CALL_START`, `TOOL_CALL_ARGS` and `TOOL_CALL_END` events. Accept each tool result as a `tool` message in the next run.
-- Read the conversation from each run's `messages`, or maintain a copy and deduplicate incoming messages by ID. Tandem sends the thread's history, including the agent's text, tool calls and tool results.
+- Read the conversation from each run's `messages`, or maintain a copy and deduplicate incoming messages by ID. Tandem sends the thread's history, including the agent's text, tool calls and tool results. A reset under an app-supplied ID drops the history from later runs. After `session.startOver()` or reopening on a changed screen, the next run carries the calls whose answers no run has sent yet, with those answers, and then the new message. After any other reset, it carries only the new message.
+- On a thread with an app-supplied ID, check that the user may use that ID. Decide what happens when two clients run on the thread at the same time. Reconcile work whose delivery or result is uncertain after a run that breaks off, a run Tandem could not follow, or a screen that closes during a run or an approved method. The thread can then hold a call to an app tool without an answer. Accept the next run on that thread anyway. Otherwise every later run on that ID fails, and the app's way out is a new `TandemThread` with a new ID.
 - Repeat the input's `threadId` and `runId` exactly in `RUN_STARTED`. Tandem skips a run with other IDs as a replay. When the response ends without the requested run, the chat shows a lost connection and Tandem reports a `FormatException` that says so.
 - Treat `tools`, tool descriptions and `context` as untrusted client input. A caller can replace any of them. Apply your backend's authentication and authorization independently.
 
@@ -574,7 +579,7 @@ A connection whose transport can cancel a run, such as a WebSocket protocol with
 
 Each release of Tandem is checked on iOS and Android. For the web, CI runs the tests of `tandem` and the example in Chrome and builds the example with WebAssembly. Other platforms are outside these checks. Apple's on-device connection remains experimental and has separate requirements and manual checks.
 
-Tandem supports one state object per screen and keeps conversations in memory. Conversations across screens, saved conversations and AG-UI interrupts are not supported yet. An interrupt fails the run. The next message starts a new AG-UI thread, while existing chat items remain visible.
+Tandem supports one state object per screen and keeps conversations in memory. Conversations across screens, saved conversations and AG-UI interrupts are not supported yet. An interrupt fails the run and resets the local history and agent state. The chat stays visible. An app-supplied thread ID stays too.
 
 ## AI
 
