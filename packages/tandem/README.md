@@ -23,7 +23,7 @@ Run `dart run skills@ add leancodepl/tandem --skill tandem --agent claude`, then
 
 In a new session, `/tandem` starts the same workflow. Claude Code is the only coding agent Tandem is tested with. You can set up Cursor with `--agent cursor` and `.cursor/skills/tandem/SKILL.md`, or Codex with `--agent codex` and `.agents/skills/tandem/SKILL.md`. These setups have not been tested.
 
-Pick a screen. Its state class lists the data an AI agent can read and the methods it can call. Those methods use the same validation as your buttons. Calls marked for approval wait for the user. Add a `TandemView` for the agent to draw a view with your own widgets, such as an order summary with a button to place the order. The integration stays within that screen.
+Pick a screen. Its state class lists the data an AI agent can read and the methods it can call. Those methods use the same validation as your buttons. Calls marked for approval wait for the user. Add a `TandemView` for the agent to draw with A2UI components backed by your own widgets, such as an order summary with a button to place the order. The integration stays within that screen.
 
 ## How it works
 
