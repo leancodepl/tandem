@@ -551,6 +551,7 @@ An AG-UI backend must implement the contract below. [`example/agents`](https://g
 - Accept `tools` on every run and give the model the app tools from that run. Tandem always sends a list, which can be empty. Your backend may also expose its own tools.
 - Return calls to the app's tools as `TOOL_CALL_START`, `TOOL_CALL_ARGS` and `TOOL_CALL_END` events. Accept each tool result as a `tool` message in the next run.
 - Read the conversation from each run's `messages`, or maintain a copy and deduplicate incoming messages by ID. Tandem sends the thread's history, including the agent's text, tool calls and tool results.
+- Repeat the input's `threadId` and `runId` exactly in `RUN_STARTED`. Tandem skips a run with other IDs as a replay. When the response ends without the requested run, the chat shows a lost connection and Tandem reports a `FormatException` that says so.
 - Treat `tools`, tool descriptions and `context` as untrusted client input. A caller can replace any of them. Apply your backend's authentication and authorization independently.
 
 The reference backends also document adapter-specific requirements. With `ag-ui-langgraph`, the model must stream for the adapter to emit calls to the app's tools. These requirements belong to those adapter and model configurations. [Wire rules](https://github.com/leancodepl/tandem/blob/main/doc/design.md#wire-rules) and [Tool answers](https://github.com/leancodepl/tandem/blob/main/doc/design.md#tool-answers) document Tandem's message format.
@@ -558,6 +559,12 @@ The reference backends also document adapter-specific requirements. With `ag-ui-
 On the web, configure CORS to allow the app's origin. The reference agents do not include CORS middleware.
 
 To send the user's token, give `HttpAgentConnection` an `http.Client` that adds the token, then pass the connection to `TandemScope.connected`. Keep the connection in a field, because a new connection starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the backend.
+
+For another transport, such as a WebSocket, implement `AgentConnection`. In `run`, pass `agUiRun(input)` only the decoded frames of this run's request, and end the stream when the transport says the request is over. Route frames by a per-request ID where the transport has one. Routing only by thread or socket mixes an ID-less `RUN_ERROR` or terminal event of an earlier run into the next one, and AG-UI allows a `RUN_ERROR` even after `RUN_FINISHED`. Give `agUiRun` the input with the IDs the server will echo, rewritten if the transport rewrites them, and deduplicate a resumed or reattached stream first.
+
+`agUiRun` skips replayed runs and expands chunk events. If a delta depends on a snapshot from replay, send a `STATE_SNAPSHOT` inside the requested run first. Once the requested run started, another `RUN_STARTED` or an event that names another thread fails the stream with a `FormatException`, because AG-UI does not start a run while one is open. Tandem ends the stream at the first `RUN_FINISHED` or `RUN_ERROR` it passes through, even though [AG-UI allows a later error](https://docs.ag-ui.com/spec/1.0/events/lifecycle#after-a-run-closes).
+
+The connection handles timeouts and cleans up that request when the session cancels the stream, as when the session is disposed during a run. Stop does not cancel the stream: the session reads the stopped run to its end. `HttpAgentConnection` fails a run whose transport goes quiet for 60 seconds.
 
 ## Project status
 
