@@ -39,9 +39,10 @@ import 'package:uuid/uuid.dart';
 /// when it asked, checked on every event of the surface's `changes`.
 ///
 /// One run is open at a time: a message sent meanwhile shows at once and
-/// goes with the next run, after the answers. A run that breaks off moves
-/// the chat to a new AG-UI thread. The chat and the history belong to a
-/// [TandemThread], which the next session of the screen can go on with.
+/// goes with the next run, after the answers. A run that breaks off starts
+/// the thread over without the earlier history. The chat and the history
+/// belong to a [TandemThread], which the next session of the screen can go
+/// on with.
 ///
 /// The app tells the agent what happened outside the chat with [note], and
 /// [wake] lets the agent take a turn on it.
@@ -236,27 +237,29 @@ final class TandemSession({
   bool isPending(ApprovalRequest request) =>
       _waiting.turnOf(request).isPending(request);
 
-  /// Moves the chat to a new AG-UI thread: the next message goes without the
-  /// earlier history, such as after a [RunFailed] whose `code` says the
-  /// history no longer fits the model. The items stay, with a
-  /// [ChatNoticeKind.startedOver] notice, and requests that wait are
-  /// cancelled. A message that never reached the agent goes with the next
-  /// one. Does nothing while a run is open, or once disposed.
+  /// Clears the local history and agent state. The items stay, with a
+  /// [ChatNoticeKind.startedOver] notice, and waiting requests are cancelled.
+  /// A message that never went out goes with the next one.
+  ///
+  /// The next run uses a new AG-UI thread unless the app gave the thread's ID.
+  /// With an app ID, calls and unsent answers from a completed run go first.
+  /// The backend may still have the conversation. Use a new [TandemThread]
+  /// with a new backend ID for a separate conversation.
+  /// Does nothing while a run or approved method is open, or once disposed.
   void startOver() {
     if (_isBusy || _disposed) {
       return;
     }
+    _closeTurn();
     _waiting.cancelAll().forEach(_showDecision);
-    // The new thread has no calls to answer.
-    _waiting.closeAgentTurn();
-    _startThreadOver();
+    _startThreadOver(keepUnsentCalls: true);
     notifyListeners();
   }
 
   /// Cancels the requests that wait, so a later decision throws. Nothing runs,
   /// goes to the agent or notifies after it. The thread keeps the answers of
-  /// the agent's turn for the next session, or moves to a new AG-UI thread
-  /// when a run is open or an approved method runs.
+  /// the agent's turn for the next session, or starts over when a run is
+  /// open or an approved method runs.
   @override
   void dispose() {
     letGoOfThread();
@@ -399,16 +402,14 @@ final class TandemSession({
     _open();
   }
 
-  // A thread goes on only with the screen it left, so the agent never works
-  // from a history that the screen no longer shows.
   void _startOverIfScreenChanged() {
     if (_agUiThread.seenAtLeave case final seen? when seen != _seesNow) {
-      _startThreadOver();
+      _startThreadOver(keepUnsentCalls: true);
     }
   }
 
-  void _startThreadOver() {
-    _agUiThread.startOver();
+  void _startThreadOver({bool keepUnsentCalls = false}) {
+    _agUiThread.startOver(keepUnsentCalls: keepUnsentCalls);
     _items.add(const ChatNotice(.startedOver));
   }
 
