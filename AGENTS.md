@@ -31,6 +31,8 @@ fvm dart format --set-exit-if-changed .
 (cd showcase/packages/waypoint_design_system && fvm flutter gen-l10n) && (cd showcase/packages/waypoint_travel && fvm dart run build_runner build && fvm flutter test) && (cd showcase/packages/waypoint_scripted_agent && fvm flutter test) && (cd showcase/app && fvm flutter gen-l10n && fvm dart run build_runner build && fvm flutter test)  # then git diff --exit-code
 bash tool/check_apple.sh                           # macOS 26+, no inference
 (cd example/agents/adk && uv sync --locked && uv run ruff check . ../order-desk ../adk-streaming && uv run ruff format --check . ../order-desk ../adk-streaming && uv run pytest)  # and lang-graph, pydantic-ai without ../adk-streaming
+(cd example/agents/adk && TANDEM_FAKE_LLM=1 uv run order-agent)  # in its own terminal; and lang-graph, pydantic-ai
+(cd example && fvm flutter test test/desk/agent_server_test.dart --dart-define=AGENT_URL=http://127.0.0.1:8000/agent)  # while that agent runs
 (cd showcase/agent && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run pytest)
 ```
 
