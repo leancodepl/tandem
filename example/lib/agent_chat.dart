@@ -31,15 +31,15 @@ final class _AgentChatState() extends State<AgentChat> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final _newestItem = GlobalKey();
-  (TandemSession, String)? _shownCard;
+  (TandemSession, Object)? _shownCard;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final session = TandemSessionScope.of(context);
-    if (session.items.lastOrNull case ApprovalRequest(:final toolCallId)
-        when _shownCard != (session, toolCallId)) {
-      _shownCard = (session, toolCallId);
+    if (session.items.lastOrNull case ApprovalRequest(:final key)
+        when _shownCard != (session, key)) {
+      _shownCard = (session, key);
       WidgetsBinding.instance.addPostFrameCallback((_) => _showNewestCard());
     }
   }
@@ -166,7 +166,7 @@ final class const _Item(
     final ApprovalRequest request => _ApprovalCard(
       request,
       approvalBuilder,
-      key: ValueKey((session, request.toolCallId)),
+      key: ValueKey((session, request.key)),
     ),
   };
 }

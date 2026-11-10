@@ -230,10 +230,12 @@ Tandem does not include a chat widget. You build the chat with your app's wordin
     final ApprovalRequest request => _ApprovalCard(
       request,
       approvalBuilder,
-      key: ValueKey((session, request.toolCallId)),
+      key: ValueKey((session, request.key)),
     ),
   };
 ```
+
+Use `request.key` for approval cards and any data captured when the request shows. The key stays the same when its status changes. A later approval gets its own key even when the caller reuses a `toolCallId`.
 
 The example's [`AgentChat`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is a complete chat widget you can copy. Its text field calls `session.send(text)`, and its button responds to [the session status](#session-status). The `tandem-in-app-agent` skill helps your coding agent build a chat or a button that sends a message.
 

@@ -796,6 +796,65 @@ void main() {
     expect(_card(session).status, ApprovalStatus.rejected);
   });
 
+  for (final reset in [true, false]) {
+    test('a reused tool call ID needs its own approval after '
+        '${reset ? 'startOver' : 'Reject'}', () async {
+      shop.asksBeforeAdding = true;
+      final agent = _RawFirstRun(
+        Stream.fromIterable([
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'call-1',
+            'toolCallName': 'add',
+          },
+          {
+            'type': 'TOOL_CALL_ARGS',
+            'toolCallId': 'call-1',
+            'delta': '{"item":"bread"}',
+          },
+          {'type': 'RUN_FINISHED'},
+        ]),
+        ScriptedAgent([
+          (_) => const [
+            AgentStep.callTool('add', {'item': 'milk'}),
+          ],
+          (_) => const [],
+        ]),
+      );
+      final session = open(agent)..send('add bread');
+      await pumpEventQueue();
+      final old = _card(session);
+
+      if (reset) {
+        session
+          ..startOver()
+          ..send('add milk');
+      } else {
+        session.reject(old);
+      }
+      await pumpEventQueue();
+      final fresh = session.items.whereType<ApprovalRequest>().last;
+      expect(fresh.toolCallId, old.toolCallId);
+      expect(fresh.key, isNot(old.key));
+      expect(session.isPending(old), isFalse);
+      expect(() => session.approve(old), throwsA(isA<ApprovalNotPending>()));
+      expect(shop.items, isEmpty);
+      expect(session.isPending(fresh), isTrue);
+
+      session.approve(fresh.withStatus(.pending));
+      await pumpEventQueue();
+      expect(shop.items, ['milk']);
+      final oldStatus = reset
+          ? ApprovalStatus.cancelled
+          : ApprovalStatus.rejected;
+      expect(
+        session.items.whereType<ApprovalRequest>().map((card) => card.status),
+        [oldStatus, ApprovalStatus.approved],
+      );
+      expect(session.items.whereType<ApprovalRequest>().last.key, fresh.key);
+    });
+  }
+
   test('a pending card is AwaitingApproval', () async {
     final (session, _) = await askToClear();
 

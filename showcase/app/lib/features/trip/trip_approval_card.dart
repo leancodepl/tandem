@@ -117,7 +117,7 @@ final class const _VoidedLine(final ApprovalRequest request)
     final session = TandemSessionScope.of(context);
     final replaced = session.items
         .whereType<ApprovalRequest>()
-        .skipWhile((item) => item.toolCallId != request.toolCallId)
+        .skipWhile((item) => item.key != request.key)
         .skip(1)
         .isNotEmpty;
     final l10n = context.l10n;

@@ -53,7 +53,7 @@ A property of a component that calls a listed method when the user presses it, o
 _Avoid_: button, callback, handler
 
 **Approval request**:
-A call of a `.callsWithApproval` method by any caller, shown to the user as a card or a dialog, with its arguments frozen. The method runs only after the user approves it. Several in one turn show one at a time.
+A call of a `.callsWithApproval` method by any caller, shown to the user as a card or a dialog, with its arguments frozen. The request's `key` identifies it in the app and stays the same when its status changes. The method runs only after the user approves it. Several in one turn show one at a time.
 _Avoid_: confirmation, interrupt
 
 **Invalidated**:

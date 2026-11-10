@@ -55,7 +55,7 @@ final class ToolCall(
     }
   }
 
-  ApprovalRequest ask() => _request = ApprovalRequest(
+  ApprovalRequest ask() => _request = ApprovalRequest.issued(
     toolCallId: id,
     tool: tool,
     description: description,
