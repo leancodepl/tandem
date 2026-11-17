@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:tandem/src/session/tool_answer.dart';
+import 'package:tandem/src/session/view_tool.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
@@ -350,7 +351,6 @@ void main() {
       },
       {'type': 'TOOL_CALL_START', 'toolCallId': 'c2', 'toolCallName': 'lookup'},
       {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'None.'},
-      {'type': 'TOOL_CALL_START', 'toolCallId': 'c3', 'toolCallName': 'add'},
     ]) {
       stream.add(event);
       await pumpEventQueue();
@@ -1480,6 +1480,7 @@ void main() {
   });
 
   test('the notes stay new when the run that offered them fails', () async {
+    collectReports();
     final agent = ScriptedAgent([
       (_) => const [AgentStep.fail('Out of tokens.')],
       (_) => const [AgentStep.say('Hi.')],
@@ -1496,6 +1497,76 @@ void main() {
         {'note': 'The user opened the cart.'},
       ],
     });
+  });
+
+  test('a run the backend cancels took the notes it offered', () async {
+    final agent = RawFirstRun(
+      Stream.fromIterable([
+        {
+          'type': 'RUN_FINISHED',
+          'outcome': {'type': 'cancelled'},
+        },
+      ]),
+      ScriptedAgent([
+        (_) => const [AgentStep.say('Hi.')],
+      ]),
+    );
+    final session = open(agent)
+      ..note('The user opened the cart.')
+      ..send('hi');
+    await pumpEventQueue();
+    session.send('hi again');
+    await pumpEventQueue();
+
+    expect(appNotesOf(agent.requests[1]), {
+      'earlier': [
+        {'note': 'The user opened the cart.'},
+      ],
+    });
+  });
+
+  test('notes written while a run is open stay new when the notes it offered '
+      'drop out', () async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Again.')],
+    ]);
+    final session = open(agent)
+      ..note('note 1')
+      ..send('hi');
+    await pumpEventQueue();
+    for (var i = 2; i <= 7; i++) {
+      session.note('note $i');
+    }
+    gate.complete();
+    await pumpEventQueue();
+    session.send('again');
+    await pumpEventQueue();
+
+    expect(appNotesOf(agent.requests[1]), {
+      'new': [
+        for (var i = 3; i <= 7; i++) {'note': 'note $i'},
+      ],
+    });
+  });
+
+  test('the text of a run that failed goes back in the history', () async {
+    collectReports();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Half an'), AgentStep.fail('Out of tokens.')],
+      (_) => const [AgentStep.say('Hi.')],
+    ]);
+    final session = open(agent)..send('hi');
+    await pumpEventQueue();
+    session.send('again');
+    await pumpEventQueue();
+
+    expect(linesOf(agent.requests[1]), [
+      'user: hi',
+      'assistant: Half an',
+      'user: again',
+    ]);
   });
 
   test('the agent state follows its snapshots and deltas as they come, also '
@@ -1563,6 +1634,31 @@ void main() {
     await pumpEventQueue();
     expect(session.agentState, {'step': 5});
     expect(summaryOf(session.items).last, ('agent', 'Still here.', false));
+  });
+
+  test('the deltas of the next run apply after a delta that did not', () async {
+    collectReports();
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.stateSnapshot({'step': 1}),
+        AgentStep.stateDelta([
+          {'op': 'replace', 'path': '/missing', 'value': 2},
+        ]),
+        AgentStep.say('Hm.'),
+      ],
+      (_) => const [
+        AgentStep.stateDelta([
+          {'op': 'replace', 'path': '/step', 'value': 2},
+        ]),
+        AgentStep.say('Done.'),
+      ],
+    ]);
+    final session = open(agent)..send('a');
+    await pumpEventQueue();
+    session.send('b');
+    await pumpEventQueue();
+
+    expect(session.agentState, {'step': 2});
   });
 
   test('agent state owns a stable immutable snapshot, including nested '
@@ -1748,6 +1844,26 @@ void main() {
     final next = open(agent, thread: thread)..send('b');
     await pumpEventQueue();
     expect(agent.requests[1]['threadId'], isNot(agent.requests[0]['threadId']));
+    expect(summaryOf(next.items).whereType<ChatNoticeKind>(), [
+      ChatNoticeKind.startedOver,
+    ]);
+  });
+
+  test('startOver forgets what the screen showed when the last session let '
+      'the thread go', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    first.dispose();
+    final next = open(agent, thread: thread)..startOver();
+    shop.add('milk');
+    next.send('b');
+    await pumpEventQueue();
+
     expect(summaryOf(next.items).whereType<ChatNoticeKind>(), [
       ChatNoticeKind.startedOver,
     ]);
@@ -2193,6 +2309,65 @@ void main() {
     expect((await again).status, ToolStatus.returned);
     expect(other.status, ToolStatus.refused);
     expect(mailbox.sent, ['Ana: Hi.']);
+  });
+
+  test("a message cancels the request that shows, and another caller's "
+      'request that waits shows after the run', () async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Not shared.')],
+    ]);
+    final session = open(agent)..send('share it');
+    await pumpEventQueue();
+    final coding = session.callFor(.codingAgent, 'share', {});
+
+    session.send('wait');
+    await pumpEventQueue();
+    session.approve(session.items.whereType<ApprovalRequest>().last);
+
+    expect((await coding).status, ToolStatus.returned);
+    expect(
+      [
+        for (final request in session.items.whereType<ApprovalRequest>())
+          (request.caller, request.status),
+      ],
+      [
+        (Caller.inAppAgent, ApprovalStatus.cancelled),
+        (Caller.codingAgent, ApprovalStatus.approved),
+      ],
+    );
+  });
+
+  test('three refused views in a row, counted since the last that showed, '
+      'withhold the tool until the next message', () async {
+    const fits = AgentStep.callTool(ViewTool.name, {'fits': true});
+    const breaks = AgentStep.callTool(ViewTool.name, {'fits': false});
+    final agent = ScriptedAgent([
+      (_) => const [breaks],
+      (_) => const [fits, breaks],
+      (_) => const [breaks],
+      (_) => const [breaks],
+      (_) => const [AgentStep.say('In text, then.')],
+      (_) => const [AgentStep.say('Hi.')],
+    ]);
+    final session = open(agent)
+      ..attach(_Canvas())
+      ..send('draw');
+    await pumpEventQueue();
+    bool offersView(Map<String, Object?> body) {
+      final {'tools': tools as List<Object?>} = body;
+      return tools.any((tool) => tool is Map && tool['name'] == ViewTool.name);
+    }
+
+    expect(agent.requests.map(offersView), [true, true, true, true, false]);
+    expect(
+      linesOf(agent.requests[4]).last,
+      contains('Answer the user in text.'),
+    );
+
+    session.send('again');
+    await pumpEventQueue();
+    expect(offersView(agent.requests[5]), isTrue);
   });
 
   test('a decision after dispose throws and sends nothing', () async {
@@ -2661,6 +2836,21 @@ final class _Nursery() implements AgentSurface {
 }
 
 final class const _Grower(final String name);
+
+/// A view that shows what the agent sends with `"fits": true`.
+final class _Canvas() implements ViewTool {
+  @override
+  Map<String, Object?> definition(AgentListing listing) => {
+    'name': ViewTool.name,
+    'description': 'Draws a view.',
+    'parameters': {'type': 'object'},
+  };
+
+  @override
+  ToolAnswer show(Map<String, Object?> arguments) => arguments['fits'] == true
+      ? ToolAnswer.shown
+      : .refused('It does not fit.');
+}
 
 /// A screen whose method that needs approval takes two arguments.
 final class _Mailbox() implements AgentSurface {
