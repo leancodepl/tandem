@@ -34,14 +34,13 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
       );
     }
     final scopes = view.scopes(_data);
-    return (
-      view: view,
-      problems: [
-        ...view.propertyProblems,
-        for (final MapEntry(key: component, value: places) in scopes.entries)
-          for (final scope in places) ..._componentProblems(component, scope),
-      ],
-    );
+    // A problem that does not depend on the place shows once.
+    final problems = {
+      ...view.propertyProblems,
+      for (final MapEntry(key: component, value: places) in scopes.entries)
+        for (final scope in places) ..._componentProblems(component, scope),
+    };
+    return (view: view, problems: [...problems]);
   }
 
   List<String> _componentProblems(DrawnComponent component, ViewScope scope) {
@@ -140,25 +139,27 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
     ViewScope scope, {
     required AgentType<Object?>? input,
   }) {
-    final methods = _data.methods.keys.join(', ');
     final method = _data.methods[action?.method];
     if (action == null || method == null) {
       const shape =
           '{"action": {"event": {"name": <method>, "context": '
           '{<parameter>: <value>}}}}';
-      return [
-        '$at: must call a method of the screen, as $shape. Methods: $methods.',
-      ];
+      final listed = _data.methods.keys;
+      final methods = listed.isEmpty
+          ? 'The screen lists no methods: leave the action out.'
+          : 'Methods: ${listed.join(', ')}.';
+      return ['$at: must call a method of the screen, as $shape. $methods'];
     }
     final name = action.method;
     if (input != null && method.needsApproval) {
       final calls = [
         for (final MapEntry(:key, :value) in _data.methods.entries)
           if (!value.needsApproval) key,
-      ].join(', ');
-      return [
-        '$at calls $name, which needs approval. A field calls only $calls.',
       ];
+      final fields = calls.isEmpty
+          ? 'No method takes a field here.'
+          : 'A field calls only ${calls.join(', ')}.';
+      return ['$at calls $name, which needs approval. $fields'];
     }
     final context = action.context;
     if (context == null) {
