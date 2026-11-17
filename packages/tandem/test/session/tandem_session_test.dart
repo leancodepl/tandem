@@ -110,7 +110,7 @@ void main() {
     final messages = messagesOf(connection.requests[1]);
     expect(messages.skip(messages.length - 2), [
       {
-        'id': 'asst-call-2',
+        'id': isA<String>(),
         'role': 'assistant',
         'toolCalls': [
           {
@@ -121,7 +121,7 @@ void main() {
         ],
       },
       {
-        'id': 'tool-call-2',
+        'id': isA<String>(),
         'role': 'tool',
         'toolCallId': 'call-2',
         'content': 'null',
@@ -206,7 +206,12 @@ void main() {
           },
         ],
       },
-      {'id': 'tool-c1', 'role': 'tool', 'toolCallId': 'c1', 'content': 'null'},
+      {
+        'id': isA<String>(),
+        'role': 'tool',
+        'toolCallId': 'c1',
+        'content': 'null',
+      },
     ]);
   });
 
@@ -299,10 +304,16 @@ void main() {
       return messagesOf(requests[1]).skip(1).toList();
     }
 
+    // Tandem gives an answer, and a call without a parent, a new id.
+    List<Map<String, Object?>> withoutIds(List<Map<String, Object?>> history) =>
+        [
+          for (final message in history) {...message}..remove('id'),
+        ];
+
     for (final parent in [true, false]) {
       final expanded = await history(chunks: false, parent: parent);
       final abbreviated = await history(chunks: true, parent: parent);
-      expect(abbreviated, expanded);
+      expect(withoutIds(abbreviated), withoutIds(expanded));
       expect(abbreviated, hasLength(parent ? 3 : 5));
       expect(abbreviated.first['id'], 'm1');
       expect(
@@ -416,8 +427,8 @@ void main() {
     expect(linesOf(agent.requests[1]), [
       'user: go',
       'assistant: Working',
-      'asst-call-1 add {"item":"x"}',
-      'tool-call-1 {"status":"cancelled"}',
+      'call-1 add {"item":"x"}',
+      'call-1 -> {"status":"cancelled"}',
       'user: next',
     ]);
     expect(agent.requests, hasLength(2));
@@ -777,10 +788,10 @@ void main() {
       expect(secondRun['threadId'], firstRun['threadId']);
       expect(secondRun['state'], isEmpty);
       expect(linesOf(secondRun), [
-        'asst-call-1 refresh {}',
-        'asst-call-2 clear {}',
-        'tool-call-1 null',
-        'tool-call-2 {"status":"cancelled"}',
+        'call-1 refresh {}',
+        'call-2 clear {}',
+        'call-1 -> null',
+        'call-2 -> {"status":"cancelled"}',
         'user: keep it',
       ]);
     });
@@ -814,8 +825,8 @@ void main() {
       ChatNoticeKind.startedOver,
     );
     expect(linesOf(agent.requests.last), [
-      'asst-call-1 clear {}',
-      'tool-call-1 {"status":"cancelled"}',
+      'call-1 clear {}',
+      'call-1 -> {"status":"cancelled"}',
       'user: keep it',
     ]);
   });
@@ -836,7 +847,7 @@ void main() {
     await pumpEventQueue();
 
     expect(reported.single.exception, isStateError);
-    expect(linesOf(agent.requests[1]).last, 'tool-call-1 null');
+    expect(linesOf(agent.requests[1]).last, 'call-1 -> null');
 
     session.send('hello?');
     await pumpEventQueue();
@@ -1019,8 +1030,8 @@ void main() {
     expect(agent.requests, hasLength(2));
     expect(linesOf(agent.requests[1]), [
       'user: clear it',
-      'asst-call-1 clear {}',
-      'tool-call-1 null',
+      'call-1 clear {}',
+      'call-1 -> null',
     ]);
     expect(_card(session).status, ApprovalStatus.approved);
     final [AgentCall(:tool, :arguments, :result, :caller)] = agentCalls();
@@ -1039,8 +1050,8 @@ void main() {
 
     expect(linesOf(agent.requests[1]), [
       'user: clear it',
-      'asst-call-1 clear {}',
-      'tool-call-1 {"status":"rejected_by_user"}',
+      'call-1 clear {}',
+      'call-1 -> {"status":"rejected_by_user"}',
     ]);
     expect(shop.items, ['x']);
     expect(_card(session).status, ApprovalStatus.rejected);
@@ -1102,6 +1113,10 @@ void main() {
         [oldStatus, ApprovalStatus.approved],
       );
       expect(session.items.whereType<ApprovalRequest>().last.key, fresh.key);
+      final ids = [
+        for (final message in messagesOf(agent.requests.last)) message['id'],
+      ];
+      expect(ids.toSet(), hasLength(ids.length));
     });
   }
 
@@ -1155,8 +1170,8 @@ void main() {
     await pumpEventQueue();
     expect(linesOf(agent.requests[1]), [
       'user: clear it',
-      'asst-call-1 clear {}',
-      'tool-call-1 ${ToolAnswer.invalidated.content}',
+      'call-1 clear {}',
+      'call-1 -> ${ToolAnswer.invalidated.content}',
       'user: ok',
     ]);
   });
@@ -1213,7 +1228,7 @@ void main() {
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(
       linesOf(agent.requests[1]).last,
-      'tool-call-1 ${ToolAnswer.invalidated.content}',
+      'call-1 -> ${ToolAnswer.invalidated.content}',
     );
   });
 
@@ -1238,7 +1253,7 @@ void main() {
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(
       linesOf(agent.requests[1]).last,
-      'tool-call-1 ${ToolAnswer.invalidated.content}',
+      'call-1 -> ${ToolAnswer.invalidated.content}',
     );
   });
 
@@ -1272,10 +1287,10 @@ void main() {
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
       expect(linesOf(agent.requests[1]), [
         'user: go',
-        'asst-call-1 add {"item":"y"}',
-        'asst-call-2 clear {}',
-        'tool-call-1 null',
-        'tool-call-2 ${ToolAnswer.invalidated.content}',
+        'call-1 add {"item":"y"}',
+        'call-2 clear {}',
+        'call-1 -> null',
+        'call-2 -> ${ToolAnswer.invalidated.content}',
       ]);
 
       signals.complete();
@@ -1363,8 +1378,8 @@ void main() {
     expect(shop.items, isEmpty);
     expect(linesOf(agent.requests[1]), [
       'user: clear it',
-      'asst-call-1 clear {}',
-      'tool-call-1 null',
+      'call-1 clear {}',
+      'call-1 -> null',
     ]);
     expect(summaryOf(session.items), [
       ('user', 'clear it'),
@@ -1382,8 +1397,8 @@ void main() {
     expect(_card(session).status, ApprovalStatus.cancelled);
     expect(linesOf(agent.requests[1]), [
       'user: clear it',
-      'asst-call-1 clear {}',
-      'tool-call-1 {"status":"cancelled"}',
+      'call-1 clear {}',
+      'call-1 -> {"status":"cancelled"}',
       'user: wait',
     ]);
   });
@@ -1409,8 +1424,8 @@ void main() {
     expect(agent.requests, hasLength(2));
     expect(linesOf(agent.requests[1]), [
       'user: add bread',
-      'asst-call-1 add {"item":"bread"}',
-      'tool-call-1 null',
+      'call-1 add {"item":"bread"}',
+      'call-1 -> null',
       'user: no bread after all\n\nand no milk',
     ]);
   });
@@ -1766,8 +1781,8 @@ void main() {
     expect(_card(next).status, ApprovalStatus.cancelled);
     expect(linesOf(agent.requests[1]), [
       'user: clear it',
-      'asst-call-1 clear {}',
-      'tool-call-1 {"status":"cancelled"}',
+      'call-1 clear {}',
+      'call-1 -> {"status":"cancelled"}',
       'user: keep it',
     ]);
   });
@@ -1921,8 +1936,8 @@ void main() {
     ]);
     expect(linesOf(agent.requests[1]), [
       'user: a',
-      'asst-call-1 clear {}',
-      'tool-call-1 {"status":"cancelled"}',
+      'call-1 clear {}',
+      'call-1 -> {"status":"cancelled"}',
       'user: b',
     ]);
     expect(linesOf(agent.requests[2]), ['user: c']);
@@ -1960,10 +1975,10 @@ void main() {
     session.approve(session.items.whereType<ApprovalRequest>().last);
     await pumpEventQueue();
     expect(linesOf(agent.requests[2]).skip(3), [
-      'asst-call-1 share {}',
-      'asst-call-2 share {}',
-      'tool-call-1 null',
-      'tool-call-2 null',
+      'call-1 share {}',
+      'call-2 share {}',
+      'call-1 -> null',
+      'call-2 -> null',
       startsWith('user: The app'),
     ]);
   });
@@ -2022,8 +2037,8 @@ void main() {
     serverReply.complete();
     await pumpEventQueue();
     expect(linesOf(agent.requests[1]).skip(1), [
-      'asst-call-1 share {}',
-      'tool-call-1 null',
+      'call-1 share {}',
+      'call-1 -> null',
       startsWith('user: The app'),
     ]);
     expect(summaryOf(session.items).last, ('agent', 'Shared.', false));
@@ -2099,8 +2114,8 @@ void main() {
 
     expect(_card(session).tool, 'clear');
     expect(linesOf(agent.requests[1]).skip(3), [
-      'tool-call-1 null',
-      'tool-call-2 ${ToolAnswer.invalidated.content}',
+      'call-1 -> null',
+      'call-2 -> ${ToolAnswer.invalidated.content}',
     ]);
   });
 
@@ -2180,8 +2195,8 @@ void main() {
 
     expect(_card(session).status, ApprovalStatus.rejected);
     expect(linesOf(agent.requests[1]).skip(3), [
-      'tool-call-1 {"status":"rejected_by_user"}',
-      'tool-call-2 {"status":"cancelled"}',
+      'call-1 -> {"status":"rejected_by_user"}',
+      'call-2 -> {"status":"cancelled"}',
     ]);
   });
 
@@ -2202,10 +2217,10 @@ void main() {
     expect(agent.requests, hasLength(2));
     expect(linesOf(agent.requests[1]), [
       'user: go',
-      'asst-call-1 refresh {}',
-      'asst-call-2 clear {}',
-      'tool-call-1 null',
-      'tool-call-2 null',
+      'call-1 refresh {}',
+      'call-2 clear {}',
+      'call-1 -> null',
+      'call-2 -> null',
     ]);
   });
 
@@ -2236,7 +2251,7 @@ void main() {
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
       expect(
         linesOf(agent.requests[1]).last,
-        'tool-call-2 ${ToolAnswer.invalidated.content}',
+        'call-2 -> ${ToolAnswer.invalidated.content}',
       );
     },
   );
@@ -2387,10 +2402,10 @@ void main() {
 
       expect(linesOf(connection.requests[1]), [
         'user: go',
-        'asst-c1 add {"item":"x"}',
-        'asst-c2 share {}',
-        'tool-c1 {"status":"cancelled"}',
-        'tool-c2 {"status":"cancelled"}',
+        'c1 add {"item":"x"}',
+        'c2 share {}',
+        'c1 -> {"status":"cancelled"}',
+        'c2 -> {"status":"cancelled"}',
         'user: next',
       ]);
     },
@@ -2446,11 +2461,17 @@ void main() {
       await pumpEventQueue();
       expect(shop.items, ['x']);
       expect(reported, isEmpty);
+      final history = messagesOf(connection.requests[1]).skip(1);
       expect(linesOf(connection.requests[1]).skip(1), [
-        'm1 add {"item":"x"}',
-        'm2 lookup {"q":"x"}',
-        'r1 []',
-        'tool-c1 null',
+        'c1 add {"item":"x"}',
+        'b1 lookup {"q":"x"}',
+        'b1 -> []',
+        'c1 -> null',
+      ]);
+      expect([for (final message in history) message['id']].take(3), [
+        'm1',
+        'm2',
+        'r1',
       ]);
     },
   );
