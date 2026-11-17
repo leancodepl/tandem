@@ -1,7 +1,6 @@
-# Tandem examples
+# Tandem example
 
-Two examples in one app. The order desk runs with a scripted agent, without a backend or an API
-key. The invoice list runs on Apple's on-device model.
+The order desk runs with a scripted agent, without a backend or an API key.
 
 ## Run the order desk
 
@@ -59,27 +58,6 @@ Then tap the sample e-mail. Connecting or resetting starts a new order. **Use sc
 the scripted agent. The rest of the script is in [agents/README.md](agents/README.md#the-script).
 
 For a real model, Ollama or Gemini, see [agents/README.md](agents/README.md#run).
-
-## Smart invoice input with Apple's on-device model
-
-> [!WARNING]
-> Experimental. Apple's on-device model is small, so use it for the simplest tasks, such as one
-> sentence that becomes one call. It is not part of what Tandem checks before a release.
-
-<p align="center">
-  <img src="../doc/imgs/examples/smart-input-film.gif" alt="Two invoices picked by hand, then one sentence finds all six from May on Apple's on-device model, and the app asks before it archives them." width="340">
-</p>
-
-```sh
-fvm flutter run -d macos -t lib/main_apple.dart
-```
-
-For an iPhone, select it instead of `macos`. This asks Apple's on-device model, which is unavailable
-on the web.
-
-An invoice list with a search field. Search for `May invoice` and four invoices match their titles. Turn on smart input with the brain, enter `Archive invoices issued in May` and press Return. Now six invoices match by their issue date, two of them without May in the title. Nothing is archived until you choose **Archive**, and **Undo** brings the invoices back.
-
-The model only reports what the sentence asks for, through one method with a typed argument for each part. The app decides what it supports and finds the invoices. It supports invoices issued in one month and answers anything else with a hint. Each command starts a new session. The model can misread a request, so the card shows what the app found before anything changes. [Requirements and limits](../README.md#apples-on-device-model).
 
 ## Other platforms
 
