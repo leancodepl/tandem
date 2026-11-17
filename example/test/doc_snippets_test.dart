@@ -13,6 +13,8 @@ void main() {
     'README.md',
     'packages/tandem/example/example.md',
     'packages/tandem_generator/example/example.md',
+    'packages/tandem_firebase_ai/README.md',
+    'packages/tandem_firebase_ai/example/example.md',
   ]) {
     test('every snippet of $path is in its file', () {
       final doc = File('../$path').readAsStringSync();

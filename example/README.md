@@ -18,6 +18,8 @@ fvm flutter run
 
 Choose an iOS simulator, an Android emulator or a connected device. On macOS, run
 `fvm flutter run -d macos`. In Chrome, run `fvm flutter run -d chrome`.
+Apple builds of this example require Xcode 26.2 or later for the Firebase SDK.
+The example targets iOS 15 and macOS 12.
 
 Tap the sample e-mail in the chat, and the agent fills the order and draws a summary below it with
 `TandemView` and the desk's own widgets. Change a quantity, then place the order from the summary or
@@ -58,6 +60,57 @@ Then tap the sample e-mail. Connecting or resetting starts a new order. **Use sc
 the scripted agent. The rest of the script is in [agents/README.md](agents/README.md#the-script).
 
 For a real model, Ollama or Gemini, see [agents/README.md](agents/README.md#run).
+
+## Connect directly to Firebase AI Logic
+
+[`main_firebase.dart`](lib/main_firebase.dart) runs the smaller order form with
+Gemini through `tandem_firebase_ai`. It uses the existing `OrderCubit`, chat and
+approval cards. No agent backend is needed.
+
+1. Set up a Firebase project and enable the Gemini Developer API through
+   [Firebase AI Logic](https://firebase.google.com/docs/ai-logic/get-started?platform=flutter).
+2. Register a Firebase app for the platform you will run. Its package or bundle
+   ID must match the example. For native builds, follow the Firebase Flutter
+   platform setup, including the platform configuration files.
+3. Configure [App Check](https://firebase.google.com/docs/ai-logic/app-check).
+   Native debug builds use its debug provider: register the token printed by the
+   SDK in the Firebase console. Release builds use Play Integrity or App Attest
+   with DeviceCheck fallback. Web builds use a reCAPTCHA v3 site key registered
+   for the app's domain. For a local debug build on web, you can instead register
+   an App Check debug token for the test app and set
+   `FIREBASE_APP_CHECK_DEBUG_TOKEN` in your private configuration file.
+4. Put the Firebase app's configuration in a JSON file outside the repository:
+
+   ```json
+   {
+     "FIREBASE_API_KEY": "your Firebase app API key",
+     "FIREBASE_APP_ID": "your Firebase app ID",
+     "FIREBASE_MESSAGING_SENDER_ID": "your messaging sender ID",
+     "FIREBASE_PROJECT_ID": "your project ID",
+     "FIREBASE_MODEL": "your Gemini model name",
+     "FIREBASE_RECAPTCHA_SITE_KEY": "your web site key, omitted for native"
+   }
+   ```
+
+   Use the Firebase app configuration, not a Gemini API key or service-account
+   key. Choose a model available in your project that supports function calling.
+
+From `example`, run:
+
+```sh
+fvm flutter run -t lib/main_firebase.dart --dart-define-from-file=/absolute/path/firebase-example.json
+```
+
+Tap the suggested message. The model adds the monitors, then requests approval
+to place the order. Approve or reject it and read its reply. Try another message,
+then Stop while it answers. If Firebase cannot resume the conversation, tap
+**New conversation**. The order draft stays on screen. `Orders` stores example
+orders in memory; this does not submit a real order.
+
+App Check protects access to the model. Configure project quotas separately.
+The example makes real, potentially billable model requests. Stop cancels the
+client request and prevents remaining app calls; it cannot undo a method that
+already ran or guarantee that server-side generation stopped.
 
 ## Other platforms
 

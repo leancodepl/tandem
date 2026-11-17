@@ -124,6 +124,10 @@ jobs:
         run: flutter test
         working-directory: packages/tandem
 
+      - name: Test tandem_firebase_ai
+        run: flutter test
+        working-directory: packages/tandem_firebase_ai
+
       - name: Test tandem_generator
         run: dart test
         working-directory: packages/tandem_generator
@@ -186,12 +190,24 @@ jobs:
         run: flutter test --platform chrome --wasm
         working-directory: packages/tandem
 
+      - name: Test tandem_firebase_ai in Chrome
+        run: flutter test --platform chrome
+        working-directory: packages/tandem_firebase_ai
+
+      - name: Test tandem_firebase_ai in Chrome with Wasm
+        run: flutter test --platform chrome --wasm
+        working-directory: packages/tandem_firebase_ai
+
       - name: Test example in Chrome
         run: flutter test --platform chrome
         working-directory: example
 
       - name: Build the example for the web
         run: flutter build web --wasm
+        working-directory: example
+
+      - name: Build the Firebase example for the web
+        run: flutter build web --wasm --target lib/main_firebase.dart
         working-directory: example
 
   codegen:
@@ -275,6 +291,12 @@ jobs:
         uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
         with:
           path: packages/tandem_generator
+          dry-run: true
+
+      - name: Dry run pub publish of tandem_firebase_ai
+        uses: leancodepl/mobile-tools/.github/actions/pub-release@0bfd6b4b187d1b99fb2cd5e0e6ea4d626837005f # pub-release-v1
+        with:
+          path: packages/tandem_firebase_ai
           dry-run: true
 
   # The ruleset requires only this check, so it waits for every job, the

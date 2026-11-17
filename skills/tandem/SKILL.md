@@ -49,7 +49,7 @@ The last two came with `tandem` 0.2.1. When one is missing, tell the user that t
 Show the user both paths and ask which they want:
 
 - **A, start here: your coding agent fills a screen.** You fill in a screen of the running debug app, such as a form from an e-mail, through the methods its buttons call. Debug builds only. No backend, no API key, no chat.
-- **B: an in-app agent for the app's users.** The users talk to an agent through a chat, or a button such as "Fill from e-mail". With a strong remote model, the agent can also draw views on the screen with the app's own widgets, through `TandemView`. It needs an AG-UI backend.
+- **B: an in-app agent for the app's users.** The users talk to an agent through a chat, or a button such as "Fill from e-mail". With a strong remote model, the agent can also draw views on the screen with the app's own widgets, through `TandemView`. Use Firebase AI Logic through `tandem_firebase_ai`, or connect an AG-UI backend.
 
 Both need the same base, so B can come later. When the user wants both, do A first.
 

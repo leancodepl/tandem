@@ -29,6 +29,8 @@ Pick a screen. Its state class lists the data an AI agent can read and the metho
 
 ![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies and calls to the app's methods.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
 
+With [tandem_firebase_ai](https://github.com/leancodepl/tandem/tree/main/packages/tandem_firebase_ai), the app connects to Firebase AI Logic directly. Firebase manages access to the model; Tandem keeps the screen, tools and approvals. [Run the Firebase example](https://github.com/leancodepl/tandem/blob/main/example/README.md#connect-directly-to-firebase-ai-logic).
+
 With a remote agent, your backend calls the model and keeps the API key. The app talks to the backend over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Tandem is checked with Google ADK, LangGraph and Pydantic AI. Other AG-UI backends can connect by following [the backend contract](#the-agent-backend).
 
 In a debug build, [your coding agent](#your-coding-agent), such as Claude Code, calls the same methods through `TandemBridge`, with the same checks and approvals.
@@ -184,6 +186,8 @@ An in-app agent works with your app's users, in a chat or behind a button. Set `
       ),
     ),
 ```
+
+For Firebase AI Logic, pass a `FirebaseConnection` from `tandem_firebase_ai` to `TandemScope.connected`. Initialize Firebase and App Check first, and keep the connection outside `build`. The surface, chat and approvals work the same way. [Firebase setup and example](https://github.com/leancodepl/tandem/tree/main/packages/tandem_firebase_ai).
 
 The scope keeps its session across rebuilds. Removing the scope or changing its `agent`, connection or `thread` ends the session. `approvals: const .fromState()` lets the chat draw approval cards. [Events](#events) explains `onEvent`.
 
@@ -539,7 +543,7 @@ On the web, configure CORS to allow the app's origin. The reference agents do no
 
 To send the user's token, give `HttpAgentConnection` an `http.Client` that adds the token, then pass the connection to `TandemScope.connected`. Keep the connection in a field, because a new connection starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the backend.
 
-`OnDeviceAgent` is deprecated and goes away in 0.4.0. Use an AG-UI backend instead.
+`OnDeviceAgent` is deprecated and goes away in 0.4.0. Use Firebase AI Logic through `tandem_firebase_ai` or an AG-UI backend instead.
 
 For another transport, such as a WebSocket, implement `AgentConnection`. In `run`, pass `agUiRun(input)` only the decoded frames of this run's request, and end the stream when the transport says the request is over. Route frames by a per-request ID where the transport has one. Routing only by thread or socket mixes an ID-less `RUN_ERROR` or terminal event of an earlier run into the next one, and AG-UI allows a `RUN_ERROR` even after `RUN_FINISHED`. Give `agUiRun` the input with the IDs the server will echo, rewritten if the transport rewrites them, and deduplicate a resumed or reattached stream first.
 

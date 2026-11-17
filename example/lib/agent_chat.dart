@@ -221,7 +221,7 @@ final class const _Notice(final ChatNoticeKind kind) extends StatelessWidget {
     child: Text(
       switch (kind) {
         .stopped => 'Stopped',
-        .runFailed => 'The agent ran into a problem. Try again.',
+        .runFailed => 'The agent could not finish this request.',
         .connectionLost => 'Connection lost. Starting a new conversation.',
         .startedOver =>
           'New conversation. The agent no longer sees the messages above.',

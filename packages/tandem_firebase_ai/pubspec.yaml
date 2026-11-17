@@ -1,0 +1,36 @@
+name: tandem_firebase_ai
+description: Connect Tandem screens to Firebase AI Logic without an agent server.
+version: 0.1.0
+homepage: https://tandem.leancode.co
+repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem_firebase_ai
+issue_tracker: https://github.com/leancodepl/tandem/issues
+topics:
+  - firebase
+  - ai
+  - agent
+  - ag-ui
+platforms:
+  android:
+  ios:
+  web:
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  firebase_ai: ^5.2.0
+  http: ^1.6.0
+  tandem: ^0.3.2
+  uuid: ^4.6.0
+
+dev_dependencies:
+  firebase_app_check: ^0.5.2
+  firebase_core: ^5.2.0
+  firebase_core_platform_interface: ^8.2.0
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter

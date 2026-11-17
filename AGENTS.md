@@ -5,6 +5,7 @@ Makes an existing Flutter screen agent-aware over AG-UI: the agent sees what the
 ## Layout
 
 - `packages/tandem`: the agent list, the AG-UI connection, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent` and the Agent Skills in `skills/`. This is what apps depend on. It does not depend on bloc and has no chat widget.
+- `packages/tandem_firebase_ai`: the optional Firebase AI Logic connection. The runnable order example starts at `example/lib/main_firebase.dart`. Tests in the package exercise the Firebase SDK through a local HTTP double.
 - `skills/tandem`: the `/tandem` skill that apps install from this repository. It checks the app and hands the work to the package's skills.
 - `packages/tandem_generator`: the builder behind `@TandemAgent()`. It is not a workspace member, so it has its own `pubspec.lock`, which is not committed. The root `pubspec.lock` is committed.
 - `fixtures`: a design system (`kit_ds`) and an app that uses it (`greenhouse_app`), each built on its own by build_runner, so the tests see what two builds that meet at runtime give: backend DTOs, design tokens, converters and catalogs as real apps write them.
@@ -21,6 +22,7 @@ fvm flutter pub get                                 # the workspace
 fvm dart analyze --fatal-infos                      # not flutter analyze: it skips the leancode_lint plugin
 fvm dart format --set-exit-if-changed .
 (cd packages/tandem && fvm flutter test)
+(cd packages/tandem_firebase_ai && fvm flutter test)
 (cd packages/tandem_generator && fvm dart test)
 (cd example && fvm dart run build_runner build)     # then git diff --exit-code: the generated code is committed
 (cd fixtures/kit_ds && fvm dart run build_runner build) && (cd fixtures/greenhouse_app && fvm dart run build_runner build)

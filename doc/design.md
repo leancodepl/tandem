@@ -7,6 +7,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 | Package | Owns | Depends on |
 |---|---|---|
 | `tandem` | the agent list, the remote AG-UI connection and the deprecated Apple one, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent`, `TandemView` | flutter, http, json_annotation, meta, rfc_6902, uuid; FoundationModels on Apple systems |
+| `tandem_firebase_ai` | the Firebase AI Logic connection, request conversion and native model metadata | tandem, firebase_ai, http, uuid |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` and the widgets of a class with `@TandemCatalog([...])` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
@@ -94,6 +95,35 @@ A coding agent, such as Claude Code or Cursor, drives a debug build through the 
 - `TandemBridge.enable(autoApprove: true)` runs such a call at once without a request, also on a screen with `approvals: .none()`, for automation. Without it, a screen with `.none()` refuses the call with a reason that names the option.
 
 Every answer of `call` is a `ToolAnswer` as `json`: the tool answer of the in-app agent with its `status`, and `{"status":"returned","result":<result>}` when the method returned. No screen, an unknown `screen` or no front screen is `refused`, with the ids of the open screens. So is another call that needs approval while one waits, and one on a screen with `approvals: .none()`, with what to do.
+
+## Firebase AI Logic connection
+
+`FirebaseConnection` in `tandem_firebase_ai` implements `StoppableAgentConnection`.
+Each run creates a Firebase model with the app's system instructions and
+listed tools. It attaches fresh screen context to the current user turn, after
+any tool results, and requests one generation. Tandem owns execution, approvals
+and the following run with the methods' results. The adapter does not use Firebase's
+`ChatSession` or execute tool callbacks.
+
+The connection keeps active requests, not a second conversation. Native ordered
+response parts and call IDs travel in versioned message metadata. On the next
+run they must match the message and calls Tandem retained. This preserves Gemini
+thought signatures and prevents replaying different arguments. A connection has
+its own native-history identity. Replacing it requires a new thread. Partial
+text without calls can continue as the visible text; incompatible signed tool
+history fails explicitly.
+
+When a reset keeps a tool call and its unsent result under an app-supplied
+thread ID, the resulting history starts with the model's call. Gemini requires
+a preceding user turn. The adapter inserts a fixed reset notice into the
+Firebase request before the original model parts. The user's earlier messages
+stay cleared.
+
+Each run owns its HTTP client. Stop aborts it and emits a cancelled terminal
+event, including while Firebase is obtaining tokens. Cancelling the stream
+cleans it up without emitting further events. A late token cannot send a request
+through a cancelled client. This does not guarantee that the provider stopped
+generation or undo methods that already ran.
 
 ## Apple on-device connection
 
