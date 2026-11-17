@@ -465,10 +465,10 @@ final class const _Uri() extends AgentType<Uri> {
   @override
   Uri read(Object? json, AgentReading reading) => switch (json) {
     final String text? => switch (Uri.tryParse(text)) {
-      final uri? => uri,
-      null => throw reading.refuse('expected a URI, got ${jsonEncode(json)}'),
+      final uri? when uri.hasScheme => uri,
+      _ => throw _notAbsolute(json, reading),
     },
-    _ => throw reading.refuse('expected a URI, got ${jsonEncode(json)}'),
+    _ => throw _notAbsolute(json, reading),
   };
 
   @override
@@ -476,6 +476,12 @@ final class const _Uri() extends AgentType<Uri> {
     'type': 'string',
     'format': 'uri',
   };
+
+  ToolCallRefused _notAbsolute(Object? json, AgentReading reading) =>
+      reading.refuse(
+        'expected an absolute URI, such as https://example.com/page, got '
+        '${jsonEncode(json)}',
+      );
 }
 
 final class const _Choice<T>(
