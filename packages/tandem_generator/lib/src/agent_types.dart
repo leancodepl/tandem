@@ -216,8 +216,9 @@ final class AgentTypes(
       ].join(', ');
       final arguments = constructorArguments(
         [for (final field in object.fields) field.parameter],
-        read: (name) => "values('$name')",
-        readOr: (name, fallback) => "values.or('$name', $fallback)",
+        read: (name) => 'values(${DartLiteral.json(name)})',
+        readOr: (name, fallback) =>
+            'values.or(${DartLiteral.json(name)}, $fallback)',
       );
       final description = _describedBy(type.element);
 
@@ -241,8 +242,9 @@ final class AgentTypes(
     final optional = field.parameter.isOptionalForAgent
         ? ', required: false'
         : '';
+    final key = DartLiteral.json(name);
 
-    return "field('$name', (value) => value.$name$description$optional)"
+    return 'field($key, (value) => value.$name$description$optional)'
         '.as($type)';
   }
 

@@ -83,8 +83,9 @@ AgentView.of(() => surface.$name).as(
     ].join(Tokens.newLine);
     final arguments = types.constructorArguments(
       parameters,
-      read: (name) => "args.read('$name')",
-      readOr: (name, fallback) => "args.readOr('$name', $fallback)",
+      read: (name) => 'args.read(${DartLiteral.json(name)})',
+      readOr: (name, fallback) =>
+          'args.readOr(${DartLiteral.json(name)}, $fallback)',
     );
     final call = 'surface.$name($arguments)';
     final wireName = DartLiteral.json(agentName(name));
@@ -126,8 +127,9 @@ AgentTool(
     final optional = parameter.isOptionalForAgent ? ', required: false' : '';
     final constant = AgentTypes.isConstant(typeCode) ? 'const ' : '';
     final inputCode = input ? ', input: true' : '';
+    final key = DartLiteral.json(name);
 
-    return "${constant}AgentParameter<$typeSource>('$name', "
+    return '${constant}AgentParameter<$typeSource>($key, '
         '$typeCode$description$optional$inputCode),';
   }
 

@@ -3,6 +3,7 @@ import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:tandem_generator/src/agent_generation_error.dart';
+import 'package:tandem_generator/src/dart_literal.dart';
 
 /// A copy of the body of `agentCapabilities` in which each `.sees(order)` is
 /// `.seesAs('order', order)`, for an extension on the surface's class. Tandem
@@ -22,7 +23,7 @@ final class CapabilityCopy(final ClassElement _type) {
     if (constructor == null || constructor.lexeme != 'sees') return;
 
     _replaced[constructor] = 'seesAs';
-    _replaced[arguments.leftParenthesis] = "('$agentName', ";
+    _replaced[arguments.leftParenthesis] = '(${DartLiteral.json(agentName)}, ';
   }
 
   /// The extension with the copy of [body].

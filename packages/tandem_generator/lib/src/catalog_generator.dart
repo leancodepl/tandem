@@ -251,6 +251,7 @@ AgentComponent<$widgetName>.of(
 
   _Parameter _readParameter(FormalParameterElement parameter) {
     final name = parameter.displayName;
+    final key = DartLiteral.json(name);
     final type = parameter.type;
     final path = '${_element.displayName}.$name';
     final nullable = type.nullabilitySuffix != .none;
@@ -273,8 +274,8 @@ AgentComponent<$widgetName>.of(
     if (_widgetClass.isExactlyType(nonNull)) {
       return _Parameter(
         parameter,
-        code: "property.child('$name'$requiredCode)",
-        read: nullable ? "args.childOrNull('$name')" : "args.child('$name')",
+        code: 'property.child($key$requiredCode)',
+        read: nullable ? 'args.childOrNull($key)' : 'args.child($key)',
       );
     }
 
@@ -284,8 +285,8 @@ AgentComponent<$widgetName>.of(
             item.nullabilitySuffix == .none) {
       return _Parameter(
         parameter,
-        code: "property.children('$name'$requiredCode)",
-        read: "args.children('$name')",
+        code: 'property.children($key$requiredCode)',
+        read: 'args.children($key)',
       );
     }
 
@@ -317,6 +318,7 @@ AgentComponent<$widgetName>.of(
     required List<FormalParameterElement> inputs,
   }) {
     final name = parameter.displayName;
+    final key = DartLiteral.json(name);
     final nullable = parameter.type.nullabilitySuffix != .none;
     final requiredCode = nullable ? ', required: false' : '';
 
@@ -338,9 +340,9 @@ AgentComponent<$widgetName>.of(
       final callbackType = _typeSystem.promoteToNonNull(parameter.type);
       final anchor = switch (_getterType(name)) {
         final type? when _typeSystem.promoteToNonNull(type) == callbackType =>
-          "property.field('$name', (widget) => widget.$name)",
+          'property.field($key, (widget) => widget.$name)',
         _ => switch (_names.name(input.type)) {
-          final typeName? => "property.field<$typeName>('$name')",
+          final typeName? => 'property.field<$typeName>($key)',
           null => throw CatalogError.unnamedType(
             _element,
             parameter: parameter,
@@ -350,14 +352,14 @@ AgentComponent<$widgetName>.of(
       return _Parameter(
         parameter,
         code: '$anchor.as($typeCode$requiredCode)',
-        read: nullable ? "args.fieldOrNull('$name')" : "args.field('$name')",
+        read: nullable ? 'args.fieldOrNull($key)' : 'args.field($key)',
       );
     }
 
     return _Parameter(
       parameter,
-      code: "property.press('$name'$requiredCode)",
-      read: nullable ? "args.pressOrNull('$name')" : "args.press('$name')",
+      code: 'property.press($key$requiredCode)',
+      read: nullable ? 'args.pressOrNull($key)' : 'args.press($key)',
     );
   }
 
@@ -367,6 +369,7 @@ AgentComponent<$widgetName>.of(
     required bool optional,
   }) {
     final name = parameter.displayName;
+    final key = DartLiteral.json(name);
     final String typeCode;
 
     try {
@@ -401,9 +404,9 @@ AgentComponent<$widgetName>.of(
 
     final anchor = switch (_getterType(name)) {
       final type? when type == parameter.type =>
-        "property('$name', (widget) => widget.$name)",
+        'property($key, (widget) => widget.$name)',
       _ => switch (_names.name(parameter.type)) {
-        final typeName? => "property<$typeName>('$name')",
+        final typeName? => 'property<$typeName>($key)',
         null => throw CatalogError.unnamedType(_element, parameter: parameter),
       },
     };
@@ -412,7 +415,7 @@ AgentComponent<$widgetName>.of(
     return _Parameter(
       parameter,
       code: '$anchor.value($typeCode$requiredCode)',
-      read: "args.value('$name')",
+      read: 'args.value($key)',
       fallback: fallback,
     );
   }
@@ -464,7 +467,7 @@ final class const _Parameter(
   String? get argument {
     final value = switch ((read, fallback)) {
       (_?, (code: final defaultCode?)) =>
-        "args.valueOr('${element.displayName}', $defaultCode)",
+        'args.valueOr(${DartLiteral.json(element.displayName)}, $defaultCode)',
       (final read?, _) => read,
       (null, _) => null,
     };
