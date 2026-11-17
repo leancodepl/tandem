@@ -488,10 +488,7 @@ final class const _CatalogDocumentation._(
 
     if (raw == null) throw CatalogError.missingDocumentation(catalog);
 
-    final text = raw
-        .split('\n')
-        .map((line) => line.replaceFirst(RegExp(r'^\s*/// ?'), ''))
-        .join('\n');
+    final text = withoutSlashes(raw);
     final match = RegExp(r'```json\n(.*?)\n```', dotAll: true).firstMatch(text);
 
     if (match == null) throw CatalogError.missingExample(catalog);
@@ -511,11 +508,9 @@ final class const _CatalogDocumentation._(
       );
     }
 
-    final guidelines = text
-        .replaceRange(match.start, match.end, '')
-        .trim()
-        .replaceAll(RegExp(r'(?<!\n)\n(?!\n)'), ' ')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    final guidelines = joinWrappedLines(
+      text.replaceRange(match.start, match.end, ''),
+    );
 
     return ._(guidelines, json.cast<Map<String, Object?>>());
   }
