@@ -167,6 +167,38 @@ void main() {
     expect(problems, hasLength(1));
   });
 
+  test('an unknown component leaves the paths of the others checked', () {
+    final AgentType<_Node> node = .object(
+      id: 'test#Node',
+      fields: (field) => [field('name', (node) => node.name).as(.string)],
+      build: (values) => _Node(values('name')),
+    );
+    final check = ViewCheck(_Rows(node), (
+      roots: {'nodes': .list(node)},
+      methods: const {},
+    ));
+
+    final (:problems, view: _) = check.check([
+      {
+        'id': 'root',
+        'component': 'Rows',
+        'rows': ['chart', 'row'],
+      },
+      {'id': 'chart', 'component': 'Carousel'},
+      {
+        'id': 'row',
+        'component': 'Row',
+        'label': {'path': '/nodez'},
+        'node': {'path': '/nodes/0'},
+      },
+    ]);
+
+    expect(problems, [
+      'chart: no component Carousel. Components: Rows, Row.',
+      'row.label: /nodez is not in the data. Paths: /nodes.',
+    ]);
+  });
+
   test('the description lists a class with a converter by its form, and one '
       'without by its fields', () {
     final AgentType<_Node> grower = .converted(
