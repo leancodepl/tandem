@@ -132,13 +132,21 @@ mixin _\$$className implements AgentCatalog {
     for (final component in example) {
       final id = component['id'];
       final name = component['component'];
+
+      if (id is! String || name is! String) {
+        throw CatalogError.invalidExample(
+          catalog,
+          problem: 'give each component a string "id" and "component"',
+        );
+      }
+
       final found = byName[name];
 
-      if (id is! String || name is! String || found == null) {
+      if (found == null) {
         throw CatalogError.exampleComponent(
           catalog,
-          id: '$id',
-          name: '$name',
+          id: id,
+          name: name,
           names: byName.keys,
         );
       }
@@ -527,6 +535,13 @@ final class const _CatalogDocumentation._(
       );
     }
 
+    if (_hasInfinity(json)) {
+      throw CatalogError.invalidExample(
+        catalog,
+        problem: 'a number is too large for a double',
+      );
+    }
+
     final guidelines = joinWrappedLines(
       text.replaceRange(match.start, match.end, ''),
     );
@@ -534,6 +549,15 @@ final class const _CatalogDocumentation._(
     return ._(guidelines, json.cast<Map<String, Object?>>());
   }
 }
+
+/// Whether [json] holds a number too large for a double, which decodes to
+/// infinity and has no JSON.
+bool _hasInfinity(Object? json) => switch (json) {
+  final double number => number.isInfinite,
+  final List<Object?> items => items.any(_hasInfinity),
+  final Map<String, Object?> entries => entries.values.any(_hasInfinity),
+  _ => false,
+};
 
 bool _isWidget(DartType type) =>
     type is InterfaceType &&
