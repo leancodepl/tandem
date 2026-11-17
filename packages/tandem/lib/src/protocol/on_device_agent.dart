@@ -1,3 +1,6 @@
+// Deprecated in 0.3.2 and removed in 0.4.0, with this whole file.
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -9,7 +12,12 @@ import 'package:tandem/src/protocol/apple_api.g.dart';
 import 'package:tandem/src/protocol/on_device_instructions.dart';
 import 'package:uuid/uuid.dart';
 
+const _removed =
+    "Apple's on-device model is removed in 0.4.0. "
+    'Use an AG-UI backend with HttpAgentConnection.';
+
 /// The current readiness of the system model. Check again after Settings change.
+@Deprecated(_removed)
 enum OnDeviceAvailability() {
   available,
   unsupportedPlatform,
@@ -17,11 +25,18 @@ enum OnDeviceAvailability() {
   deviceNotEligible,
   intelligenceDisabled,
   modelNotReady,
-  unavailable,
+  unavailable;
+
+  @Deprecated(_removed)
+  this;
 }
 
 /// The codes an [OnDeviceAgent] fails its runs with.
+@Deprecated(_removed)
 extension type const OnDeviceErrorCode._(String value) implements RunErrorCode {
+  @Deprecated(_removed)
+  this;
+
   /// The conversation no longer fits the model. Tandem does not shorten it:
   /// `session.startOver()` sends the next message without the earlier
   /// history.
@@ -65,14 +80,20 @@ extension type const OnDeviceErrorCode._(String value) implements RunErrorCode {
 
 /// An on-device backend of the same AG-UI session used by remote agents.
 /// Native callbacks only propose calls; Tandem executes and approves them.
+@Deprecated(_removed)
 final class OnDeviceAgent._() implements AgentConnection {
+  @Deprecated(_removed)
+  this;
+
   /// Apple's system model on iOS/macOS 26+, with Apple Intelligence enabled.
   /// Returns the same immutable connection on every call, including in build.
+  @Deprecated(_removed)
   factory apple() => _apple;
 
   static final _apple = OnDeviceAgent._();
   static final _api = AppleHostApi();
 
+  @Deprecated(_removed)
   Future<OnDeviceAvailability> availability() async {
     try {
       return switch (await _api.availability()) {
