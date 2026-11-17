@@ -21,7 +21,8 @@ import 'package:tandem/src/session/view_tool.dart';
 /// [session] from the start. It reads what the screen lists with `.sees`
 /// again on every change of the surface, and draws with it. An action of
 /// the view calls its method for the view, through the session, one at a
-/// time.
+/// time. The latest entry of a required field made meanwhile goes once the
+/// method before it returned.
 ///
 /// Notifies when the view, the data or the session changes, for
 /// `TandemView`.
@@ -48,6 +49,10 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
   AgentListing? _listing;
 
   var _busy = false;
+
+  /// Calls the method of the latest field entry made while [_busy].
+  VoidCallback? _nextEntry;
+
   var _disposed = false;
   SessionStatus? _status;
 
@@ -130,7 +135,12 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
     FieldEntry? entry,
   }) {
     final field = entry != null;
-    if (stateOf(method, field: field) != .available) return;
+    final state = stateOf(method, field: field);
+    if (field && _busy && state == .waiting) {
+      _nextEntry = () => call(method, arguments, seen, entry: entry);
+      return;
+    }
+    if (state != .available) return;
     final tool = seen.toolNamed(method);
     final now = _requirements.read(session.surface);
     if (tool == null || now == null) return;
@@ -160,6 +170,9 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
     } finally {
       _busy = false;
       if (!_disposed) notifyListeners();
+      final next = _nextEntry;
+      _nextEntry = null;
+      next?.call();
     }
   }
 
