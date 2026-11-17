@@ -24,11 +24,7 @@ final class ListingPaths({
         final roots = seen.roots.keys.map((name) => '/$name').join(', ');
         throw refuse('$path is not in the data. Paths: $roots.');
       case PathValue(type: final found) when !type.accepts(found):
-        final types = {
-          for (final MapEntry(:key, :value) in seen.roots.entries)
-            key: value.type,
-        };
-        final fitting = DataPath.pathsOf(types, type).join(', ');
+        final fitting = DataPath.pathsOf(seen.rootTypes, type).join(', ');
         throw refuse(
           '$path is a ${found.nameBeside(type)}, not a '
           '${type.nameBeside(found)}. '

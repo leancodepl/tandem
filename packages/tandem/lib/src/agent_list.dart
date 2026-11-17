@@ -272,13 +272,11 @@ final class AgentListing._(
     required bool approved,
   }) {
     final now = AgentListing.of(_surface);
-    final (target, capability) = switch ((
-      _tools[tool],
-      now._capabilities.callOf(_tools[tool]?.method),
-    )) {
-      (final target?, final capability?) => (target, capability),
-      _ => throw ToolCallRefused('The agent cannot call $tool now.'),
-    };
+    final target = _tools[tool];
+    final capability = now._capabilities.callOf(target?.method);
+    if (target == null || capability == null) {
+      throw ToolCallRefused('The agent cannot call $tool now.');
+    }
     if (capability.needsApproval && !approved) {
       throw ToolCallRefused('$tool runs only after the user approves it.');
     }
@@ -305,6 +303,15 @@ final class AgentListing._(
     for (final (:view, :value, json: _) in _seen)
       view.name: PathValue(view.type, value, seen[view.name]),
   };
+}
+
+/// The types and methods a view can bind on this screen.
+extension ListingSchema on AgentListing {
+  Map<String, AgentType<Object?>> get rootTypes => {
+    for (final entry in _seen) entry.view.name: entry.view.type,
+  };
+
+  Iterable<AgentTool> get listedTools => _tools.values;
 }
 
 typedef _Seen = ({AgentView<Object?> view, Object? value, String json});

@@ -136,12 +136,9 @@ final class ViewRequirements(final AgentCatalog _catalog) {
 
   /// The types of what [listing] lists and of its methods' parameters.
   static Iterable<AgentType<Object?>> screenTypes(AgentListing listing) => [
-    for (final MapEntry(:value) in listing.roots.entries) value.type,
-    for (final name in listing.toolNames)
-      for (final parameter
-          in listing.toolNamed(name)?.parameters ??
-              const <AgentParameter<Object?>>[])
-        parameter.type,
+    ...listing.rootTypes.values,
+    for (final tool in listing.listedTools)
+      for (final parameter in tool.parameters) parameter.type,
   ];
 
   static AgentType<Object?>? _typeOf(AgentProperty property) =>
@@ -166,14 +163,13 @@ final class ViewRequirements(final AgentCatalog _catalog) {
   }
 
   static ViewData _dataOf(AgentListing listing) => (
-    roots: {
-      for (final MapEntry(:key, :value) in listing.roots.entries)
-        key: value.type,
-    },
+    roots: listing.rootTypes,
     methods: {
-      for (final name in listing.toolNames)
-        if (listing.toolNamed(name) case final tool?)
-          name: (tool: tool, needsApproval: listing.listedWithApproval(name)),
+      for (final tool in listing.listedTools)
+        tool.name: (
+          tool: tool,
+          needsApproval: listing.listedWithApproval(tool.name),
+        ),
     },
   );
 

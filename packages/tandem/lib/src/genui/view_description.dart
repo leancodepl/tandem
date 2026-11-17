@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/agent_schema.dart';
 import 'package:tandem/src/agent_type.dart';
 import 'package:tandem/src/genui/agent_catalog.dart';
 import 'package:tandem/src/genui/view_check.dart';
@@ -19,11 +20,11 @@ String viewDescription(AgentCatalog catalog, AgentListing listing) {
     for (final component in catalog.components) _component(component, types),
   ];
   final data = [
-    for (final MapEntry(key: name, value: root) in listing.roots.entries)
-      '- /$name: ${types.label(root.type)}',
+    for (final MapEntry(key: name, value: type) in listing.rootTypes.entries)
+      '- /$name: ${types.label(type)}',
   ];
   final methods = [
-    for (final name in listing.toolNames) _method(name, listing, types),
+    for (final tool in listing.listedTools) _method(tool, listing, types),
   ];
   final names = [
     for (final MapEntry(key: label, value: type) in types.listed.entries)
@@ -92,14 +93,15 @@ String _fields(AgentType<Object?> type, _Types types) => [
       '$field: ${types.label(fieldType)}',
 ].join(', ');
 
-String _method(String name, AgentListing listing, _Types types) {
-  final tool = listing.toolNamed(name);
+String _method(AgentTool tool, AgentListing listing, _Types types) {
   final parameters = [
-    for (final parameter in tool?.parameters ?? const <Never>[])
+    for (final parameter in tool.parameters)
       '${parameter.name}: ${types.label(parameter.type)}',
   ].join(', ');
-  final approval = listing.listedWithApproval(name) ? ' (needs approval)' : '';
-  return '- $name($parameters)$approval';
+  final approval = listing.listedWithApproval(tool.name)
+      ? ' (needs approval)'
+      : '';
+  return '- ${tool.name}($parameters)$approval';
 }
 
 String _block(String title, List<String> lines) =>
