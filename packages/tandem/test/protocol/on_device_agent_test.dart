@@ -1,3 +1,6 @@
+// OnDeviceAgent is deprecated in 0.3.2 and removed in 0.4.0, with this test.
+// ignore_for_file: deprecated_member_use_from_same_package
+
 // The bridge runs only on iOS and macOS. On the web, Pigeon's codec lacks
 // Int64, and a test gets no answer to a platform message.
 @TestOn('vm')
