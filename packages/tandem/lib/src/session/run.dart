@@ -4,13 +4,11 @@ import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/ag_ui_ids.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
+import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/view_tool.dart';
-
-/// A view a run offers the agent, with its tool.
-typedef OfferedView = ({ViewTool tool, JsonObject definition});
 
 /// What the session keeps of its open run.
 final class Run(
@@ -25,8 +23,6 @@ final class Run(
   /// The body the connection got, which a Stop sends back to it.
   late final JsonObject input;
 
-  /// The calls that run in the app.
-  final calls = <ToolCallId, ToolCall>{};
   bool stopped = false;
 
   /// Whether the connection was told to stop the run on its server and did
@@ -45,14 +41,13 @@ final class Run(
   /// follows does not count as a lost connection.
   bool ended = false;
 
-  /// The ids of the agent's messages in the order they started, each with the
-  /// ids of its calls.
-  final _messages = <MessageId, List<ToolCallId>>{};
-  final _backendCalls = <ToolCallId, _BackendCall>{};
+  /// The agent's messages in the order they started, with their calls.
+  final _messages = <MessageId, List<_StreamedCall>>{};
+  final _calls = <ToolCallId, _StreamedCall>{};
 
-  /// The id of the latest call of a tool that is not a listed method, until
+  /// The latest call of a tool that is not a listed method, until
   /// the agent's next text or call, or its result.
-  ToolCallId? _used;
+  _StreamedCall? _used;
 
   /// Tells the server of [connection] to stop this run, if the connection
   /// can and the server has not ended the run yet. Reports the error of a
@@ -86,22 +81,20 @@ final class Run(
   List<JsonObject> get tools => [...listing.tools, ?view?.definition];
 
   /// The tool of the backend that runs now, such as a search.
-  String? get backendTool => _backendCalls[_used]?.tool;
+  String? get backendTool => switch (_used) {
+    _StreamedCall(inApp: false, :final tool) => tool,
+    _ => null,
+  };
 
   /// Whether the agent draws a view now.
-  bool get drawing => calls[_used]?.tool == ViewTool.name;
+  bool get drawing => _used?.inApp == true && _used?.tool == ViewTool.name;
 
-  /// Whether a call of [tool] runs in the app, not on the backend.
-  bool offers(String tool) =>
-      listing.lists(tool) || (tool == ViewTool.name && view != null);
-
-  /// A call starts, in the agent's message that the event names. It becomes
-  /// one of [calls] when it runs in the app, as does a call the run already
-  /// has. The first start of a backend call counts.
+  /// Records the first start of a call with its parent message. A repeated
+  /// start must name the same tool.
   void startTool(ToolCallStarted start) {
     final ToolCallStarted(name: tool, :parentMessageId) = start;
     final id = ToolCallId.wire(start.toolCallId);
-    final knownTool = calls[id]?.tool ?? _backendCalls[id]?.tool;
+    final knownTool = _calls[id]?.tool;
     if (knownTool != null) {
       if (knownTool != tool) {
         throw const FormatException('A tool call changed its method.');
@@ -109,103 +102,98 @@ final class Run(
       return;
     }
 
-    _used = listing.lists(tool) ? null : id;
-    if (offers(tool)) {
-      // A call of the view's tool never asks the user, so needs no
-      // description.
-      final description = listing.lists(tool) ? listing.description(tool) : '';
-      calls[id] = ToolCall(
-        id: id,
-        tool: tool,
-        description: description,
-        caller: .inAppAgent,
-      );
-      _addToMessage(id, parentMessageId);
-    } else {
-      _backendCalls[id] = _BackendCall(tool);
-      _addToMessage(id, parentMessageId);
-    }
+    final listed = listing.lists(tool);
+    final call = _StreamedCall(
+      id,
+      tool,
+      inApp: listed || (tool == ViewTool.name && view != null),
+    );
+    _calls[id] = call;
+    _used = listed ? null : call;
+    final messageId = switch (parentMessageId) {
+      final id? => MessageId.wire(id),
+      // Never reuse a message id: ag-ui-adk would swallow its answer.
+      null => MessageId.local(),
+    };
+    _messages.putIfAbsent(messageId, () => []).add(call);
   }
 
   void addArguments(ToolCallArgs arguments) {
     final ToolCallArgs(:delta) = arguments;
     final toolCallId = ToolCallId.wire(arguments.toolCallId);
-    if (calls[toolCallId] case final call?) {
-      call.arguments += delta;
-    } else if (_backendCalls[toolCallId] case final call?) {
+    if (_calls[toolCallId] case final call?) {
       call.arguments += delta;
     }
   }
 
   /// A tool of the backend returned its [result].
   void finishTool(ToolCallResult result) {
-    final toolCallId = ToolCallId.wire(result.toolCallId);
-    if (_used == toolCallId) {
+    final call = _calls[ToolCallId.wire(result.toolCallId)];
+    if (identical(_used, call)) {
       _used = null;
     }
-    _backendCalls[toolCallId]?.result = result;
+    if (call case _StreamedCall(inApp: false)) call.result = result;
   }
 
-  /// What the agent sent, in order: its messages with their text and the
-  /// calls they hold.
-  List<SentMessage> get sent => [
-    for (final MapEntry(key: id, value: callIds) in _messages.entries)
-      (
-        id: id,
-        text: texts[id]?.text,
-        calls: [for (final callId in callIds) ?_sentCall(callId)],
-      ),
+  /// The calls that run in the app, once the run finished streaming.
+  List<ToolCall> collectAppCalls() => [
+    for (final call in _calls.values)
+      if (call.inApp)
+        ToolCall(
+          id: call.id,
+          tool: call.tool,
+          description: listing.toolNamed(call.tool)?.description ?? '',
+          caller: .inAppAgent,
+          argumentsJson: call.argumentsJson,
+        ),
   ];
 
-  /// A call the server sent without a message gets one of its own, under a
-  /// new id: never one the thread has, or ag-ui-adk would swallow the answer.
-  void _addToMessage(ToolCallId callId, String? parentMessageId) {
-    final messageId = switch (parentMessageId) {
-      final id? => MessageId.wire(id),
-      null => MessageId.local(),
-    };
-    _messages.putIfAbsent(messageId, () => []).add(callId);
-  }
-
-  SentCall? _sentCall(ToolCallId id) {
-    final result = _backendCalls[id]?.result;
-    return switch ((calls[id], _backendCalls[id])) {
-      (final call?, _) => (
-        id: id,
-        tool: call.tool,
-        arguments: call.argumentsJson,
-        inApp: true,
-        result: result,
-      ),
-      (null, final call?) => (
-        id: id,
-        tool: call.tool,
-        arguments: call.argumentsJson,
-        inApp: false,
-        result: result,
-      ),
-      (null, null) => null,
-    };
+  /// The messages of the run, each followed by its backend results. A
+  /// backend call without a result stays out. An app-id thread also keeps
+  /// the messages with app calls until their answers go out.
+  ({List<AgUiMessage> all, List<AgUiMessage> withAppCalls}) get history {
+    final all = <AgUiMessage>[];
+    final withAppCalls = <AgUiMessage>[];
+    for (final MapEntry(key: id, value: proposed) in _messages.entries) {
+      final calls = [
+        for (final call in proposed)
+          if (call.inApp || call.result != null) call,
+      ];
+      final text = texts[id]?.text;
+      if (text == null && calls.isEmpty) continue;
+      final messages = <AgUiMessage>[
+        .assistant(
+          id,
+          text: text,
+          toolCalls: [for (final call in calls) call.wire],
+        ),
+        for (final call in calls)
+          if (call.result case final result?)
+            .toolResult(
+              id: .wire(result.messageId),
+              toolCallId: call.id,
+              content: result.content,
+            ),
+      ];
+      all.addAll(messages);
+      if (calls.any((call) => call.inApp)) {
+        withAppCalls.addAll(messages);
+      }
+    }
+    return (all: all, withAppCalls: withAppCalls);
   }
 }
 
-/// A message of the agent in a run, with the calls it holds.
-typedef SentMessage = ({MessageId id, String? text, List<SentCall> calls});
-
-/// A call in a [SentMessage]. A call of the backend has the `result` that
-/// its `TOOL_CALL_RESULT` brought, once it came.
-typedef SentCall = ({
-  ToolCallId id,
-  String tool,
-  String arguments,
-  bool inApp,
-  ToolCallResult? result,
-});
-
-final class _BackendCall(final String tool) {
+final class _StreamedCall(
+  final ToolCallId id,
+  final String tool, {
+  required final bool inApp,
+}) {
   String arguments = '';
   ToolCallResult? result;
 
-  // As for a listed method: a call without arguments has no `TOOL_CALL_ARGS`.
+  // A call without arguments has no `TOOL_CALL_ARGS`.
   String get argumentsJson => arguments.isEmpty ? '{}' : arguments;
+
+  AgUiToolCall get wire => .new(id: id, name: tool, arguments: argumentsJson);
 }

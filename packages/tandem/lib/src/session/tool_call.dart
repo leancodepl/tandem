@@ -3,8 +3,10 @@ import 'dart:convert';
 
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/ag_ui_ids.dart';
+import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 
@@ -18,16 +20,14 @@ final class ToolCall({
   /// The method's doc comment, as the agent got it.
   required final String description,
   required final Caller caller,
+  required final String argumentsJson,
 }) {
   /// The id of the tool message that answers the call. A backend may repeat
   /// [id] in a later run of the thread, so the answer has an id of its own.
   final answerId = MessageId.local();
 
-  /// The JSON arguments, as streamed so far.
-  String arguments = '';
-
   /// The arguments of a call that waits for the user, frozen when it asked.
-  FrozenArguments? frozen;
+  FrozenArguments? _frozen;
 
   ToolAnswer? _answer;
   final _answered = Completer<ToolAnswer>();
@@ -47,11 +47,30 @@ final class ToolCall({
   bool get pending => request?.status == .pending;
   bool get approved => request?.status == .approved;
 
-  // ag-ui-adk sends no `TOOL_CALL_ARGS` for a call without arguments.
-  String get argumentsJson => arguments.isEmpty ? '{}' : arguments;
-
   /// The arguments, or null when they are not a JSON object.
   JsonObject? get objectArguments => decodeJsonObject(argumentsJson);
+
+  CallArguments get argumentsToRun =>
+      _frozen ?? WrittenArguments(objectArguments ?? const {});
+
+  /// Freezes each path at its value in [seen], while it still holds, so the
+  /// user approves what the method gets. Returns the answer when it cannot.
+  ToolAnswer? freeze(AgentListing seen) {
+    try {
+      final (:args, target: _) = seen.prepare(
+        tool,
+        WrittenArguments(objectArguments ?? const {}),
+        approved: true,
+      );
+      _frozen = FrozenArguments(args.json);
+      return null;
+    } on ToolCallRefused catch (refusal) {
+      return .refused(refusal.message);
+    } catch (err, st) {
+      report(err, st);
+      return ToolAnswer.failed;
+    }
+  }
 
   void answerWith(ToolAnswer answer) {
     _answer = answer;
@@ -64,13 +83,13 @@ final class ToolCall({
   /// whatever the order of the keys its caller wrote.
   bool isSameCall(ToolCall other) =>
       tool == other.tool &&
-      jsonEncode(frozen?.json) == jsonEncode(other.frozen?.json);
+      jsonEncode(_frozen?.json) == jsonEncode(other._frozen?.json);
 
   ApprovalRequest ask() => _request = ApprovalRequest.issued(
     toolCallId: id.value,
     tool: tool,
     description: description,
-    argumentsJson: switch (frozen) {
+    argumentsJson: switch (_frozen) {
       final frozen? => jsonEncode(frozen.json),
       null => argumentsJson,
     },

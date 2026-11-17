@@ -18,3 +18,47 @@ abstract interface class ViewTool() {
   /// fix.
   ToolAnswer show(JsonObject arguments);
 }
+
+/// The view offered by one run, which may have left the screen since.
+typedef OfferedView = ({ViewTool tool, JsonObject definition});
+
+/// The session's attached view and its refusal limit across runs.
+final class ViewDrawing() {
+  static const _maxRefused = 3;
+  ViewTool? _view;
+  var _refused = 0;
+
+  void attach(ViewTool view) => _view = view;
+
+  void detach(ViewTool view) {
+    if (identical(view, _view)) {
+      _view = null;
+    }
+  }
+
+  /// A new message lets the agent try drawing again.
+  void resetRefusals() => _refused = 0;
+
+  OfferedView? offer(AgentListing listing) {
+    final view = _view;
+    if (view == null || _refused >= _maxRefused) return null;
+    return switch (view.definition(listing)) {
+      final definition? => (tool: view, definition: definition),
+      null => null,
+    };
+  }
+
+  // A model that never draws a view that fits would try again on every run.
+  ToolAnswer show(OfferedView view, JsonObject arguments) {
+    if (_refused >= _maxRefused) {
+      return ToolAnswer.drawingStopped(_maxRefused);
+    }
+    final answer = identical(view.tool, _view)
+        ? view.tool.show(arguments)
+        : ToolAnswer.refused('No view is on the screen now.');
+    _refused = answer.status == .shown ? 0 : _refused + 1;
+    return _refused < _maxRefused
+        ? answer
+        : ToolAnswer.drawingStopped(_maxRefused);
+  }
+}

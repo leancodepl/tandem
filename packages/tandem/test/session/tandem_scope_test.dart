@@ -28,6 +28,20 @@ void main() {
     child: const SizedBox(),
   );
 
+  Widget connected(
+    AgentConnection connection, {
+    TandemThread? thread,
+    TandemApprovals approvals = const .fromState(),
+    void Function(BuildContext, TandemEvent, TandemSession)? onEvent,
+  }) => TandemScope.connected(
+    surface: readShop,
+    connection: connection,
+    thread: thread,
+    approvals: approvals,
+    onEvent: onEvent,
+    child: const SizedBox(),
+  );
+
   TandemSession sessionOf(WidgetTester tester) =>
       TandemSessionScope.of(tester.element(find.byType(SizedBox)));
 
@@ -54,12 +68,6 @@ void main() {
   });
 
   testWidgets('another connection opens a new session', (tester) async {
-    Widget connected(AgentConnection connection) => TandemScope.connected(
-      surface: readShop,
-      connection: connection,
-      approvals: const .fromState(),
-      child: const SizedBox(),
-    );
     await tester.pumpWidget(connected(ScriptedAgent(const [])));
     final session = sessionOf(tester);
 
@@ -75,19 +83,12 @@ void main() {
       (_) => const [AgentStep.say('Hi.')],
     ]);
     final thread = TandemThread();
-    Widget screen() => TandemScope.connected(
-      surface: readShop,
-      connection: agent,
-      approvals: const .fromState(),
-      thread: thread,
-      child: const SizedBox(),
-    );
-    await tester.pumpWidget(screen());
+    await tester.pumpWidget(connected(agent, thread: thread));
     sessionOf(tester).send('hi');
     await tester.pump();
     await tester.pumpWidget(const Placeholder());
 
-    await tester.pumpWidget(screen());
+    await tester.pumpWidget(connected(agent, thread: thread));
 
     expect(sessionOf(tester).thread, same(thread));
     expect(summaryOf(sessionOf(tester).items), [
@@ -100,18 +101,11 @@ void main() {
     tester,
   ) async {
     final agent = ScriptedAgent(const []);
-    Widget screenOn(TandemThread thread) => TandemScope.connected(
-      surface: readShop,
-      connection: agent,
-      approvals: const .fromState(),
-      thread: thread,
-      child: const SizedBox(),
-    );
-    await tester.pumpWidget(screenOn(TandemThread()));
+    await tester.pumpWidget(connected(agent, thread: TandemThread()));
     final session = sessionOf(tester);
     final other = TandemThread();
 
-    await tester.pumpWidget(screenOn(other));
+    await tester.pumpWidget(connected(agent, thread: other));
 
     expect(sessionOf(tester), isNot(same(session)));
     expect(sessionOf(tester).thread, same(other));
@@ -170,13 +164,10 @@ void main() {
       (_) => const [AgentStep.say('Added milk.')],
     ]);
     final heard = <(String, Widget, TandemEvent, TandemSession)>[];
-    Widget listening(String name) => TandemScope.connected(
-      surface: readShop,
-      connection: agent,
+    Widget listening(String name) => connected(
+      agent,
       onEvent: (context, event, session) =>
           heard.add((name, context.widget, event, session)),
-      approvals: const .fromState(),
-      child: const SizedBox(),
     );
     await tester.pumpWidget(listening('first'));
     await tester.pumpWidget(listening('second'));
@@ -200,14 +191,12 @@ void main() {
     ]);
     final asked = <(String, Widget)>[];
     await tester.pumpWidget(
-      TandemScope.connected(
-        surface: readShop,
-        connection: agent,
+      connected(
+        agent,
         approvals: .callback((context, request, session) async {
           asked.add((request.toolCallId, context.widget));
           session.approve(request);
         }),
-        child: const SizedBox(),
       ),
     );
 
@@ -228,18 +217,13 @@ void main() {
       (_) => const [AgentStep.say('Shared.')],
     ]);
     final asked = <String>[];
-    Widget asking(TandemApprovals approvals) => TandemScope.connected(
-      surface: readShop,
-      connection: agent,
-      approvals: approvals,
-      child: const SizedBox(),
-    );
-    await tester.pumpWidget(asking(const .fromState()));
+    await tester.pumpWidget(connected(agent));
     final session = sessionOf(tester);
 
     await tester.pumpWidget(
-      asking(
-        .callback((context, request, session) async {
+      connected(
+        agent,
+        approvals: .callback((context, request, session) async {
           asked.add(request.tool);
           session.approve(request);
         }),
@@ -259,14 +243,7 @@ void main() {
       (_) => const [AgentStep.callTool('share')],
       (_) => const [AgentStep.say('I cannot share it here.')],
     ]);
-    await tester.pumpWidget(
-      TandemScope.connected(
-        surface: readShop,
-        connection: agent,
-        approvals: const .none(),
-        child: const SizedBox(),
-      ),
-    );
+    await tester.pumpWidget(connected(agent, approvals: const .none()));
 
     sessionOf(tester).send('share it');
     await tester.pumpAndSettle();

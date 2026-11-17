@@ -83,20 +83,13 @@ final class TandemSession({
   final _queue = MessageQueue();
   final _waiting = WaitingTurns();
   final _notes = AppNotes();
+  final _drawing = ViewDrawing();
 
   /// Null when no run is open, and once the session is disposed.
   Run? _run;
 
   /// The approved call whose method runs now, outside any run.
   ToolCall? _approved;
-
-  /// The view that the next run offers the agent to draw on.
-  ViewTool? _view;
-
-  /// The views refused in a row since the last message, which stop the
-  /// drawing at [_maxRefusedViews].
-  var _refusedViews = 0;
-  static const _maxRefusedViews = 3;
 
   var _disposed = false;
 
@@ -321,15 +314,11 @@ final class TandemSession({
 
   /// Offers the agent [view] to draw on, from the next run on.
   @internal
-  void attach(ViewTool view) => _view = view;
+  void attach(ViewTool view) => _drawing.attach(view);
 
   /// Stops offering [view], from the next run on.
   @internal
-  void detach(ViewTool view) {
-    if (identical(view, _view)) {
-      _view = null;
-    }
-  }
+  void detach(ViewTool view) => _drawing.detach(view);
 
   /// Calls [tool] for [caller], such as a coding agent through
   /// `TandemBridge`. The call stays out of the agent's history, and `onEvent`
@@ -363,8 +352,9 @@ final class TandemSession({
         tool: tool,
         description: listing.description(tool),
         caller: caller,
-      )..arguments = jsonEncode(arguments);
-      if (_freeze(call, listing) case final answer?) {
+        argumentsJson: jsonEncode(arguments),
+      );
+      if (call.freeze(listing) case final answer?) {
         return Future.value(answer);
       }
       return _waitForUser(call);
@@ -400,7 +390,7 @@ final class TandemSession({
   }
 
   void _post(UserMessage message) {
-    _refusedViews = 0;
+    _drawing.resetRefusals();
     if (_screenToCheck) {
       _screenToCheck = false;
       _startOverIfScreenChanged();
@@ -439,7 +429,7 @@ final class TandemSession({
   void _open() {
     try {
       final listing = AgentListing.of(_surface);
-      final run = _run = Run(listing, view: _offeredView(listing));
+      final run = _run = Run(listing, view: _drawing.offer(listing));
       run.input = _agUiThread.input(
         tools: run.tools,
         context: [...run.listing.context, ?_notes.offer()],
@@ -539,7 +529,7 @@ final class TandemSession({
 
   Turn _recordRun(Run run) {
     _agUiThread.addRun(run);
-    return _waiting.startAgentTurn(run.calls.values);
+    return _waiting.startAgentTurn(run.collectAppCalls());
   }
 
   Future<void> _finish(Run run) async {
@@ -568,7 +558,7 @@ final class TandemSession({
       if (arguments == null) {
         call.answerWith(ToolAnswer.argumentsNotAnObject);
       } else if (run.view case final view? when call.tool == ViewTool.name) {
-        call.answerWith(_show(view, arguments));
+        call.answerWith(_drawing.show(view, arguments));
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
@@ -591,72 +581,20 @@ final class TandemSession({
     }
   }
 
-  // A model that never draws a view that fits would try again on every run.
-  ToolAnswer _show(OfferedView view, JsonObject arguments) {
-    if (_refusedViews >= _maxRefusedViews) {
-      return ToolAnswer.drawingStopped(_maxRefusedViews);
-    }
-    final answer = identical(view.tool, _view)
-        ? view.tool.show(arguments)
-        : ToolAnswer.refused('No view is on the screen now.');
-    _refusedViews = answer.status == .shown ? 0 : _refusedViews + 1;
-    return _refusedViews < _maxRefusedViews
-        ? answer
-        : ToolAnswer.drawingStopped(_maxRefusedViews);
-  }
-
   void _askUser(
     Turn turn, {
     required AgentListing seen,
     required bool seesChanged,
   }) {
     if (!_asksForApproval()) {
-      _refuseApprovals(turn);
+      turn.refuseApprovals();
     } else if (seesChanged) {
       // The agent asked about what it has not seen.
       turn.invalidateUndecided();
     } else {
-      for (final call in turn.undecided) {
-        if (_freeze(call, seen) case final answer?) {
-          call.answerWith(answer);
-        }
-      }
-      turn.ask(_seesNow);
-    }
-  }
-
-  /// Reads the arguments of [call] before it asks the user, every path at
-  /// the value it points at in [seen] and still holds, so the user approves
-  /// what the method gets. Returns the refusal of arguments that do not fit,
-  /// or, for another error, such as a converter's bug, the failed call.
-  ToolAnswer? _freeze(ToolCall call, AgentListing seen) {
-    try {
-      final (:args, target: _) = seen.prepare(
-        call.tool,
-        WrittenArguments(call.objectArguments ?? const {}),
-        approved: true,
-      );
-      call.frozen = FrozenArguments(args.json);
-      return null;
-    } on ToolCallRefused catch (refusal) {
-      return .refused(refusal.message);
-    } catch (err, st) {
-      report(err, st);
-      return ToolAnswer.failed;
-    }
-  }
-
-  void _refuseApprovals(Turn turn) {
-    for (final call in turn.refuseUndecided()) {
-      if (kDebugMode) {
-        report(
-          StateError(
-            '${call.tool} needs approval, but this screen has approvals: '
-            '.none().',
-          ),
-          .current,
-        );
-      }
+      turn
+        ..freezeArguments(seen)
+        ..ask(_seesNow);
     }
   }
 
@@ -677,7 +615,7 @@ final class TandemSession({
       await _callMethod(
         listing,
         call.tool,
-        call.frozen ?? WrittenArguments(call.objectArguments ?? const {}),
+        call.argumentsToRun,
         caller: call.caller,
         approved: true,
       ),
@@ -781,15 +719,6 @@ final class TandemSession({
   }
 
   SeesSnapshot get _seesNow => .read(_surface, report: report);
-
-  OfferedView? _offeredView(AgentListing listing) {
-    final view = _view;
-    if (view == null || _refusedViews >= _maxRefusedViews) return null;
-    return switch (view.definition(listing)) {
-      final definition? => (tool: view, definition: definition),
-      null => null,
-    };
-  }
 
   bool get _isBusy => _run != null || _approved != null;
 

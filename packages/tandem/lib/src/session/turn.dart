@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
+import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/run_input.dart';
+import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
@@ -54,9 +57,6 @@ final class Turn(final List<ToolCall> calls) {
     ];
   }
 
-  /// The calls that have no answer and were not approved.
-  Iterable<ToolCall> get undecided => calls.where(_undecided);
-
   /// The calls without an answer wait for the user, one at a time through
   /// [next], and keep [seen].
   void ask(SeesSnapshot seen) => _seen = seen;
@@ -97,12 +97,34 @@ final class Turn(final List<ToolCall> calls) {
   /// them.
   List<ToolCall> cancelUndecided() => _decideUndecided(.cancelled);
 
-  /// Refuses every call that has no answer and was not approved, for a
-  /// screen that takes no approvals, and returns them.
-  List<ToolCall> refuseUndecided() => [
-    for (final call in calls.where(_undecided).toList())
-      call..answerWith(ToolAnswer.noApprovals),
-  ];
+  /// Freezes the arguments of the calls that may ask the user, answering
+  /// those that cannot. The session takes the turn's snapshot afterwards.
+  void freezeArguments(AgentListing seen) {
+    for (final call in calls.where(_undecided)) {
+      if (call.freeze(seen) case final answer?) {
+        call.answerWith(answer);
+      }
+    }
+  }
+
+  /// Refuses the undecided calls of a screen that takes no approvals.
+  void refuseApprovals() {
+    final refused = calls.where(_undecided).toList();
+    for (final call in refused) {
+      call.answerWith(ToolAnswer.noApprovals);
+    }
+    if (kDebugMode) {
+      for (final call in refused) {
+        report(
+          StateError(
+            '${call.tool} needs approval, but this screen has approvals: '
+            '.none().',
+          ),
+          .current,
+        );
+      }
+    }
+  }
 
   ToolCall? _decide(ApprovalRequest request, ApprovalStatus decision) {
     if (request.status == decision) {
