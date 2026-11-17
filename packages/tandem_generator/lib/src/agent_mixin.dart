@@ -154,9 +154,9 @@ AgentTool(
           if (seen.contains(id)) continue;
 
           log.warning(
-            '${method.displayName}.${parameter.displayName}: the agent points '
-            'at a ${type.getDisplayString()} that .sees lists, and no .sees '
-            'lists one. Mark the parameter @TandemInput() if the agent writes '
+            '${method.displayName}.${parameter.displayName}: the agent can '
+            'only point at a ${type.getDisplayString()} that .sees lists, and '
+            'none does. Mark the parameter @TandemInput() if the agent writes '
             'it.',
           );
         }

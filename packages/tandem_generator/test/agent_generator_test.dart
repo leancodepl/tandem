@@ -540,10 +540,10 @@ class NurseryCubit() {
         isNot(contains(RegExp(r"#InkConverter\(\)',\s*object: true"))),
       ),
     );
-    expect(log.where((line) => line.contains('the agent points at')), [
+    expect(log.where((line) => line.contains('the agent can only point at')), [
       endsWith(
-        'assign.grower: the agent points at a Grower that .sees lists, and '
-        'no .sees lists one. Mark the parameter @TandemInput() if the agent '
+        'assign.grower: the agent can only point at a Grower that .sees '
+        'lists, and none does. Mark the parameter @TandemInput() if the agent '
         'writes it.',
       ),
     ]);
@@ -606,13 +606,39 @@ class DeskCubit() {
 ''', onLog: log.add);
 
     expect(result.errors, isEmpty);
-    expect(log.where((line) => line.contains('the agent points at')), [
+    expect(log.where((line) => line.contains('the agent can only point at')), [
       endsWith(
-        'pickSeat.seat: the agent points at a Seat that .sees lists, and no '
-        '.sees lists one. Mark the parameter @TandemInput() if the agent '
-        'writes it.',
+        'pickSeat.seat: the agent can only point at a Seat that .sees lists, '
+        'and none does. Mark the parameter @TandemInput() if the agent writes '
+        'it.',
       ),
     ]);
+  });
+
+  test('a converter that writes a map fails the build and names the '
+      'converter', () async {
+    expect(
+      await _buildErrors('''
+final class const Money();
+
+final class const MoneyConverter()
+    implements JsonConverter<Money, Map<String, dynamic>> {}
+
+@TandemAgent(converters: [MoneyConverter()])
+class PriceCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(price)];
+
+  /// The price.
+  Money get price => const Money();
+}
+'''),
+      [
+        contains(
+          'price: MoneyConverter writes Map<String, dynamic>, which Tandem has '
+          'no form for.',
+        ),
+      ],
+    );
   });
 
   test('two converters for one type fail the build', () async {

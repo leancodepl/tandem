@@ -62,7 +62,7 @@ final class AgentTypes(
       }
     }
 
-    throw AgentTypeError.unsupported(_source, type: type, path: path);
+    throw UnsupportedTypeError(_source, type: type, path: path);
   }
 
   /// The id of [type], as `AgentType.id` gives it at runtime.
@@ -101,7 +101,7 @@ final class AgentTypes(
     }
 
     try {
-      var jsonCode = describe(json, path: path);
+      var jsonCode = _describeJson(converter, path: path);
 
       if (!_isContextFree(json)) {
         final name = TypeNames(_library).name(json);
@@ -126,6 +126,25 @@ final class AgentTypes(
           'converterId: ${DartLiteral.json(id)}$description$object)';
     } finally {
       _converting.remove(converted);
+    }
+  }
+
+  /// The description of the type that [converter] writes, which must have
+  /// a form of its own.
+  String _describeJson(AgentConverter converter, {required String path}) {
+    final json = converter.json;
+
+    try {
+      return describe(json, path: path);
+    } on UnsupportedTypeError catch (error) {
+      if (error.type != _typeSystem.promoteToNonNull(json)) rethrow;
+
+      throw AgentTypeError.unsupportedJson(
+        _source,
+        className: converter.className,
+        json: json,
+        path: path,
+      );
     }
   }
 
@@ -181,7 +200,7 @@ final class AgentTypes(
     final constructor = element.unnamedConstructor;
 
     if (value == null) {
-      throw AgentTypeError.unsupported(_source, type: type, path: path);
+      throw UnsupportedTypeError(_source, type: type, path: path);
     }
 
     if (constructor == null || !constructor.acceptsValue(representation)) {

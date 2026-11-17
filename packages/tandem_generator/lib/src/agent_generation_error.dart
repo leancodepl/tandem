@@ -24,6 +24,14 @@ final class AgentGenerationError extends InvalidGenerationSource {
         element: element,
       );
 
+  new capabilitiesField(ClassElement type)
+    : super(
+        'Make agentCapabilities of ${type.displayName} a getter, as in '
+        'List<AgentCapability> get agentCapabilities => [...]. Tandem reads '
+        'the list through a copy of its body, and a field has none.',
+        element: type,
+      );
+
   new missingConverterSource(ClassElement type)
     : super(
         'Tandem cannot find the converters: of ${type.displayName} in its '
