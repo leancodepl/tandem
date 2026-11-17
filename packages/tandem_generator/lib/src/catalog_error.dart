@@ -112,6 +112,16 @@ final class CatalogError extends InvalidGenerationSource {
         element: widget,
       );
 
+  new infrastructure(
+    Element widget, {
+    required FormalParameterElement parameter,
+  }) : super(
+         '${widget.displayName}.${parameter.displayName} is a '
+         '${parameter.type.getDisplayString()}, which the agent cannot set. '
+         'Make it optional or nullable, or leave ${widget.displayName} out.',
+         element: widget,
+       );
+
   /// [converted] is the type without `?` that the converter converts.
   new noForm(
     Element widget, {
