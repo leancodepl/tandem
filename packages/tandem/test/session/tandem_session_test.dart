@@ -616,6 +616,19 @@ void main() {
     expect(session.status, isA<Idle>());
   });
 
+  test('onEvent can dispose the session on a run that failed to open', () {
+    collectReports();
+    // Not open(), which would dispose it again at the end.
+    late final TandemSession session;
+    session = TandemSession(
+      surface: shop,
+      connection: ThrowsFirst(ScriptedAgent(const [])),
+      onEvent: (event) => session.dispose(),
+    );
+
+    expect(() => session.send('hi'), returnsNormally);
+  });
+
   test('startOver after a failed run sends the next message to a new thread '
       'without the earlier history', () async {
     collectReports();
@@ -2247,6 +2260,27 @@ void main() {
     expect(agent.requests, hasLength(1));
     expect(session.status, isA<Idle>());
     expect(events, [isA<RunStopped>()]);
+  });
+
+  test('a session that lets its thread go from a Calling listener runs no '
+      'method', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('add', {'item': 'x'}),
+      ],
+    ]);
+    final session = open(agent, thread: thread);
+    session.addListener(() {
+      if (session.status is Calling && session.isActive) {
+        open(agent, thread: thread);
+      }
+    });
+    session.send('add x');
+    await pumpEventQueue();
+
+    expect(session.isActive, isFalse);
+    expect(shop.items, isEmpty);
   });
 
   test(

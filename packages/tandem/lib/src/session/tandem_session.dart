@@ -148,10 +148,11 @@ final class TandemSession({
     }
     _post(UserMessage(message));
     _waiting.cancelShownOfOthers().forEach(_showDecision);
-    if (!_isBusy) {
+    if (_isBusy) {
+      notifyListeners();
+    } else {
       _start();
     }
-    notifyListeners();
   }
 
   /// Tells the agent [text] about what happened in the app outside the
@@ -183,8 +184,9 @@ final class TandemSession({
     );
     if (status is Idle) {
       _start();
+    } else {
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   /// Stops the open run: its later text is hidden, none of its remaining
@@ -408,9 +410,14 @@ final class TandemSession({
     _queue.add(message);
   }
 
+  /// Opens the next run and notifies, unless the session let its thread go
+  /// meanwhile, such as when `onEvent` disposed it on a run that failed.
   void _start() {
     _closeTurn();
     _open();
+    if (!_disposed) {
+      notifyListeners();
+    }
   }
 
   void _startOverIfScreenChanged() {
@@ -566,7 +573,8 @@ final class TandemSession({
       } else if (!run.listing.needsApproval(call.tool)) {
         run.calling = Calling(call.tool, approved: false);
         notifyListeners();
-        if (run.stopped) {
+        // A listener may have stopped the run or let the thread go.
+        if (run.stopped || _run != run) {
           return;
         }
         call.answerWith(
@@ -860,14 +868,12 @@ final class TandemSession({
     assert(!_isBusy, 'Only a session where nothing runs goes on.');
     if ((withAnswers && _waiting.agentAnswersDue) || _queue.userWrote) {
       _start();
-      notifyListeners();
       return;
     }
     _showNextRequest();
     // The approval callback may have approved the request that showed.
     if (_queue.appMessageWaits && status is Idle) {
       _start();
-      notifyListeners();
     }
   }
 
