@@ -66,15 +66,23 @@ AgentEvent _decodeToolCallArgs(JsonObject json) {
   return ToolCallArgs(toolCallId, delta);
 }
 
-AgentEvent _decodeToolCallResult(JsonObject json) => switch (json) {
-  {
-    AgUiFields.messageId: final String messageId,
-    AgUiFields.toolCallId: final String toolCallId,
-    AgUiFields.content: final String content,
-  } =>
-    ToolCallResult(messageId, toolCallId, content),
-  _ => const IgnoredEvent(),
-};
+AgentEvent _decodeToolCallResult(JsonObject json) {
+  final content = switch (json[AgUiFields.content]) {
+    final String text => ToolResultContent.text(text),
+    final List<Object?> parts => ToolResultContent.parts(parts),
+    _ => null,
+  };
+
+  return switch ((
+    json[AgUiFields.messageId],
+    json[AgUiFields.toolCallId],
+    content,
+  )) {
+    (final String messageId, final String toolCallId, final content?) =>
+      ToolCallResult(messageId, toolCallId, content),
+    _ => const IgnoredEvent(),
+  };
+}
 
 // AgentState checks the shape, so a wrong one is reported, not dropped.
 StateSnapshot _decodeStateSnapshot(JsonObject json) =>

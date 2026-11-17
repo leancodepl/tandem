@@ -1,4 +1,5 @@
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/protocol/ag_ui.dart';
 
 /// The part of an agent's run that the session handles.
 sealed class const AgentEvent();
@@ -35,7 +36,7 @@ final class const ToolCallArgs(final String toolCallId, final String delta)
 final class const ToolCallResult(
   final String messageId,
   final String toolCallId,
-  final String content,
+  final ToolResultContent content,
 ) extends AgentEvent;
 
 /// The agent's whole state, as JSON, which replaces the one the app has.

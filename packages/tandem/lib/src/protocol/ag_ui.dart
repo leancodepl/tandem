@@ -94,6 +94,14 @@ abstract final class AgUiFields() {
 
 typedef JsonObject = Map<String, Object?>;
 
+/// What a tool returned, as the `content` of AG-UI 1.0: text, or content
+/// parts that Tandem passes back unchanged.
+extension type const ToolResultContent._(Object json) {
+  const new text(String text) : this._(text);
+
+  const new parts(List<Object?> parts) : this._(parts);
+}
+
 /// [json] decoded, or null when it is not a JSON object.
 JsonObject? decodeJsonObject(String json) {
   try {
