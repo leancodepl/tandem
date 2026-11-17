@@ -9,9 +9,10 @@ import 'package:tandem/src/session/tool_answer.dart';
 typedef MethodOutcome = ({ToolAnswer answer, AgentCall? returned});
 
 /// Runs the method behind [tool] with the [arguments] of [caller], whose
-/// paths point at values of [listing] unless they are frozen. Never throws: a refused call is refused, and any other
-/// error is reported and answered as failed, or as result_unavailable when
-/// only encoding the result failed.
+/// paths point at values of [listing] unless they are frozen. Never throws:
+/// a [ToolCallRefused] answers with its reason, and any other error is
+/// reported and answered as failed, or as result_unavailable when only
+/// encoding the result failed.
 Future<MethodOutcome> runMethod(
   AgentListing listing,
   String tool,

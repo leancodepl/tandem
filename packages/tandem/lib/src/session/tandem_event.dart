@@ -12,7 +12,8 @@ final class const AgentCall({
   /// The method's name in snake_case.
   required final String tool,
 
-  /// The agent's arguments, decoded from JSON.
+  /// The arguments the method got, as JSON, each `{"path": ...}` replaced
+  /// by the value it pointed at.
   required final Map<String, Object?> arguments,
 
   /// What the method returned, as JSON.

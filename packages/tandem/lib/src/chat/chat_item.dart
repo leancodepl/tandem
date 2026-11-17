@@ -61,7 +61,8 @@ enum ApprovalStatus() {
   /// longer be approved.
   invalidated,
 
-  /// The user sent a message instead of deciding.
+  /// It ended without a decision: the user wrote instead, the thread
+  /// started over or the session let it go, such as when the screen closed.
   cancelled,
 }
 
