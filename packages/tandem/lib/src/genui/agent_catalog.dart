@@ -103,8 +103,8 @@ final class AgentFieldPropertyOf<V>._(final String _name) {
 sealed class AgentProperty() {
   String get name;
 
-  /// Whether the agent must set it: its parameter is neither nullable nor
-  /// has a default value.
+  /// Whether the agent must set it: a value or child that is neither
+  /// nullable nor has a default, or an action that is not nullable.
   bool get required;
 }
 
