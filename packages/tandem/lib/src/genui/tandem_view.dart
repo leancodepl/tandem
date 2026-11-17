@@ -19,6 +19,9 @@ import 'package:tandem/src/session/session_scope.dart';
 /// it in a scroll view when the view can be taller than its place. A view
 /// that cannot show, such as one that grows past 500 components, the items
 /// of its lists counted, shows [whenUnavailable] until it can again.
+///
+/// A [catalog] of another class starts an empty view. Another instance of
+/// the same class keeps it, so the catalog needs no `const`.
 final class const TandemView({
   super.key,
   required final AgentCatalog catalog,
@@ -44,7 +47,10 @@ final class _TandemViewState() extends State<TandemView> {
   @override
   void didUpdateWidget(TandemView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.catalog != widget.catalog) _replaceView();
+    // A generated catalog has no state, so its class is its identity.
+    if (oldWidget.catalog.runtimeType != widget.catalog.runtimeType) {
+      _replaceView();
+    }
   }
 
   @override
