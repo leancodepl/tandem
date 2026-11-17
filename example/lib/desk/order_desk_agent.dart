@@ -27,7 +27,8 @@ AgentConnection orderDeskAgent() => ScriptedAgent.repeating((raw) {
             'address': 'Magazynowa 5, 61-001 Poznań',
             'date': '2026-10-23',
           }),
-          AgentStep.showView(const DeskCatalog().example),
+          if (request.offersView)
+            AgentStep.showView(const DeskCatalog().example),
         ];
       }
       return request.offersTool('place_order')

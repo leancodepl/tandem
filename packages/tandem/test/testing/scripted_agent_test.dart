@@ -13,15 +13,20 @@ void main() {
           const AgentStep.callTool('read'),
         ];
       });
+      final tools = [
+        {'name': 'read'},
+      ];
       final first = <String, Object?>{
         'threadId': 'thread',
         'runId': 'first',
         'prompt': 'One',
+        'tools': tools,
       };
       final second = <String, Object?>{
         'threadId': 'thread',
         'runId': 'second',
         'prompt': 'Two',
+        'tools': tools,
       };
 
       final firstEvents = await agent.run(first).toList();
@@ -48,6 +53,17 @@ void main() {
       });
     },
   );
+
+  test('a call of a tool the run does not offer fails the run', () async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('find_customer')],
+    ]);
+
+    final events = await agent.run({}).toList();
+
+    expect(events.last, containsPair('code', ScriptedErrorCode.notOffered));
+    expect(events, isNot(contains(containsPair('type', 'TOOL_CALL_START'))));
+  });
 
   test('a finite script still fails after its last turn', () async {
     final agent = ScriptedAgent([
