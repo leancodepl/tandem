@@ -66,7 +66,7 @@ A catalog belongs to one screen, because its guidelines and example name that sc
 | leaves it out | `1` | `'new'` | `null` |
 | sends `null` | refused | `null` | `null` |
 
-The schema of a nullable parameter is `anyOf` the schema of its type and `{"type": "null"}`, so the agent knows it may send `null`. That is plain JSON Schema, which ag-ui-adk 0.9.0 converts for Gemini. A list of types, the shorter form, fails in ag-ui-adk 0.9.0. A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, a `static const` member of its own class, such as `Alignment.center`, or `null`.
+The schema of a nullable parameter is `anyOf` the schema of its type and `{"type": "null"}`, so the agent knows it may send `null`. That is plain JSON Schema, which ag-ui-adk converts for Gemini. A list of types, the shorter form, does not convert. A parameter that is neither nullable nor has a default is required. A default is a `bool`, `int`, `double` or `String` constant, an enum value, a `static const` member of its own class, such as `Alignment.center`, or `null`.
 
 A refused call does not run the method. The agent gets a message that names the argument, also for a wrong type or a key the schema does not have.
 
