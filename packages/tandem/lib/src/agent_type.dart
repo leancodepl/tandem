@@ -163,8 +163,9 @@ sealed class const AgentType<T>() {
   String get id;
 
   /// The type as the agent reads it in a description, such as `string`,
-  /// `Customer` or `Customer[]`.
-  String get name;
+  /// `Customer` or `Customer[]`. Declared types omit library names from [id].
+  String get name =>
+      id.replaceAll(RegExp('[^<>,]*#'), '').replaceAll(',', ', ');
 
   /// What the type is, from its doc comment.
   String? get description => null;
@@ -172,7 +173,7 @@ sealed class const AgentType<T>() {
   /// The description, with the type's own parts, that two builds must agree
   /// on: the same [id] with another fingerprint is a mistake in the app.
   @internal
-  String get fingerprint;
+  String get fingerprint => id;
 
   /// [value] as JSON.
   Object? write(T value);
@@ -237,11 +238,6 @@ sealed class const AgentType<T>() {
     },
     'required': ['path'],
   };
-
-  /// The Dart name in [id], with the names of its type arguments and
-  /// without libraries, such as `Page<Customer>`.
-  String get _declaredName =>
-      id.replaceAll(RegExp('[^<>,]*#'), '').replaceAll(',', ', ');
 }
 
 /// Where a value of [AgentType.read] is in the arguments, and what a class
@@ -361,9 +357,6 @@ final class const _Scalar<T>(final String _jsonType, final String _dartName)
   String get name => _jsonType;
 
   @override
-  String get fingerprint => id;
-
-  @override
   Object? write(T value) => value;
 
   @override
@@ -406,9 +399,6 @@ final class const _DateTime() extends AgentType<DateTime> {
   String get name => 'date-time';
 
   @override
-  String get fingerprint => id;
-
-  @override
   Object? write(DateTime value) => value.isUtc
       ? value.toIso8601String()
       : '${value.toIso8601String()}${_offset(value.timeZoneOffset)}';
@@ -443,9 +433,6 @@ final class const _Uri() extends AgentType<Uri> {
   String get name => 'uri';
 
   @override
-  String get fingerprint => id;
-
-  @override
   Object? write(Uri value) => value.toString();
 
   @override
@@ -470,9 +457,6 @@ final class const _Choice<T>(
   final Map<String, T> _byName, {
   @override final String? description,
 }) extends AgentType<T> {
-  @override
-  String get name => _declaredName;
-
   @override
   String get fingerprint => '$id[${_byName.keys.join('|')}]';
 
@@ -666,9 +650,6 @@ final class _Object<T>(
   late final _byName = {for (final field in _fields) field.name: field};
 
   @override
-  String get name => _declaredName;
-
-  @override
   late final String fingerprint =
       '$id{${[for (final field in _fields) '${field.name}:${field.type.fingerprint}'].join(',')}}';
 
@@ -752,9 +733,6 @@ final class const _Converted<T, S>(
   @override final String? description,
   @override final bool isObject = false,
 }) extends AgentType<T> {
-  @override
-  String get name => _declaredName;
-
   @override
   String get fingerprint => '$id via $converterId as ${_json.fingerprint}';
 
