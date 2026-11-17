@@ -124,9 +124,7 @@ void main() {
           surface: (context) => shop,
           connection: ScriptedAgent([
             (_) => [
-              AgentStep.callTool('tandem_show_view', {
-                'components': const DeskCatalog().example,
-              }),
+              AgentStep.showView(const DeskCatalog().example),
               const AgentStep.callTool('place_order'),
             ],
           ]),

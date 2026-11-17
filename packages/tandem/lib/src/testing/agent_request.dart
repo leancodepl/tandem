@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/session/tool_answer.dart';
+import 'package:tandem/src/session/view_tool.dart';
 
 /// Reads the context, offered tools and latest answers of a scripted run.
 /// [raw] stays available for assertions about the wire format.
@@ -29,11 +31,33 @@ final class AgentRequest(final Map<String, Object?> raw) {
       _objects(raw[AgUiFields.tools])
           .any((tool) => tool[AgUiFields.name] == name);
 
+  /// Whether the run offers `tandem_show_view`, which `AgentStep.showView`
+  /// calls.
+  bool get offersView => offersTool(ViewTool.name);
+
   /// New app notes, oldest first, or an empty list when none are offered.
   List<Object?> get newNotes => switch (context('app_notes')) {
     {'new': final List<Object?> notes} => notes,
     _ => const [],
   };
+
+  /// The actions of views the agent drew that the user pressed, from the new
+  /// app notes, oldest first.
+  List<PressedAction> get newPressedActions => [
+    for (final note in newNotes)
+      if (note
+          case {'pressed': final String tool, 'status': final Object? status} &&
+              final Map<String, Object?> json)
+        if (ToolStatus.named(status) case final status?)
+          PressedAction._(
+            tool,
+            arguments: json['arguments'],
+            status: status,
+            answer: {...json}
+              ..remove('pressed')
+              ..remove('arguments'),
+          ),
+  ];
 
   /// The consecutive tool answers at the end of the request, oldest first.
   /// A trailing user or assistant message leaves this empty.
@@ -65,6 +89,18 @@ final class AgentRequest(final Map<String, Object?> raw) {
   List<Map<String, Object?>> get _messages =>
       _objects(raw[AgUiFields.messages]).toList();
 }
+
+/// An action of a view the agent drew that the user pressed, which called
+/// [tool] with [arguments].
+final class PressedAction._(
+  final String tool, {
+  required final Object? arguments,
+  required final ToolStatus status,
+
+  /// The answer of the call as a coding agent gets it: its `status`, and its
+  /// `result`, `reason` or `error`.
+  required final Map<String, Object?> answer,
+});
 
 /// A tool answer joined to its call. No status is inferred from its content:
 /// a returned application value can itself contain a `status` key.

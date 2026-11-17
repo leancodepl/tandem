@@ -28,11 +28,12 @@ List<AgentStep> _booking(Map<String, Object?> raw) {
 }
 
 String? _toolProblem(Object? result) => switch (result) {
-  {'status': final String status} when status != 'returned' => switch (result) {
-    {'reason': final String reason} => reason,
-    {'error': final String error} => error,
-    _ => 'Check the fields on the form.',
-  },
+  {'status': final String status} when status != ToolStatus.returned =>
+    switch (result) {
+      {'reason': final String reason} => reason,
+      {'error': final String error} => error,
+      _ => 'Check the fields on the form.',
+    },
   _ => null,
 };
 
