@@ -18,7 +18,7 @@ final class const AgentClass._(final List<AgentField> fields) {
         !element.isPublic ||
         element.isFrameworkType ||
         type.typeArguments.any((argument) => argument is TypeParameterType)) {
-      throw AgentTypeError.unsupported(source, type: type, path: path);
+      throw UnsupportedTypeError(source, type: type, path: path);
     }
 
     final parameters = _readParameters(type, source: source, path: path);

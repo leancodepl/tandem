@@ -98,6 +98,10 @@ class _CapabilityReader(final ClassElement _type)
     );
 
     if (source is! MethodDeclaration) {
+      if (getter.isOriginVariable) {
+        throw AgentGenerationError.capabilitiesField(_type);
+      }
+
       throw AgentGenerationError.missingSource(getter);
     }
 

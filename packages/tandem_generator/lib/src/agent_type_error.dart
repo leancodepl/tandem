@@ -26,6 +26,18 @@ final class AgentTypeError extends InvalidGenerationSource {
          element: element,
        );
 
+  new unsupportedJson(
+    Element element, {
+    required String className,
+    required DartType json,
+    required String path,
+  }) : super(
+         '$path: $className writes ${json.getDisplayString()}, which Tandem '
+         'has no form for. Make $className write a type that Tandem reads, '
+         'such as String.',
+         element: element,
+       );
+
   new twoConverters(
     Element element, {
     required DartType converted,
@@ -176,4 +188,13 @@ final class AgentTypeError extends InvalidGenerationSource {
          'code cannot copy the default $className.$member. Import it.',
          element: element,
        );
+}
+
+/// Carries [type], so that a converter that writes it gets its own message.
+final class UnsupportedTypeError(
+  super.element, {
+  required final DartType type,
+  required super.path,
+}) extends AgentTypeError {
+  this : super.unsupported(type: type);
 }
