@@ -1,6 +1,5 @@
-import 'dart:collection';
-
 import 'package:rfc_6902/rfc_6902.dart';
+import 'package:tandem/src/frozen_json.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 
 /// The state that the agent's backend keeps of a thread, as it streams it
@@ -25,7 +24,7 @@ final class AgentState() {
           'The agent sent a STATE_SNAPSHOT that is not a JSON object.',
         );
       }
-      _value = _freezeObject(snapshot);
+      _value = frozenJson(snapshot);
       _waitsForSnapshot = false;
     } on FormatException {
       _waitsForSnapshot = true;
@@ -73,33 +72,10 @@ final class AgentState() {
       );
     }
     if (patched is Map<Object?, Object?>) {
-      return _freezeObject(patched);
+      return frozenJson(patched);
     }
     throw const FormatException(
       'The agent sent a STATE_DELTA that leaves no JSON object.',
     );
   }
 }
-
-JsonObject _freezeObject(Map<Object?, Object?> object) {
-  final owned = <String, Object?>{};
-  for (final MapEntry(:key, :value) in object.entries) {
-    if (key is! String) {
-      throw const FormatException('The agent state contains a non-JSON key.');
-    }
-    owned[key] = _freezeValue(value);
-  }
-  return UnmodifiableMapView(owned);
-}
-
-Object? _freezeValue(Object? value) => switch (value) {
-  null || String() || bool() => value,
-  final num number when number.isFinite => number,
-  final Map<Object?, Object?> object => _freezeObject(object),
-  final List<Object?> values => List<Object?>.unmodifiable(
-    values.map(_freezeValue),
-  ),
-  _ => throw const FormatException(
-    'The agent state contains a non-JSON value.',
-  ),
-};
