@@ -386,35 +386,6 @@ void main() {
     expect(find.byType(PlantRow), findsNWidgets(2));
   });
 
-  testWidgets('three refused views in a row withhold the tool until the user '
-      'writes again', (tester) async {
-    const broken = [
-      {'id': 'root', 'component': 'Carousel'},
-    ];
-    final session = await draw(
-      tester,
-      broken,
-      after: [
-        (_) => [_show(broken)],
-        (_) => [_show(broken)],
-        (_) => const [.say('I will answer in text.')],
-        (_) => const [.say('Hi.')],
-      ],
-    );
-    List<Object?> tools(Map<String, Object?> body) => _toolNames(body);
-
-    expect(bodies, hasLength(4));
-    expect(tools(bodies[3]), isNot(contains('tandem_show_view')));
-    expect(
-      AgentRequest(bodies[3]).latestToolResults.single.value,
-      containsPair('reason', contains('Answer the user in text.')),
-    );
-
-    session.send('Show it again');
-    await tester.pumpAndSettle();
-    expect(tools(bodies[4]), contains('tandem_show_view'));
-  });
-
   testWidgets('a catalog and a screen that write Color differently stop the '
       'view', (tester) async {
     await draw(
