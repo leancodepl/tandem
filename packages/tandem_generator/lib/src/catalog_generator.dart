@@ -262,11 +262,7 @@ AgentComponent<$widgetName>.of(
 
     if (_isInfrastructure(type)) {
       if (!optional) {
-        throw CatalogError.noForm(
-          _element,
-          parameter: parameter,
-          converted: nonNull,
-        );
+        throw CatalogError.infrastructure(_element, parameter: parameter);
       }
       return _Parameter.skipped(parameter);
     }
