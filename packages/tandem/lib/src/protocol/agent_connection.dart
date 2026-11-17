@@ -98,9 +98,7 @@ final class HttpAgentConnection(
         onTimeout: _endWithTimeout,
       );
       // Delegation keeps cancellation responsive while waiting for events.
-      yield* parseSse(bytes)
-          .map((event) => jsonDecode(event) as JsonObject)
-          .transform(agUiRun(input));
+      yield* parseSse(bytes).map(_decodeEvent).transform(agUiRun(input));
     } on http.RequestAbortedException {
       // The caller cancelled the run: nobody is left to hear of it.
     } finally {
@@ -120,6 +118,10 @@ final class HttpAgentConnection(
     })
     // Bytes, not `body`, which would add a charset to the content type.
     ..bodyBytes = utf8.encode(jsonEncode(input));
+
+  static JsonObject _decodeEvent(String data) =>
+      decodeJsonObject(data) ??
+      (throw FormatException('An AG-UI event is a JSON object', data));
 
   // Closing the sink cancels the silent connection; an error alone does not.
   void _endWithTimeout(EventSink<List<int>> sink) {

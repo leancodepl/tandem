@@ -141,6 +141,41 @@ void main() {
     );
   });
 
+  test(
+    'a response that is not an AG-UI stream fails with what it lacks',
+    () async {
+      final cases = {
+        '<!doctype html><title>Sign in</title>': 'It had no AG-UI event.',
+        'data: [1]\n\n': 'An AG-UI event is a JSON object',
+      };
+
+      for (final MapEntry(key: body, value: message) in cases.entries) {
+        final client = MockClient(
+          (request) async =>
+              http.Response(body, 200, headers: {'content-type': 'text/html'}),
+        );
+
+        await expectLater(
+          HttpAgentConnection(
+            _endpoint,
+            client: client,
+          ).run({'threadId': 'thread-A', 'runId': 'run-current'}),
+          emitsInOrder([
+            emitsError(
+              isFormatException.having(
+                (error) => error.message,
+                'message',
+                contains(message),
+              ),
+            ),
+            emitsDone,
+          ]),
+          reason: body,
+        );
+      }
+    },
+  );
+
   test('a run ends at RUN_FINISHED while the server keeps the connection '
       'open', () async {
     var sourceCancelled = false;

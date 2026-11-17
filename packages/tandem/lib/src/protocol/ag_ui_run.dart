@@ -67,7 +67,7 @@ StreamTransformer<JsonObject, JsonObject> _requestedRun(JsonObject input) {
     handleDone: (sink) {
       // A source that failed has already said why the run is missing.
       if (response.endedBeforeTheRun && !sourceFailed) {
-        sink.addError(_missingRun(input, afterRuns: response.replayedRuns));
+        sink.addError(_missingRun(input, response));
       }
       sink.close();
     },
@@ -102,9 +102,13 @@ final class _Response(final JsonObject _request) {
   /// of a response that never starts it names them.
   final replayedRuns = <String>[];
 
+  /// Whether no event came yet.
+  bool isEmpty = true;
+
   bool get endedBeforeTheRun => _looksForTheRun && _phase == .beforeTheRun;
 
   _Place place(JsonObject event) {
+    isEmpty = false;
     if (!_looksForTheRun) {
       return _endsARun(event) ? .endOfTheRun : .inTheRun;
     }
@@ -178,22 +182,26 @@ bool _endsARun(JsonObject event) => switch (event[AgUiFields.type]) {
   _ => false,
 };
 
-FormatException _missingRun(
-  JsonObject input, {
-  required List<String> afterRuns,
-}) {
+FormatException _missingRun(JsonObject input, _Response response) {
+  final missing =
+      'The response ended before the RUN_STARTED of ${_describe(input)}.';
+  if (response.isEmpty) {
+    return FormatException(
+      '$missing It had no AG-UI event. Check that the endpoint serves AG-UI.',
+    );
+  }
+
+  final runs = response.replayedRuns;
+  if (runs.isEmpty) return FormatException('$missing It started no run.');
+
   const namedAtMost = 3;
-  final named = afterRuns.take(namedAtMost).join(', ');
-  final more = afterRuns.length > namedAtMost
-      ? ' and ${afterRuns.length - namedAtMost} more'
+  final named = runs.take(namedAtMost).join(', ');
+  final more = runs.length > namedAtMost
+      ? ' and ${runs.length - namedAtMost} more'
       : '';
-  final started = afterRuns.isEmpty
-      ? 'It started no run.'
-      : 'It started only $named$more.';
   return FormatException(
-    'The response ended before the RUN_STARTED of ${_describe(input)}. '
-    "$started Check that the server repeats the input's threadId and runId "
-    'in RUN_STARTED.',
+    '$missing It started only $named$more. Check that the server repeats '
+    "the input's threadId and runId in RUN_STARTED.",
   );
 }
 
