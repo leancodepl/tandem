@@ -113,6 +113,87 @@ class ViewCubit() {
     );
   });
 
+  for (final (capability, message) in [
+    ('.sees(draft.length)', '.sees takes a getter of NoteCubit'),
+    ('.calls(() => save())', '.calls takes a method of NoteCubit'),
+  ]) {
+    test('$capability fails the build', () async {
+      expect(
+        await _buildErrors('''
+@TandemAgent()
+class NoteCubit() {
+  List<AgentCapability> get agentCapabilities => [$capability];
+
+  /// The draft of the note.
+  String get draft => '';
+
+  /// Saves the note.
+  void save() {}
+}
+'''),
+        [contains(message)],
+      );
+    });
+  }
+
+  test('agentCapabilities that reads super fails the build', () async {
+    expect(
+      await _buildErrors('''
+abstract class BaseCubit {
+  List<AgentCapability> get agentCapabilities => [];
+}
+
+@TandemAgent()
+class OrderCubit extends BaseCubit {
+  @override
+  List<AgentCapability> get agentCapabilities => [
+    ...super.agentCapabilities,
+    .calls(placeOrder),
+  ];
+
+  /// Places the order.
+  void placeOrder() {}
+}
+'''),
+      [contains('agentCapabilities cannot use super')],
+    );
+  });
+
+  test('an optional list parameter fails the build', () async {
+    expect(
+      await _buildErrors('''
+@TandemAgent()
+class OrderCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(tag)];
+
+  /// Tags the order.
+  void tag({List<String> tags = const []}) {}
+}
+'''),
+      [contains('tags is a list, so the agent must send it')],
+    );
+  });
+
+  test('a class that contains itself fails the build', () async {
+    expect(
+      await _buildErrors('''
+class const Category({
+  required final String name,
+  required final List<Category> children,
+});
+
+@TandemAgent()
+class ShopCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(categories)];
+
+  /// The categories of the shop.
+  List<Category> get categories => const [];
+}
+'''),
+      [contains('Category contains itself.')],
+    );
+  });
+
   test('a class Tandem cannot build fails the build', () async {
     expect(
       await _buildErrors('''
@@ -797,6 +878,25 @@ final class const StockBadge({required final String label}) extends StatelessWid
 final class const ShopCatalog();
 '''),
       [contains('root has no component Badge. Components: StockBadge.')],
+    );
+  });
+
+  test('an example that sets a property the widget lacks stops the '
+      'catalog', () async {
+    expect(
+      await _buildErrors('''
+/// A word on how much of a plant is left, such as "Low".
+final class const StockBadge({required final String label}) extends StatelessWidget;
+
+/// Mark the plants that run low.
+///
+/// ```json
+/// [{"id": "root", "component": "StockBadge", "text": "Low"}]
+/// ```
+@TandemCatalog([StockBadge])
+final class const ShopCatalog();
+'''),
+      [contains('root: StockBadge has no "text". Properties: label.')],
     );
   });
 
