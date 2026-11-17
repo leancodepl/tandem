@@ -52,9 +52,11 @@ final class HttpAgentConnection(
   /// Every run uses it and none closes it. Without one, each run opens its
   /// own and closes it at the end.
   final http.Client? client,
-}) implements AgentConnection {
-  static const _idleTimeout = Duration(seconds: 60);
 
+  /// How long a run waits for the response headers or the next bytes, SSE
+  /// comments included, before it counts as broken.
+  final Duration idleTimeout = const Duration(seconds: 60),
+}) implements AgentConnection {
   @override
   Stream<JsonObject> run(JsonObject input) {
     final abortTrigger = Completer<void>();
@@ -84,17 +86,15 @@ final class HttpAgentConnection(
     final httpClient = client ?? http.Client();
     try {
       final request = _request(input, abortTrigger: abortTrigger);
-      final response = await httpClient.send(request).timeout(_idleTimeout);
+      final response = await httpClient.send(request).timeout(idleTimeout);
       if (response.statusCode != 200) {
-        final body = await response.stream.bytesToString().timeout(
-          _idleTimeout,
-        );
+        final body = await response.stream.bytesToString().timeout(idleTimeout);
         throw AgentHttpException(response.statusCode, body);
       }
 
       // Count raw bytes so ADK's ping comments reset the timeout.
       final bytes = response.stream.timeout(
-        _idleTimeout,
+        idleTimeout,
         onTimeout: _endWithTimeout,
       );
       // Delegation keeps cancellation responsive while waiting for events.
@@ -122,9 +122,9 @@ final class HttpAgentConnection(
     ..bodyBytes = utf8.encode(jsonEncode(input));
 
   // Closing the sink cancels the silent connection; an error alone does not.
-  static void _endWithTimeout(EventSink<List<int>> sink) {
+  void _endWithTimeout(EventSink<List<int>> sink) {
     sink
-      ..addError(TimeoutException('No bytes from the agent', _idleTimeout))
+      ..addError(TimeoutException('No bytes from the agent', idleTimeout))
       ..close();
   }
 }

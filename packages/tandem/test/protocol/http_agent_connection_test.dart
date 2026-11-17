@@ -253,9 +253,8 @@ void main() {
     expect(client.closed, isFalse);
   });
 
-  testWidgets('a silent connection ends with an error and is cancelled', (
-    tester,
-  ) async {
+  testWidgets('a connection silent for its idle timeout ends with an error '
+      'and is cancelled', (tester) async {
     var sourceCancelled = false;
     final source = StreamController<List<int>>(
       onCancel: () => sourceCancelled = true,
@@ -267,10 +266,14 @@ void main() {
     final errors = <Object>[];
     var done = false;
 
-    HttpAgentConnection(_endpoint, client: client)
+    HttpAgentConnection(
+          _endpoint,
+          client: client,
+          idleTimeout: const Duration(seconds: 5),
+        )
         .run(const {})
         .listen(events.add, onError: errors.add, onDone: () => done = true);
-    await tester.pump(_pastIdleTimeout);
+    await tester.pump(const Duration(seconds: 6));
     await _settle(tester);
 
     expect(events, [
