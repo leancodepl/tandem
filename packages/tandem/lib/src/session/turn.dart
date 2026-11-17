@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
-import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
@@ -20,12 +19,9 @@ final class Turn(final List<ToolCall> calls) {
   /// approval ran. Null until the turn asks.
   SeesSnapshot? get seen => _seen;
 
-  /// The request that shows and waits for the user.
-  ApprovalRequest? get shown =>
-      calls.where((call) => call.pending).firstOrNull?.request;
-
-  /// Whether a call waits for the user, shown or not.
-  bool get waitsForUser => _seen != null && calls.any(_undecided);
+  /// The first call still waiting for a decision once the turn asks.
+  ToolCall? get next =>
+      _seen == null ? null : calls.where(_undecided).firstOrNull;
 
   /// Whether the turn has calls and every one has an answer, so the answers
   /// can go to the agent.
@@ -61,41 +57,12 @@ final class Turn(final List<ToolCall> calls) {
   /// [next], and keep [seen].
   void ask(SeesSnapshot seen) => _seen = seen;
 
-  /// Shows the next call that waits and returns its request. The caller
-  /// checks first that no request of any turn shows.
-  ApprovalRequest? next() {
-    if (!waitsForUser) {
-      return null;
+  /// Applies the decision to every call still waiting for an answer or approval.
+  void decideUndecided(ApprovalStatus status) {
+    for (final call in calls.where(_undecided)) {
+      call.decide(status);
     }
-    return calls.firstWhere(_undecided).ask();
   }
-
-  bool isPending(ApprovalRequest request) => _pendingCall(request) != null;
-
-  /// Approves [request] and returns its call, to run. Returns null when it is
-  /// approved already, and throws an [ApprovalNotPending] when it was
-  /// rejected, cancelled or invalidated.
-  ToolCall? approve(ApprovalRequest request) => _decide(request, .approved);
-
-  /// Rejects [request] and cancels the rest of the turn, so the agent plans
-  /// again. Returns its call, or null when it is rejected already. Throws an
-  /// [ApprovalNotPending] when it was approved, cancelled or invalidated.
-  ToolCall? reject(ApprovalRequest request) {
-    final call = _decide(request, .rejected);
-    if (call != null) {
-      cancelUndecided();
-    }
-    return call;
-  }
-
-  /// Invalidates every call that has no answer and was not approved, and
-  /// returns them.
-  List<ToolCall> invalidateUndecided() => _decideUndecided(.invalidated);
-
-  /// Cancels every call that has no answer and was not approved, as when the
-  /// user writes instead of deciding or the run was stopped, and returns
-  /// them.
-  List<ToolCall> cancelUndecided() => _decideUndecided(.cancelled);
 
   /// Freezes the arguments of the calls that may ask the user, answering
   /// those that cannot. The session takes the turn's snapshot afterwards.
@@ -124,30 +91,6 @@ final class Turn(final List<ToolCall> calls) {
         );
       }
     }
-  }
-
-  ToolCall? _decide(ApprovalRequest request, ApprovalStatus decision) {
-    if (request.status == decision) {
-      return null;
-    }
-    final call = _pendingCall(request);
-    if (call == null) {
-      throw ApprovalNotPending(request);
-    }
-    call.decide(decision);
-    return call;
-  }
-
-  ToolCall? _pendingCall(ApprovalRequest request) => calls
-      .where((call) => call.pending && call.request?.key == request.key)
-      .firstOrNull;
-
-  List<ToolCall> _decideUndecided(ApprovalStatus status) {
-    final undecided = calls.where(_undecided).toList();
-    for (final call in undecided) {
-      call.decide(status);
-    }
-    return undecided;
   }
 
   static bool _undecided(ToolCall call) =>

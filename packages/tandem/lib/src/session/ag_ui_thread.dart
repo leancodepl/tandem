@@ -56,19 +56,14 @@ final class AgUiThread(var ThreadId _id) {
   /// then the results of its calls that ran on the backend. A backend call
   /// without a result stays out.
   void addRun(Run run) {
-    final history = run.history;
-    _messages.addAll(history.all);
-    if (_hasAppId) {
-      _unsentCallMessages.addAll(history.withAppCalls);
+    for (final (:messages, :hasAppCalls) in run.history) {
+      _append(messages, keepUntilSent: hasAppCalls);
     }
   }
 
   /// What the agent said in a run that failed. ADK never saw its calls
   /// answered, so they stay out.
-  void addFailedRun(Run run) => _messages.addAll([
-    for (final MapEntry(key: id, value: message) in run.texts.entries)
-      .assistant(id, text: message.text),
-  ]);
+  void addFailedRun(Run run) => _messages.addAll(run.textHistory);
 
   /// The session that went on with the thread lets it go while the screen
   /// gives the agent [seen]. The unsent calls are part of the history, and
@@ -77,11 +72,12 @@ final class AgUiThread(var ThreadId _id) {
       _messages.length > _unsentCallMessages.length ? seen : null;
 
   /// The answers of [turn], for the next run.
-  void addAnswers(Turn turn) {
-    final answers = turn.answers;
-    _messages.addAll(answers);
-    if (_hasAppId) {
-      _unsentCallMessages.addAll(answers);
+  void addAnswers(Turn turn) => _append(turn.answers, keepUntilSent: true);
+
+  void _append(List<AgUiMessage> messages, {required bool keepUntilSent}) {
+    _messages.addAll(messages);
+    if (_id is AppThreadId && keepUntilSent) {
+      _unsentCallMessages.addAll(messages);
     }
   }
 
@@ -102,9 +98,4 @@ final class AgUiThread(var ThreadId _id) {
     agentState.clear();
     _seenAtLeave = null;
   }
-
-  /// Whether the app supplied the id. The backend then still holds the
-  /// conversation after a reset, so the thread keeps the calls whose answers
-  /// have not gone out.
-  bool get _hasAppId => _id is AppThreadId;
 }

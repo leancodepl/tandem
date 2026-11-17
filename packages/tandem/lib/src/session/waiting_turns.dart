@@ -1,4 +1,5 @@
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/tool_call.dart';
@@ -8,35 +9,47 @@ import 'package:tandem/src/session/turn.dart';
 /// then one turn for each other caller, in the order they asked. One request
 /// shows at a time, the in-app agent's first.
 final class WaitingTurns() {
-  /// The calls of the in-app agent's last run, until their answers go out.
   var _agent = Turn(const []);
-
   final _others = <Caller, Turn>{};
+  ToolCall? _lastShown;
 
-  /// Whether the answers of the in-app agent's turn go to it now, as
-  /// [Turn.answersDue] says.
+  Iterable<Turn> get _turns => [_agent, ..._others.values];
+
   bool get agentAnswersDue => _agent.answersDue;
 
-  /// Whether [turn] is the in-app agent's.
-  bool isAgentTurn(Turn turn) => identical(turn, _agent);
-
-  /// The calls of a run of the in-app agent become its turn.
   Turn startAgentTurn(List<ToolCall> calls) => _agent = Turn(calls);
 
-  /// Returns the in-app agent's turn, whose answers go out now, and leaves
-  /// it without calls.
   Turn closeAgentTurn() {
     final turn = _agent;
-    _agent = Turn(const []);
+    startAgentTurn(const []);
+    turn.decideUndecided(.cancelled);
     return turn;
   }
 
-  /// The request that waits for the user now.
-  ApprovalRequest? get shown =>
-      _turns.map((turn) => turn.shown).nonNulls.firstOrNull;
+  ToolCall? get _pending => switch (_lastShown) {
+    final call? when call.pending => call,
+    _ => null,
+  };
+
+  ApprovalRequest? get shown => _pending?.request;
+
+  bool isPending(ApprovalRequest request) => shown?.key == request.key;
+
+  ToolCall? decide(ApprovalRequest request, ApprovalStatus decision) {
+    if (request.status == decision) return null;
+    final call = _pending;
+    if (call == null || call.request?.key != request.key) {
+      throw ApprovalNotPending(request);
+    }
+    call.decide(decision);
+    if (decision == .rejected && call.caller == .inAppAgent) {
+      _agent.decideUndecided(.cancelled);
+    }
+    return call;
+  }
 
   /// Whether a call waits for the user, shown or not.
-  bool get waitsForUser => _turns.any((turn) => turn.waitsForUser);
+  bool get waitsForUser => _turns.any((turn) => turn.next != null);
 
   /// The last call of [caller] that asked the user, null before the first.
   ToolCall? lastAsked(Caller caller) => _others[caller]?.calls.singleOrNull;
@@ -50,43 +63,34 @@ final class WaitingTurns() {
 
   /// Shows the next call that waits, unless a request shows already, and
   /// returns its request.
-  ApprovalRequest? showNext() {
+  ApprovalRequest? showNext(List<ChatItem> chat) {
     if (shown != null) {
       return null;
     }
-    for (final turn in _turns) {
-      if (turn.next() case final request?) {
-        return request;
-      }
-    }
-    return null;
+    _lastShown = _turns.map((turn) => turn.next).nonNulls.firstOrNull;
+    return _lastShown?.ask(chat);
   }
 
-  /// The turn that [request] belongs to. A request of no turn that waits gets
-  /// the agent's turn, which finds no pending call for it.
-  Turn turnOf(ApprovalRequest request) => _others.values.firstWhere(
-    (turn) => turn.calls.any((call) => call.request?.key == request.key),
-    orElse: () => _agent,
-  );
+  /// Returns whether any call lost its approval because the screen changed.
+  bool invalidateUnlike(SeesSnapshot seen) {
+    var invalidated = false;
+    for (final turn in _turns) {
+      if (turn.next != null && turn.seen != seen) {
+        turn.decideUndecided(.invalidated);
+        invalidated = true;
+      }
+    }
+    return invalidated;
+  }
 
-  /// Invalidates the waiting calls of every turn that saw other than [seen],
-  /// and returns them.
-  List<ToolCall> invalidateUnlike(SeesSnapshot seen) => [
-    for (final turn in _turns)
-      if (turn.waitsForUser && turn.seen != seen) ...turn.invalidateUndecided(),
-  ];
+  void cancelShownOfOthers() {
+    final call = _pending;
+    if (call != null && call.caller != .inAppAgent) call.decide(.cancelled);
+  }
 
-  /// Cancels the request of another caller that shows, because the user
-  /// wrote instead of deciding, and returns its call.
-  List<ToolCall> cancelShownOfOthers() => [
-    for (final turn in _others.values)
-      if (turn.shown != null) ...turn.cancelUndecided(),
-  ];
-
-  /// Cancels every call that waits and returns them.
-  List<ToolCall> cancelAll() => [
-    for (final turn in _turns) ...turn.cancelUndecided(),
-  ];
-
-  List<Turn> get _turns => [_agent, ..._others.values];
+  void cancelAll() {
+    for (final turn in _turns) {
+      turn.decideUndecided(.cancelled);
+    }
+  }
 }
