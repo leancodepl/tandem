@@ -429,12 +429,15 @@ AgentComponent<$widgetName>.of(
       },
     };
     final requiredCode = optional ? ', required: false' : '';
+    final read = switch (fallback) {
+      (code: final defaultCode?) => 'args.valueOr($key, $defaultCode)',
+      _ => 'args.value($key)',
+    };
 
     return _Parameter(
       parameter,
       code: '$anchor.value($typeCode$requiredCode)',
-      read: 'args.value($key)',
-      fallback: fallback,
+      read: read,
     );
   }
 
@@ -489,25 +492,16 @@ final class const _Parameter(
   final FormalParameterElement element, {
   final String? code,
   final String? read,
-  final ({String? code})? fallback,
 }) {
   /// A required parameter gets null, which its type allows, as Dart cannot
   /// leave it out.
   new skipped(FormalParameterElement element)
     : this(element, read: element.isOptional ? null : 'null');
 
-  String? get argument {
-    final value = switch ((read, fallback)) {
-      (_?, (code: final defaultCode?)) =>
-        'args.valueOr(${DartLiteral.json(element.displayName)}, $defaultCode)',
-      (final read?, _) => read,
-      (null, _) => null,
-    };
-
-    if (value == null) return null;
-
-    return element.isNamed ? '${element.displayName}: $value' : value;
-  }
+  String? get argument => switch (read) {
+    final value? when element.isNamed => '${element.displayName}: $value',
+    final value => value,
+  };
 }
 
 /// The guidelines and the example of a catalog's doc comment.
