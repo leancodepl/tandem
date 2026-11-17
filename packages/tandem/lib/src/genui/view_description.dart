@@ -64,7 +64,8 @@ ${methods.isEmpty ? '- none' : methods.join('\n')}
 Rules:
 - A property takes a value of its type, or {"path": "/order/total"} into the data, so that the view follows the screen. Write the screen's data by path, and a literal only for text the data does not have.
 - A property of a class takes only a path, never the object.
-- "children": a list of ids, or {"componentId": <id>, "path": <path of a list>} to draw one component for every item. Below it, a path without a leading "/" starts at the item, and {"path": ""} is the item itself.
+- In a path, <i> stands for an index, such as 0.
+- "children": a list of ids, or {"componentId": <id>, "path": <path of a list>} to draw one component for every item. Below it, a path without a leading "/" starts at the item, and {"path": ""} is the item itself. An absolute path with an index reads the same item in every row.
 - An action: {"action": {"event": {"name": <method>, "context": {<parameter>: <value or path>}}}}. A field writes {"input": true} where the entry goes, and calls only a method that needs no approval. When the user acts, the method runs in the app, and app_notes tells you what it answered.
 - Draw at most ${ViewCheck.maxComponents} components, counting every repeated item and nested component.
 
