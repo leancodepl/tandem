@@ -26,17 +26,18 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
   /// each problem, written for the agent to fix them, or nothing when they
   /// may.
   ({DrawnComponents view, List<String> problems}) check(Object? components) {
-    final view = DrawnComponents.parse(components, _catalog);
-    final scopes = view.walkable
-        ? view.scopes(_data)
-        : const <DrawnComponent, List<ViewScope>>{};
-    // A problem that does not depend on the place shows once.
-    final problems = {
-      ...view.problems,
-      ...view.propertyProblems,
-      for (final MapEntry(key: component, value: places) in scopes.entries)
-        for (final scope in places) ..._componentProblems(component, scope),
-    };
+    final (:view, :problems, :walkable) = DrawnComponents._parse(
+      components,
+      _catalog,
+    );
+    if (walkable) {
+      for (final MapEntry(key: component, value: places)
+          in view._scopes(_data).entries) {
+        for (final scope in places.values) {
+          problems.addAll(_componentProblems(component, scope));
+        }
+      }
+    }
     return (view: view, problems: [...problems]);
   }
 
@@ -228,25 +229,13 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
 
 /// The components of a view by id, parsed once from what the agent wrote:
 /// each with its component of the catalog and the properties it sets.
-final class DrawnComponents._(
-  final Map<String, DrawnComponent> _byId,
-
-  /// What keeps the view from being read at all: its shape, an unknown
-  /// component, a missing or circular reference.
-  final List<String> problems,
-
-  /// The properties a component does not have, misses or writes in another
-  /// shape.
-  final List<String> propertyProblems, {
-
-  /// Whether [scopes] can walk the components from the root: the root is
-  /// there, and no reference is missing or circular. The walk skips an
-  /// unknown component.
-  required final bool walkable,
-}) {
-  factory parse(Object? components, AgentCatalog catalog) {
+final class DrawnComponents._(final Map<String, DrawnComponent> _byId) {
+  static ({DrawnComponents view, Set<String> problems, bool walkable}) _parse(
+    Object? components,
+    AgentCatalog catalog,
+  ) {
     if (components is! List<Object?>) {
-      return ._(const {}, const [_shape], const [], walkable: false);
+      return (view: DrawnComponents._({}), problems: {_shape}, walkable: false);
     }
     final byName = {
       for (final component in catalog.components) component.name: component,
@@ -282,11 +271,11 @@ final class DrawnComponents._(
     if (!ids.contains('root')) {
       problems.add('One component has the id "root".');
     }
-    final graphProblems = _graphProblems(byId, ids);
-    return ._(
-      byId,
-      [...problems, ...graphProblems],
-      propertyProblems,
+    final view = DrawnComponents._(byId);
+    final graphProblems = view._graphProblems(ids);
+    return (
+      view: view,
+      problems: {...problems, ...graphProblems, ...propertyProblems},
       walkable: byId.containsKey('root') && graphProblems.isEmpty,
     );
   }
@@ -297,7 +286,7 @@ final class DrawnComponents._(
 
   DrawnComponent get root => this['root'];
 
-  /// The component [id], which a view without [problems] has for every id
+  /// The component [id], which a valid view has for every id
   /// that a component draws.
   DrawnComponent operator [](String id) =>
       _byId[id] ?? (throw StateError('No component has the id $id.'));
@@ -307,7 +296,7 @@ final class DrawnComponents._(
   /// leads to it.
   // Once per component and place: a component that many parents draw is
   // visited once, not once for every way to reach it.
-  Map<DrawnComponent, List<ViewScope>> scopes(ViewData data) {
+  Map<DrawnComponent, Map<String, ViewScope>> _scopes(ViewData data) {
     final scopes = <DrawnComponent, Map<String, ViewScope>>{};
     void visit(String id, ViewScope scope) {
       final component = _byId[id];
@@ -315,39 +304,21 @@ final class DrawnComponents._(
       final here = scopes.putIfAbsent(component, () => {});
       if (here.containsKey(scope.key)) return;
       here[scope.key] = scope;
-      for (final property in component.properties) {
-        switch (property) {
-          case ChildId(:final id):
-            visit(id, scope);
-          case ChildIds(:final ids):
-            for (final id in ids) {
-              visit(id, scope);
-            }
-          case ChildTemplate(:final template, :final path):
-            if (scope.item(path, data.roots) case final item?) {
-              visit(template, item);
-            }
-          default:
-        }
+      for (final (:id, :path) in component.children) {
+        final childScope = path == null ? scope : scope.item(path, data.roots);
+        if (childScope != null) visit(id, childScope);
       }
     }
 
     visit('root', const ViewScope.root());
-    return {
-      for (final MapEntry(:key, :value) in scopes.entries)
-        key: [...value.values],
-    };
+    return scopes;
   }
 
-  /// The references of [byId] to an id that no component of [ids] has, or
-  /// else the first circle.
-  static List<String> _graphProblems(
-    Map<String, DrawnComponent> byId,
-    Set<String> ids,
-  ) {
+  /// The references to a missing id, or else the first circle.
+  List<String> _graphProblems(Set<String> ids) {
     final problems = <String>[];
-    for (final component in byId.values) {
-      for (final child in component.childIds) {
+    for (final component in _byId.values) {
+      for (final (id: child, path: _) in component.children) {
         if (!ids.contains(child)) {
           problems.add('${component.id}: no component has the id $child.');
         }
@@ -359,13 +330,14 @@ final class DrawnComponents._(
     bool cycles(String id) {
       if (done.contains(id)) return false;
       if (!visiting.add(id)) return true;
-      final found = byId[id]?.childIds.any(cycles) ?? false;
+      final found =
+          _byId[id]?.children.any((child) => cycles(child.id)) ?? false;
       visiting.remove(id);
       done.add(id);
       return found;
     }
 
-    for (final id in byId.keys) {
+    for (final id in _byId.keys) {
       if (cycles(id)) {
         return ['$id: draws itself through its children.'];
       }
@@ -409,17 +381,18 @@ final class const DrawnComponent._(
     return (component: ._(id, component, properties), problems: problems);
   }
 
-  /// The ids it draws: its children, the template of its list, and its
-  /// child.
-  Iterable<String> get childIds sync* {
+  /// Each child reference and, for a repeated child, the path of its list.
+  Iterable<({String id, String? path})> get children sync* {
     for (final property in properties) {
       switch (property) {
         case ChildId(:final id):
-          yield id;
+          yield (id: id, path: null);
         case ChildIds(:final ids):
-          yield* ids;
-        case ChildTemplate(:final template):
-          yield template;
+          for (final id in ids) {
+            yield (id: id, path: null);
+          }
+        case ChildTemplate(:final template, :final path):
+          yield (id: template, path: path);
         default:
       }
     }
