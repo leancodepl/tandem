@@ -85,6 +85,10 @@ Every answer has a `status`, and the `screens` as they are after the call:
 | `invalidated` | What the screen shows changed while the request waited. Read `screens`, and ask the user before you call it again. |
 | `cancelled` | The user wrote to the in-app agent, started over or closed the screen. Tell the user. |
 
+A screen with an `error` in place of its `sees` and `tools` has an agent list that throws, such as when its generated code is out of date: run build_runner, and tell the user to hot reload the app.
+
+When `ext.tandem.call` answers with an error instead of a `status`, or your call timed out, the method may have run already. Call `ext.tandem.describe` and check `sees` before you call it again.
+
 **Done when** every value the text states is set, the `sees` of the last answer shows them, and you told the user what you set, what you left and why, and what waits for them.
 
 ## 4. Wait for an approval

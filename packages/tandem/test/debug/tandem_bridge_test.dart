@@ -189,6 +189,36 @@ void main() {
     expect(next.items, ['milk']);
   });
 
+  testWidgets('a call answers once its method ran, also when the list of '
+      'another screen throws, which shows with its error', (tester) async {
+    final healthy = newShop();
+    final broken = newShop();
+    await tester.pumpWidget(Column(children: [scope(healthy), scope(broken)]));
+    broken.listThrows = true;
+
+    final answer = await TandemBridge.call(
+      'add',
+      arguments: {'item': 'milk'},
+      screen: 'Shop',
+    );
+
+    expect(answer, {
+      'status': 'returned',
+      'result': null,
+      'screens': [
+        containsPair('id', 'Shop'),
+        {
+          'id': 'Shop#2',
+          'front': false,
+          'error': 'Bad state: The list is broken.',
+        },
+      ],
+    });
+    expect(healthy.items, ['milk']);
+    expect(tester.takeException(), isStateError);
+    broken.listThrows = false;
+  });
+
   testWidgets('a method not listed now, arguments of the wrong type and an '
       'unknown key are refused, and the method does not run', (tester) async {
     final shop = newShop();
