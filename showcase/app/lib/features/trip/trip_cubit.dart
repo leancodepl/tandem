@@ -167,7 +167,7 @@ class TripCubit({
     if (meeting == null) {
       _refuse('There is no meeting $meetingId on this trip.');
     }
-    trips.moveMeeting(info.id, meeting.movedTo(travelDateTime(start)));
+    trips.moveMeeting(info.id, meeting.movedTo(start));
     _adoptConfirmed(trips.state);
   }
 

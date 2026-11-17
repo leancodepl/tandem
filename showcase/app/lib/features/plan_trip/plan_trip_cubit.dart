@@ -370,18 +370,10 @@ class PlanTripCubit({
     required DateTime start,
     required DateTime end,
   }) {
-    final begins = travelDateTime(start);
-    final ends = travelDateTime(end);
-    if (!ends.isAfter(begins)) {
+    if (!end.isAfter(start)) {
       _refuse('A meeting ends after it starts.');
     }
-    return Meeting(
-      id: id,
-      title: title,
-      place: place,
-      start: begins,
-      end: ends,
-    );
+    return Meeting(id: id, title: title, place: place, start: start, end: end);
   }
 
   Meeting _existingMeeting(String meetingId) {

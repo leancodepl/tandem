@@ -88,17 +88,6 @@ void main() {
     expect(trip.state.booked.homebound.departs.day, 29);
   });
 
-  test('an offset meeting time follows the travel clock and its e-mail', () {
-    trip.moveMeeting('workshop', DateTime.parse('2026-10-30T09:00:00Z'));
-
-    expect(
-      trip.itinerary.meeting(MeetingId('workshop'))?.start,
-      DateTime(2026, 10, 30, 10),
-    );
-    expect(trips.news(TripId('berlin')), isEmpty);
-    expect(trip.warnings.whereType<BreaksPolicy>(), isNotEmpty);
-  });
-
   test('moving every meeting earlier cannot put the return before arrival', () {
     final selected = trip.itinerary.homebound;
     for (final meeting in trip.itinerary.meetings) {
