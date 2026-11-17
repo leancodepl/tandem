@@ -77,6 +77,19 @@ void main() {
     );
   });
 
+  test('a number takes an integer, but not an extension type over one', () {
+    final AgentType<int> cents = .extension(
+      AgentType.integer,
+      (value) => value,
+      id: 'test#Cents',
+    );
+
+    expect(AgentType.number.accepts(.integer), isTrue);
+    expect(AgentType.numeric.accepts(.nullable(AgentType.integer)), isTrue);
+    expect(AgentType.number.accepts(cents), isFalse);
+    expect(AgentType.numeric.accepts(cents), isFalse);
+  });
+
   test('a list or a set of nullable items takes its own type and non-null '
       'items, and one of non-null items takes no nullable ones', () {
     final AgentType<String?> nullable = .nullable(.string);
