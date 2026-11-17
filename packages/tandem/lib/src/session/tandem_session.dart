@@ -285,7 +285,11 @@ final class TandemSession({
       _startThreadOver();
     } else {
       _closeTurn();
-      _agUiThread.leave(_seesNow);
+      // A session that sent nothing never compared the screen, so the
+      // thread keeps what the screen showed the last session that did.
+      if (!_screenToCheck) {
+        _agUiThread.leave(_seesNow);
+      }
     }
     _thread.release(this);
     _run = null;
