@@ -24,6 +24,33 @@ void main() {
       ),
     );
   });
+
+  test('a .sees that cannot be written as JSON names its getter', () {
+    expect(
+      () => AgentListing.of(_Gauge(double.nan)),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          startsWith('The agent list cannot write the .sees ratio: '),
+        ),
+      ),
+    );
+  });
+}
+
+final class _Gauge(final double ratio) implements AgentSurface {
+  @override
+  List<AgentCapability> get agentCapabilities => [.sees(ratio)];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [AgentView.of(() => ratio).as('ratio', 'How full it is.', .number)],
+    calls: const [],
+  );
 }
 
 final class _Pot(final String name);

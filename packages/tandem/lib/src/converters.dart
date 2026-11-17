@@ -36,7 +36,9 @@ final class const ColorConverter() implements JsonConverter<Color, String> {
 /// "top 8 start 16 end 16". start and end follow the reading direction,
 /// left and right do not, and one value names only one kind. Text that
 /// names neither reads as [EdgeInsets], so [EdgeInsetsDirectional] without
-/// start and end writes "start 0", as "top 8 start 0".
+/// start and end writes "start 0", as "top 8 start 0". It writes only sides
+/// that are finite and not below 0, and throws an [ArgumentError] for
+/// others and for insets that mix both directions.
 final class const EdgeInsetsGeometryConverter()
     implements JsonConverter<EdgeInsetsGeometry, String> {
   @override
@@ -53,7 +55,8 @@ final class const EdgeInsetsGeometryConverter()
 /// Insets in logical pixels: one number for every side, as "16"; two for
 /// top and bottom, then left and right, as "8 16"; or sides by name, as
 /// "top 8 left 16". Only left and right, which do not follow the reading
-/// direction.
+/// direction. It writes only sides that are finite and not below 0, and
+/// throws an [ArgumentError] for others.
 final class const EdgeInsetsConverter()
     implements JsonConverter<EdgeInsets, String> {
   @override
@@ -68,7 +71,8 @@ final class const EdgeInsetsConverter()
 
 /// Insets in logical pixels that follow the reading direction: one number
 /// for every side, as "16"; two for top and bottom, then start and end, as
-/// "8 16"; or sides by name, as "top 8 start 16".
+/// "8 16"; or sides by name, as "top 8 start 16". It writes only sides that
+/// are finite and not below 0, and throws an [ArgumentError] for others.
 final class const EdgeInsetsDirectionalConverter()
     implements JsonConverter<EdgeInsetsDirectional, String> {
   @override
@@ -91,7 +95,9 @@ final class const EdgeInsetsDirectionalConverter()
 /// center, centerRight, bottomLeft, bottomCenter or bottomRight; or, to
 /// follow the reading direction, topStart, topEnd, centerStart, centerEnd,
 /// bottomStart or bottomEnd. topCenter, center and bottomCenter read as
-/// [Alignment], which places a child as [AlignmentDirectional]'s do.
+/// [Alignment], which places a child as [AlignmentDirectional]'s do. It
+/// writes only these alignments, and throws an [ArgumentError] for another,
+/// such as `Alignment(0.3, 0.2)`.
 final class const AlignmentGeometryConverter()
     implements JsonConverter<AlignmentGeometry, String> {
   @override
@@ -111,7 +117,9 @@ final class const AlignmentGeometryConverter()
 }
 
 /// A place in a box by name: topLeft, topCenter, topRight, centerLeft,
-/// center, centerRight, bottomLeft, bottomCenter or bottomRight.
+/// center, centerRight, bottomLeft, bottomCenter or bottomRight. It writes
+/// only these alignments, and throws an [ArgumentError] for another, such as
+/// `Alignment(0.3, 0.2)`.
 final class const AlignmentConverter()
     implements JsonConverter<Alignment, String> {
   @override
@@ -127,7 +135,8 @@ final class const AlignmentConverter()
 
 /// A place in a box that follows the reading direction, by name: topStart,
 /// topCenter, topEnd, centerStart, center, centerEnd, bottomStart,
-/// bottomCenter or bottomEnd.
+/// bottomCenter or bottomEnd. It writes only these alignments, and throws an
+/// [ArgumentError] for another.
 final class const AlignmentDirectionalConverter()
     implements JsonConverter<AlignmentDirectional, String> {
   @override

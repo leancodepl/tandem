@@ -147,9 +147,24 @@ final class AgentListing._(
       if (seen.any((item) => item.view.name == view.name)) {
         throw StateError('The agent list sees ${view.name} twice.');
       }
-      seen.add((view: view, value: value, json: jsonEncode(view.write(value))));
+      seen.add((view: view, value: value, json: _encode(view, value)));
     }
     return seen;
+  }
+
+  /// [value] of [view] as JSON text. Throws a [StateError] that names the
+  /// `.sees` when its type cannot write the value, such as `double.nan` or
+  /// an `Alignment` without a name, which would fail every run.
+  static String _encode(AgentView<Object?> view, Object? value) {
+    final checked = view.checked(value);
+    try {
+      return jsonEncode(view.type.write(checked));
+    } catch (err, st) {
+      Error.throwWithStackTrace(
+        StateError('The agent list cannot write the .sees ${view.name}: $err'),
+        st,
+      );
+    }
   }
 
   /// The `context` of AG-UI's `RunAgentInput`: one entry for every `.sees`.
