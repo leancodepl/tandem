@@ -59,8 +59,8 @@ extension type const ToolStatus._(String value) implements String {
 }
 
 /// The answer to a call of a listed method: what the method returned, or why
-/// it did not return. A call of the view's tool gets [shown], `refused`, or
-/// [failed] when a converter of the app fails on it.
+/// it did not return. A call of the view's tool gets [shown], `refused`,
+/// [failed] when a converter of the app fails on it, or [screenUnreadable].
 sealed class const ToolAnswer() {
   /// Throws when JSON cannot encode [result].
   factory returned(Object? result) = _Returned;
@@ -90,6 +90,11 @@ sealed class const ToolAnswer() {
     'error':
         'The method failed and may have changed the app. Do not retry '
         'automatically.',
+  });
+
+  /// The screen's list threw while the view was drawn.
+  static const screenUnreadable = _Status(.failed, {
+    'error': 'The app could not read its screen, so the view did not show.',
   });
 
   static const resultUnavailable = _Status(.resultUnavailable, {
