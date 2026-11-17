@@ -121,9 +121,11 @@ sealed class const AgentType<T>() {
 
   static AgentType<T?> nullable<T>(AgentType<T> type) => _Nullable(type);
 
-  static AgentType<List<T>> list<T>(AgentType<T> item) => _List(item);
+  static AgentType<List<T>> list<T>(AgentType<T> item) =>
+      _Sequence(item, unique: false, collect: (items) => items.toList());
 
-  static AgentType<Set<T>> set<T>(AgentType<T> item) => _Set(item);
+  static AgentType<Set<T>> set<T>(AgentType<T> item) =>
+      _Sequence(item, unique: true, collect: (items) => items.toSet());
 
   /// A class read through its constructor, whose [fields] are its
   /// parameters, each with a getter of the same name.
@@ -412,17 +414,11 @@ final class const _DateTime() extends AgentType<DateTime> {
       : '${value.toIso8601String()}${_offset(value.timeZoneOffset)}';
 
   @override
-  DateTime read(Object? json, AgentReading reading) => switch (json) {
-    final String text? => switch (DateTime.tryParse(text)) {
-      final date? => date.isUtc ? date.toLocal() : date,
-      null => throw reading.refuse(
-        'expected an ISO 8601 date, got ${jsonEncode(json)}',
-      ),
-    },
-    _ => throw reading.refuse(
-      'expected an ISO 8601 date, got ${jsonEncode(json)}',
-    ),
-  };
+  DateTime read(Object? json, AgentReading reading) {
+    final date = json is String ? DateTime.tryParse(json) : null;
+    if (date != null) return date.isUtc ? date.toLocal() : date;
+    throw reading.refuse('expected an ISO 8601 date, got ${jsonEncode(json)}');
+  }
 
   @override
   JsonObject schema(AgentObjects objects) => {
@@ -453,25 +449,20 @@ final class const _Uri() extends AgentType<Uri> {
   Object? write(Uri value) => value.toString();
 
   @override
-  Uri read(Object? json, AgentReading reading) => switch (json) {
-    final String text? => switch (Uri.tryParse(text)) {
-      final uri? when uri.hasScheme => uri,
-      _ => throw _notAbsolute(json, reading),
-    },
-    _ => throw _notAbsolute(json, reading),
-  };
+  Uri read(Object? json, AgentReading reading) {
+    final uri = json is String ? Uri.tryParse(json) : null;
+    if (uri != null && uri.hasScheme) return uri;
+    throw reading.refuse(
+      'expected an absolute URI, such as https://example.com/page, got '
+      '${jsonEncode(json)}',
+    );
+  }
 
   @override
   JsonObject schema(AgentObjects objects) => {
     'type': 'string',
     'format': 'uri',
   };
-
-  ToolCallRefused _notAbsolute(Object? json, AgentReading reading) =>
-      reading.refuse(
-        'expected an absolute URI, such as https://example.com/page, got '
-        '${jsonEncode(json)}',
-      );
 }
 
 final class const _Choice<T>(
@@ -597,113 +588,71 @@ bool _holds(AgentType<Object?> type, AgentType<Object?> other) =>
     switch ((type, other)) {
       _ when type.id == other.id => true,
       (_Nullable(:final _type), _) => _holds(_type, _nonNull(other)),
-      (_List(_item: final item), _List(_item: final otherItem)) ||
-      (
-        _Set(_item: final item),
-        _Set(_item: final otherItem),
-      ) => _holds(item, otherItem),
+      (_Sequence(), _Sequence()) => type.accepts(other),
       _ => false,
     };
 
-final class const _List<T>(final AgentType<T> _item)
-    extends AgentType<List<T>> {
-  @override
-  String get id => 'List<${_item.id}>';
+/// Lists and sets both travel as JSON arrays. Dart keeps their collection
+/// kinds distinct, also when they are nested.
+final class _Sequence<T, C extends Iterable<T>>(
+  final AgentType<T> item, {
+  required final bool unique,
+  required final C Function(Iterable<T>) collect,
+}) extends AgentType<C> {
+  String get _kind => unique ? 'Set' : 'List';
 
   @override
-  String get name => '${_item.name}[]';
+  String get id => '$_kind<${item.id}>';
 
   @override
-  String get fingerprint => 'List<${_item.fingerprint}>';
+  String get fingerprint => '$_kind<${item.fingerprint}>';
 
   @override
-  Object? write(List<T> value) => [for (final item in value) _item.write(item)];
+  String get name => '${item.name}[]';
 
   @override
-  List<T> read(Object? json, AgentReading reading) => switch (json) {
-    final List<Object?> items => [
-      for (final (index, item) in items.indexed)
-        _item.read(item, reading.item(index)),
-    ],
-    _ => throw reading.refuse('expected a list, got ${jsonEncode(json)}'),
-  };
+  Object? write(C value) => [for (final element in value) item.write(element)];
 
   @override
-  JsonObject schema(AgentObjects objects) => {
-    'type': 'array',
-    'items': _item.schema(objects),
-  };
-
-  @override
-  AgentType<Object?>? typeAt(String segment) =>
-      int.tryParse(segment) == null ? null : _item;
-
-  @override
-  Object? valueAt(List<T> value, String segment) =>
-      switch (int.tryParse(segment)) {
-        final index? when index >= 0 && index < value.length => value[index],
-        _ => AgentType.absent,
-      };
-
-  @override
-  Iterable<AgentType<Object?>> get parts => [_item];
-
-  // A List<int> is no List<double>, and a List<String?> no List<String>.
-  @override
-  bool accepts(AgentType<Object?> other) => switch (_nonNull(other)) {
-    _List(:final _item) => _holds(this._item, _item),
-    _ => false,
-  };
-}
-
-final class const _Set<T>(final AgentType<T> _item) extends AgentType<Set<T>> {
-  @override
-  String get id => 'Set<${_item.id}>';
-
-  @override
-  String get name => '${_item.name}[]';
-
-  @override
-  String get fingerprint => 'Set<${_item.fingerprint}>';
-
-  @override
-  Object? write(Set<T> value) => [for (final item in value) _item.write(item)];
-
-  @override
-  Set<T> read(Object? json, AgentReading reading) => switch (json) {
-    final List<Object?> items => {
-      for (final (index, item) in items.indexed)
-        _item.read(item, reading.item(index)),
-    },
-    _ => throw reading.refuse('expected a list, got ${jsonEncode(json)}'),
-  };
+  C read(Object? json, AgentReading reading) {
+    if (json is! List<Object?>) {
+      throw reading.refuse('expected a list, got ${jsonEncode(json)}');
+    }
+    return collect(
+      json.indexed.map((entry) {
+        final (index, value) = entry;
+        return item.read(value, reading.item(index));
+      }),
+    );
+  }
 
   @override
   JsonObject schema(AgentObjects objects) => {
     'type': 'array',
-    'items': _item.schema(objects),
-    'uniqueItems': true,
+    'items': item.schema(objects),
+    if (unique) 'uniqueItems': true,
   };
 
   @override
   AgentType<Object?>? typeAt(String segment) =>
-      int.tryParse(segment) == null ? null : _item;
+      int.tryParse(segment) == null ? null : item;
 
   @override
-  Object? valueAt(Set<T> value, String segment) =>
-      switch (int.tryParse(segment)) {
-        final index? when index >= 0 && index < value.length => value.elementAt(
-          index,
-        ),
-        _ => AgentType.absent,
-      };
+  Object? valueAt(C value, String segment) => switch (int.tryParse(segment)) {
+    final index? when index >= 0 && index < value.length => value.elementAt(
+      index,
+    ),
+    _ => AgentType.absent,
+  };
 
   @override
-  Iterable<AgentType<Object?>> get parts => [_item];
+  Iterable<AgentType<Object?>> get parts => [item];
 
   @override
   bool accepts(AgentType<Object?> other) => switch (_nonNull(other)) {
-    _Set(:final _item) => _holds(this._item, _item),
+    _Sequence(unique: final otherUnique, item: final otherItem)
+        when unique == otherUnique =>
+      _holds(item, otherItem),
     _ => false,
   };
 }
@@ -884,7 +833,7 @@ extension AgentTypeDetails on AgentType<Object?> {
   /// method's argument reads only by path.
   bool get holdsObject => switch (_nonNull(this)) {
     AgentType(isObject: true) => true,
-    _List(:final _item) || _Set(:final _item) => _item.holdsObject,
+    _Sequence(:final item) => item.holdsObject,
     _Extension(:final _representation) => _representation.holdsObject,
     _ => false,
   };
@@ -896,9 +845,9 @@ extension AgentTypeDetails on AgentType<Object?> {
     (_, null) => null,
     (_Nullable(:final _type), _) => _type.pathArgument(path, json),
     (AgentType(isObject: true), _) => {'path': path},
-    (_List(:final _item) || _Set(:final _item), final List<Object?> items) => [
-      for (final (index, item) in items.indexed)
-        _item.pathArgument('$path/$index', item),
+    (_Sequence(:final item), final List<Object?> items) => [
+      for (final (index, value) in items.indexed)
+        item.pathArgument('$path/$index', value),
     ],
     (_Extension(:final _representation), _) => _representation.pathArgument(
       path,
@@ -909,8 +858,7 @@ extension AgentTypeDetails on AgentType<Object?> {
 
   /// The type of an item of a list or a set, or null for another type.
   AgentType<Object?>? get itemType => switch (_nonNull(this)) {
-    _List(:final _item) => _item,
-    _Set(:final _item) => _item,
+    _Sequence(:final item) => item,
     _ => null,
   };
 }

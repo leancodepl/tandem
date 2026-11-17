@@ -91,44 +91,33 @@ final class ViewRender(
   }) {
     final args = _Args();
     for (final drawn in component.properties) {
-      final ready = switch (drawn) {
-        LiteralValue(:final property, :final json) => _value(
-          args,
-          property,
-          _literal(property, json),
-        ),
-        BoundValue(:final property, :final path) => _value(
-          args,
-          property,
-          property.fit(place.locate(path, _roots).value),
-        ),
-        ChildId(:final property, :final id) => _child(
-          args,
-          property,
-          id,
-          place,
-        ),
-        ChildIds(:final property, :final ids) => _children(args, property, [
-          for (final (index, id) in ids.indexed)
-            ?_build(_view[id], place, slot: '${property.name}$index'),
-        ]),
-        ChildTemplate(:final property, :final template, :final path) =>
-          _children(args, property, [
+      switch (drawn) {
+        case LiteralValue(:final property, :final json):
+          if (!_value(args, property, _literal(property, json))) return null;
+        case BoundValue(:final property, :final path):
+          final value = property.fit(place.locate(path, _roots).value);
+          if (!_value(args, property, value)) return null;
+        case ChildId(:final property, :final id):
+          args.widgets[property.name] = _build(
+            _view[id],
+            place,
+            slot: property.name,
+          );
+        case ChildIds(:final property, :final ids):
+          args.lists[property.name] = [
+            for (final (index, id) in ids.indexed)
+              ?_build(_view[id], place, slot: '${property.name}$index'),
+          ];
+        case ChildTemplate(:final property, :final template, :final path):
+          args.lists[property.name] = [
             for (final item in place.items(path, _roots))
               ?_build(_view[template], item, slot: property.name),
-          ]),
-        PressAction(:final property, :final action) => _press(
-          args,
-          property,
-          _Action.of(action, place),
-        ),
-        FieldAction(:final property, :final action) => _field(
-          args,
-          property,
-          _Action.of(action, place),
-        ),
-      };
-      if (!ready) return null;
+          ];
+        case PressAction(:final property, :final action):
+          if (!_press(args, property, _Action.of(action, place))) return null;
+        case FieldAction(:final property, :final action):
+          if (!_field(args, property, _Action.of(action, place))) return null;
+      }
     }
     return KeyedSubtree(
       key: ValueKey('${component.id}@${place.key}#$slot'),
@@ -153,16 +142,6 @@ final class ViewRender(
       report(err, st);
       return AgentType.absent;
     }
-  }
-
-  bool _child(_Args args, ChildProperty property, String id, _Place place) {
-    args.widgets[property.name] = _build(_view[id], place, slot: property.name);
-    return true;
-  }
-
-  bool _children(_Args args, ChildrenProperty property, List<Widget> children) {
-    args.lists[property.name] = children;
-    return true;
   }
 
   bool _press(_Args args, PressProperty property, _Action? action) {
