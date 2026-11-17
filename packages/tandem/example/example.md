@@ -75,11 +75,4 @@ void main() {
 }
 ```
 
-No agent yet? The [example app](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs a larger order desk with a scripted agent, without a backend or an API key. Its script uses `ScriptedAgent.repeating` and `AgentRequest` from `package:tandem/testing.dart` to read each run. Its invoice list runs on Apple's on-device model, which is experimental and fits only the simplest tasks:
-
-<!-- example/lib/main_apple.dart -->
-```dart
-void main() => runApp(InvoiceApp(connection: OnDeviceAgent.apple()));
-```
-
-[Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).
+No agent yet? The [example app](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs a larger order desk with a scripted agent, without a backend or an API key. Its script uses `ScriptedAgent.repeating` and `AgentRequest` from `package:tandem/testing.dart` to read each run.

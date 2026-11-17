@@ -19,13 +19,13 @@ The repo root is a pub workspace, not a package. Its `pubspec.lock` is committed
 
 The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentSchema` from `AgentView.of` and `AgentTool`. Each type is one `AgentType` expression, which writes values, reads the agent's arguments and gives the schema. The expression names no type: Dart infers each from the getter or the parameter it stands at, so a library needs no import for the types inside the ones it declares. So both packages release together, with the same minor version. The generator cannot depend on `tandem`, which needs Flutter.
 
-`packages/tandem/README.md`, the README pub.dev shows for `tandem`, is a copy of the root README with one difference: under "Try it without a key", GitHub plays the demo film and pub.dev, which plays no video, shows it as a GIF. Change both.
+`packages/tandem/README.md`, the README pub.dev shows for `tandem`, is a copy of the root README. Change both.
 
 `tandem` ships three Agent Skills in `skills/`, which apps install with `dart run skills@ get --package tandem --all`: `tandem-agent-aware-screen` lists what the agent sees and calls and wraps the screen, `tandem-coding-agent` lets a coding agent drive it through `TandemBridge`, and `tandem-in-app-agent` adds a chat or a button with a backend or Apple's model. The installer takes only skills whose name starts with `tandem-`. The skills follow the API: change one, change the other.
 
 `skills/tandem` at the repo root is the entry, `/tandem`, which apps install from GitHub with `dart run skills@ add leancodepl/tandem --skill tandem`. It follows `main`, not the app's version of `tandem`, so it only checks the packages, installs the package's skills of the version in `pubspec.lock` and hands the work to them. It needs `user-invocable: true`, or the installer marks it `false` and `/tandem` does not run.
 
-The README and both packages' `example/example.md` show only code from `example`, and `example/test/doc_snippets_test.dart` checks each Dart block against the file its comment names. `example` has two examples in one app: the order desk on bloc with a scripted agent, and the invoice list on provider with Apple's on-device model. Only the example depends on bloc and provider.
+The README and both packages' `example/example.md` show only code from `example`, and `example/test/doc_snippets_test.dart` checks each Dart block against the file its comment names. `example` is the order desk on bloc with a scripted agent. Only the example depends on bloc.
 
 ## Session rules
 

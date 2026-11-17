@@ -7,6 +7,7 @@ import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
 import 'shopping_list.dart';
+import 'shopping_list_notifier.dart';
 
 void main() {
   testWidgets("shows the agent's text and a default card it can approve", (
@@ -101,6 +102,35 @@ void main() {
       find.widgetWithText(FilledButton, 'Stop'),
     );
     expect(stop.onPressed, isNull);
+  });
+
+  testWidgets("a ChangeNotifier's change invalidates the card", (tester) async {
+    final list = ShoppingListNotifier()..add('x');
+    addTearDown(list.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TandemScope.connected(
+          surface: (context) => list,
+          connection: ScriptedAgent([
+            (_) => const [AgentStep.callTool('clear')],
+          ]),
+          approvals: const .fromState(),
+          child: const AgentChat(),
+        ),
+      ),
+    );
+    await tester.enterText(find.byType(TextField), 'clear');
+    await tester.tap(find.text('Send'));
+    await tester.pumpAndSettle();
+
+    list.add('y');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('The screen changed. The agent needs a new approval.'),
+      findsOneWidget,
+    );
+    expect(list.items, ['x', 'y']);
   });
 }
 

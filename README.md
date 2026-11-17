@@ -31,8 +31,6 @@ Pick a screen. Its state class lists the data an AI agent can read and the metho
 
 With a remote agent, your backend calls the model and keeps the API key. The app talks to the backend over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Tandem is checked with Google ADK, LangGraph and Pydantic AI. Other AG-UI backends can connect by following [the backend contract](#the-agent-backend).
 
-On iOS and macOS 26, the experimental `OnDeviceAgent` can run [Apple's on-device model](#apples-on-device-model) instead, without a backend or an API key, for the simplest tasks. The screen, its capabilities and approvals stay the same.
-
 In a debug build, [your coding agent](#your-coding-agent), such as Claude Code, calls the same methods through `TandemBridge`, with the same checks and approvals.
 
 Your state class lists what the agent may do:
@@ -155,30 +153,6 @@ Requires Dart 3.13 (Flutter 3.47) or newer.
 The [example](https://github.com/leancodepl/tandem/blob/main/example/README.md) runs an order desk on Android, iOS and macOS with scripted responses. It needs no backend or API key. The script fills an order and asks before placing it. It follows a fixed scenario rather than interpreting arbitrary messages.
 
 The app enables `TandemBridge`, so your coding agent can fill the order too. Its [scripted agent](https://github.com/leancodepl/tandem/blob/main/example/lib/desk/order_desk_agent.dart) uses `ScriptedAgent.repeating` to handle every run with the same callback. The reference backends can also return scripted responses for testing their AG-UI integration without a model.
-
-### Apple's on-device model
-
-> [!WARNING]
-> Experimental. Use Apple's model for simple tasks, such as turning a sentence into one method call. This connection is outside Tandem's release checks.
-
-The invoice list runs a real model on the device through Apple's Foundation Models framework. It needs no backend or API key.
-
-https://github.com/user-attachments/assets/c25184ad-aa7c-4159-bb89-db4033f4d2ce
-
-`OnDeviceAgent.apple()` uses the same screen capabilities and approvals as a remote connection. Pass it to `TandemScope.connected` as `connection:`. It returns the same connection on each call, so it can be used in `build`.
-
-The example selects the connection in its entry point:
-
-<!-- example/lib/main_apple.dart -->
-```dart
-void main() => runApp(InvoiceApp(connection: OnDeviceAgent.apple()));
-```
-
-Build with Xcode 26 or newer. Generation requires iOS or macOS 26 on an eligible device, with Apple Intelligence enabled and its model downloaded. `OnDeviceAgent.apple().availability()` reports whether the model is available. Other platforms return `unsupportedPlatform` and can use an AG-UI backend instead. Use a supported Mac or physical iPhone for inference; the iOS simulator did not generate responses in our tests.
-
-Responses arrive when generation finishes. Tandem does not trim conversation history. If a run fails with `OnDeviceErrorCode.contextWindowExceeded`, the app can handle that `RunFailed` event and call `session.startOver()` to clear the thread history. The failed message is not automatically retried. A `DateTime`, `Uri` or `Set` parameter or a full tool schema the system rejects fails the run with `OnDeviceErrorCode.unsupportedSchema`. Some older systems reject nullable arguments, even when omitting them would give null.
-
-Keep validation in the app's methods and approvals for changes that need the user's decision. [The invoice example](https://github.com/leancodepl/tandem/blob/main/example/README.md#smart-invoice-input-with-apples-on-device-model) has the run command. [The design notes](https://github.com/leancodepl/tandem/blob/main/doc/design.md#apple-on-device-connection) cover the other limits, native setup and test results.
 
 ## Your coding agent
 
@@ -462,9 +436,9 @@ Tandem gets the state object through `surface` and listens to its `changes` stre
 | `ChangeNotifier` or `ValueNotifier` | a `StreamController.broadcast()` that an override of `notifyListeners` feeds |
 | Riverpod's `Notifier` | a `StreamController.broadcast()` that `listenSelf` in `build` feeds |
 
-The example's invoice list uses a `ChangeNotifier`:
+A shopping list in the example's tests is a `ChangeNotifier`:
 
-<!-- example/lib/invoices/invoice_store.dart -->
+<!-- example/test/shopping_list_notifier.dart -->
 ```dart
   @override
   Stream<Object?> get changes => _changes.stream;
@@ -480,7 +454,7 @@ The example's invoice list uses a `ChangeNotifier`:
 
 A Riverpod `Notifier` can feed the stream through `listenSelf((_, next) => _changes.add(next))` in `build`. Riverpod removes the listener before rebuilding the provider. Keep the controller open across rebuilds. Do not close it in `ref.onDispose`, which runs before every rebuild.
 
-Use `surface` to read the state object, for example with `context.read<InvoiceStore>()` or `ref.read(cartProvider.notifier)` in a Riverpod `ConsumerWidget`. Put the scope below the state object's owner so the session is disposed first. `riverpod_generator` cannot annotate the same class as `tandem_generator`, because both generate a `_$Name` mixin.
+Use `surface` to read the state object, for example with `context.read<ShoppingListNotifier>()` or `ref.read(cartProvider.notifier)` in a Riverpod `ConsumerWidget`. Put the scope below the state object's owner so the session is disposed first. `riverpod_generator` cannot annotate the same class as `tandem_generator`, because both generate a `_$Name` mixin.
 
 ## Testing
 
