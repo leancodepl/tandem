@@ -120,7 +120,7 @@ class Thread:
         With `placed`, the desk shows `order` as placed and read-only.
         """
         self.history += [
-            {"id": f"tool-{call_id}", "role": "tool", "toolCallId": call_id, "content": content}
+            {"id": str(uuid.uuid4()), "role": "tool", "toolCallId": call_id, "content": content}
             for call_id, content in (answers or {}).items()
         ]
         if text is not None:
@@ -163,8 +163,8 @@ class Thread:
                     message = _message(messages, event["messageId"])
                     message["content"] = message.get("content", "") + event["delta"]
                 case "TOOL_CALL_START":
-                    # Without a parent, never the bare call id: ag-ui-adk would swallow the answer.
-                    parent = event.get("parentMessageId") or f"asst-{event['toolCallId']}"
+                    # Without a parent, a new id: ag-ui-adk skips a message id it has seen.
+                    parent = event.get("parentMessageId") or str(uuid.uuid4())
                     function = {"name": event["toolCallName"], "arguments": ""}
                     call = {"id": event["toolCallId"], "type": "function", "function": function}
                     calls[call["id"]] = call

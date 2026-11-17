@@ -46,9 +46,10 @@ final class Turn(final List<ToolCall> calls) {
     assert(answered || calls.isEmpty, 'An approved method still runs.');
     return [
       for (final call in calls)
-        AgUiMessage.toolAnswer(
-          call.id,
-          (call.answer ?? ToolAnswer.cancelled).content,
+        AgUiMessage.toolResult(
+          id: call.answerId,
+          toolCallId: call.id,
+          content: .text((call.answer ?? ToolAnswer.cancelled).content),
         ),
     ];
   }

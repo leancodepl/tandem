@@ -71,12 +71,20 @@ final class AgUiThread(var ThreadId _id) {
           text: message.text,
           toolCalls: [
             for (final call in calls)
-              AgUiToolCall(call.id, call.tool, call.arguments),
+              AgUiToolCall(
+                id: call.id,
+                name: call.tool,
+                arguments: call.arguments,
+              ),
           ],
         ),
         for (final call in calls)
           if (call.result case ToolCallResult(:final messageId, :final content))
-            .toolResult(messageId, call.id, content),
+            .toolResult(
+              id: .wire(messageId),
+              toolCallId: call.id,
+              content: content,
+            ),
       ];
       _messages.addAll(messages);
       if (_hasAppId && calls.any((call) => call.inApp)) {

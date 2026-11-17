@@ -6,17 +6,19 @@ List<Map<String, Object?>> messagesOf(Map<String, Object?> body) {
   return messages.cast();
 }
 
-/// The messages of the body of a run, one line each: `role: text`, or the
-/// id with the call or the answer.
+/// The messages of the body of a run, one line each: `role: text`, a call
+/// as its id, name and arguments, or an answer as `<call id> -> <content>`.
 List<String> linesOf(Map<String, Object?> body) => [
   for (final message in messagesOf(body))
     switch (message) {
-      {'role': 'tool', 'id': final id, 'content': final content} =>
-        '$id $content',
+      {'role': 'tool', 'toolCallId': final id, 'content': final content} =>
+        '$id -> $content',
       {
-        'id': final id,
         'toolCalls': [
-          {'function': {'name': final name, 'arguments': final arguments}},
+          {
+            'id': final id,
+            'function': {'name': final name, 'arguments': final arguments},
+          },
         ],
       } =>
         '$id $name $arguments',

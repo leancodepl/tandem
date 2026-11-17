@@ -4,20 +4,25 @@ import 'dart:convert';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/chat/chat_item.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/protocol/ag_ui_ids.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 
 /// A call of a listed method or of the view's tool, from the moment it is
 /// made until it has its answer: the in-app agent's goes out with the next
 /// run.
-final class ToolCall(
-  final String id,
-  final String tool,
+final class ToolCall({
+  required final ToolCallId id,
+  required final String tool,
 
   /// The method's doc comment, as the agent got it.
-  final String description, {
+  required final String description,
   required final Caller caller,
 }) {
+  /// The id of the tool message that answers the call. A backend may repeat
+  /// [id] in a later run of the thread, so the answer has an id of its own.
+  final answerId = MessageId.local();
+
   /// The JSON arguments, as streamed so far.
   String arguments = '';
 
@@ -56,7 +61,7 @@ final class ToolCall(
   }
 
   ApprovalRequest ask() => _request = ApprovalRequest.issued(
-    toolCallId: id,
+    toolCallId: id.value,
     tool: tool,
     description: description,
     argumentsJson: switch (frozen) {

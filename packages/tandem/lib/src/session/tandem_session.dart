@@ -27,7 +27,6 @@ import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/turn.dart';
 import 'package:tandem/src/session/view_tool.dart';
 import 'package:tandem/src/session/waiting_turns.dart';
-import 'package:uuid/uuid.dart';
 
 /// The chat of the user and the agent about one screen.
 ///
@@ -360,9 +359,9 @@ final class TandemSession({
     final needsApproval = listing.needsApproval(tool);
     if (needsApproval && !autoApprove) {
       final call = ToolCall(
-        const Uuid().v4(),
-        tool,
-        listing.description(tool),
+        id: .local(),
+        tool: tool,
+        description: listing.description(tool),
         caller: caller,
       )..arguments = jsonEncode(arguments);
       if (_freeze(call, listing) case final answer?) {
