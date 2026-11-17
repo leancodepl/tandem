@@ -21,8 +21,16 @@ final class const RunError(final RunErrorCode? code, final String? message)
 /// Text and tool calls streamed into the assistant messages of one run.
 sealed class const RunOutput() extends AgentEvent;
 
-final class const TextDelta(final String messageId, final String delta)
-    extends RunOutput;
+final class const TextMessageMetadata(
+  final String messageId,
+  final JsonObject metadata,
+) extends RunOutput;
+
+final class const TextDelta(
+  final String messageId,
+  final String delta, {
+  final JsonObject metadata = const {},
+}) extends RunOutput;
 
 /// [parentMessageId] is the agent's message that holds the call, when the
 /// server names it.
@@ -30,17 +38,27 @@ final class const ToolCallStarted(
   final String toolCallId,
   final String name, [
   final String? parentMessageId,
+  final JsonObject metadata = const {},
 ]) extends RunOutput;
 
-final class const ToolCallArgs(final String toolCallId, final String delta)
-    extends RunOutput;
+final class const ToolCallArgs(
+  final String toolCallId,
+  final String delta, {
+  final JsonObject metadata = const {},
+}) extends RunOutput;
+
+final class const ToolCallEnded(
+  final String toolCallId, {
+  final JsonObject metadata = const {},
+}) extends RunOutput;
 
 /// The result of a tool that ran on the backend.
 final class const ToolCallResult(
   final String messageId,
   final String toolCallId,
-  final ToolResultContent content,
-) extends RunOutput;
+  final ToolResultContent content, {
+  final JsonObject metadata = const {},
+}) extends RunOutput;
 
 sealed class const StateUpdate() extends AgentEvent;
 

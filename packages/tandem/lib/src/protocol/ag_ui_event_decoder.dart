@@ -1,4 +1,5 @@
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/frozen_json.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/events.dart';
 
@@ -16,9 +17,12 @@ AgentEvent decodeAgUiEvent(JsonObject json) {
 const _decoders = <String, AgentEvent Function(JsonObject)>{
   AgUiEventTypes.runFinished: _decodeRunFinished,
   AgUiEventTypes.runError: _decodeRunError,
+  AgUiEventTypes.textMessageStart: _decodeTextMetadata,
   AgUiEventTypes.textMessageContent: _decodeTextDelta,
+  AgUiEventTypes.textMessageEnd: _decodeTextMetadata,
   AgUiEventTypes.toolCallStart: _decodeToolCallStarted,
   AgUiEventTypes.toolCallArgs: _decodeToolCallArgs,
+  AgUiEventTypes.toolCallEnd: _decodeToolCallEnded,
   AgUiEventTypes.toolCallResult: _decodeToolCallResult,
   AgUiEventTypes.stateSnapshot: _decodeStateSnapshot,
   AgUiEventTypes.stateDelta: _decodeStateDelta,
@@ -32,6 +36,12 @@ RunError _decodeRunError(JsonObject json) => RunError(
   _tryString(json[AgUiFields.message]),
 );
 
+AgentEvent _decodeTextMetadata(JsonObject json) =>
+    switch (json[AgUiFields.messageId]) {
+      final String messageId => TextMessageMetadata(messageId, _metadata(json)),
+      _ => const IgnoredEvent(),
+    };
+
 AgentEvent _decodeTextDelta(JsonObject json) {
   final messageId = json[AgUiFields.messageId];
   final delta = json[AgUiFields.delta];
@@ -39,7 +49,7 @@ AgentEvent _decodeTextDelta(JsonObject json) {
     return const IgnoredEvent();
   }
 
-  return TextDelta(messageId, delta);
+  return TextDelta(messageId, delta, metadata: _metadata(json));
 }
 
 AgentEvent _decodeToolCallStarted(JsonObject json) {
@@ -53,6 +63,7 @@ AgentEvent _decodeToolCallStarted(JsonObject json) {
     toolCallId,
     name,
     _tryString(json[AgUiFields.parentMessageId]),
+    _metadata(json),
   );
 }
 
@@ -63,8 +74,17 @@ AgentEvent _decodeToolCallArgs(JsonObject json) {
     return const IgnoredEvent();
   }
 
-  return ToolCallArgs(toolCallId, delta);
+  return ToolCallArgs(toolCallId, delta, metadata: _metadata(json));
 }
+
+AgentEvent _decodeToolCallEnded(JsonObject json) =>
+    switch (json[AgUiFields.toolCallId]) {
+      final String toolCallId => ToolCallEnded(
+        toolCallId,
+        metadata: _metadata(json),
+      ),
+      _ => const IgnoredEvent(),
+    };
 
 AgentEvent _decodeToolCallResult(JsonObject json) {
   final content = switch (json[AgUiFields.content]) {
@@ -79,7 +99,7 @@ AgentEvent _decodeToolCallResult(JsonObject json) {
     content,
   )) {
     (final String messageId, final String toolCallId, final content?) =>
-      ToolCallResult(messageId, toolCallId, content),
+      ToolCallResult(messageId, toolCallId, content, metadata: _metadata(json)),
     _ => const IgnoredEvent(),
   };
 }
@@ -103,3 +123,13 @@ String? _tryString(Object? value) => value is String ? value : null;
 
 RunErrorCode? _tryCode(Object? value) =>
     value is String ? RunErrorCode(value) : null;
+
+JsonObject _metadata(JsonObject json) {
+  if (json.containsKey(AgUiFields.metadata)) {
+    return switch (json[AgUiFields.metadata]) {
+      final Map<Object?, Object?> metadata => frozenJson(metadata),
+      _ => throw const FormatException('AG-UI metadata must be a JSON object.'),
+    };
+  }
+  return const {};
+}

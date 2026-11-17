@@ -68,6 +68,7 @@ abstract final class AgUiFields() {
   static const tools = 'tools';
   static const context = 'context';
   static const forwardedProps = 'forwardedProps';
+  static const metadata = 'metadata';
 
   static const outcome = 'outcome';
   static const code = 'code';

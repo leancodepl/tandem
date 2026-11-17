@@ -4,6 +4,75 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 
 void main() {
+  test(
+    'chunk expansion preserves metadata even without a text or args delta',
+    () async {
+      const input = {'threadId': 't1', 'runId': 'r1'};
+      final events = await Stream<Map<String, Object?>>.fromIterable([
+        {'type': 'RUN_STARTED', ...input},
+        {
+          'type': 'TEXT_MESSAGE_CHUNK',
+          'messageId': 'm1',
+          'metadata': {'stage': 'start'},
+        },
+        {
+          'type': 'TEXT_MESSAGE_CHUNK',
+          'delta': 'Hello.',
+          'metadata': {'stage': 'text'},
+        },
+        {
+          'type': 'TOOL_CALL_CHUNK',
+          'toolCallId': 'c1',
+          'toolCallName': 'add',
+          'metadata': {'stage': 'call'},
+        },
+        {
+          'type': 'TOOL_CALL_CHUNK',
+          'delta': '{}',
+          'metadata': {'stage': 'args'},
+        },
+        {
+          'type': 'TOOL_CALL_CHUNK',
+          'metadata': {'stage': 'end'},
+        },
+        {'type': 'RUN_FINISHED'},
+      ]).transform(agUiRun(input)).toList();
+
+      expect(events.sublist(1, events.length - 1), [
+        {
+          'type': 'TEXT_MESSAGE_START',
+          'messageId': 'm1',
+          'role': 'assistant',
+          'metadata': {'stage': 'start'},
+        },
+        {
+          'type': 'TEXT_MESSAGE_CONTENT',
+          'messageId': 'm1',
+          'delta': 'Hello.',
+          'metadata': {'stage': 'text'},
+        },
+        {
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'c1',
+          'toolCallName': 'add',
+          'metadata': {'stage': 'call'},
+        },
+        {
+          'type': 'TOOL_CALL_ARGS',
+          'toolCallId': 'c1',
+          'delta': '{}',
+          'metadata': {'stage': 'args'},
+        },
+        {
+          'type': 'TOOL_CALL_ARGS',
+          'toolCallId': 'c1',
+          'delta': '',
+          'metadata': {'stage': 'end'},
+        },
+      ]);
+    },
+  );
+
   test('a connection over another transport reads only the requested run, '
       'with its chunks expanded, while the source stays open', () async {
     var sourceCancelled = false;

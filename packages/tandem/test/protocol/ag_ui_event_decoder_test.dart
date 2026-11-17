@@ -3,6 +3,26 @@ import 'package:tandem/src/protocol/ag_ui_event_decoder.dart';
 import 'package:tandem/src/protocol/events.dart';
 
 void main() {
+  test('message metadata rejects a null object and values outside JSON', () {
+    for (final metadata in <Object?>[
+      null,
+      1,
+      [],
+      {1: 'not a string key'},
+      {'number': double.nan},
+      {'value': Object()},
+    ]) {
+      expect(
+        () => decodeAgUiEvent({
+          'type': 'TEXT_MESSAGE_END',
+          'messageId': 'm1',
+          'metadata': metadata,
+        }),
+        throwsFormatException,
+      );
+    }
+  });
+
   test('ignores unknown events and invalid required fields', () {
     final events = <Map<String, Object?>>[
       {},

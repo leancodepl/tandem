@@ -81,6 +81,312 @@ void main() {
     return (session, agent, serverReply);
   }
 
+  test(
+    'message, call and result metadata round-trip as separate owned snapshots',
+    () async {
+      final source = StreamController<Map<String, Object?>>();
+      final kept = <String, Object?>{
+        'values': <Object?>[1, null],
+      };
+      final connection = RawFirstRun(
+        source.stream,
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Done.')],
+        ]),
+      );
+      final session = open(connection)..send('add milk');
+      source.add({
+        'type': 'TEXT_MESSAGE_START',
+        'messageId': 'm1',
+        'metadata': {
+          'kept': kept,
+          'stage': 'start',
+          'replaced': {'old': true},
+        },
+      });
+      await pumpEventQueue();
+      kept['values'] = [99];
+      source
+        ..add({
+          'type': 'TEXT_MESSAGE_CONTENT',
+          'messageId': 'm1',
+          'delta': 'Adding.',
+          'metadata': {'stage': 'content', 'nullable': null},
+        })
+        ..add({
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'b1',
+          'toolCallName': 'lookup',
+          'parentMessageId': 'm1',
+          'metadata': {'owner': 'backend'},
+        })
+        ..add({
+          'type': 'TOOL_CALL_RESULT',
+          'messageId': 'r1',
+          'toolCallId': 'b1',
+          'content': '[]',
+          'metadata': {'source': 'catalog'},
+        })
+        ..add({
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'c1',
+          'toolCallName': 'add',
+          'parentMessageId': 'm1',
+          'metadata': {
+            'owner': 'app',
+            'replaced': {'old': true},
+          },
+        })
+        ..add({
+          'type': 'TOOL_CALL_ARGS',
+          'toolCallId': 'c1',
+          'delta': '{"item":"milk"}',
+          'metadata': {
+            'replaced': {'new': true},
+          },
+        })
+        ..add({
+          'type': 'TOOL_CALL_END',
+          'toolCallId': 'c1',
+          'metadata': {'signature': 'opaque-call'},
+        })
+        ..add({
+          'type': 'TEXT_MESSAGE_END',
+          'messageId': 'm1',
+          'metadata': {
+            'stage': 'end',
+            'replaced': {'new': true},
+          },
+        })
+        ..add({
+          'type': 'RUN_FINISHED',
+          'metadata': {'runOnly': true},
+        });
+      await source.close();
+      await pumpEventQueue();
+
+      final messages = messagesOf(connection.requests[1]);
+      final assistant = messages.singleWhere(
+        (message) => message['id'] == 'm1',
+      );
+      expect(assistant['metadata'], {
+        'kept': {
+          'values': [1, null],
+        },
+        'stage': 'end',
+        'replaced': {'new': true},
+        'nullable': null,
+      });
+      final {'metadata': metadata as Map<String, Object?>} = assistant;
+      final {'kept': ownedKept as Map<String, Object?>} = metadata;
+      final {'values': values as List<Object?>} = ownedKept;
+      expect(() => metadata['stage'] = 'changed', throwsUnsupportedError);
+      expect(() => values.add(2), throwsUnsupportedError);
+      final {'toolCalls': calls as List<Object?>} = assistant;
+      expect(calls, [
+        {
+          'id': 'b1',
+          'type': 'function',
+          'function': {'name': 'lookup', 'arguments': '{}'},
+          'metadata': {'owner': 'backend'},
+        },
+        {
+          'id': 'c1',
+          'type': 'function',
+          'function': {'name': 'add', 'arguments': '{"item":"milk"}'},
+          'metadata': {
+            'owner': 'app',
+            'replaced': {'new': true},
+            'signature': 'opaque-call',
+          },
+        },
+      ]);
+      expect(
+        messages.singleWhere((message) => message['id'] == 'r1')['metadata'],
+        {'source': 'catalog'},
+      );
+      expect(shop.items, ['milk']);
+      expect(summaryOf(session.items), [
+        ('user', 'add milk'),
+        ('agent', 'Adding.', false),
+        ('agent', 'Done.', false),
+      ]);
+    },
+  );
+
+  test(
+    'a tool-only message keeps its metadata through reset and session handoff',
+    () async {
+      shop.add('milk');
+      final connection = RawFirstRun(
+        Stream.fromIterable([
+          {
+            'type': 'TEXT_MESSAGE_START',
+            'messageId': 'm1',
+            'metadata': {'stage': 'start'},
+          },
+          {
+            'type': 'TEXT_MESSAGE_CONTENT',
+            'messageId': 'm1',
+            'delta': '',
+            'metadata': {'emptyDelta': true},
+          },
+          {
+            'type': 'TOOL_CALL_START',
+            'toolCallId': 'c1',
+            'toolCallName': 'clear',
+            'parentMessageId': 'm1',
+          },
+          {
+            'type': 'TOOL_CALL_END',
+            'toolCallId': 'c1',
+            'metadata': {'signature': 'opaque-call'},
+          },
+          {
+            'type': 'TEXT_MESSAGE_END',
+            'messageId': 'm1',
+            'metadata': {'stage': 'end', 'signature': 'opaque-message'},
+          },
+          {'type': 'RUN_FINISHED'},
+        ]),
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Kept.')],
+        ]),
+      );
+      final thread = TandemThread(id: ThreadId('metadata-handoff'));
+      final first = openToClose(thread, connection)..send('clear it');
+      await pumpEventQueue();
+      expect(first.items.whereType<AgentMessage>(), isEmpty);
+      expect(_card(first).status, ApprovalStatus.pending);
+      first
+        ..startOver()
+        ..dispose();
+      final next = open(connection, thread: thread)..send('keep it');
+      await pumpEventQueue();
+
+      expect(messagesOf(connection.requests[1]).first, {
+        'id': 'm1',
+        'role': 'assistant',
+        'toolCalls': [
+          {
+            'id': 'c1',
+            'type': 'function',
+            'function': {'name': 'clear', 'arguments': '{}'},
+            'metadata': {'signature': 'opaque-call'},
+          },
+        ],
+        'metadata': {
+          'stage': 'end',
+          'emptyDelta': true,
+          'signature': 'opaque-message',
+        },
+      });
+      expect(linesOf(connection.requests[1]), [
+        'c1 clear {}',
+        'c1 -> {"status":"cancelled"}',
+        'user: keep it',
+      ]);
+      expect(next.items.whereType<AgentMessage>().single.text, 'Kept.');
+      expect(shop.items, ['milk']);
+    },
+  );
+
+  for (final ending in ['RUN_FINISHED', 'RUN_ERROR']) {
+    test(
+      'interleaved messages retain their opening order after $ending',
+      () async {
+        collectReports();
+        for (final metadata in [null, const <String, Object?>{}]) {
+          final connection = RawFirstRun(
+            Stream<Map<String, Object?>>.fromIterable([
+              {
+                'type': 'TEXT_MESSAGE_CHUNK',
+                'subagentRunId': 'finder',
+                'messageId': 'first',
+                'metadata': ?metadata,
+              },
+              {
+                'type': 'TEXT_MESSAGE_CHUNK',
+                'subagentRunId': 'checker',
+                'messageId': 'second',
+                'delta': 'Checked.',
+              },
+              {
+                'type': 'TEXT_MESSAGE_CHUNK',
+                'subagentRunId': 'finder',
+                'delta': 'Found.',
+              },
+              {'type': ending},
+            ]).transform(agUiRun(const {})),
+            ScriptedAgent([
+              (_) => const [AgentStep.say('Done.')],
+            ]),
+          );
+          final session = open(connection)..send('search');
+          await pumpEventQueue();
+          session.send('again');
+          await pumpEventQueue();
+
+          expect(linesOf(connection.requests[1]), [
+            'user: search',
+            'assistant: Found.',
+            'assistant: Checked.',
+            'user: again',
+          ]);
+        }
+      },
+    );
+  }
+
+  for (final stopped in [false, true]) {
+    test('a ${stopped ? 'stopped' : 'failed'} message keeps metadata with only '
+        'the text that was shown', () async {
+      collectReports();
+      final source = StreamController<Map<String, Object?>>();
+      final connection = RawFirstRun(
+        source.stream,
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Again.')],
+        ]),
+      );
+      final session = open(connection)..send('hello');
+      source.add({
+        'type': 'TEXT_MESSAGE_CONTENT',
+        'messageId': 'm1',
+        'delta': 'Visible.',
+        'metadata': {'stage': 'partial'},
+      });
+      await pumpEventQueue();
+      if (stopped) {
+        session.stop();
+        source.add({
+          'type': 'TEXT_MESSAGE_CONTENT',
+          'messageId': 'm1',
+          'delta': 'Hidden.',
+          'metadata': {'hiddenChunk': true},
+        });
+      }
+      source
+        ..add({
+          'type': 'TEXT_MESSAGE_END',
+          'messageId': 'm1',
+          'metadata': {'stage': 'ended'},
+        })
+        ..add({'type': stopped ? 'RUN_FINISHED' : 'RUN_ERROR'});
+      await source.close();
+      await pumpEventQueue();
+      session.send('again');
+      await pumpEventQueue();
+
+      expect(messagesOf(connection.requests[1])[1], {
+        'id': 'm1',
+        'role': 'assistant',
+        'content': 'Visible.',
+        'metadata': {'stage': 'ended', if (stopped) 'hiddenChunk': true},
+      });
+    });
+  }
+
   test('a call runs at once and its result goes in the next run', () async {
     final agent = ScriptedAgent([
       (_) => const [
