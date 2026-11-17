@@ -222,13 +222,15 @@ final class AgentListing._(
 
   /// Whether a call of [tool] waits for the user's approval, by the agent
   /// list as it is now.
-  bool needsApproval(String tool) =>
-      _currentCapabilityFor(tool)?.needsApproval ?? false;
+  bool needsApproval(String tool) {
+    final capabilities = _read(_surface, _surface.agentSchema);
+    return capabilities.callOf(_tools[tool]?.method)?.needsApproval ?? false;
+  }
 
   /// Whether this listing lists [tool] with `.callsWithApproval`.
   @internal
   bool listedWithApproval(String tool) =>
-      _capabilityOf(_tools[tool]?.method)?.needsApproval ?? false;
+      _capabilities.callOf(_tools[tool]?.method)?.needsApproval ?? false;
 
   /// Calls the method behind [tool] with the agent's JSON [arguments] and
   /// returns its result as JSON.
@@ -272,7 +274,7 @@ final class AgentListing._(
     final now = AgentListing.of(_surface);
     final (target, capability) = switch ((
       _tools[tool],
-      now._capabilityOf(_tools[tool]?.method),
+      now._capabilities.callOf(_tools[tool]?.method),
     )) {
       (final target?, final capability?) => (target, capability),
       _ => throw ToolCallRefused('The agent cannot call $tool now.'),
@@ -303,25 +305,6 @@ final class AgentListing._(
     for (final (:view, :value, json: _) in _seen)
       view.name: PathValue(view.type, value, seen[view.name]),
   };
-
-  _Calls? _capabilityOf(Function? method) {
-    for (final item in _capabilities) {
-      if (item case final _Calls capability when capability.method == method) {
-        return capability;
-      }
-    }
-    return null;
-  }
-
-  _Calls? _currentCapabilityFor(String tool) {
-    final method = _tools[tool]?.method;
-    for (final item in _read(_surface, _surface.agentSchema)) {
-      if (item case final _Calls capability when capability.method == method) {
-        return capability;
-      }
-    }
-    return null;
-  }
 }
 
 typedef _Seen = ({AgentView<Object?> view, Object? value, String json});
@@ -346,3 +329,8 @@ final class const WrittenArguments(super.json) extends CallArguments;
 /// method gets new objects built from them.
 @internal
 final class const FrozenArguments(super.json) extends CallArguments;
+
+extension on Iterable<AgentCapability> {
+  _Calls? callOf(Function? method) =>
+      whereType<_Calls>().where((call) => call.method == method).firstOrNull;
+}

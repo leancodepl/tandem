@@ -62,17 +62,15 @@ final class const AgentView<T>._(
   static AgentViewOf<T> of<T>(T Function() _) => AgentViewOf<T>._();
 
   /// [value], read from the agent list, as JSON.
+  @internal
+  Object? write(Object? value) => type.write(checked(value));
+
+  /// [value], read from the agent list, as the getter's type.
   ///
   /// Throws a [StateError] when its type is not the getter's, which means the
   /// code was not generated again after the list changed.
   @internal
-  Object? write(Object? value) => type.write(_checked(value));
-
-  /// [value], read from the agent list, as the getter's type.
-  @internal
-  T checked(Object? value) => _checked(value);
-
-  T _checked(Object? value) => switch (value) {
+  T checked(Object? value) => switch (value) {
     final T value => value,
     _ => throw StateError(
       'The agent list sees a ${value.runtimeType} as $name, the generated '
@@ -151,11 +149,11 @@ final class const AgentTool(
   /// object is read field by field. Throws a [ToolCallRefused] for a
   /// missing, unknown or wrong argument.
   ToolArgs read(JsonObject arguments, {AgentPaths? paths}) {
-    final byName = {for (final parameter in parameters) parameter.name: null};
+    final names = {for (final parameter in parameters) parameter.name};
     for (final key in arguments.keys) {
-      if (!byName.containsKey(key)) {
+      if (!names.contains(key)) {
         throw ToolCallRefused(
-          '$key: unknown, expected one of ${byName.keys.join(', ')}',
+          '$key: unknown, expected one of ${names.join(', ')}',
         );
       }
     }

@@ -59,18 +59,7 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
         ),
         ChildId() || ChildIds() => const [],
         ChildTemplate(:final path) => _listProblems(at, path, scope),
-        PressAction(:final action) => _actionProblems(
-          at,
-          action,
-          scope,
-          input: null,
-        ),
-        FieldAction(:final property, :final action) => _actionProblems(
-          at,
-          action,
-          scope,
-          input: property.type,
-        ),
+        final DrawnAction action => _actionProblems(at, action, scope),
       });
     }
     return problems;
@@ -130,12 +119,8 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
     return ['$at: $path is a $names. $paths'];
   }
 
-  List<String> _actionProblems(
-    String at,
-    ViewAction? action,
-    ViewScope scope, {
-    required AgentType<Object?>? input,
-  }) {
+  List<String> _actionProblems(String at, DrawnAction drawn, ViewScope scope) {
+    final action = drawn.action;
     final method = _data.methods[action?.method];
     if (action == null || method == null) {
       const shape =
@@ -148,7 +133,7 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
       return ['$at: must call a method of the screen, as $shape. $methods'];
     }
     final name = action.method;
-    if (input != null && method.needsApproval) {
+    if (drawn is FieldAction && method.needsApproval) {
       final calls = [
         for (final MapEntry(:key, :value) in _data.methods.entries)
           if (!value.needsApproval) key,
@@ -177,7 +162,7 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
         continue;
       }
       problems.addAll(
-        _argumentProblems('$at.$argument', value, parameter, scope, input),
+        _argumentProblems('$at.$argument', value, parameter, scope, drawn),
       );
       if (value is InputArgument) inputs++;
     }
@@ -186,7 +171,7 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
         problems.add('$at: $name needs ${parameter.name}.');
       }
     }
-    if (input != null && inputs != 1) {
+    if (drawn is FieldAction && inputs != 1) {
       problems.add(
         '$at: a field puts {"input": true} in one argument of $name, where '
         'the entry goes.',
@@ -200,12 +185,15 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
     ViewArgument argument,
     AgentParameter<Object?> parameter,
     ViewScope scope,
-    AgentType<Object?>? input,
+    DrawnAction drawn,
   ) {
     final type = parameter.type;
     switch (argument) {
       case InputArgument():
-        if (input == null) return ['$at: only a field puts {"input": true}.'];
+        if (drawn is! FieldAction) {
+          return ['$at: only a field puts {"input": true}.'];
+        }
+        final input = drawn.property.type;
         // An entry of null would only be refused when the user enters it.
         if (!type.accepts(input) || (input.isNullable && !type.isNullable)) {
           final names =
@@ -511,17 +499,21 @@ final class const ChildTemplate(
   final String path,
 ) extends DrawnProperty;
 
+sealed class const DrawnAction() extends DrawnProperty {
+  ViewAction? get action;
+}
+
 /// The action of a press, null when it names no method.
 final class const PressAction(
   @override final PressProperty property,
-  final ViewAction? action,
-) extends DrawnProperty;
+  @override final ViewAction? action,
+) extends DrawnAction;
 
 /// The action of a field, null when it names no method.
 final class const FieldAction(
   @override final FieldProperty<Object?> property,
-  final ViewAction? action,
-) extends DrawnProperty;
+  @override final ViewAction? action,
+) extends DrawnAction;
 
 /// The action of a press or a field, as the agent writes it:
 /// `{"action": {"event": {"name": <method>, "context": {...}}}}`.
