@@ -588,26 +588,41 @@ final class const ViewScope._(
   /// The segments of [path] from the root of the data.
   List<String> absolute(String path) => DataPath.resolve(path, base: base);
 
-  /// The paths whose type [type] accepts, here and from the root.
+  /// The paths whose type [type] accepts, here and from the root, the item
+  /// as `""`.
   List<String> pathsOf(
     AgentType<Object?> type,
     Map<String, AgentType<Object?>> roots,
   ) => [
-    if (this.type case final item? when type.accepts(item)) '',
+    if (this.type case final item? when type.accepts(item)) '""',
     ...DataPath.pathsOf(roots, type),
   ];
 
-  /// What the data has near [path], for a refusal.
+  /// What the data has where [path] leaves it, for a refusal: the fields
+  /// there.
   String hint(String path, Map<String, AgentType<Object?>> roots) {
-    final segments = absolute(path);
-    for (var length = segments.length - 1; length > 0; length--) {
-      final parent = '/${segments.take(length).join('/')}';
-      final fields = const ViewScope.root().typeAt(parent, roots)?.fieldNames;
-      if (fields != null && fields.isNotEmpty) {
-        return 'Paths under $parent: ${fields.join(', ')}.';
+    var (place, type, rest) = switch (DataPath.segments(path)) {
+      [final root, ...final rest] => ('/$root', roots[root], rest),
+      [] => ('/', null, const <String>[]),
+      null => ('', this.type, DataPath.relative(path)),
+    };
+    ({String place, Iterable<String> fields})? near;
+    for (final segment in rest) {
+      if (type == null) break;
+      if (type.fieldNames case final fields when fields.isNotEmpty) {
+        near = (place: place, fields: fields);
       }
+      final next = type.typeAt(segment);
+      if (next == null) break;
+      place = place.isEmpty ? segment : '$place/$segment';
+      type = next;
     }
-    return 'Paths: ${roots.keys.map((name) => '/$name').join(', ')}.';
+    return switch (near) {
+      (place: '', :final fields) => 'Fields of the item: ${fields.join(', ')}.',
+      (:final place, :final fields) =>
+        'Paths under $place: ${fields.join(', ')}.',
+      null => 'Paths: ${roots.keys.map((name) => '/$name').join(', ')}.',
+    };
   }
 
   ({AgentType<Object?>? start, List<String> segments}) _start(

@@ -71,6 +71,41 @@ void main() {
     expect(problemsOf({'path': '/growers/0'}), isEmpty);
   });
 
+  test('a refusal below a template names the fields of the item, and the '
+      'item itself as ""', () {
+    final AgentType<_Node> node = .object(
+      id: 'test#Node',
+      fields: (field) => [field('name', (node) => node.name).as(.string)],
+      build: (values) => _Node(values('name')),
+    );
+    final check = ViewCheck(_Rows(node), (
+      roots: {'nodes': .list(node)},
+      methods: const {},
+    ));
+    List<String> problemsOf(Map<String, Object?> row) => check.check([
+      {
+        'id': 'root',
+        'component': 'Rows',
+        'rows': {'componentId': 'row', 'path': '/nodes'},
+      },
+      {'id': 'row', 'component': 'Row', ...row},
+    ]).problems;
+
+    const literal =
+        'row.node: write a path to a Node the screen lists, such as "", not '
+        'an object.';
+    expect(
+      problemsOf({
+        'label': {'path': 'nmae'},
+        'node': {'name': 'Fern'},
+      }),
+      [
+        'row.label: nmae is not in the data. Fields of the item: name.',
+        literal,
+      ],
+    );
+  });
+
   test('the description lists a class with a converter by its form, and one '
       'without by its fields', () {
     final AgentType<_Node> grower = .converted(
@@ -331,6 +366,34 @@ final class const _StampConverter() implements JsonConverter<_Node, _Node> {
 
   @override
   _Node toJson(_Node object) => object;
+}
+
+/// A list of rows, each with a label and a node.
+final class const _Rows(final AgentType<_Node> _node) implements AgentCatalog {
+  @override
+  List<AgentComponent> get components => [
+    AgentComponent<SizedBox>.of(
+      name: 'Rows',
+      description: 'Shows rows.',
+      properties: (property) => [property.children('rows')],
+      build: (args) => const SizedBox(),
+    ),
+    AgentComponent<SizedBox>.of(
+      name: 'Row',
+      description: 'Shows a node.',
+      properties: (property) => [
+        property<String>('label').value(.string),
+        property<_Node>('node').value(_node),
+      ],
+      build: (args) => const SizedBox(),
+    ),
+  ];
+
+  @override
+  String get guidelines => 'Draw rows.';
+
+  @override
+  List<Map<String, Object?>> get example => const [];
 }
 
 /// One widget with a value property of each type in [_properties].
