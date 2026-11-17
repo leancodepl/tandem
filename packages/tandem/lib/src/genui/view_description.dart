@@ -23,8 +23,7 @@ String viewDescription(AgentCatalog catalog, AgentListing listing) {
         parameter.type,
   ]);
   final components = [
-    for (final component in catalog.components)
-      '- ${component.name}: ${[for (final property in component.properties) _property(property, types)].join(', ')}. ${component.description}',
+    for (final component in catalog.components) _component(component, types),
   ];
   final data = [
     for (final MapEntry(key: name, value: root) in listing.roots.entries)
@@ -73,6 +72,13 @@ ${catalog.guidelines}
 
 Example:
 ${jsonEncode(catalog.example)}''';
+}
+
+String _component(AgentComponent component, _Types types) {
+  final properties = [
+    for (final property in component.properties) _property(property, types),
+  ].join(', ');
+  return '- ${component.name}: $properties. ${component.description}';
 }
 
 String _property(AgentProperty property, _Types types) {
