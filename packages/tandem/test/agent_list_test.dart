@@ -50,6 +50,19 @@ void main() {
       ),
     );
   });
+
+  test('a method whose tool starts with tandem_ is refused', () {
+    expect(
+      () => AgentListing.of(_Studio(method: 'tandem_show_view')),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          startsWith('The agent list calls tandem_show_view'),
+        ),
+      ),
+    );
+  });
 }
 
 /// Lists its `.sees` in a getter that `agentCapabilities` spreads, which the
@@ -89,7 +102,7 @@ final class _Gauge(final double ratio) implements AgentSurface {
 
 final class _Pot(final String name);
 
-final class _Studio() implements AgentSurface {
+final class _Studio({final String method = 'paint'}) implements AgentSurface {
   final pots = [_Pot('fern')];
 
   void paint(_Pot pot, Color tint) {}
@@ -112,7 +125,7 @@ final class _Studio() implements AgentSurface {
       calls: [
         AgentTool(
           paint,
-          name: 'paint',
+          name: method,
           description: 'Paints [pot] in [tint].',
           parameters: [
             AgentParameter('pot', pot, description: 'The pot to paint.'),
