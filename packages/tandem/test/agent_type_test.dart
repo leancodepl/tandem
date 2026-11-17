@@ -44,6 +44,23 @@ void main() {
     }
   });
 
+  test('a date-time goes out with its offset and comes back as local time', () {
+    const reading = AgentReading('at', objects: .fields);
+    final local = DateTime(2026, 12, 9, 18);
+    final written = AgentType.dateTime.write(local);
+    final utc = local.toUtc();
+    final plusThree = utc.add(const Duration(hours: 3)).toIso8601String();
+
+    expect(written, matches(r'^2026-12-09T18:00:00\.000[+-]\d\d:\d\d$'));
+    for (final json in [
+      written,
+      utc.toIso8601String(),
+      plusThree.replaceFirst('Z', '+03:00'),
+    ]) {
+      expect(AgentType.dateTime.read(json, reading), local, reason: '$json');
+    }
+  });
+
   test('a list or a set of nullable items takes its own type and non-null '
       'items, and one of non-null items takes no nullable ones', () {
     final AgentType<String?> nullable = .nullable(.string);

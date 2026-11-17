@@ -13,7 +13,10 @@ sealed class const TripAction() {
     'find_flights' => FindFlights(
       origin: arguments.parsed('origin', AirportCode.tryParse),
       destination: arguments.parsed('destination', AirportCode.tryParse),
-      date: arguments.parsed('date', DateTime.tryParse),
+      date: arguments.parsed(
+        'date',
+        (date) => DateTime.tryParse(date)?.toLocal(),
+      ),
     ),
     'move_meeting' => MoveMeeting(
       arguments.parsed('meetingId', MeetingId.tryParse),
