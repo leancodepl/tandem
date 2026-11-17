@@ -102,7 +102,7 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
   @override
   ActionState stateOf(String method, {required bool field}) {
     final listing = _listing;
-    if (_disposed || listing == null) return .unlisted;
+    if (_disposed || listing == null) return .leftOut;
     return _stateIn(listing, method, field: field);
   }
 
@@ -112,10 +112,9 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
     String method, {
     required bool field,
   }) {
-    if (!listing.lists(method)) return .unlisted;
+    if (!listing.lists(method)) return .leftOut;
     final needsApproval = listing.listedWithApproval(method);
-    // An action that can never run here leaves its component out.
-    if (needsApproval && (field || !session.asksForApproval)) return .unlisted;
+    if (needsApproval && (field || !session.asksForApproval)) return .leftOut;
     if (_busy || !session.isActive) return .waiting;
     if (needsApproval && !(session.asksForApproval && session.status is Idle)) {
       return .waiting;
