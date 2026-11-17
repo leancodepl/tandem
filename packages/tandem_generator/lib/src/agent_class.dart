@@ -30,6 +30,15 @@ final class const AgentClass._(final List<AgentField> fields) {
     return ._(fields);
   }
 
+  /// [type] as [read] reads it, or null when Tandem does not read it.
+  static AgentClass? tryRead(InterfaceType type) {
+    try {
+      return read(type, source: type.element, path: '');
+    } on AgentTypeError {
+      return null;
+    }
+  }
+
   static List<FormalParameterElement> _readParameters(
     InterfaceType type, {
     required Element source,
@@ -111,15 +120,8 @@ extension AgentClasses on DartType {
   /// converter gives it a form.
   bool get isAgentClass {
     final type = this;
-    if (type is! InterfaceType) return false;
 
-    try {
-      AgentClass.read(type, source: type.element, path: '');
-    } on AgentTypeError {
-      return false;
-    }
-
-    return true;
+    return type is InterfaceType && AgentClass.tryRead(type) != null;
   }
 }
 
