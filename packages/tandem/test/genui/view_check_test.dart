@@ -132,6 +132,41 @@ void main() {
     expect(problems, [index]);
   });
 
+  test('a literal that does not fit shows once, also for a component drawn '
+      'in two lists', () {
+    final AgentType<_Node> node = .object(
+      id: 'test#Node',
+      fields: (field) => [field('name', (node) => node.name).as(.string)],
+      build: (values) => _Node(values('name')),
+    );
+    final check = ViewCheck(_Rows(node), (
+      roots: {'nodes': .list(node), 'others': .list(node)},
+      methods: const {},
+    ));
+
+    final (:problems, view: _) = check.check([
+      {
+        'id': 'root',
+        'component': 'Rows',
+        'rows': ['nodes', 'others'],
+      },
+      for (final list in ['nodes', 'others'])
+        {
+          'id': list,
+          'component': 'Rows',
+          'rows': {'componentId': 'row', 'path': '/$list'},
+        },
+      {
+        'id': 'row',
+        'component': 'Row',
+        'label': 5,
+        'node': {'path': ''},
+      },
+    ]);
+
+    expect(problems, hasLength(1));
+  });
+
   test('the description lists a class with a converter by its form, and one '
       'without by its fields', () {
     final AgentType<_Node> grower = .converted(
