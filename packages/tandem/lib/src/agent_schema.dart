@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:meta/meta.dart';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/agent_type.dart';
 import 'package:tandem/src/errors.dart';
@@ -64,9 +65,11 @@ final class const AgentView<T>._(
   ///
   /// Throws a [StateError] when its type is not the getter's, which means the
   /// code was not generated again after the list changed.
+  @internal
   Object? write(Object? value) => type.write(_checked(value));
 
   /// [value], read from the agent list, as the getter's type.
+  @internal
   T checked(Object? value) => _checked(value);
 
   T _checked(Object? value) => switch (value) {
