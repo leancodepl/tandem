@@ -381,7 +381,7 @@ final class TandemSession({
   Future<ToolAnswer> _waitForUser(ToolCall call) async {
     if (_waiting.lastAsked(call.caller) case final waiting?
         when waiting.answer == null) {
-      if (waiting.tool == call.tool && waiting.arguments == call.arguments) {
+      if (waiting.isSameCall(call)) {
         return await waiting.answered;
       }
       return .refused(

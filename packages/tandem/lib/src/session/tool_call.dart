@@ -60,6 +60,12 @@ final class ToolCall({
     }
   }
 
+  /// Whether [other] calls the same tool with the same frozen arguments,
+  /// whatever the order of the keys its caller wrote.
+  bool isSameCall(ToolCall other) =>
+      tool == other.tool &&
+      jsonEncode(frozen?.json) == jsonEncode(other.frozen?.json);
+
   ApprovalRequest ask() => _request = ApprovalRequest.issued(
     toolCallId: id.value,
     tool: tool,
