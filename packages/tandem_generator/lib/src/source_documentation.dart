@@ -1,5 +1,4 @@
 import 'package:analyzer/dart/element/element.dart';
-import 'package:tandem_generator/src/tokens.dart';
 
 /// The doc comment without the slashes, with its wrapped lines joined. Field
 /// getters use the field's comment.
@@ -17,9 +16,9 @@ String? documentationOf(Element? element) {
 
 /// [comment], a `///` doc comment, without its slashes.
 String withoutSlashes(String comment) => comment
-    .split(Tokens.newLine)
+    .split('\n')
     .map((line) => line.replaceFirst(_slashes, ''))
-    .join(Tokens.newLine);
+    .join('\n');
 
 /// [text] with its wrapped lines joined, as Markdown reads them: a line break
 /// is a space, but a list item, a code block and a blank line stay on lines
@@ -29,7 +28,7 @@ String joinWrappedLines(String text) {
   var inCode = false;
   var continues = false;
 
-  for (final line in text.split(Tokens.newLine)) {
+  for (final line in text.split('\n')) {
     final isFence = line.trimLeft().startsWith('```');
 
     if (isFence || inCode) {
@@ -47,7 +46,7 @@ String joinWrappedLines(String text) {
     }
   }
 
-  return lines.join(Tokens.newLine).trim();
+  return lines.join('\n').trim();
 }
 
 final _slashes = RegExp(r'^\s*/// ?');

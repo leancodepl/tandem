@@ -9,60 +9,42 @@ import 'package:tandem_generator/src/agent_type_error.dart';
 import 'package:tandem_generator/src/agent_types.dart';
 import 'package:tandem_generator/src/catalog_error.dart';
 import 'package:tandem_generator/src/dart_literal.dart';
+import 'package:tandem_generator/src/mixin_generator.dart';
 import 'package:tandem_generator/src/source_documentation.dart';
-import 'package:tandem_generator/src/tokens.dart';
 import 'package:tandem_generator/src/type_names.dart';
 
 /// Writes the `_$Name` mixin of every class with `@TandemCatalog([...])`: an
 /// `AgentCatalog` whose components are the listed widgets, read from their
 /// constructors and doc comments.
-class const CatalogGenerator() extends Generator {
-  static const _tandemCatalog = TypeChecker.typeNamedLiterally(
-    'TandemCatalog',
-    inPackage: 'tandem',
-  );
+class const CatalogGenerator() extends MixinGenerator {
+  this : super('TandemCatalog');
 
   @override
-  Future<String?> generate(LibraryReader library, BuildStep buildStep) async {
-    final mixins = [
-      for (final annotated in library.annotatedWith(_tandemCatalog))
-        await _generateMixin(
-          annotated.element,
-          annotated.annotation,
-          buildStep,
-        ),
-    ];
-
-    if (mixins.isEmpty) return null;
-
-    return mixins.join(Tokens.doubleNewLine);
-  }
-
-  static Future<String> _generateMixin(
-    Element type,
+  Future<String> generateMixin(
+    Element element,
     ConstantReader annotation,
     BuildStep buildStep,
   ) async {
-    if (type is! ClassElement) throw CatalogError.notClass(type);
+    if (element is! ClassElement) throw CatalogError.notClass(element);
 
-    final className = type.displayName;
+    final className = element.displayName;
     final converters = await AgentConverters.read(
       annotation,
-      type,
+      element,
       listName: '_\$${className}Converters',
       buildStep: buildStep,
     );
     final widgets = [
       for (final value in annotation.read('components').listValue)
-        _widgetOf(value.toTypeValue(), catalog: type),
+        _widgetOf(value.toTypeValue(), catalog: element),
     ];
-    _checkNames(widgets, catalog: type);
+    _checkNames(widgets, catalog: element);
     final components = [
       for (final widget in widgets)
-        _Component(widget, catalog: type, converters: converters),
+        _Component(widget, catalog: element, converters: converters),
     ];
-    final documentation = _CatalogDocumentation.of(type);
-    _checkExample(documentation.example, components, catalog: type);
+    final documentation = _CatalogDocumentation.of(element);
+    _checkExample(documentation.example, components, catalog: element);
 
     final componentCode = components.map((c) => c.generate()).join();
     final guidelines = DartLiteral.json(documentation.guidelines);
@@ -81,7 +63,7 @@ mixin _\$$className implements AgentCatalog {
   List<AgentComponent> get components => [$componentCode];
 }''';
 
-    return [mixin, converters.declaration].join(Tokens.doubleNewLine);
+    return [mixin, converters.declaration].join('\n\n');
   }
 
   static InterfaceType _widgetOf(

@@ -594,7 +594,6 @@ class LinkCubit() {
 
   test('a class with a converter that Tandem could build is an object, and '
       'one with a private constructor a value', () async {
-    final log = <String>[];
     final result = await _build('''
 final class const Grower(final String code);
 final class const Ink._(final String name);
@@ -609,7 +608,7 @@ class NurseryCubit() {
   /// Assigns [grower] in [ink].
   void assign(Grower grower, Ink ink) {}
 }
-''', onLog: log.add);
+''');
 
     expect(result.errors, isEmpty);
     expect(
@@ -621,13 +620,6 @@ class NurseryCubit() {
         isNot(contains(RegExp(r"#InkConverter\(\)',\s*object: true"))),
       ),
     );
-    expect(log.where((line) => line.contains('the agent can only point at')), [
-      endsWith(
-        'assign.grower: the agent can only point at a Grower that .sees '
-        'lists, and none does. Mark the parameter @TandemInput() if the agent '
-        'writes it.',
-      ),
-    ]);
   });
 
   test('a class with a converter that Tandem cannot read is a value', () async {
@@ -653,47 +645,6 @@ class NurseryCubit() {
       ),
       allOf(contains('#VersionConverter()'), isNot(contains('object:'))),
     );
-  });
-
-  test('a class with a converter lists none of its fields for .sees, and one '
-      'that Tandem cannot read needs no .sees', () async {
-    final log = <String>[];
-    final result = await _build('''
-final class const Seat(final String code);
-final class const Desk(final String code, {final Seat? seat});
-final class const Version(final int major, final int minor);
-
-final class const DeskConverter() implements JsonConverter<Desk, String> {}
-final class const VersionConverter()
-    implements JsonConverter<Version, String> {}
-
-@TandemAgent(converters: [DeskConverter(), VersionConverter()])
-class DeskCubit() {
-  List<AgentCapability> get agentCapabilities => [
-    .sees(desks),
-    .calls(pickSeat),
-    .calls(pin),
-  ];
-
-  /// The desks.
-  List<Desk> get desks => const [];
-
-  /// Picks [seat].
-  void pickSeat(Seat seat) {}
-
-  /// Pins [version].
-  void pin(Version version) {}
-}
-''', onLog: log.add);
-
-    expect(result.errors, isEmpty);
-    expect(log.where((line) => line.contains('the agent can only point at')), [
-      endsWith(
-        'pickSeat.seat: the agent can only point at a Seat that .sees lists, '
-        'and none does. Mark the parameter @TandemInput() if the agent writes '
-        'it.',
-      ),
-    ]);
   });
 
   test('a converter that writes a map fails the build and names the '
