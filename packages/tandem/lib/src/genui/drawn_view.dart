@@ -33,7 +33,6 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
     session
       ..addListener(_sessionChanged)
       ..attach(this);
-    _read();
     if (kDebugMode) _requirements.checkExample(session.surface.agentSchema);
   }
 
@@ -52,9 +51,19 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
   var _disposed = false;
   SessionStatus? _status;
 
+  /// The conflict of the catalog and the screen reported last, so that one
+  /// is reported once, not on every run.
+  String? _conflict;
+
   @override
   JsonObject? definition(AgentListing listing) {
-    if (_disposed || _requirements.conflictWith(listing) != null) return null;
+    if (_disposed) return null;
+    final conflict = _requirements.conflictWith(listing);
+    if (conflict != null && conflict != _conflict) {
+      report(StateError(conflict), .current);
+    }
+    _conflict = conflict;
+    if (conflict != null) return null;
     return {
       AgUiFields.name: ViewTool.name,
       AgUiFields.description: viewDescription(catalog, listing),
@@ -168,7 +177,8 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
   }
 
   void _read() {
-    if (_disposed) return;
+    // Before the agent draws, nothing shows the data.
+    if (_disposed || _drawn == null) return;
     _listing = _requirements.read(session.surface, view: _drawn);
     notifyListeners();
   }

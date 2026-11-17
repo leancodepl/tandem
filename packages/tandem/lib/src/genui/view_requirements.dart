@@ -33,16 +33,12 @@ final class ViewRequirements(final AgentCatalog _catalog) {
     return null;
   }
 
-  /// What [surface] lists now, or null when a view cannot show on it: the
-  /// list throws or does not fit the catalog, which is reported, or [view]
+  /// What [surface] lists now, or null when [view] cannot show on it: the
+  /// list throws, which is reported, does not fit the catalog, or [view]
   /// draws too many components on it.
   AgentListing? read(AgentSurface surface, {DrawnComponents? view}) {
     final listing = listingOf(surface);
-    if (listing == null) return null;
-    if (conflictWith(listing) case final conflict?) {
-      report(StateError(conflict), .current);
-      return null;
-    }
+    if (listing == null || conflictWith(listing) != null) return null;
     if (view != null && _tooLarge(view, listing)) return null;
     return listing;
   }
