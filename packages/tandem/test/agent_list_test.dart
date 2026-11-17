@@ -37,6 +37,40 @@ void main() {
       ),
     );
   });
+
+  test('a .sees from outside agentCapabilities is refused', () {
+    expect(
+      () => AgentListing.of(_Split()),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          startsWith('A .sees comes from outside agentCapabilities'),
+        ),
+      ),
+    );
+  });
+}
+
+/// Lists its `.sees` in a getter that `agentCapabilities` spreads, which the
+/// generated copy keeps as it is.
+final class _Split() implements AgentSurface {
+  final ratio = 0.5;
+
+  List<AgentCapability> get _gauges => [.sees(ratio)];
+
+  @override
+  List<AgentCapability> get agentCapabilities => [..._gauges];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [AgentView.of(() => ratio).as('ratio', 'How full it is.', .number)],
+    calls: const [],
+    capabilities: () => [..._gauges],
+  );
 }
 
 final class _Gauge(final double ratio) implements AgentSurface {
