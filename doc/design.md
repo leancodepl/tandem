@@ -158,6 +158,7 @@ Only a `ToolCallRefused` gives the agent its message. Any other error of a metho
 ## Deferred
 
 - AG-UI interrupts.
+- Who wrote a text. The text of a subagent, and of a `TEXT_MESSAGE_START` whose role is not `assistant`, shows as the agent's and goes back as its message.
 - Telling a message the app sent with `session.send` from one the user wrote. Both are a `UserMessage` without `fromApp`, which only `session.wake` sets ([RFC 0001](rfc/0001-core-without-ui-and-state-libraries.md#events-and-status), decision 15).
 - Saving a `TandemThread`, several state objects per screen, a conversation across screens, and `session.events` ([RFC 0001](rfc/0001-core-without-ui-and-state-libraries.md#later-not-in-pre-v1)).
 - Resync of a broken run through the experimental `/agents/state`.
