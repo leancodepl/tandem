@@ -1031,6 +1031,46 @@ final class const Box({
     );
   });
 
+  test('a child with a default keeps it, with one line in the build, and an '
+      'empty list of children stays settable', () async {
+    final log = <String>[];
+    final result = await _build('''
+/// A chevron.
+final class const Chevron() extends StatelessWidget;
+
+/// A tile.
+final class const Tile({
+  final Widget trailing = const Chevron(),
+  final List<Widget> footer = const [],
+}) extends StatelessWidget;
+
+/// Draw tiles.
+///
+/// ```json
+/// [{"id": "root", "component": "Tile"}]
+/// ```
+@TandemCatalog([Chevron, Tile])
+final class const ShopCatalog();
+''', onLog: log.add);
+
+    expect(result.errors, isEmpty);
+    expect(
+      result.readerWriter.testing.readString(
+        .parse('app|lib/screen.tandem.g.part'),
+      ),
+      allOf(isNot(contains("'trailing'")), contains("args.children('footer')")),
+    );
+    expect(
+      log,
+      contains(
+        endsWith(
+          'Tile.trailing keeps its default: Tandem cannot copy a widget, so '
+          'the agent cannot set it.',
+        ),
+      ),
+    );
+  });
+
   test('a getter of another type names the type of its property', () async {
     expect(
       await _generate("""

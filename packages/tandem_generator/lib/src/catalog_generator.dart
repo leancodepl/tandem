@@ -272,6 +272,8 @@ AgentComponent<$widgetName>.of(
     }
 
     if (_widgetClass.isExactlyType(nonNull)) {
+      if (parameter.hasOwnDefault) return _keepDefaultChild(parameter);
+
       return _Parameter(
         parameter,
         code: 'property.child($key$requiredCode)',
@@ -283,6 +285,8 @@ AgentComponent<$widgetName>.of(
         case InterfaceType(isDartCoreList: true, typeArguments: [final item])
         when _widgetClass.isExactlyType(item) &&
             item.nullabilitySuffix == .none) {
+      if (parameter.hasOwnDefault) return _keepDefaultChild(parameter);
+
       return _Parameter(
         parameter,
         code: 'property.children($key$requiredCode)',
@@ -309,6 +313,11 @@ AgentComponent<$widgetName>.of(
     }
 
     return _value(parameter, path: path, optional: optional);
+  }
+
+  _Parameter _keepDefaultChild(FormalParameterElement parameter) {
+    log.warning(CatalogError.defaultChildMessage(_element, parameter));
+    return _Parameter.skipped(parameter);
   }
 
   /// An action, which the component needs unless it is nullable: a default
@@ -449,6 +458,20 @@ AgentComponent<$widgetName>.of(
     'ChangeNotifier',
     inPackage: 'flutter',
   );
+}
+
+extension on FormalParameterElement {
+  /// Whether its default differs from what a view that leaves the child out
+  /// gives: null, or no children.
+  bool get hasOwnDefault {
+    if (!hasDefaultValue) return false;
+
+    final value = computeConstantValue();
+
+    if (value == null) return true;
+
+    return !value.isNull && (value.toListValue()?.isNotEmpty ?? true);
+  }
 }
 
 /// A parameter of a widget's constructor: its property code and the
