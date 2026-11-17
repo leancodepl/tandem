@@ -275,7 +275,8 @@ void main() {
             'properties': {
               'address': {
                 'type': 'object',
-                'description': 'Where the courier brings the order.',
+                'description':
+                    'Where the courier brings the order. A street address.',
                 'properties': {
                   'street': {'type': 'string'},
                   'city': {'type': 'string'},

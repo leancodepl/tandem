@@ -755,10 +755,10 @@ final class _Object<T>(
       'description': ?description,
       'properties': {
         for (final field in _fields)
-          field.name: {
-            ...field.type.schema(objects),
-            'description': ?field.description,
-          },
+          field.name: describedAs(
+            field.type.schema(objects),
+            field.description,
+          ),
       },
       'required': [
         for (final field in _fields)
@@ -847,6 +847,13 @@ final class const _Converted<T, S>(
 
   @override
   Iterable<AgentType<Object?>> get parts => [_json];
+}
+
+/// [schema] with [description], of a parameter or a field, before the
+/// type's own, such as the form of a converter.
+JsonObject describedAs(JsonObject schema, String? description) {
+  final joined = [description, schema['description']].nonNulls.join(' ');
+  return {...schema, if (joined.isNotEmpty) 'description': joined};
 }
 
 extension AgentTypeDetails on AgentType<Object?> {

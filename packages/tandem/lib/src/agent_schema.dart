@@ -108,10 +108,10 @@ extension AgentParameters on List<AgentParameter<Object?>> {
     'type': 'object',
     'properties': {
       for (final parameter in this)
-        parameter.name: {
-          ...parameter.type.schema(parameter.input ? .fields : .paths),
-          'description': ?parameter.description,
-        },
+        parameter.name: describedAs(
+          parameter.type.schema(parameter.input ? .fields : .paths),
+          parameter.description,
+        ),
     },
     'required': [
       for (final parameter in this)
