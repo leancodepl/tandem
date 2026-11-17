@@ -597,6 +597,29 @@ class IconCubit() {
     );
   });
 
+  test('converters: comes from @TandemAgent, not from another annotation '
+      'that takes it', () async {
+    expect(
+      await _generate('''
+final class const Serializable({final List<Object> converters = const []});
+
+final class const Code();
+final class const CodeConverter() implements JsonConverter<Code, String> {}
+final class const EpochConverter() implements JsonConverter<DateTime, int> {}
+
+@Serializable(converters: [EpochConverter()])
+@TandemAgent(converters: [CodeConverter()])
+class CodeCubit() {
+  List<AgentCapability> get agentCapabilities => [.sees(code)];
+
+  /// The code.
+  Code get code => const Code();
+}
+'''),
+      contains(r'_$CodeCubitConverters = [CodeConverter()];'),
+    );
+  });
+
   test('a required parameter without a form stops the catalog', () async {
     expect(
       await _buildErrors('''
