@@ -23,7 +23,7 @@ final class ViewRequirements(final AgentCatalog _catalog) {
   /// list throws or does not fit the catalog, which is reported, or [view]
   /// draws too many components on it.
   AgentListing? read(AgentSurface surface, {DrawnComponents? view}) {
-    final listing = _listingOf(surface);
+    final listing = listingOf(surface);
     if (listing == null) return null;
     if (conflictWith(listing) case final conflict?) {
       report(StateError(conflict), .current);
@@ -96,7 +96,9 @@ final class ViewRequirements(final AgentCatalog _catalog) {
   bool _tooLarge(DrawnComponents view, AgentListing listing) =>
       ViewRender.count(view, listing) > ViewCheck.maxComponents;
 
-  static AgentListing? _listingOf(AgentSurface surface) {
+  /// What [surface] lists now, or null when the list throws, which is
+  /// reported.
+  static AgentListing? listingOf(AgentSurface surface) {
     try {
       return AgentListing.of(surface);
     } catch (err, st) {

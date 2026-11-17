@@ -67,7 +67,8 @@ final class DrawnView(final TandemSession session, final AgentCatalog catalog)
     if (_disposed || !session.isActive) {
       return .refused('No view is on the screen now.');
     }
-    final listing = AgentListing.of(session.surface);
+    final listing = ViewRequirements.listingOf(session.surface);
+    if (listing == null) return ToolAnswer.screenUnreadable;
     switch (_requirements.check(arguments['components'], listing)) {
       case ViewToShow(:final view):
         _drawn = view;

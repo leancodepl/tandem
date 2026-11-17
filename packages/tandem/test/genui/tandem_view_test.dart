@@ -20,6 +20,7 @@ void main() {
     WidgetTester tester, {
     List<Map<String, Object?>> view = _keepPots,
     TandemApprovals approvals = const .none(),
+    List<AgentTurn> after = const [],
   }) async {
     late TandemSession session;
     await tester.pumpWidget(
@@ -35,6 +36,11 @@ void main() {
                 const .say('There it is.'),
               ];
             },
+            for (final turn in after)
+              (body) {
+                bodies.add(body);
+                return turn(body);
+              },
           ]),
           approvals: approvals,
           child: Builder(
@@ -127,13 +133,44 @@ void main() {
     await draw(tester);
 
     bench
-      ..listThrows = true
+      ..listThrows = (() => true)
       ..changed();
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isStateError);
     expect(find.text('This view is not available now.'), findsOneWidget);
-    bench.listThrows = false;
+    bench.listThrows = () => false;
+  });
+
+  testWidgets('a view drawn while the screen list throws fails its call, not '
+      'the run', (tester) async {
+    final session = await draw(
+      tester,
+      after: [
+        (_) => [
+          .callTool('tandem_show_view', {'components': jsonEncode(_keepPots)}),
+        ],
+        (_) => const [.say('I cannot draw it now.')],
+      ],
+    );
+    bench.listThrows = () => switch (session.status) {
+      Thinking(drawing: true) => true,
+      _ => false,
+    };
+
+    final reported = <FlutterErrorDetails>[];
+    final onError = FlutterError.onError;
+    FlutterError.onError = reported.add;
+    session.send('Show it again');
+    await tester.pumpAndSettle();
+    FlutterError.onError = onError;
+
+    expect(reported, isNotEmpty);
+    expect(
+      AgentRequest(bodies.last).latestToolResults.single.value,
+      containsPair('status', 'failed'),
+    );
+    expect(session.items.whereType<ChatNotice>(), isEmpty);
   });
 }
 
@@ -180,7 +217,7 @@ final class _Bench() implements AgentSurface {
   /// Every number [setPots] got.
   final set = <int>[];
 
-  bool listThrows = false;
+  bool Function() listThrows = () => false;
 
   /// Whether [setPots] needs approval.
   bool guarded = false;
@@ -194,7 +231,7 @@ final class _Bench() implements AgentSurface {
 
   @override
   List<AgentCapability> get agentCapabilities {
-    if (listThrows) throw StateError('The list is broken.');
+    if (listThrows()) throw StateError('The list is broken.');
     return [
       .sees(pots),
       if (guarded) .callsWithApproval(setPots) else .calls(setPots),
