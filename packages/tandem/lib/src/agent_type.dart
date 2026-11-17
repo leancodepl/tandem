@@ -136,7 +136,8 @@ sealed class const AgentType<T>() {
       _Object(id, fields(AgentFields<T>._()), build, description: description);
 
   /// A type that [converter], a `JsonConverter<T, S>`, writes as [json].
-  /// [converter] names the converter and its configuration. With [object],
+  /// [converterId] names the converter and its configuration, so that builds
+  /// that convert [T] differently have different fingerprints. With [object],
   /// the type is a class that the agent points at by path, and writes as
   /// [json] only where it writes the object.
   static AgentType<T> converted<T, S>(
@@ -653,9 +654,6 @@ final class const _List<T>(final AgentType<T> _item)
     _List(:final _item) => _holds(this._item, _item),
     _ => false,
   };
-
-  /// The type of each item.
-  AgentType<T> get item => _item;
 }
 
 final class const _Set<T>(final AgentType<T> _item) extends AgentType<Set<T>> {
@@ -911,7 +909,7 @@ extension AgentTypeDetails on AgentType<Object?> {
 
   /// The type of an item of a list or a set, or null for another type.
   AgentType<Object?>? get itemType => switch (_nonNull(this)) {
-    _List(:final item) => item,
+    _List(:final _item) => _item,
     _Set(:final _item) => _item,
     _ => null,
   };
