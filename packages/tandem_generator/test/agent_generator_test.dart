@@ -94,6 +94,25 @@ class LinkCubit() {
     );
   });
 
+  test('a method named like a tool of Tandem fails the build', () async {
+    expect(
+      await _buildErrors('''
+@TandemAgent()
+class ViewCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(tandemShowView)];
+
+  /// Shows the view.
+  void tandemShowView() {}
+}
+'''),
+      [
+        contains(
+          'Rename tandemShowView: the agent knows it as tandem_show_view',
+        ),
+      ],
+    );
+  });
+
   test('a class Tandem cannot build fails the build', () async {
     expect(
       await _buildErrors('''

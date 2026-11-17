@@ -1,3 +1,6 @@
+/// The start of the names of the tools that Tandem offers itself.
+const tandemToolPrefix = 'tandem_';
+
 /// The name the agent gets for a getter or a method: [name] in snake_case.
 String agentName(String name) => name
     .replaceFirst(RegExp('^_+'), '')

@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:source_gen/source_gen.dart';
+import 'package:tandem_generator/src/agent_names.dart';
 
 final class AgentGenerationError extends InvalidGenerationSource {
   new notClass(Element type)
@@ -78,6 +79,13 @@ final class AgentGenerationError extends InvalidGenerationSource {
          'knows both as $name.',
          element: second,
        );
+
+  new reservedName(Expression item, {required String name})
+    : super(
+        'Rename $item: the agent knows it as $name, and the tools that start '
+        'with $tandemToolPrefix are those Tandem offers itself.',
+        node: item,
+      );
 
   new missingDocumentation(Element element)
     : super(
