@@ -73,7 +73,7 @@ final class ViewRequirements(final AgentCatalog _catalog) {
     } catch (err, st) {
       // A bug of a converter of the app fails the call, as for a method.
       report(err, st);
-      return const ViewNotShown(ToolAnswer.failed);
+      return const ViewNotShown(ToolAnswer.valueUnreadable);
     }
   }
 
