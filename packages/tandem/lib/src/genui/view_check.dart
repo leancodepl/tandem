@@ -27,15 +27,12 @@ final class ViewCheck(final AgentCatalog _catalog, final ViewData _data) {
   /// may.
   ({DrawnComponents view, List<String> problems}) check(Object? components) {
     final view = DrawnComponents.parse(components, _catalog);
-    if (view.problems.isNotEmpty) {
-      return (
-        view: view,
-        problems: [...view.problems, ...view.propertyProblems],
-      );
-    }
-    final scopes = view.scopes(_data);
+    final scopes = view.walkable
+        ? view.scopes(_data)
+        : const <DrawnComponent, List<ViewScope>>{};
     // A problem that does not depend on the place shows once.
     final problems = {
+      ...view.problems,
       ...view.propertyProblems,
       for (final MapEntry(key: component, value: places) in scopes.entries)
         for (final scope in places) ..._componentProblems(component, scope),
@@ -252,11 +249,16 @@ final class DrawnComponents._(
 
   /// The properties a component does not have, misses or writes in another
   /// shape.
-  final List<String> propertyProblems,
-) {
+  final List<String> propertyProblems, {
+
+  /// Whether [scopes] can walk the components from the root: the root is
+  /// there, and no reference is missing or circular. The walk skips an
+  /// unknown component.
+  required final bool walkable,
+}) {
   factory parse(Object? components, AgentCatalog catalog) {
     if (components is! List<Object?>) {
-      return ._(const {}, const [_shape], const []);
+      return ._(const {}, const [_shape], const [], walkable: false);
     }
     final byName = {
       for (final component in catalog.components) component.name: component,
@@ -292,9 +294,13 @@ final class DrawnComponents._(
     if (!ids.contains('root')) {
       problems.add('One component has the id "root".');
     }
-    final view = DrawnComponents._(byId, problems, propertyProblems);
-    if (problems.isEmpty) problems.addAll(view._graphProblems());
-    return view;
+    final graphProblems = _graphProblems(byId, ids);
+    return ._(
+      byId,
+      [...problems, ...graphProblems],
+      propertyProblems,
+      walkable: byId.containsKey('root') && graphProblems.isEmpty,
+    );
   }
 
   static const _shape =
@@ -315,39 +321,46 @@ final class DrawnComponents._(
   // visited once, not once for every way to reach it.
   Map<DrawnComponent, List<ViewScope>> scopes(ViewData data) {
     final scopes = <DrawnComponent, Map<String, ViewScope>>{};
-    void visit(DrawnComponent component, ViewScope scope) {
+    void visit(String id, ViewScope scope) {
+      final component = _byId[id];
+      if (component == null) return;
       final here = scopes.putIfAbsent(component, () => {});
       if (here.containsKey(scope.key)) return;
       here[scope.key] = scope;
       for (final property in component.properties) {
         switch (property) {
           case ChildId(:final id):
-            visit(this[id], scope);
+            visit(id, scope);
           case ChildIds(:final ids):
             for (final id in ids) {
-              visit(this[id], scope);
+              visit(id, scope);
             }
           case ChildTemplate(:final template, :final path):
             if (scope.item(path, data.roots) case final item?) {
-              visit(this[template], item);
+              visit(template, item);
             }
           default:
         }
       }
     }
 
-    visit(root, const ViewScope.root());
+    visit('root', const ViewScope.root());
     return {
       for (final MapEntry(:key, :value) in scopes.entries)
         key: [...value.values],
     };
   }
 
-  List<String> _graphProblems() {
+  /// The references of [byId] to an id that no component of [ids] has, or
+  /// else the first circle.
+  static List<String> _graphProblems(
+    Map<String, DrawnComponent> byId,
+    Set<String> ids,
+  ) {
     final problems = <String>[];
-    for (final component in _byId.values) {
+    for (final component in byId.values) {
       for (final child in component.childIds) {
-        if (!_byId.containsKey(child)) {
+        if (!ids.contains(child)) {
           problems.add('${component.id}: no component has the id $child.');
         }
       }
@@ -358,13 +371,13 @@ final class DrawnComponents._(
     bool cycles(String id) {
       if (done.contains(id)) return false;
       if (!visiting.add(id)) return true;
-      final found = this[id].childIds.any(cycles);
+      final found = byId[id]?.childIds.any(cycles) ?? false;
       visiting.remove(id);
       done.add(id);
       return found;
     }
 
-    for (final id in _byId.keys) {
+    for (final id in byId.keys) {
       if (cycles(id)) {
         return ['$id: draws itself through its children.'];
       }
