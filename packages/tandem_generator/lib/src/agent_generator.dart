@@ -178,6 +178,12 @@ class _CapabilityReader(final ClassElement _type)
       throw AgentGenerationError.invalidMethod(item, _type);
     }
 
+    final name = agentName(method.displayName);
+
+    if (name.startsWith(tandemToolPrefix)) {
+      throw AgentGenerationError.reservedName(item, name: name);
+    }
+
     return method;
   }
 
