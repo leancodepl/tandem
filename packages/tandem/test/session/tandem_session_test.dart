@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -10,6 +9,9 @@ import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
+import '../support/chat_items.dart';
+import '../support/connections.dart';
+import '../support/reports.dart';
 import '../support/run_bodies.dart';
 import '../support/shop.dart';
 
@@ -69,7 +71,7 @@ void main() {
   }
 
   test('a call runs at once and its result goes in the next run', () async {
-    final connection = _RawFirstRun(
+    final connection = RawFirstRun(
       Stream.fromIterable([
         // A tool of the backend, which the run does not offer.
         {
@@ -132,14 +134,14 @@ void main() {
     final [AgentCall(:tool, :arguments, :result)] = agentCalls();
     expect((tool, result), ('add', null));
     expect(arguments, {'item': 'milk'});
-    expect(_shown(session.items), [
+    expect(summaryOf(session.items), [
       ('user', 'add milk'),
       ('agent', 'Done.', false),
     ]);
   });
 
   test('calls go back in the message the server names, and its own calls with their results', () async {
-    final connection = _RawFirstRun(
+    final connection = RawFirstRun(
       Stream.fromIterable([
         {
           'type': 'TOOL_CALL_START',
@@ -314,7 +316,7 @@ void main() {
       'or the next text', () async {
     final stream = StreamController<Map<String, Object?>>();
     addTearDown(stream.close);
-    final session = open(_RawFirstRun(stream.stream, ScriptedAgent([])))
+    final session = open(RawFirstRun(stream.stream, ScriptedAgent([])))
       ..send('find a monitor');
     final statuses = <SessionStatus>[];
     session.addListener(() {
@@ -391,7 +393,7 @@ void main() {
     ]);
     final session = open(agent)..send('go');
     await pumpEventQueue();
-    expect(_shown(session.items), [
+    expect(summaryOf(session.items), [
       ('user', 'go'),
       ('agent', 'Working', false),
     ]);
@@ -404,14 +406,14 @@ void main() {
     await pumpEventQueue();
 
     expect(shop.items, isEmpty);
-    expect(_shown(session.items), [
+    expect(summaryOf(session.items), [
       ('user', 'go'),
       ('agent', 'Working', true),
       ('user', 'next'),
       ('agent', 'Hi', false),
     ]);
     expect(events, [isA<RunStopped>()]);
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: go',
       'assistant: Working',
       'asst-call-1 add {"item":"x"}',
@@ -438,8 +440,8 @@ void main() {
   ]) {
     test('Stop tells a stoppable connection once, and the run its server ends '
         'with $ending stops quietly', () async {
-      final reported = _collectReports();
-      final connection = _StoppableAgent(end);
+      final reported = collectReports();
+      final connection = StoppableAgent(end);
       final session = open(connection)..send('go');
       await pumpEventQueue();
 
@@ -451,7 +453,10 @@ void main() {
 
       expect(connection.stopped.single, same(connection.requests.single));
       expect(session.status, isA<Idle>());
-      expect(_shown(session.items), [('user', 'go'), ChatNoticeKind.stopped]);
+      expect(summaryOf(session.items), [
+        ('user', 'go'),
+        ChatNoticeKind.stopped,
+      ]);
       expect(events, [isA<RunStopped>()]);
       expect(reported.map((details) => details.exception), reports);
     });
@@ -459,9 +464,9 @@ void main() {
 
   test('a RUN_ERROR after Stop fails the run on a connection that cannot '
       'stop it on its server', () async {
-    final reported = _collectReports();
+    final reported = collectReports();
     final run = StreamController<Map<String, Object?>>();
-    final session = open(_RawFirstRun(run.stream, ScriptedAgent([])))
+    final session = open(RawFirstRun(run.stream, ScriptedAgent([])))
       ..send('go');
     await pumpEventQueue();
 
@@ -471,13 +476,13 @@ void main() {
     await pumpEventQueue();
 
     expect(reported, hasLength(1));
-    expect(_shown(session.items).last, ChatNoticeKind.runFailed);
+    expect(summaryOf(session.items).last, ChatNoticeKind.runFailed);
     expect(events, [isA<RunStopped>(), isA<RunFailed>()]);
   });
 
   test('a RUN_ERROR after a stop that failed fails the run', () async {
-    final reported = _collectReports();
-    final connection = _StoppableAgent(const {
+    final reported = collectReports();
+    final connection = StoppableAgent(const {
       'type': 'RUN_ERROR',
       'message': 'Out of quota.',
     }, failsToStop: true);
@@ -493,13 +498,13 @@ void main() {
       isA<StateError>(),
       isA<AgentRunException>(),
     ]);
-    expect(_shown(session.items).last, ChatNoticeKind.runFailed);
+    expect(summaryOf(session.items).last, ChatNoticeKind.runFailed);
     expect(events, [isA<RunStopped>(), isA<RunFailed>()]);
   });
 
   test('a session disposed on RunStopped does not tell the connection to '
       'stop', () async {
-    final connection = _StoppableAgent(const {'type': 'RUN_FINISHED'});
+    final connection = StoppableAgent(const {'type': 'RUN_FINISHED'});
     late final TandemSession session;
     session = TandemSession(
       surface: shop,
@@ -520,7 +525,7 @@ void main() {
 
   test('a run the server cancels on its own does not tell a stoppable '
       'connection to stop', () async {
-    final connection = _StoppableAgent(const {
+    final connection = StoppableAgent(const {
       'type': 'RUN_FINISHED',
       'outcome': {'type': 'cancelled'},
     });
@@ -545,7 +550,7 @@ void main() {
         (_) => const [AgentStep.fail('boom')],
         (_) => const [AgentStep.say('Hi')],
       ]);
-      final reported = _collectReports();
+      final reported = collectReports();
       final session = open(agent)..send('a');
       await pumpEventQueue();
 
@@ -566,22 +571,25 @@ void main() {
         ),
       ]);
       expect(events, [isA<RunFailed>()]);
-      expect(_shown(session.items), [('user', 'a'), ChatNoticeKind.runFailed]);
+      expect(summaryOf(session.items), [
+        ('user', 'a'),
+        ChatNoticeKind.runFailed,
+      ]);
 
       session.send('b');
       await pumpEventQueue();
-      expect(_shown(session.items).last, ('agent', 'Hi', false));
+      expect(summaryOf(session.items).last, ('agent', 'Hi', false));
       // A run that ended with RUN_ERROR keeps its thread and history.
       expect(agent.requests[2]['threadId'], agent.requests[0]['threadId']);
-      expect(_lines(agent.requests[2]), [
-        ..._lines(agent.requests[1]),
+      expect(linesOf(agent.requests[2]), [
+        ...linesOf(agent.requests[1]),
         'user: b',
       ]);
     },
   );
 
   test('onEvent can send at once after a failed run', () async {
-    _collectReports();
+    collectReports();
     final gate = Completer<void>();
     final agent = ScriptedAgent([
       (_) => [AgentStep.waitFor(gate.future), const AgentStep.say('Back.')],
@@ -604,13 +612,13 @@ void main() {
 
     gate.complete();
     await pumpEventQueue();
-    expect(_lines(agent.requests.single), ['user: hi\n\nagain']);
+    expect(linesOf(agent.requests.single), ['user: hi\n\nagain']);
     expect(session.status, isA<Idle>());
   });
 
   test('startOver after a failed run sends the next message to a new thread '
       'without the earlier history', () async {
-    _collectReports();
+    collectReports();
     final agent = ScriptedAgent([
       (_) => const [AgentStep.say('Hi')],
       (_) => const [AgentStep.fail('Too long.')],
@@ -636,8 +644,8 @@ void main() {
 
     expect(events, [isA<RunFailed>()]);
     expect(agent.requests[2]['threadId'], isNot(agent.requests[1]['threadId']));
-    expect(_lines(agent.requests[2]), ['user: c']);
-    expect(_shown(session.items), [
+    expect(linesOf(agent.requests[2]), ['user: c']);
+    expect(summaryOf(session.items), [
       ('user', 'a'),
       ('agent', 'Hi', false),
       ('user', 'b'),
@@ -649,7 +657,7 @@ void main() {
   });
 
   test('startOver keeps a message whose run never went out', () async {
-    _collectReports();
+    collectReports();
     final agent = ScriptedAgent([
       (_) => const [AgentStep.say('Fresh.')],
     ]);
@@ -670,18 +678,18 @@ void main() {
     session.send('again');
     await pumpEventQueue();
 
-    expect(_lines(agent.requests.single), ['user: hi\n\nagain']);
+    expect(linesOf(agent.requests.single), ['user: hi\n\nagain']);
   });
 
   test('startOver keeps a message whose connection threw before the run went '
       'out', () async {
-    _collectReports();
+    collectReports();
     final agent = ScriptedAgent([
       (_) => const [AgentStep.say('Fresh.')],
     ]);
     late final TandemSession session;
     session = open(
-      _ThrowsFirst(agent),
+      ThrowsFirst(agent),
       onEvent: (event) {
         if (event is RunFailed) {
           session.startOver();
@@ -694,7 +702,7 @@ void main() {
     session.send('again');
     await pumpEventQueue();
 
-    expect(_lines(agent.requests.single), ['user: hi\n\nagain']);
+    expect(linesOf(agent.requests.single), ['user: hi\n\nagain']);
   });
 
   test('startOver cancels a waiting request, and does nothing while a run is '
@@ -708,9 +716,9 @@ void main() {
     session
       ..send('again')
       ..startOver();
-    expect(_shown(session.items).last, ('user', 'again'));
+    expect(summaryOf(session.items).last, ('user', 'again'));
     await pumpEventQueue();
-    expect(_lines(agent.requests.last), ['user: again']);
+    expect(linesOf(agent.requests.last), ['user: again']);
   });
 
   for (final reopen in [false, true]) {
@@ -755,7 +763,7 @@ void main() {
       final [firstRun, secondRun] = agent.requests;
       expect(secondRun['threadId'], firstRun['threadId']);
       expect(secondRun['state'], isEmpty);
-      expect(_lines(secondRun), [
+      expect(linesOf(secondRun), [
         'asst-call-1 refresh {}',
         'asst-call-2 clear {}',
         'tool-call-1 null',
@@ -792,7 +800,7 @@ void main() {
       next.items.whereType<ChatNotice>().single.kind,
       ChatNoticeKind.startedOver,
     );
-    expect(_lines(agent.requests.last), [
+    expect(linesOf(agent.requests.last), [
       'asst-call-1 clear {}',
       'tool-call-1 {"status":"cancelled"}',
       'user: keep it',
@@ -807,7 +815,7 @@ void main() {
       (_) => const [AgentStep.say('Done.')],
       (_) => const [AgentStep.say('Hi')],
     ]);
-    final reported = _collectReports();
+    final reported = collectReports();
     final session = open(
       agent,
       onEvent: (_) => throw StateError('listener failed'),
@@ -815,15 +823,15 @@ void main() {
     await pumpEventQueue();
 
     expect(reported.single.exception, isStateError);
-    expect(_lines(agent.requests[1]).last, 'tool-call-1 null');
+    expect(linesOf(agent.requests[1]).last, 'tool-call-1 null');
 
     session.send('hello?');
     await pumpEventQueue();
-    expect(_shown(session.items).last, ('agent', 'Hi', false));
+    expect(summaryOf(session.items).last, ('agent', 'Hi', false));
   });
 
   test('the pieces of one message grow one item until the run ends', () async {
-    final connection = _RawFirstRun(
+    final connection = RawFirstRun(
       Stream.fromIterable([
         {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'Hel'},
         {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'lo'},
@@ -835,7 +843,10 @@ void main() {
     final session = open(connection)..send('a');
     await pumpEventQueue();
 
-    expect(_shown(session.items), [('user', 'a'), ('agent', 'Hello', false)]);
+    expect(summaryOf(session.items), [
+      ('user', 'a'),
+      ('agent', 'Hello', false),
+    ]);
   });
 
   test(
@@ -844,7 +855,7 @@ void main() {
       final serverReply = Completer<void>();
       shop.serverReply = serverReply.future;
       final first = StreamController<Map<String, Object?>>();
-      final connection = _RawFirstRun(
+      final connection = RawFirstRun(
         first.stream,
         ScriptedAgent([
           (_) => const [AgentStep.say('Done.')],
@@ -872,14 +883,17 @@ void main() {
       await first.close();
 
       expect(shop.refreshes, 1);
-      expect(_shown(session.items), [('user', 'a'), ('agent', 'Done.', false)]);
+      expect(summaryOf(session.items), [
+        ('user', 'a'),
+        ('agent', 'Done.', false),
+      ]);
     },
   );
 
   test(
     'a broken stream shows connection lost and starts a new thread',
     () async {
-      final connection = _RawFirstRun(
+      final connection = RawFirstRun(
         Stream.value({'type': 'RUN_STARTED'}),
         ScriptedAgent([
           (_) => const [AgentStep.say('Back')],
@@ -887,7 +901,7 @@ void main() {
       );
       final session = open(connection)..send('a');
       await pumpEventQueue();
-      expect(_shown(session.items), [
+      expect(summaryOf(session.items), [
         ('user', 'a'),
         ChatNoticeKind.connectionLost,
       ]);
@@ -897,21 +911,21 @@ void main() {
       await pumpEventQueue();
       final [first, second] = connection.requests;
       expect(second['threadId'], isNot(first['threadId']));
-      expect(_lines(second), ['user: b']);
-      expect(_shown(session.items).last, ('agent', 'Back', false));
+      expect(linesOf(second), ['user: b']);
+      expect(summaryOf(session.items).last, ('agent', 'Back', false));
     },
   );
 
   test('a stream error is reported and shows connection lost', () async {
     const error = AgentHttpException(422, 'messages: field required');
-    final reported = _collectReports();
-    final session = open(_RawFirstRun(Stream.error(error), ScriptedAgent([])))
+    final reported = collectReports();
+    final session = open(RawFirstRun(Stream.error(error), ScriptedAgent([])))
       ..send('a');
     await pumpEventQueue();
 
     expect(reported.single.exception, error);
     expect('${reported.single.exception}', contains('422'));
-    expect(_shown(session.items).last, ChatNoticeKind.connectionLost);
+    expect(summaryOf(session.items).last, ChatNoticeKind.connectionLost);
   });
 
   test('an ambiguous chunk breaks the run: the response is cancelled, the '
@@ -944,7 +958,7 @@ void main() {
       (request, bodyStream) async =>
           http.StreamedResponse(response.stream, 200),
     );
-    final connection = _RawFirstRun(
+    final connection = RawFirstRun(
       HttpAgentConnection(
         Uri.parse('http://localhost/agent'),
         client: client,
@@ -953,13 +967,13 @@ void main() {
         (_) => const [AgentStep.say('Back')],
       ]),
     );
-    final reported = _collectReports();
+    final reported = collectReports();
     final session = open(connection)..send('a');
     await pumpEventQueue();
 
     expect(responseCancelled, isTrue);
     expect(reported.single.exception, isFormatException);
-    expect(_shown(session.items), [
+    expect(summaryOf(session.items), [
       ('user', 'a'),
       ('agent', 'A', false),
       ('agent', 'B', false),
@@ -970,8 +984,8 @@ void main() {
     await pumpEventQueue();
     final [first, second] = connection.requests;
     expect(second['threadId'], isNot(first['threadId']));
-    expect(_lines(second), ['user: b']);
-    expect(_shown(session.items).last, ('agent', 'Back', false));
+    expect(linesOf(second), ['user: b']);
+    expect(summaryOf(session.items).last, ('agent', 'Back', false));
   });
 
   test('Approve runs the method once and continues', () async {
@@ -990,7 +1004,7 @@ void main() {
 
     expect(shop.items, isEmpty);
     expect(agent.requests, hasLength(2));
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
       'tool-call-1 null',
@@ -1010,7 +1024,7 @@ void main() {
     await pumpEventQueue();
     expect(session.isPending(card), isFalse);
 
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
       'tool-call-1 {"status":"rejected_by_user"}',
@@ -1023,7 +1037,7 @@ void main() {
     test('a reused tool call ID needs its own approval after '
         '${reset ? 'startOver' : 'Reject'}', () async {
       shop.asksBeforeAdding = true;
-      final agent = _RawFirstRun(
+      final agent = RawFirstRun(
         Stream.fromIterable([
           {
             'type': 'TOOL_CALL_START',
@@ -1126,7 +1140,7 @@ void main() {
 
     session.send('ok');
     await pumpEventQueue();
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
       'tool-call-1 ${ToolAnswer.invalidated.content}',
@@ -1152,7 +1166,7 @@ void main() {
   test(
     'a .sees that cannot be read invalidates the card and is reported',
     () async {
-      final reported = _collectReports();
+      final reported = collectReports();
       final (session, _) = await askToClear();
 
       shop
@@ -1185,7 +1199,7 @@ void main() {
 
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(
-      _lines(agent.requests[1]).last,
+      linesOf(agent.requests[1]).last,
       'tool-call-1 ${ToolAnswer.invalidated.content}',
     );
   });
@@ -1210,7 +1224,7 @@ void main() {
 
     expect(session.items.whereType<ApprovalRequest>(), isEmpty);
     expect(
-      _lines(agent.requests[1]).last,
+      linesOf(agent.requests[1]).last,
       'tool-call-1 ${ToolAnswer.invalidated.content}',
     );
   });
@@ -1243,7 +1257,7 @@ void main() {
 
       expect(shop.items, ['x', 'y']);
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
-      expect(_lines(agent.requests[1]), [
+      expect(linesOf(agent.requests[1]), [
         'user: go',
         'asst-call-1 add {"item":"y"}',
         'asst-call-2 clear {}',
@@ -1268,7 +1282,7 @@ void main() {
     final agent = ScriptedAgent([
       (_) => const [AgentStep.callTool('clear')],
     ]);
-    final reported = _collectReports();
+    final reported = collectReports();
     // Not open(), which would dispose it again at the end.
     final session = TandemSession(
       surface: shop,
@@ -1296,7 +1310,7 @@ void main() {
     final agent = ScriptedAgent([
       (_) => const [AgentStep.callTool('refresh')],
     ]);
-    final reported = _collectReports();
+    final reported = collectReports();
     // Not open(), which would dispose it again at the end.
     final session = TandemSession(
       surface: shop,
@@ -1334,12 +1348,12 @@ void main() {
     await pumpEventQueue();
 
     expect(shop.items, isEmpty);
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
       'tool-call-1 null',
     ]);
-    expect(_shown(session.items), [
+    expect(summaryOf(session.items), [
       ('user', 'clear it'),
       ('clear', ApprovalStatus.approved),
       ('agent', 'Cleared.', false),
@@ -1353,7 +1367,7 @@ void main() {
     await pumpEventQueue();
 
     expect(_card(session).status, ApprovalStatus.cancelled);
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
       'tool-call-1 {"status":"cancelled"}',
@@ -1380,7 +1394,7 @@ void main() {
     await pumpEventQueue();
 
     expect(agent.requests, hasLength(2));
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: add bread',
       'asst-call-1 add {"item":"bread"}',
       'tool-call-1 null',
@@ -1423,7 +1437,7 @@ void main() {
         },
       ],
     );
-    expect(_shown(session.items), [
+    expect(summaryOf(session.items), [
       ('user', 'hi'),
       ('agent', 'Hi.', false),
       ('user', 'again'),
@@ -1486,7 +1500,7 @@ void main() {
 
   test('a delta that does not apply is reported and keeps the state, and the '
       'deltas after it wait for a snapshot', () async {
-    final reported = _collectReports();
+    final reported = collectReports();
     final gate = Completer<void>();
     final agent = ScriptedAgent([
       (_) => [
@@ -1514,7 +1528,7 @@ void main() {
     gate.complete();
     await pumpEventQueue();
     expect(session.agentState, {'step': 5});
-    expect(_shown(session.items).last, ('agent', 'Still here.', false));
+    expect(summaryOf(session.items).last, ('agent', 'Still here.', false));
   });
 
   test('agent state owns a stable immutable snapshot, including nested '
@@ -1591,8 +1605,8 @@ void main() {
 
   test('a snapshot that is not an object is reported and keeps the state, '
       'and the deltas after it wait for a snapshot', () async {
-    final reported = _collectReports();
-    final connection = _RawFirstRun(
+    final reported = collectReports();
+    final connection = RawFirstRun(
       Stream.fromIterable([
         {
           'type': 'STATE_SNAPSHOT',
@@ -1646,12 +1660,16 @@ void main() {
     await pumpEventQueue();
     first.dispose();
     final next = open(agent, thread: thread);
-    expect(_shown(next.items), [('user', 'a'), ('agent', 'Hi.', false)]);
+    expect(summaryOf(next.items), [('user', 'a'), ('agent', 'Hi.', false)]);
 
     next.send('b');
     await pumpEventQueue();
     expect(agent.requests[1]['threadId'], agent.requests[0]['threadId']);
-    expect(_lines(agent.requests[1]), ['user: a', 'assistant: Hi.', 'user: b']);
+    expect(linesOf(agent.requests[1]), [
+      'user: a',
+      'assistant: Hi.',
+      'user: b',
+    ]);
     expect(agent.requests[1]['state'], {'step': 1});
   });
 
@@ -1670,8 +1688,8 @@ void main() {
     final next = open(agent, thread: thread)..send('b');
     await pumpEventQueue();
     expect(agent.requests[1]['threadId'], isNot(agent.requests[0]['threadId']));
-    expect(_lines(agent.requests[1]), ['user: b']);
-    expect(_shown(next.items), [
+    expect(linesOf(agent.requests[1]), ['user: b']);
+    expect(summaryOf(next.items), [
       ('user', 'a'),
       ('agent', 'Hi.', false),
       ChatNoticeKind.startedOver,
@@ -1694,7 +1712,7 @@ void main() {
     open(agent, thread: thread).send('b');
     await pumpEventQueue();
     expect(agent.requests[1]['threadId'], isNot(agent.requests[0]['threadId']));
-    expect(_lines(agent.requests[1]), ['user: b']);
+    expect(linesOf(agent.requests[1]), ['user: b']);
   });
 
   test('a session closed while a request waits leaves its cancelled answer '
@@ -1712,7 +1730,7 @@ void main() {
     final next = open(agent, thread: thread)..send('keep it');
     await pumpEventQueue();
     expect(_card(next).status, ApprovalStatus.cancelled);
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: clear it',
       'asst-call-1 clear {}',
       'tool-call-1 {"status":"cancelled"}',
@@ -1738,7 +1756,7 @@ void main() {
     next.send('keep it');
     await pumpEventQueue();
     expect(_card(next).status, ApprovalStatus.cancelled);
-    expect(_lines(agent.requests.last).last, 'user: keep it');
+    expect(linesOf(agent.requests.last).last, 'user: keep it');
     expect(agent.requests, hasLength(2));
   });
 
@@ -1811,7 +1829,7 @@ void main() {
 
   test('a broken run keeps the app ID and clears state and answers '
       'that may have reached the backend', () async {
-    _collectReports();
+    collectReports();
     shop.add('milk');
     final response = Completer<void>();
     final agent = ScriptedAgent([
@@ -1838,13 +1856,13 @@ void main() {
       'case-5411',
       'case-5411',
     ]);
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: a',
       'asst-call-1 clear {}',
       'tool-call-1 {"status":"cancelled"}',
       'user: b',
     ]);
-    expect(_lines(agent.requests[2]), ['user: c']);
+    expect(linesOf(agent.requests[2]), ['user: c']);
     expect(agent.requests[2]['state'], isEmpty);
   });
 
@@ -1857,7 +1875,7 @@ void main() {
     ]);
     final session = open(agent)..wake();
     await pumpEventQueue();
-    expect(_lines(agent.requests.single).single, startsWith('user: The app'));
+    expect(linesOf(agent.requests.single).single, startsWith('user: The app'));
     expect(
       session.items.first,
       isA<UserMessage>().having(
@@ -1873,12 +1891,12 @@ void main() {
     await pumpEventQueue();
     session.approve(_card(session));
     await pumpEventQueue();
-    expect(_shown(session.items).last, ('share', ApprovalStatus.pending));
+    expect(summaryOf(session.items).last, ('share', ApprovalStatus.pending));
     expect(agent.requests, hasLength(2));
 
     session.approve(session.items.whereType<ApprovalRequest>().last);
     await pumpEventQueue();
-    expect(_lines(agent.requests[2]).skip(3), [
+    expect(linesOf(agent.requests[2]).skip(3), [
       'asst-call-1 share {}',
       'asst-call-2 share {}',
       'tool-call-1 null',
@@ -1905,7 +1923,7 @@ void main() {
     session.send('again');
     await pumpEventQueue();
     expect(
-      _lines(agent.requests[1]).last,
+      linesOf(agent.requests[1]).last,
       allOf(startsWith('user: The app'), endsWith('\n\nagain')),
     );
   });
@@ -1940,18 +1958,18 @@ void main() {
 
     serverReply.complete();
     await pumpEventQueue();
-    expect(_lines(agent.requests[1]).skip(1), [
+    expect(linesOf(agent.requests[1]).skip(1), [
       'asst-call-1 share {}',
       'tool-call-1 null',
       startsWith('user: The app'),
     ]);
-    expect(_shown(session.items).last, ('agent', 'Shared.', false));
+    expect(summaryOf(session.items).last, ('agent', 'Shared.', false));
   });
 
   test('a call with arguments that are not an object is refused without a '
       'card or a report', () async {
     shop.add('x');
-    final connection = _RawFirstRun(
+    final connection = RawFirstRun(
       Stream.fromIterable([
         {'type': 'TOOL_CALL_START', 'toolCallId': 'c1', 'toolCallName': 'add'},
         {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":'},
@@ -1967,7 +1985,7 @@ void main() {
         (_) => const [AgentStep.say('Sorry.')],
       ]),
     );
-    final reported = _collectReports();
+    final reported = collectReports();
     final session = open(connection)..send('clear it');
     await pumpEventQueue();
 
@@ -1994,11 +2012,11 @@ void main() {
 
     session.approve(_card(session));
     await pumpEventQueue();
-    expect(_shown(session.items).last, ('share', ApprovalStatus.approved));
+    expect(summaryOf(session.items).last, ('share', ApprovalStatus.approved));
 
     serverReply.complete();
     await pumpEventQueue();
-    expect(_shown(session.items).skip(1), [
+    expect(summaryOf(session.items).skip(1), [
       ('share', ApprovalStatus.approved),
       ('share', ApprovalStatus.pending),
     ]);
@@ -2017,7 +2035,7 @@ void main() {
     await pumpEventQueue();
 
     expect(_card(session).tool, 'clear');
-    expect(_lines(agent.requests[1]).skip(3), [
+    expect(linesOf(agent.requests[1]).skip(3), [
       'tool-call-1 null',
       'tool-call-2 ${ToolAnswer.invalidated.content}',
     ]);
@@ -2044,7 +2062,7 @@ void main() {
       'usable', () async {
     final serverReply = Completer<void>();
     shop.serverReply = serverReply.future;
-    final reported = _collectReports();
+    final reported = collectReports();
     final agent = ScriptedAgent([
       (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
     ]);
@@ -2098,7 +2116,7 @@ void main() {
     await pumpEventQueue();
 
     expect(_card(session).status, ApprovalStatus.rejected);
-    expect(_lines(agent.requests[1]).skip(3), [
+    expect(linesOf(agent.requests[1]).skip(3), [
       'tool-call-1 {"status":"rejected_by_user"}',
       'tool-call-2 {"status":"cancelled"}',
     ]);
@@ -2119,7 +2137,7 @@ void main() {
     await pumpEventQueue();
 
     expect(agent.requests, hasLength(2));
-    expect(_lines(agent.requests[1]), [
+    expect(linesOf(agent.requests[1]), [
       'user: go',
       'asst-call-1 refresh {}',
       'asst-call-2 clear {}',
@@ -2154,7 +2172,7 @@ void main() {
       expect(shop.items, ['x']);
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
       expect(
-        _lines(agent.requests[1]).last,
+        linesOf(agent.requests[1]).last,
         'tool-call-2 ${ToolAnswer.invalidated.content}',
       );
     },
@@ -2188,13 +2206,13 @@ void main() {
       final stream = StreamController<Map<String, Object?>>(
         onCancel: () => responseCancelled = true,
       );
-      final connection = _RawFirstRun(
+      final connection = RawFirstRun(
         stream.stream,
         ScriptedAgent([
           (_) => const [AgentStep.say('New conversation.')],
         ]),
       );
-      final reported = _collectReports();
+      final reported = collectReports();
       final session = open(connection)..send('go');
       stream
         ..add({
@@ -2228,7 +2246,7 @@ void main() {
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
       expect(connection.requests, hasLength(1));
       expect(session.status, isA<Idle>());
-      expect(_shown(session.items).last, ChatNoticeKind.runFailed);
+      expect(summaryOf(session.items).last, ChatNoticeKind.runFailed);
       expect(reported.single.exception, isA<AgentRunException>());
       expect(events, [isA<RunFailed>()]);
 
@@ -2237,14 +2255,14 @@ void main() {
 
       final [first, second] = connection.requests;
       expect(second['threadId'], isNot(first['threadId']));
-      expect(_lines(second), ['user: queued\n\nalso queued\n\nnext']);
+      expect(linesOf(second), ['user: queued\n\nalso queued\n\nnext']);
     },
   );
 
   test(
     'a cancelled outcome stops without executing calls or asking for approval',
     () async {
-      final connection = _RawFirstRun(
+      final connection = RawFirstRun(
         Stream.fromIterable([
           {
             'type': 'TOOL_CALL_START',
@@ -2277,13 +2295,13 @@ void main() {
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
       expect(connection.requests, hasLength(1));
       expect(session.status, isA<Idle>());
-      expect(_shown(session.items).last, ChatNoticeKind.stopped);
+      expect(summaryOf(session.items).last, ChatNoticeKind.stopped);
       expect(events, [isA<RunStopped>()]);
 
       session.send('next');
       await pumpEventQueue();
 
-      expect(_lines(connection.requests[1]), [
+      expect(linesOf(connection.requests[1]), [
         'user: go',
         'asst-c1 add {"item":"x"}',
         'asst-c2 share {}',
@@ -2297,8 +2315,8 @@ void main() {
   test(
     'repeated tool starts preserve arguments and their first history message',
     () async {
-      final reported = _collectReports();
-      final connection = _RawFirstRun(
+      final reported = collectReports();
+      final connection = RawFirstRun(
         Stream.fromIterable([
           {
             'type': 'TOOL_CALL_START',
@@ -2344,7 +2362,7 @@ void main() {
       await pumpEventQueue();
       expect(shop.items, ['x']);
       expect(reported, isEmpty);
-      expect(_lines(connection.requests[1]).skip(1), [
+      expect(linesOf(connection.requests[1]).skip(1), [
         'm1 add {"item":"x"}',
         'm2 lookup {"q":"x"}',
         'r1 []',
@@ -2354,13 +2372,13 @@ void main() {
   );
 
   test('a tool id cannot change name across app and backend calls', () async {
-    final reported = _collectReports();
+    final reported = collectReports();
     for (final (first, second) in [
       ('lookup', 'add'),
       ('add', 'lookup'),
       ('lookup', 'search'),
     ]) {
-      final connection = _RawFirstRun(
+      final connection = RawFirstRun(
         Stream.fromIterable([
           {
             'type': 'TOOL_CALL_START',
@@ -2396,7 +2414,7 @@ void main() {
       expect(shop.items, isEmpty, reason: '$first → $second');
       expect(connection.requests, hasLength(1));
       expect(session.items.whereType<ApprovalRequest>(), isEmpty);
-      expect(_shown(session.items).last, ChatNoticeKind.runFailed);
+      expect(summaryOf(session.items).last, ChatNoticeKind.runFailed);
     }
     expect(reported, hasLength(3));
     expect(
@@ -2407,7 +2425,7 @@ void main() {
 
   test("a converter's bug fails the call, also before it asks for approval, "
       'and only the report gets it', () async {
-    final reported = _collectReports();
+    final reported = collectReports();
     final session = TandemSession(
       surface: _Palette(),
       connection: ScriptedAgent([]),
@@ -2552,97 +2570,3 @@ final class const _BrokenConverter() implements JsonConverter<int, String> {
   @override
   String toJson(int object) => '$object';
 }
-
-final class _RawFirstRun(
-  final Stream<Map<String, Object?>> _first,
-  final ScriptedAgent _agent,
-) implements AgentConnection {
-  final requests = <Map<String, Object?>>[];
-
-  @override
-  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
-    requests.add(input);
-    return requests.length == 1 ? _first : _agent.run(input);
-  }
-}
-
-/// Throws on its first run before any stream exists, as an adapter that
-/// checks its input can.
-final class _ThrowsFirst(final ScriptedAgent _agent)
-    implements AgentConnection {
-  var _runs = 0;
-
-  @override
-  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
-    if (_runs++ == 0) {
-      throw StateError('No token.');
-    }
-    return _agent.run(input);
-  }
-}
-
-/// Keeps its run open until a Stop or [end], then ends it with [ending], as
-/// an AG-UI server with a cancel message does.
-final class _StoppableAgent(
-  final Map<String, Object?> ending, {
-  final bool failsToStop = false,
-}) implements StoppableAgentConnection {
-  final requests = <Map<String, Object?>>[];
-  final stopped = <Map<String, Object?>>[];
-  final _events = StreamController<Map<String, Object?>>();
-
-  @override
-  Stream<Map<String, Object?>> run(Map<String, Object?> input) {
-    requests.add(input);
-    return _events.stream;
-  }
-
-  @override
-  Future<void> stop(Map<String, Object?> input) async {
-    if (failsToStop) {
-      throw StateError('The socket is closed.');
-    }
-    stopped.add(input);
-    await end();
-  }
-
-  Future<void> end() async {
-    _events.add(ending);
-    await _events.close();
-  }
-}
-
-List<FlutterErrorDetails> _collectReports() {
-  final reported = <FlutterErrorDetails>[];
-  final onError = FlutterError.onError;
-  FlutterError.onError = reported.add;
-  addTearDown(() => FlutterError.onError = onError);
-  return reported;
-}
-
-List<String> _lines(Map<String, Object?> request) => [
-  for (final message in messagesOf(request))
-    switch (message) {
-      {'role': 'tool', 'id': final id, 'content': final content} =>
-        '$id $content',
-      {
-        'id': final id,
-        'toolCalls': [
-          {'function': {'name': final name, 'arguments': final arguments}},
-        ],
-      } =>
-        '$id $name $arguments',
-      {'role': final role, 'content': final content} => '$role: $content',
-      _ => '$message',
-    },
-];
-
-List<Object> _shown(List<ChatItem> items) => [
-  for (final item in items)
-    switch (item) {
-      UserMessage(:final text) => ('user', text),
-      AgentMessage(:final text, :final stopped) => ('agent', text, stopped),
-      ChatNotice(:final kind) => kind,
-      ApprovalRequest(:final tool, :final status) => (tool, status),
-    },
-];
