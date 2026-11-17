@@ -68,32 +68,53 @@ void main() {
     expect(sessionOf(tester), isNot(same(session)));
   });
 
-  testWidgets('a screen opened again goes on with the thread of its scope, '
-      'and another thread opens a new session', (tester) async {
+  testWidgets('a screen opened again goes on with the thread of its scope', (
+    tester,
+  ) async {
     final agent = ScriptedAgent([
       (_) => const [AgentStep.say('Hi.')],
     ]);
     final thread = TandemThread();
-    Widget screen(TandemThread thread) => TandemScope.connected(
+    Widget screen() => TandemScope.connected(
       surface: readShop,
       connection: agent,
       approvals: const .fromState(),
       thread: thread,
       child: const SizedBox(),
     );
-    await tester.pumpWidget(screen(thread));
+    await tester.pumpWidget(screen());
     sessionOf(tester).send('hi');
     await tester.pump();
     await tester.pumpWidget(const Placeholder());
 
-    await tester.pumpWidget(screen(thread));
-    final session = sessionOf(tester);
-    expect(session.thread, same(thread));
-    expect(session.items, hasLength(2));
+    await tester.pumpWidget(screen());
 
-    await tester.pumpWidget(screen(TandemThread()));
+    expect(sessionOf(tester).thread, same(thread));
+    expect(summaryOf(sessionOf(tester).items), [
+      ('user', 'hi'),
+      ('agent', 'Hi.', false),
+    ]);
+  });
+
+  testWidgets('another thread opens a new session that goes on with it', (
+    tester,
+  ) async {
+    final agent = ScriptedAgent(const []);
+    Widget screenOn(TandemThread thread) => TandemScope.connected(
+      surface: readShop,
+      connection: agent,
+      approvals: const .fromState(),
+      thread: thread,
+      child: const SizedBox(),
+    );
+    await tester.pumpWidget(screenOn(TandemThread()));
+    final session = sessionOf(tester);
+    final other = TandemThread();
+
+    await tester.pumpWidget(screenOn(other));
+
     expect(sessionOf(tester), isNot(same(session)));
-    expect(sessionOf(tester).items, isEmpty);
+    expect(sessionOf(tester).thread, same(other));
   });
 
   testWidgets('another connection goes on with the thread of the scope, and '
@@ -196,6 +217,39 @@ void main() {
     final [(first, scope), (second, _)] = asked;
     expect([first, second], ['call-1', 'call-2']);
     expect(scope, isA<TandemScope>());
+    expect(agent.requests, hasLength(2));
+  });
+
+  testWidgets('new approvals of a mounted scope take effect at once', (
+    tester,
+  ) async {
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.callTool('share')],
+      (_) => const [AgentStep.say('Shared.')],
+    ]);
+    final asked = <String>[];
+    Widget asking(TandemApprovals approvals) => TandemScope.connected(
+      surface: readShop,
+      connection: agent,
+      approvals: approvals,
+      child: const SizedBox(),
+    );
+    await tester.pumpWidget(asking(const .fromState()));
+    final session = sessionOf(tester);
+
+    await tester.pumpWidget(
+      asking(
+        .callback((context, request, session) async {
+          asked.add(request.tool);
+          session.approve(request);
+        }),
+      ),
+    );
+    session.send('share it');
+    await tester.pumpAndSettle();
+
+    expect(sessionOf(tester), same(session));
+    expect(asked, ['share']);
     expect(agent.requests, hasLength(2));
   });
 
