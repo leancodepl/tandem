@@ -9,7 +9,7 @@ import 'package:tandem_generator/src/agent_generation_error.dart';
 import 'package:tandem_generator/src/agent_mixin.dart';
 import 'package:tandem_generator/src/agent_names.dart';
 import 'package:tandem_generator/src/capability_copy.dart';
-import 'package:tandem_generator/src/tokens.dart';
+import 'package:tandem_generator/src/mixin_generator.dart';
 import 'package:tandem_generator/src/type_names.dart';
 
 /// Writes the `_$Name` mixin of every class with `@TandemAgent()`, from its
@@ -19,49 +19,31 @@ import 'package:tandem_generator/src/type_names.dart';
 /// what only the source has: the names and doc comments of the listed getters
 /// and methods, the JSON Schema of each method's parameters, and the code that
 /// reads the arguments and writes values and results as JSON.
-class const AgentGenerator() extends Generator {
-  static const _tandemAgent = TypeChecker.typeNamedLiterally(
-    'TandemAgent',
-    inPackage: 'tandem',
-  );
+class const AgentGenerator() extends MixinGenerator {
+  this : super('TandemAgent');
 
   @override
-  Future<String?> generate(LibraryReader library, BuildStep buildStep) async {
-    final mixins = [
-      for (final annotated in library.annotatedWith(_tandemAgent))
-        await _generateMixin(
-          annotated.element,
-          annotated.annotation,
-          buildStep,
-        ),
-    ];
-
-    if (mixins.isEmpty) return null;
-
-    return mixins.join(Tokens.doubleNewLine);
-  }
-
-  static Future<String> _generateMixin(
-    Element type,
+  Future<String> generateMixin(
+    Element element,
     ConstantReader annotation,
     BuildStep buildStep,
   ) async {
-    if (type is! ClassElement) {
-      throw AgentGenerationError.notClass(type);
+    if (element is! ClassElement) {
+      throw AgentGenerationError.notClass(element);
     }
 
-    final reader = _CapabilityReader(type);
+    final reader = _CapabilityReader(element);
     final capabilities = await reader.read(buildStep);
     final converters = await AgentConverters.read(
       annotation,
-      type,
-      listName: '_\$${type.displayName}Converters',
+      element,
+      listName: '_\$${element.displayName}Converters',
       buildStep: buildStep,
     );
 
     final mixin = AgentMixin(
-      className: type.displayName,
-      library: type.library,
+      className: element.displayName,
+      library: element.library,
       views: capabilities.views,
       methods: capabilities.methods,
       converters: converters,
@@ -71,7 +53,7 @@ class const AgentGenerator() extends Generator {
       mixin.generate(),
       capabilities.copy,
       converters.declaration,
-    ].join(Tokens.doubleNewLine);
+    ].join('\n\n');
   }
 }
 
@@ -82,8 +64,9 @@ class _CapabilityReader(final ClassElement _type)
     inPackage: 'tandem',
   );
 
-  final _viewExpressions = <Expression>[];
-  final _methodExpressions = <Expression>[];
+  late final _copy = CapabilityCopy(_type);
+  final _views = <GetterElement>{};
+  final _methods = <MethodElement>{};
 
   Future<_AgentCapabilities> read(BuildStep buildStep) async {
     final getter = _findCapabilitiesGetter();
@@ -107,25 +90,14 @@ class _CapabilityReader(final ClassElement _type)
 
     source.accept(this);
 
-    final copy = CapabilityCopy(_type);
-    final views = <GetterElement>{};
-
-    for (final item in _viewExpressions) {
-      final view = _readView(item);
-      views.add(view);
-      copy.nameView(item, agentName: agentName(view.displayName));
-    }
-
-    final methods = {for (final item in _methodExpressions) _readMethod(item)};
-
-    _checkAgentNames(views);
-    _checkAgentNames(methods);
+    _checkAgentNames(_views);
+    _checkAgentNames(_methods);
 
     return _AgentCapabilities(
-      views: [...views],
-      copy: copy.generate(source.body),
+      views: [..._views],
+      copy: _copy.generate(source.body),
       methods: [
-        for (final method in methods)
+        for (final method in _methods)
           (
             method: method,
             parameterTypes: await _parameterTypes(method, buildStep),
@@ -136,7 +108,7 @@ class _CapabilityReader(final ClassElement _type)
 
   @override
   void visitArgumentList(ArgumentList node) {
-    _collectCapability(node);
+    _readCapability(node);
     super.visitArgumentList(node);
   }
 
@@ -164,7 +136,7 @@ class _CapabilityReader(final ClassElement _type)
 
     final getter = item.element;
 
-    if (getter is! GetterElement || !getter.isInstanceGetter) {
+    if (getter is! GetterElement || getter.isStatic) {
       throw AgentGenerationError.invalidView(item, _type);
     }
 
@@ -258,7 +230,7 @@ class _CapabilityReader(final ClassElement _type)
     ];
   }
 
-  void _collectCapability(ArgumentList node) {
+  void _readCapability(ArgumentList node) {
     if (node.arguments.length != 1) return;
 
     final argument = node.arguments.single;
@@ -273,15 +245,13 @@ class _CapabilityReader(final ClassElement _type)
 
     if (!isCapability) return;
 
-    final kind = _CapabilityKind.values.asNameMap()[constructor.name];
-
-    switch (kind) {
-      case .sees:
-        _viewExpressions.add(argument);
-      case .calls || .callsWithApproval:
-        _methodExpressions.add(argument);
-      case null:
-        return;
+    switch (constructor.name) {
+      case 'sees':
+        final view = _readView(argument);
+        _views.add(view);
+        _copy.nameView(argument, agentName: agentName(view.displayName));
+      case 'calls' || 'callsWithApproval':
+        _methods.add(_readMethod(argument));
     }
   }
 }
@@ -293,16 +263,6 @@ final class const _AgentCapabilities({
   required final String copy,
   required final List<AgentMethod> methods,
 });
-
-enum _CapabilityKind() {
-  sees,
-  calls,
-  callsWithApproval,
-}
-
-extension on GetterElement {
-  bool get isInstanceGetter => !isStatic;
-}
 
 extension on MethodElement {
   bool get isNonGenericInstanceMethod => !isStatic && typeParameters.isEmpty;

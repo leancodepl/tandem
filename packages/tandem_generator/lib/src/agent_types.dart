@@ -38,8 +38,6 @@ final class AgentTypes(
 
     if (_builtIns[idOf(type)] case final builtIn?) return builtIn;
 
-    if (_scalars[_scalarName(type)] case final scalar?) return scalar;
-
     if (type is InterfaceType) {
       if (type.isDartCoreList) {
         return '.list(${describe(type.typeArguments.single, path: '$path[]')})';
@@ -157,8 +155,6 @@ final class AgentTypes(
 
     if (_builtIns.containsKey(idOf(nonNull))) return true;
 
-    if (_scalars.containsKey(_scalarName(nonNull))) return true;
-
     return switch (nonNull) {
       InterfaceType(isDartCoreList: true, :final typeArguments) ||
       InterfaceType(
@@ -196,7 +192,7 @@ final class AgentTypes(
     required String path,
   }) {
     final representation = _typeSystem.promoteToNonNull(element.typeErasure);
-    final value = _scalars[_scalarName(representation)];
+    final value = _scalars[idOf(representation)];
     final constructor = element.unnamedConstructor;
 
     if (value == null) {
@@ -416,53 +412,14 @@ final class AgentTypes(
     _ => type.isAgentClass,
   };
 
-  /// The classes that a value of [type] holds, by id, the ones inside other
-  /// classes too, which the agent can point at by path. A class with a
-  /// converter is written in its converter's form, which has no paths below.
-  static Map<String, DartType> classesIn(
-    DartType type, {
-    required AgentConverters converters,
-  }) {
-    final classes = <String, DartType>{};
-
-    void visit(DartType type) {
-      if (type is! InterfaceType) return;
-
-      if (type.isDartCoreList || type.isDartCoreSet) {
-        visit(type.typeArguments.single);
-        return;
-      }
-
-      final object = AgentClass.tryRead(type);
-
-      if (object == null) return;
-
-      final nonNull = type.element.library.typeSystem.promoteToNonNull(type);
-      final id = idOf(nonNull);
-
-      if (classes.containsKey(id)) return;
-
-      classes[id] = nonNull;
-
-      if (converters[nonNull] != null) return;
-
-      for (final field in object.fields) {
-        visit(field.parameter.type);
-      }
-    }
-
-    visit(type);
-    return classes;
-  }
-
   /// Whether the expression that [describe] gives for [type] is a constant.
   bool isConstant(DartType type) =>
       !type.isNullable &&
       _converters[type] == null &&
-      (_builtIns.containsKey(idOf(type)) ||
-          _scalars.containsKey(_scalarName(type)));
+      _builtIns.containsKey(idOf(type));
 
   static const _builtIns = {
+    ..._scalars,
     'dart:ui#Color': '.color',
     '$_edgeInsets#EdgeInsetsGeometry': '.edgeInsetsGeometry',
     '$_edgeInsets#EdgeInsets': '.edgeInsets',
@@ -476,25 +433,14 @@ final class AgentTypes(
   static const _alignment = 'package:flutter/src/painting/alignment.dart';
 
   static const _scalars = {
-    'String': '.string',
-    'int': '.integer',
-    'double': '.number',
-    'num': '.numeric',
-    'bool': '.boolean',
-    'DateTime': '.dateTime',
-    'Uri': '.uri',
+    'dart:core#String': '.string',
+    'dart:core#int': '.integer',
+    'dart:core#double': '.number',
+    'dart:core#num': '.numeric',
+    'dart:core#bool': '.boolean',
+    'dart:core#DateTime': '.dateTime',
+    'dart:core#Uri': '.uri',
   };
-
-  static String? _scalarName(DartType type) {
-    if (type is! InterfaceType || type.isNullable) return null;
-
-    final element = type.element;
-    final library = element.library;
-
-    if (library.uri.toString() != 'dart:core') return null;
-
-    return element.displayName;
-  }
 }
 
 /// The default value of a parameter, as [AgentTypes.copyDefault] copies it.
