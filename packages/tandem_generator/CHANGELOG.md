@@ -1,3 +1,29 @@
+## 0.3.1
+
+### Generation
+
+- `@TandemAgent` uses its own `converters:` even when another annotation on the same class also declares converters.
+- A catalog widget keeps its constructor default for a child widget or a nonempty list of children. The build names the property and leaves it out of the catalog so the widget supplies its default.
+- The build rejects two getters or two methods with the same agent name and names both Dart members. Before, names such as `setUrl` and `setURL` both generated the tool `set_url`.
+- The build rejects app methods whose tool names start with `tandem_`, the prefix reserved for Tandem tools.
+- A catalog that lists an abstract widget fails at build time. Before, the generated code tried to construct the widget and failed to compile.
+- Agent descriptions and catalog guidelines preserve Markdown list items and fenced code blocks from doc comments.
+- Generated code preserves a literal `$` in identifiers such as field, getter and parameter names.
+
+### Diagnostics
+
+- An object parameter no longer triggers a build warning when the generator cannot find its type in `.sees`. At runtime its path must still point to a current value of the required type.
+- Build errors explain when `agentCapabilities` must be a getter and name a converter whose output type Tandem cannot describe.
+- Catalog errors explain how to handle a required `Key`, `FocusNode` or `ChangeNotifier` that the agent cannot set.
+- Catalog example errors identify a non-string `id` or `component` and numbers too large for a `double`.
+
+### Package documentation
+
+- The README describes how Tandem 0.3.2 writes local date-times with their offset and reads a time with an offset or `Z` as the same instant in local time.
+- The README explains that a `Uri` argument must have a scheme.
+- The README describes how ag-ui-adk converts nullable schemas for Gemini without tying the explanation to version 0.9.0.
+- The package page on pub.dev links to the Tandem website.
+
 ## 0.3.0
 
 - **Breaking:** Upgrade `tandem` to 0.3.0 and run `dart run build_runner build` again.
