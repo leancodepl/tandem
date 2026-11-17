@@ -63,6 +63,25 @@ void main() {
       ),
     );
   });
+
+  test('the arguments a call reports cannot be changed', () async {
+    final (:arguments, result: _) = await AgentListing.of(_Studio()).run(
+      'paint',
+      const WrittenArguments({
+        'pot': {'path': '/pots/0'},
+        'tint': '#ff0000',
+      }),
+      approved: false,
+    );
+    final pot = switch (arguments['pot']) {
+      final Map<String, Object?> pot => pot,
+      _ => <String, Object?>{},
+    };
+
+    expect(pot, {'name': 'fern'});
+    expect(() => arguments['tint'] = '#000000', throwsUnsupportedError);
+    expect(() => pot['name'] = 'redacted', throwsUnsupportedError);
+  });
 }
 
 /// Lists its `.sees` in a getter that `agentCapabilities` spreads, which the

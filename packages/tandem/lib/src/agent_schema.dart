@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/agent_type.dart';
 import 'package:tandem/src/errors.dart';
+import 'package:tandem/src/frozen_json.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/tool_args.dart';
 
@@ -168,7 +169,7 @@ final class const AgentTool(
         throw reading.refuse('missing, expected ${type.expected}');
       }
     }
-    return ToolArgs.of(values, json: json);
+    return ToolArgs.of(values, json: frozenJson(json));
   }
 }
 
