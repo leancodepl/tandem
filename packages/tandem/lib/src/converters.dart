@@ -213,7 +213,7 @@ final class _Insets._(
     for (var index = 0; index < words.length; index += 2) {
       final side = words[index];
       final value = _side(words[index + 1]);
-      if (!_names.contains(side) || value == null) {
+      if (!_names.contains(side) || value == null || sides.containsKey(side)) {
         throw FormatException(_help(text));
       }
       sides[side] = value;
