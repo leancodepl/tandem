@@ -641,7 +641,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rejected => 'Rejected';
 
   @override
-  String get cancelledByMessage => 'Cancelled by your message';
+  String get cancelled => 'Cancelled';
 
   @override
   String get approvalReplaced =>

@@ -493,7 +493,7 @@
   },
   "approved": "Approved",
   "rejected": "Rejected",
-  "cancelledByMessage": "Cancelled by your message",
+  "cancelled": "Cancelled",
   "approvalReplaced": "The trip changed. Replaced by the request below.",
   "approvalVoided": "No longer valid. The trip changed after the assistant asked. Ask it to review your changes when you are ready.",
 

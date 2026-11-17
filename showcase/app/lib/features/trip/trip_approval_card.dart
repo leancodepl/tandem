@@ -89,10 +89,7 @@ final class const ApprovalCard(final ApprovalRequest request, {super.key})
               .invalidated => _VoidedLine(request),
               .approved => WPNote(Icons.check_rounded, l10n.approved),
               .rejected => WPNote(Icons.close_rounded, l10n.rejected),
-              .cancelled => WPNote(
-                Icons.close_rounded,
-                l10n.cancelledByMessage,
-              ),
+              .cancelled => WPNote(Icons.close_rounded, l10n.cancelled),
             },
           ],
         ),

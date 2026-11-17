@@ -961,11 +961,11 @@ abstract class AppLocalizations {
   /// **'Rejected'**
   String get rejected;
 
-  /// No description provided for @cancelledByMessage.
+  /// No description provided for @cancelled.
   ///
   /// In en, this message translates to:
-  /// **'Cancelled by your message'**
-  String get cancelledByMessage;
+  /// **'Cancelled'**
+  String get cancelled;
 
   /// No description provided for @approvalReplaced.
   ///
