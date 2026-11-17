@@ -133,8 +133,11 @@ String _arrivalSummary(Object? arrival) {
   return 'Check the meeting and route options on the arrival day.';
 }
 
-String _time(DateTime at) =>
-    '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
+// Tandem writes a time with the device's offset, which parses as UTC.
+String _time(DateTime at) {
+  final local = at.toLocal();
+  return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+}
 
 /// The arrival day in Waypoint's components, with a button only for a
 /// method the screen offers now.

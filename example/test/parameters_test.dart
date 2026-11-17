@@ -120,8 +120,11 @@ class Dispatch() with _$Dispatch {
 
 const _delivery = {
   'address': {'street': 'Magazynowa 5', 'city': 'Poznań'},
-  'day': '2026-10-23T00:00:00Z',
+  'day': '2026-10-23',
 };
+
+// A local day goes to the agent with the device's offset.
+final _day = startsWith('2026-10-23T00:00:00.000');
 
 void main() {
   test(
@@ -323,7 +326,7 @@ void main() {
       ]);
       expect(result, {
         'address': {'street': 'Magazynowa 5', 'city': 'Poznań'},
-        'day': '2026-10-23T00:00:00.000Z',
+        'day': _day,
         'slot': 'morning',
         'note': null,
       });
@@ -344,11 +347,11 @@ void main() {
 
     expect(await listing.call('find_delivery', {}), {
       'address': {'street': 'Magazynowa 5', 'city': 'Poznań'},
-      'day': '2026-10-23T00:00:00.000Z',
+      'day': _day,
       'slot': 'morning',
       'note': null,
     });
-    expect(await listing.call('delivery_day', {}), '2026-10-23T00:00:00.000Z');
+    expect(await listing.call('delivery_day', {}), _day);
   });
 
   test('a wrong value deep inside names its path; nothing runs', () async {

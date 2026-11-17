@@ -20,6 +20,11 @@ sealed class const AgentType<T>() {
   static const AgentType<double> number = _Scalar('number', 'double');
   static const AgentType<num> numeric = _Scalar('number', 'num');
   static const AgentType<bool> boolean = _Scalar('boolean', 'bool');
+
+  /// An ISO 8601 date and time. A local value goes to the agent with the
+  /// device's offset, as `2026-12-09T18:00:00.000+01:00`. What the agent
+  /// writes with an offset or `Z` comes back as the same moment in local
+  /// time, and without one as local time.
   static const AgentType<DateTime> dateTime = _DateTime();
   static const AgentType<Uri> uri = _Uri();
 
@@ -412,12 +417,14 @@ final class const _DateTime() extends AgentType<DateTime> {
   String get fingerprint => id;
 
   @override
-  Object? write(DateTime value) => value.toIso8601String();
+  Object? write(DateTime value) => value.isUtc
+      ? value.toIso8601String()
+      : '${value.toIso8601String()}${_offset(value.timeZoneOffset)}';
 
   @override
   DateTime read(Object? json, AgentReading reading) => switch (json) {
     final String text? => switch (DateTime.tryParse(text)) {
-      final date? => date,
+      final date? => date.isUtc ? date.toLocal() : date,
       null => throw reading.refuse(
         'expected an ISO 8601 date, got ${jsonEncode(json)}',
       ),
@@ -432,6 +439,14 @@ final class const _DateTime() extends AgentType<DateTime> {
     'type': 'string',
     'format': 'date-time',
   };
+
+  /// [offset] as ISO 8601 writes it, such as `+01:00`.
+  static String _offset(Duration offset) {
+    String twoDigits(int value) => '$value'.padLeft(2, '0');
+    final minutes = offset.inMinutes.abs();
+    final sign = offset.isNegative ? '-' : '+';
+    return '$sign${twoDigits(minutes ~/ 60)}:${twoDigits(minutes % 60)}';
+  }
 }
 
 final class const _Uri() extends AgentType<Uri> {
