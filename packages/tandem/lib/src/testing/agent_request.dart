@@ -27,6 +27,15 @@ final class AgentRequest(final Map<String, Object?> raw) {
     return null;
   }
 
+  /// The text of the user's latest message, including an app wake, or null
+  /// when the run has none or its content is not text.
+  String? get userText => switch (_messages
+      .where((message) => message[AgUiFields.role] == AgUiMessageRoles.user)
+      .lastOrNull) {
+    {AgUiFields.content: final String text} => text,
+    _ => null,
+  };
+
   bool offersTool(String name) =>
       _objects(raw[AgUiFields.tools])
           .any((tool) => tool[AgUiFields.name] == name);

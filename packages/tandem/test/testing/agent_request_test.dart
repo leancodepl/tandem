@@ -30,6 +30,7 @@ void main() {
 
       expect(request.raw, same(raw));
       expect(request.isUserMessage, isTrue);
+      expect(request.userText, 'The app sent this');
       expect(request.context('order'), {'lines': <Object?>[]});
       expect(request.context('missing'), isNull);
       expect(request.offersTool('place_order'), isTrue);
@@ -56,6 +57,7 @@ void main() {
 
       final empty = AgentRequest({});
       expect(empty.isUserMessage, isFalse);
+      expect(empty.userText, isNull);
       expect(empty.context('order'), isNull);
       expect(empty.offersTool('place_order'), isFalse);
       expect(empty.newNotes, isEmpty);

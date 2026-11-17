@@ -1,6 +1,5 @@
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
-import 'package:waypoint_scripted_agent/src/last_user_text.dart';
 
 /// The arrival day's agent: it draws the day with Waypoint's widgets, and
 /// answers what the traveller does with the view's buttons.
@@ -19,7 +18,7 @@ List<AgentStep> _arrival(Map<String, Object?> raw) {
   }
 
   if (request.isUserMessage) {
-    if (lastUserText(raw).toLowerCase().contains('taxi')) {
+    if ((request.userText ?? '').toLowerCase().contains('taxi')) {
       if (request.offersTool('book_ride')) {
         if (request.context('arrival') case {
           'rides': final List<Object?> rides,
