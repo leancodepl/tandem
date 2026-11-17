@@ -1,3 +1,4 @@
+import 'package:tandem/src/frozen_json.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/ag_ui_ids.dart';
 import 'package:uuid/uuid.dart';
@@ -38,11 +39,13 @@ extension type AgUiMessage._(JsonObject json) implements JsonObject {
     MessageId id, {
     String? text,
     List<AgUiToolCall> toolCalls = const [],
+    JsonObject metadata = const {},
   }) => ._({
     AgUiFields.id: id.value,
     AgUiFields.role: AgUiMessageRoles.assistant,
     AgUiFields.content: ?text,
     if (toolCalls.isNotEmpty) AgUiFields.toolCalls: toolCalls,
+    if (metadata.isNotEmpty) AgUiFields.metadata: frozenJson(metadata),
   });
 
   /// The result of the call [toolCallId]: the app's answer, or for a call
@@ -51,11 +54,13 @@ extension type AgUiMessage._(JsonObject json) implements JsonObject {
     required MessageId id,
     required ToolCallId toolCallId,
     required ToolResultContent content,
+    JsonObject metadata = const {},
   }) => ._({
     AgUiFields.id: id.value,
     AgUiFields.role: AgUiMessageRoles.tool,
     AgUiFields.toolCallId: toolCallId.value,
     AgUiFields.content: content,
+    if (metadata.isNotEmpty) AgUiFields.metadata: frozenJson(metadata),
   });
 }
 
@@ -65,9 +70,11 @@ extension type AgUiToolCall._(JsonObject json) implements JsonObject {
     required ToolCallId id,
     required String name,
     required String arguments,
+    JsonObject metadata = const {},
   }) => ._({
     AgUiFields.id: id.value,
     AgUiFields.type: AgUiToolCallTypes.function,
+    if (metadata.isNotEmpty) AgUiFields.metadata: frozenJson(metadata),
     AgUiFields.function: {
       AgUiFields.name: name,
       AgUiFields.arguments: arguments,

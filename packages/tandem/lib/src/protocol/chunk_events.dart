@@ -59,31 +59,43 @@ final class ChunkExpander() {
     final id = _resolveId(chunk, kind: kind, id: chunk[idField]);
     if (id == null) return [];
 
-    final name = chunk[AgUiFields.toolCallName];
+    final delta = chunk[AgUiFields.delta];
+    final hasMetadata = chunk.containsKey(AgUiFields.metadata);
     final stream = (kind: kind, id: id);
-    final starts = !_openBySender.containsValue(stream);
-    if (starts) {
-      if (isTool && name is! String) return [];
-      _openBySender[_senderOf(chunk)] = stream;
-    }
-    return [
-      if (starts && isTool)
-        {
+    final events = <JsonObject>[];
+    if (!_openBySender.containsValue(stream)) {
+      if (isTool) {
+        final name = chunk[AgUiFields.toolCallName];
+        if (name is! String) return [];
+        events.add({
           AgUiFields.type: AgUiEventTypes.toolCallStart,
           AgUiFields.toolCallId: id,
           AgUiFields.toolCallName: name,
           if (chunk[AgUiFields.parentMessageId] case final String parentId)
             AgUiFields.parentMessageId: parentId,
-        },
-      if (chunk[AgUiFields.delta] case final String delta)
-        {
-          AgUiFields.type: isTool
-              ? AgUiEventTypes.toolCallArgs
-              : AgUiEventTypes.textMessageContent,
-          idField: id,
-          AgUiFields.delta: delta,
-        },
-    ];
+          if (hasMetadata) AgUiFields.metadata: chunk[AgUiFields.metadata],
+        });
+      } else if (delta == null) {
+        events.add({
+          AgUiFields.type: AgUiEventTypes.textMessageStart,
+          AgUiFields.messageId: id,
+          AgUiFields.role: chunk[AgUiFields.role] ?? AgUiMessageRoles.assistant,
+          if (hasMetadata) AgUiFields.metadata: chunk[AgUiFields.metadata],
+        });
+      }
+      _openBySender[_senderOf(chunk)] = stream;
+    }
+    if (delta is String || (hasMetadata && events.isEmpty)) {
+      events.add({
+        AgUiFields.type: isTool
+            ? AgUiEventTypes.toolCallArgs
+            : AgUiEventTypes.textMessageContent,
+        idField: id,
+        AgUiFields.delta: delta is String ? delta : '',
+        if (hasMetadata) AgUiFields.metadata: chunk[AgUiFields.metadata],
+      });
+    }
+    return events;
   }
 
   String? _resolveId(
