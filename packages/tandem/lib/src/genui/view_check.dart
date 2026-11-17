@@ -589,41 +589,70 @@ final class const ViewScope._(
   List<String> absolute(String path) => DataPath.resolve(path, base: base);
 
   /// The paths whose type [type] accepts, here and from the root, the item
-  /// as `""`.
+  /// as `""`. Below a template, none goes into its list.
   List<String> pathsOf(
     AgentType<Object?> type,
     Map<String, AgentType<Object?>> roots,
   ) => [
     if (this.type case final item? when type.accepts(item)) '""',
-    ...DataPath.pathsOf(roots, type),
+    for (final path in DataPath.pathsOf(roots, type))
+      if (_intoOwnList(path) == null) path,
   ];
 
   /// What the data has where [path] leaves it, for a refusal: the fields
-  /// there.
+  /// there, or that a list there takes an index. A path into the list of
+  /// this template gets the paths from the item instead, since an index
+  /// reads one item in every row.
   String hint(String path, Map<String, AgentType<Object?>> roots) {
-    var (place, type, rest) = switch (DataPath.segments(path)) {
-      [final root, ...final rest] => ('/$root', roots[root], rest),
-      [] => ('/', null, const <String>[]),
-      null => ('', this.type, DataPath.relative(path)),
-    };
-    ({String place, Iterable<String> fields})? near;
-    for (final segment in rest) {
+    if (_intoOwnList(path) case final list?) return _writeFromTheItem(list);
+
+    final (:start, :segments) = _start(path, roots);
+    var place = _Place(_startName(path), start);
+    _Place? lastWithFields;
+    for (final segment in segments) {
+      final type = place.type;
       if (type == null) break;
-      if (type.fieldNames case final fields when fields.isNotEmpty) {
-        near = (place: place, fields: fields);
-      }
+      if (type.fieldNames.isNotEmpty) lastWithFields = place;
       final next = type.typeAt(segment);
-      if (next == null) break;
-      place = place.isEmpty ? segment : '$place/$segment';
-      type = next;
+      if (next == null) {
+        if (type.itemType != null) return place.takesAnIndex;
+        break;
+      }
+      place = place.child(segment, next);
     }
-    return switch (near) {
-      (place: '', :final fields) => 'Fields of the item: ${fields.join(', ')}.',
-      (:final place, :final fields) =>
-        'Paths under $place: ${fields.join(', ')}.',
-      null => 'Paths: ${roots.keys.map((name) => '/$name').join(', ')}.',
-    };
+    return lastWithFields?.fieldsHint ??
+        'Paths: ${roots.keys.map((name) => '/$name').join(', ')}.';
   }
+
+  String _writeFromTheItem(String list) {
+    final fields = type?.fieldNames ?? const <String>[];
+    final orAField = fields.isEmpty
+        ? ''
+        : ', or one of its fields: ${fields.join(', ')}';
+    return 'Below the template of $list, write a path from the item, '
+        'without a leading "/": "" for the item$orAField.';
+  }
+
+  /// The list this template draws, as a path, when the absolute [path] goes
+  /// into it, or null. Each `<i>` of the template's path matches any index.
+  String? _intoOwnList(String path) {
+    final segments = DataPath.segments(path);
+    if (segments == null || base.isEmpty) return null;
+    final list = base.sublist(0, base.length - 1);
+    if (segments.length <= list.length) return null;
+    for (final (index, segment) in list.indexed) {
+      if (segment != '<i>' && segment != segments[index]) return null;
+    }
+    return '/${list.join('/')}';
+  }
+
+  /// How a refusal names where [path] starts: `/<root>`, `/`, or `""` for
+  /// the item.
+  static String _startName(String path) => switch (DataPath.segments(path)) {
+    [final root, ...] => '/$root',
+    [] => '/',
+    null => '',
+  };
 
   ({AgentType<Object?>? start, List<String> segments}) _start(
     String path,
@@ -637,5 +666,22 @@ final class const ViewScope._(
       );
     }
     return (start: type, segments: DataPath.relative(path));
+  }
+}
+
+/// A place in the data that a refusal names, `""` for the item.
+final class const _Place(final String name, final AgentType<Object?>? type) {
+  _Place child(String segment, AgentType<Object?> type) =>
+      _Place(name.isEmpty ? segment : '$name/$segment', type);
+
+  String get takesAnIndex => name.isEmpty
+      ? 'The item takes an index, such as 0.'
+      : '$name takes an index, such as $name/0.';
+
+  String get fieldsHint {
+    final fields = type?.fieldNames.join(', ') ?? '';
+    return name.isEmpty
+        ? 'Fields of the item: $fields.'
+        : 'Paths under $name: $fields.';
   }
 }

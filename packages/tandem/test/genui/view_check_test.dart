@@ -71,8 +71,8 @@ void main() {
     expect(problemsOf({'path': '/growers/0'}), isEmpty);
   });
 
-  test('a refusal below a template names the fields of the item, and the '
-      'item itself as ""', () {
+  test('a refusal below a template names the fields of the item, the item '
+      'itself as "", and the index a list takes', () {
     final AgentType<_Node> node = .object(
       id: 'test#Node',
       fields: (field) => [field('name', (node) => node.name).as(.string)],
@@ -104,6 +104,32 @@ void main() {
         literal,
       ],
     );
+    const intoTheList =
+        'row.label: /nodes/name is not in the data. Below the template of '
+        '/nodes, write a path from the item, without a leading "/": "" for '
+        'the item, or one of its fields: name.';
+    expect(
+      problemsOf({
+        'label': {'path': '/nodes/name'},
+        'node': {'path': 'name'},
+      }),
+      [
+        intoTheList,
+        'row.node: name is a string, not a Node. Paths of that type: "".',
+      ],
+    );
+    final (:problems, view: _) = check.check([
+      {
+        'id': 'root',
+        'component': 'Row',
+        'label': {'path': '/nodes/<i>/name'},
+        'node': {'path': '/nodes/0'},
+      },
+    ]);
+    const index =
+        'root.label: /nodes/<i>/name is not in the data. /nodes takes an '
+        'index, such as /nodes/0.';
+    expect(problems, [index]);
   });
 
   test('the description lists a class with a converter by its form, and one '
