@@ -39,12 +39,9 @@ final class AgentTypes(
     if (_builtIns[idOf(type)] case final builtIn?) return builtIn;
 
     if (type is InterfaceType) {
-      if (type.isDartCoreList) {
-        return '.list(${describe(type.typeArguments.single, path: '$path[]')})';
-      }
-
-      if (type.isDartCoreSet) {
-        return '.set(${describe(type.typeArguments.single, path: '$path[]')})';
+      if (type.collectionItem case final item?) {
+        final factory = type.isDartCoreList ? 'list' : 'set';
+        return '.$factory(${describe(item, path: '$path[]')})';
       }
 
       switch (type.element) {
@@ -67,12 +64,9 @@ final class AgentTypes(
   static String idOf(DartType type) {
     final nullable = type.isNullable ? '?' : '';
 
-    if (type case InterfaceType(isDartCoreList: true, :final typeArguments)) {
-      return 'List<${idOf(typeArguments.single)}>$nullable';
-    }
-
-    if (type case InterfaceType(isDartCoreSet: true, :final typeArguments)) {
-      return 'Set<${idOf(typeArguments.single)}>$nullable';
+    if (type.collectionItem case final item?) {
+      final name = type.isDartCoreList ? 'List' : 'Set';
+      return '$name<${idOf(item)}>$nullable';
     }
 
     final element = type.element;
@@ -155,14 +149,8 @@ final class AgentTypes(
 
     if (_builtIns.containsKey(idOf(nonNull))) return true;
 
-    return switch (nonNull) {
-      InterfaceType(isDartCoreList: true, :final typeArguments) ||
-      InterfaceType(
-        isDartCoreSet: true,
-        :final typeArguments,
-      ) => _isContextFree(typeArguments.single),
-      _ => false,
-    };
+    final item = nonNull.collectionItem;
+    return item != null && _isContextFree(item);
   }
 
   String _enum(EnumElement element) {
@@ -403,14 +391,10 @@ final class AgentTypes(
 
   /// Whether a value of [type] holds an object of a class, which the agent
   /// points at by path or, with `@TandemInput()`, writes.
-  static bool holdsObjects(DartType type) => switch (type) {
-    InterfaceType(isDartCoreList: true, :final typeArguments) ||
-    InterfaceType(
-      isDartCoreSet: true,
-      :final typeArguments,
-    ) => holdsObjects(typeArguments.single),
-    _ => type.isAgentClass,
-  };
+  static bool holdsObjects(DartType type) {
+    if (type.collectionItem case final item?) return holdsObjects(item);
+    return type.isAgentClass;
+  }
 
   /// Whether the expression that [describe] gives for [type] is a constant.
   bool isConstant(DartType type) =>
@@ -455,6 +439,14 @@ final class const DefaultCode(final String code) extends CopiedDefault;
 final class const UncopyableDefault() extends CopiedDefault;
 
 extension on DartType {
+  DartType? get collectionItem {
+    final type = this;
+    if (type is InterfaceType && (type.isDartCoreList || type.isDartCoreSet)) {
+      return type.typeArguments.single;
+    }
+    return null;
+  }
+
   bool get isNullable => nullabilitySuffix != .none;
 }
 
