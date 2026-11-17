@@ -273,33 +273,29 @@ class SearchCubit() {
     }
   });
 
-  test(
-    'a doc comment keeps its paragraphs but not its wrapped lines',
-    () async {
-      final result = await _build('''
+  test('a doc comment keeps its paragraphs and list items but not its wrapped '
+      'lines', () async {
+    expect(
+      await _generate('''
 @TandemAgent()
 class OrderCubit() {
   List<AgentCapability> get agentCapabilities => [.calls(placeOrder)];
 
   /// Places the order exactly as it is
-  /// on the screen.
+  /// on the screen. Call it when:
+  /// - the cart is full
+  /// - the user confirmed
   ///
   /// Needs approval.
   void placeOrder() {}
 }
-''');
-
-      expect(result.errors, isEmpty);
-      expect(
-        result.readerWriter.testing.readString(
-          .parse('app|lib/screen.tandem.g.part'),
-        ),
-        contains(
-          r"'Places the order exactly as it is on the screen.\n\nNeeds approval.'",
-        ),
-      );
-    },
-  );
+'''),
+      contains(
+        r"'Places the order exactly as it is on the screen. Call it when:\n"
+        r"- the cart is full\n- the user confirmed\n\nNeeds approval.'",
+      ),
+    );
+  });
 
   test('a converter id has the configuration its superclass holds', () async {
     final result = await _build('''
