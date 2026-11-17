@@ -69,6 +69,16 @@ final class AgentGenerationError extends InvalidGenerationSource {
         node: item,
       );
 
+  new sameAgentName(
+    String name, {
+    required ExecutableElement first,
+    required ExecutableElement second,
+  }) : super(
+         'Rename ${first.displayName} or ${second.displayName}: the agent '
+         'knows both as $name.',
+         element: second,
+       );
+
   new missingDocumentation(Element element)
     : super(
         'Add a doc comment to ${element.displayName}: the agent reads it to '
