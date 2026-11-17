@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/debug/open_screens.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/tandem_session.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
@@ -57,6 +58,10 @@ final class TandemBridge._() {
   /// Each screen has a `context`, which a [call] whose arguments point at
   /// values with `{"path": ...}` passes back, so that the paths read what
   /// the coding agent saw. Only the latest contexts are kept.
+  ///
+  /// A screen whose agent list throws, such as one that the generated code
+  /// no longer fits, has only its `id`, `front` and the `error`, which goes
+  /// to `FlutterError.reportError`.
   static Map<String, Object?> describe() {
     final front = OpenScreens.front;
     return {
@@ -82,8 +87,9 @@ final class TandemBridge._() {
   /// scope replaced the one it showed, and a path whose value changed since
   /// is refused as for the in-app agent.
   ///
-  /// [describe] and [call] throw a [StateError] when an agent list does not
-  /// fit the generated code, and the extension answers with it.
+  /// [call] throws a [StateError] before the method runs when the agent list
+  /// of its screen does not fit the generated code, and the extension
+  /// answers with it.
   static Future<Map<String, Object?>> call(
     String tool, {
     Map<String, Object?> arguments = const {},
@@ -176,7 +182,13 @@ final class TandemBridge._() {
 
   static JsonObject _describe(OpenScreen screen, {required bool front}) {
     final session = screen.session;
-    final listing = AgentListing.of(session.surface);
+    final AgentListing listing;
+    try {
+      listing = AgentListing.of(session.surface);
+    } catch (err, st) {
+      report(err, st);
+      return {'id': screen.id, 'front': front, 'error': '$err'};
+    }
     final lastApproval = session.lastAsked(.codingAgent);
     final context = 'context-${++_lastContext}';
     _contexts[context] = (screen: screen, session: session, seen: listing);
