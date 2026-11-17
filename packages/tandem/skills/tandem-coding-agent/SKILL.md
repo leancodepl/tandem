@@ -56,7 +56,7 @@ Take the isolate named `main` from `getVM`.
 
 `ext.tandem.describe` gives every open screen with its `id`, whether it is `front`, its `context`, what it `sees`, the `tools` it lists with their JSON Schemas, and which of them `needsApproval`.
 
-`ext.tandem.call` calls one tool. Its parameters are `tool`, `arguments` as a JSON object in a string, and `screen` with an id when more than one screen is open:
+`ext.tandem.call` calls one tool. Its parameters are `tool`, `arguments` as a JSON object in a string, and `screen` with an id when more than one screen is open and you pass no `context`:
 
 ```sh
 curl -s -G "${VM}ext.tandem.call" \

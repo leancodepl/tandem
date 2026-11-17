@@ -31,7 +31,7 @@ final class TandemBridge._() {
   static var _autoApprove = false;
 
   /// What [describe] showed, by the `context` it gave, newest last.
-  static final _contexts = <String, _Described>{};
+  static final _contexts = <ContextId, _Described>{};
   static var _lastContext = 0;
   static const _keptContexts = 32;
 
@@ -72,10 +72,11 @@ final class TandemBridge._() {
     };
   }
 
-  /// Calls [tool] with [arguments] on the front screen, or on the screen
-  /// whose id is [screen]. The answer is the in-app agent's tool answer with
-  /// its `status`, such as `returned` with the `result`, and the `screens`
-  /// after the call.
+  /// Calls [tool] with [arguments] on the screen whose id is [screen].
+  /// Without [screen], the call goes to the screen that [context] describes,
+  /// or else to the front screen. The answer is the in-app agent's tool
+  /// answer with its `status`, such as `returned` with the `result`, and the
+  /// `screens` after the call.
   ///
   /// A call that waits for the user answers once the user decided, such as
   /// `rejected_by_user`. Meanwhile the same call waits for the same answer,
@@ -96,14 +97,16 @@ final class TandemBridge._() {
     String? screen,
     String? context,
   }) async {
-    final target = OpenScreens.find(screen);
-    if (target == null) {
-      return _withScreens(.refused(OpenScreens.whyNotFound(screen)));
-    }
-    final described = switch (context) {
-      final context? => _contexts[context],
-      null => null,
+    final screenId = screen == null ? null : ScreenId(screen);
+    final contextId = context == null ? null : ContextId(context);
+    final described = _contexts[contextId];
+    final target = switch (screenId) {
+      final id? => OpenScreens.find(id),
+      null => described?.screen ?? OpenScreens.front,
     };
+    if (target == null) {
+      return _withScreens(.refused(OpenScreens.whyNotFound(screenId)));
+    }
     if (described != null && !identical(described.screen, target)) {
       return _withScreens(
         .refused('The context $context is of another screen.'),
@@ -119,7 +122,7 @@ final class TandemBridge._() {
     }
     final seen =
         described?.seen ??
-        AgentListing.of(target.session.surface).unseen(_noContext(context));
+        AgentListing.of(target.session.surface).unseen(_noContext(contextId));
     final answer = await target.session.callFor(
       .codingAgent,
       tool,
@@ -170,7 +173,7 @@ final class TandemBridge._() {
     );
   }
 
-  static String _noContext(String? context) => switch (context) {
+  static String _noContext(ContextId? context) => switch (context) {
     null =>
       'The arguments point at values with "path". Pass the context that '
           'ext.tandem.describe gave for this screen, so that the paths read '
@@ -190,7 +193,7 @@ final class TandemBridge._() {
       return {'id': screen.id, 'front': front, 'error': '$err'};
     }
     final lastApproval = session.lastAsked(.codingAgent);
-    final context = 'context-${++_lastContext}';
+    final context = ContextId('context-${++_lastContext}');
     _contexts[context] = (screen: screen, session: session, seen: listing);
     if (_contexts.length > _keptContexts) {
       _contexts.remove(_contexts.keys.first);
