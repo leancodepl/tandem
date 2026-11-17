@@ -4,6 +4,7 @@ import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/agent_type.dart';
 import 'package:tandem/src/genui/agent_catalog.dart';
 import 'package:tandem/src/genui/view_check.dart';
+import 'package:tandem/src/genui/view_requirements.dart';
 
 /// The description of `tandem_show_view` for a run that sees [listing]: the
 /// components of [catalog], the names and forms of their types, the data
@@ -11,16 +12,8 @@ import 'package:tandem/src/genui/view_check.dart';
 /// example.
 String viewDescription(AgentCatalog catalog, AgentListing listing) {
   final types = _Types([
-    for (final component in catalog.components)
-      for (final property in component.properties)
-        if (property
-            case ValueProperty(:final type) || FieldProperty(:final type))
-          type,
-    for (final MapEntry(:value) in listing.roots.entries) value.type,
-    for (final name in listing.toolNames)
-      for (final parameter
-          in listing.toolNamed(name)?.parameters ?? const <Never>[])
-        parameter.type,
+    ...ViewRequirements.catalogTypes(catalog),
+    ...ViewRequirements.screenTypes(listing),
   ]);
   final components = [
     for (final component in catalog.components) _component(component, types),
