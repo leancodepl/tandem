@@ -1,6 +1,10 @@
 import 'package:flutter/painting.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+/// The form of [ColorConverter], as the agent reads it.
+const colorForm =
+    'A color as #RRGGBB, or #RRGGBBAA with its opacity, as in CSS.';
+
 /// A color as `#RRGGBB`, or `#RRGGBBAA` with its opacity, as in CSS.
 ///
 /// Tandem writes 8 bits per channel in sRGB, so a color of another color
@@ -31,6 +35,13 @@ final class const ColorConverter() implements JsonConverter<Color, String> {
   }
 }
 
+/// The form of [EdgeInsetsGeometryConverter], as the agent reads it.
+const edgeInsetsGeometryForm =
+    'Insets in logical pixels: one number for every side, as "16"; two '
+    'for top and bottom, then left and right, as "8 16"; or sides by '
+    'name, as "top 8 start 16 end 16". start and end follow the reading '
+    'direction, left and right do not, and one value names only one kind.';
+
 /// Insets in logical pixels: one number for every side, as "16"; two for
 /// top and bottom, then left and right, as "8 16"; or sides by name, as
 /// "top 8 start 16 end 16". start and end follow the reading direction,
@@ -52,6 +63,13 @@ final class const EdgeInsetsGeometryConverter()
   };
 }
 
+/// The form of [EdgeInsetsConverter], as the agent reads it.
+const edgeInsetsForm =
+    'Insets in logical pixels: one number for every side, as "16"; two '
+    'for top and bottom, then left and right, as "8 16"; or sides by '
+    'name, as "top 8 left 16". Only left and right, which do not follow '
+    'the reading direction.';
+
 /// Insets in logical pixels: one number for every side, as "16"; two for
 /// top and bottom, then left and right, as "8 16"; or sides by name, as
 /// "top 8 left 16". Only left and right, which do not follow the reading
@@ -68,6 +86,12 @@ final class const EdgeInsetsConverter()
   @override
   String toJson(EdgeInsets object) => _Insets.physical(object).text;
 }
+
+/// The form of [EdgeInsetsDirectionalConverter], as the agent reads it.
+const edgeInsetsDirectionalForm =
+    'Insets in logical pixels that follow the reading direction: one '
+    'number for every side, as "16"; two for top and bottom, then start '
+    'and end, as "8 16"; or sides by name, as "top 8 start 16".';
 
 /// Insets in logical pixels that follow the reading direction: one number
 /// for every side, as "16"; two for top and bottom, then start and end, as
@@ -90,6 +114,13 @@ final class const EdgeInsetsDirectionalConverter()
   String toJson(EdgeInsetsDirectional object) =>
       _Insets.directional(object).text;
 }
+
+/// The form of [AlignmentGeometryConverter], as the agent reads it.
+const alignmentGeometryForm =
+    'A place in a box by name: topLeft, topCenter, topRight, centerLeft, '
+    'center, centerRight, bottomLeft, bottomCenter or bottomRight; or, to '
+    'follow the reading direction, topStart, topEnd, centerStart, '
+    'centerEnd, bottomStart or bottomEnd.';
 
 /// A place in a box by name: topLeft, topCenter, topRight, centerLeft,
 /// center, centerRight, bottomLeft, bottomCenter or bottomRight; or, to
@@ -116,6 +147,11 @@ final class const AlignmentGeometryConverter()
       (throw ArgumentError.value(object, 'object', 'has no name'));
 }
 
+/// The form of [AlignmentConverter], as the agent reads it.
+const alignmentForm =
+    'A place in a box by name: topLeft, topCenter, topRight, centerLeft, '
+    'center, centerRight, bottomLeft, bottomCenter or bottomRight.';
+
 /// A place in a box by name: topLeft, topCenter, topRight, centerLeft,
 /// center, centerRight, bottomLeft, bottomCenter or bottomRight. It writes
 /// only these alignments, and throws an [ArgumentError] for another, such as
@@ -132,6 +168,12 @@ final class const AlignmentConverter()
       _nameOf(object, _alignments) ??
       (throw ArgumentError.value(object, 'object', 'has no name'));
 }
+
+/// The form of [AlignmentDirectionalConverter], as the agent reads it.
+const alignmentDirectionalForm =
+    'A place in a box that follows the reading direction, by name: '
+    'topStart, topCenter, topEnd, centerStart, center, centerEnd, '
+    'bottomStart, bottomCenter or bottomEnd.';
 
 /// A place in a box that follows the reading direction, by name: topStart,
 /// topCenter, topEnd, centerStart, center, centerEnd, bottomStart,
