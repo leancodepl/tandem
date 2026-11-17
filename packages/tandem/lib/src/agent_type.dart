@@ -33,8 +33,7 @@ sealed class const AgentType<T>() {
     ColorConverter(),
     string,
     converterId: '$_converters#ColorConverter()',
-    description:
-        'A color as #RRGGBB, or #RRGGBBAA with its opacity, as in CSS.',
+    description: colorForm,
   );
 
   static const AgentType<EdgeInsetsGeometry> edgeInsetsGeometry = _Converted(
@@ -42,12 +41,7 @@ sealed class const AgentType<T>() {
     EdgeInsetsGeometryConverter(),
     string,
     converterId: '$_converters#EdgeInsetsGeometryConverter()',
-    description:
-        'Insets in logical pixels: one number for every side, as "16"; two '
-        'for top and bottom, then left and right, as "8 16"; or sides by '
-        'name, as "top 8 start 16 end 16". start and end follow the reading '
-        'direction, left and right do not, and one value names only one '
-        'kind.',
+    description: edgeInsetsGeometryForm,
   );
 
   static const AgentType<EdgeInsets> edgeInsets = _Converted(
@@ -55,11 +49,7 @@ sealed class const AgentType<T>() {
     EdgeInsetsConverter(),
     string,
     converterId: '$_converters#EdgeInsetsConverter()',
-    description:
-        'Insets in logical pixels: one number for every side, as "16"; two '
-        'for top and bottom, then left and right, as "8 16"; or sides by '
-        'name, as "top 8 left 16". Only left and right, which do not follow '
-        'the reading direction.',
+    description: edgeInsetsForm,
   );
 
   static const AgentType<EdgeInsetsDirectional> edgeInsetsDirectional =
@@ -68,10 +58,7 @@ sealed class const AgentType<T>() {
         EdgeInsetsDirectionalConverter(),
         string,
         converterId: '$_converters#EdgeInsetsDirectionalConverter()',
-        description:
-            'Insets in logical pixels that follow the reading direction: one '
-            'number for every side, as "16"; two for top and bottom, then '
-            'start and end, as "8 16"; or sides by name, as "top 8 start 16".',
+        description: edgeInsetsDirectionalForm,
       );
 
   static const AgentType<AlignmentGeometry> alignmentGeometry = _Converted(
@@ -79,11 +66,7 @@ sealed class const AgentType<T>() {
     AlignmentGeometryConverter(),
     string,
     converterId: '$_converters#AlignmentGeometryConverter()',
-    description:
-        'A place in a box by name: topLeft, topCenter, topRight, centerLeft, '
-        'center, centerRight, bottomLeft, bottomCenter or bottomRight; or, to '
-        'follow the reading direction, topStart, topEnd, centerStart, '
-        'centerEnd, bottomStart or bottomEnd.',
+    description: alignmentGeometryForm,
   );
 
   static const AgentType<Alignment> alignment = _Converted(
@@ -91,9 +74,7 @@ sealed class const AgentType<T>() {
     AlignmentConverter(),
     string,
     converterId: '$_converters#AlignmentConverter()',
-    description:
-        'A place in a box by name: topLeft, topCenter, topRight, centerLeft, '
-        'center, centerRight, bottomLeft, bottomCenter or bottomRight.',
+    description: alignmentForm,
   );
 
   static const AgentType<AlignmentDirectional> alignmentDirectional =
@@ -102,10 +83,7 @@ sealed class const AgentType<T>() {
         AlignmentDirectionalConverter(),
         string,
         converterId: '$_converters#AlignmentDirectionalConverter()',
-        description:
-            'A place in a box that follows the reading direction, by name: '
-            'topStart, topCenter, topEnd, centerStart, center, centerEnd, '
-            'bottomStart, bottomCenter or bottomEnd.',
+        description: alignmentDirectionalForm,
       );
 
   static const _converters = 'package:tandem/src/converters.dart';
