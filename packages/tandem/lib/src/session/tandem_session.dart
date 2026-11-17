@@ -580,7 +580,7 @@ final class TandemSession({
   // A model that never draws a view that fits would try again on every run.
   ToolAnswer _show(OfferedView view, JsonObject arguments) {
     if (_refusedViews >= _maxRefusedViews) {
-      return ToolAnswer.drawingStopped;
+      return ToolAnswer.drawingStopped(_maxRefusedViews);
     }
     final answer = identical(view.tool, _view)
         ? view.tool.show(arguments)
@@ -588,7 +588,7 @@ final class TandemSession({
     _refusedViews = answer.status == .shown ? 0 : _refusedViews + 1;
     return _refusedViews < _maxRefusedViews
         ? answer
-        : ToolAnswer.drawingStopped;
+        : ToolAnswer.drawingStopped(_maxRefusedViews);
   }
 
   void _askUser(

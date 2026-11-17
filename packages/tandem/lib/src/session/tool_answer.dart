@@ -22,8 +22,8 @@ extension type const ToolStatus._(String value) implements String {
   /// The method did not run, or threw a `ToolCallRefused`.
   static const refused = ToolStatus._('refused');
 
-  /// The method or a converter of the app threw anything else. The error
-  /// stays in the app's reports.
+  /// The method, a converter or the list of the app threw anything else.
+  /// The error stays in the app's reports.
   static const failed = ToolStatus._('failed');
 
   /// The method returned, but `jsonEncode` failed on its result.
@@ -60,12 +60,20 @@ extension type const ToolStatus._(String value) implements String {
 
 /// The answer to a call of a listed method: what the method returned, or why
 /// it did not return. A call of the view's tool gets [shown], `refused`,
-/// [failed] when a converter of the app fails on it, or [screenUnreadable].
+/// [valueUnreadable] or [screenUnreadable].
 sealed class const ToolAnswer() {
   /// Throws when JSON cannot encode [result].
   factory returned(Object? result) = _Returned;
 
   factory refused(String reason) => _Status(.refused, {'reason': reason});
+
+  /// The last of [views] views in a row that did not show, after which no
+  /// run offers `tandem_show_view` until the next message.
+  factory drawingStopped(int views) => _Status(.refused, {
+    'reason':
+        'Your last $views views did not show, so tandem_show_view is off '
+        'until the next message. Answer the user in text.',
+  });
 
   static const argumentsNotAnObject = _Status(.refused, {
     'reason': 'The arguments must be a JSON object.',
@@ -78,18 +86,17 @@ sealed class const ToolAnswer() {
 
   static const shown = _Status(.shown);
 
-  /// The last of the views refused in a row that the session takes, after
-  /// which no run offers `tandem_show_view` until the next message.
-  static const drawingStopped = _Status(.refused, {
-    'reason':
-        'Your views were refused three times in a row, so tandem_show_view '
-        'is off until the user writes again. Answer the user in text.',
-  });
-
   static const failed = _Status(.failed, {
     'error':
         'The method failed and may have changed the app. Do not retry '
         'automatically.',
+  });
+
+  /// A converter of the app threw on a value of the view.
+  static const valueUnreadable = _Status(.failed, {
+    'error':
+        'The app could not read a value of this view. Draw it without that '
+        'value.',
   });
 
   /// The screen's list threw while the view was drawn.
