@@ -7,7 +7,7 @@ final class ToolArgs._(
   final Map<String, Object?> _values, {
 
   /// The arguments as JSON, as the agent's method gets them.
-  required final JsonObject json,
+  @internal required final JsonObject json,
 }) {
   @internal
   factory of(Map<String, Object?> values, {required JsonObject json}) =>

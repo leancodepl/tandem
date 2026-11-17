@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/painting.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:meta/meta.dart';
 import 'package:tandem/src/converters.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
@@ -167,6 +168,7 @@ sealed class const AgentType<T>() {
 
   /// The description, with the type's own parts, that two builds must agree
   /// on: the same [id] with another fingerprint is a mistake in the app.
+  @internal
   String get fingerprint;
 
   /// [value] as JSON.
@@ -175,30 +177,38 @@ sealed class const AgentType<T>() {
   /// The [json] that the agent wrote at [reading]'s path, as [T]. Throws a
   /// [ToolCallRefused] that says what to fix, or what a converter of the app
   /// throws other than a `FormatException`, a bug of the app.
+  @internal
   T read(Object? json, AgentReading reading);
 
   /// The JSON Schema of what the agent writes, inline.
+  @internal
   JsonObject schema(AgentObjects objects);
 
   /// The type of the value at [segment] inside a value of this type, such as
   /// a field or an item, or null when there is none.
+  @internal
   AgentType<Object?>? typeAt(String segment) => null;
 
   /// The value at [segment] inside [value], or [AgentType.absent].
+  @internal
   Object? valueAt(T value, String segment) => absent;
 
   /// The types that [name] mentions or that a converter writes it as, which
   /// a description lists once each, such as the enums and classes inside it.
+  @internal
   Iterable<AgentType<Object?>> get parts => const [];
 
   /// Whether this is a class that the agent points at by path.
+  @internal
   bool get isObject => false;
 
   /// Whether a value of [other], or a non-null value of it, can stand where
   /// this type is expected.
+  @internal
   bool accepts(AgentType<Object?> other) => _nonNull(other).id == id;
 
   /// No value: past the end of a list, or below a null.
+  @internal
   static const Object absent = _Absent();
 
   /// [json] as a `{"path": ...}` to a value of this type, which [reading]
