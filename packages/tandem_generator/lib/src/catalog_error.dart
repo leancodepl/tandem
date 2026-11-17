@@ -79,6 +79,14 @@ final class CatalogError extends InvalidGenerationSource {
         element: widget,
       );
 
+  new abstractWidget(Element widget)
+    : super(
+        'Tandem builds ${widget.displayName} with its unnamed constructor, '
+        'and ${widget.displayName} is abstract. List a widget class that is '
+        'not.',
+        element: widget,
+      );
+
   new unnamedWidget(Element widget)
     : super(
         'Import the library of ${widget.displayName} where the catalog is, '

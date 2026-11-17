@@ -236,6 +236,11 @@ AgentComponent<$widgetName>.of(
       throw CatalogError.missingConstructor(_element);
     }
 
+    if (_element case ClassElement(isAbstract: true)
+        when !constructor.isFactory) {
+      throw CatalogError.abstractWidget(_element);
+    }
+
     final parameters = [
       for (final parameter in constructor.formalParameters)
         _readParameter(parameter),
