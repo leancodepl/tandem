@@ -4,6 +4,8 @@
 library;
 
 export 'src/agent_list.dart' show AgentListing;
-export 'src/testing/agent_request.dart' show AgentRequest, AgentToolResult;
+export 'src/session/tool_answer.dart' show ToolStatus;
+export 'src/testing/agent_request.dart'
+    show AgentRequest, AgentToolResult, PressedAction;
 export 'src/testing/scripted_agent.dart'
     show AgentStep, AgentTurn, ScriptedAgent, ScriptedErrorCode;

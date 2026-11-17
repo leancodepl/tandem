@@ -4,10 +4,10 @@ import 'package:tandem/testing.dart';
 
 AgentConnection orderDeskAgent() => ScriptedAgent.repeating((raw) {
   final request = AgentRequest(raw);
-  if (request.newNotes.lastOrNull case {
-    'pressed': 'place_order',
-    'result': final id,
-  }) {
+  if (request.newPressedActions.lastOrNull case PressedAction(
+    tool: 'place_order',
+    answer: {'result': final id},
+  )) {
     return [AgentStep.say('You placed order $id from the summary.')];
   }
   if (request.isUserMessage) {
@@ -27,9 +27,7 @@ AgentConnection orderDeskAgent() => ScriptedAgent.repeating((raw) {
             'address': 'Magazynowa 5, 61-001 Poznań',
             'date': '2026-10-23',
           }),
-          AgentStep.callTool('tandem_show_view', {
-            'components': const DeskCatalog().example,
-          }),
+          AgentStep.showView(const DeskCatalog().example),
         ];
       }
       return request.offersTool('place_order')
@@ -59,12 +57,12 @@ String? _problem(List<AgentToolResult> results) {
   // This script's app calls return null or an id; objects are control answers.
   for (final result in results.reversed) {
     if (result.value case {'status': final String status}
-        when status != 'shown') {
+        when status != ToolStatus.shown) {
       return switch (status) {
-        'rejected_by_user' => 'You rejected the action. It did not run.',
-        'invalidated' =>
+        ToolStatus.rejectedByUser => 'You rejected the action. It did not run.',
+        ToolStatus.invalidated =>
           'What I saw changed. Ask again to use the current values.',
-        'cancelled' =>
+        ToolStatus.cancelled =>
           'The action was cancelled. Ask again when you are ready.',
         _ =>
           'The action did not go through. '

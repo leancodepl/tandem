@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
+import 'package:tandem/src/session/view_tool.dart';
 
 /// What the agent does in one run of a [ScriptedAgent], given the body of
 /// the run.
@@ -19,6 +20,11 @@ sealed class const AgentStep() {
   /// session runs it when the run ends.
   const factory callTool(String name, [Map<String, Object?> arguments]) =
       _CallTool;
+
+  /// Draws [components] in the screen's `TandemView`, by calling
+  /// `tandem_show_view`.
+  factory showView(List<Map<String, Object?>> components) =>
+      _CallTool(ViewTool.name, {'components': components});
 
   /// Sends the agent's whole state, `session.agentState`, as
   /// `STATE_SNAPSHOT`.

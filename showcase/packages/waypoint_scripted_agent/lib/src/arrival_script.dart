@@ -10,10 +10,12 @@ List<AgentStep> _arrival(Map<String, Object?> raw) {
   final request = AgentRequest(raw);
 
   // A button of the view: its answer comes as an app note.
-  if (request.newNotes.lastOrNull
-      case {'pressed': final String tool, 'status': final String status} &&
-          final note) {
-    return [AgentStep.say(_answer(request, tool, status, note))];
+  if (request.newPressedActions.lastOrNull case final action?) {
+    return [
+      AgentStep.say(
+        _answer(request, action.tool, action.status, action.answer),
+      ),
+    ];
   }
 
   if (request.isUserMessage) {
@@ -43,10 +45,7 @@ List<AgentStep> _arrival(Map<String, Object?> raw) {
       ];
     }
     return [
-      if (request.offersTool('tandem_show_view'))
-        AgentStep.callTool('tandem_show_view', {
-          'components': _dayView(request),
-        }),
+      if (request.offersView) AgentStep.showView(_dayView(request)),
       AgentStep.say(_arrivalSummary(request.context('arrival'))),
     ];
   }
@@ -62,7 +61,7 @@ List<AgentStep> _arrival(Map<String, Object?> raw) {
   };
   final status = switch (note['status']) {
     final String status => status,
-    _ => 'returned',
+    _ => ToolStatus.returned,
   };
   return [AgentStep.say(_answer(request, result.toolName ?? '', status, note))];
 }
@@ -73,16 +72,16 @@ String _answer(
   String status,
   Map<Object?, Object?> note,
 ) {
-  if (status == 'rejected_by_user') return 'OK, I left it.';
-  if (status == 'refused') {
+  if (status == ToolStatus.rejectedByUser) return 'OK, I left it.';
+  if (status == ToolStatus.refused) {
     if (note['reason'] case final String reason) {
       return 'That did not go through: $reason';
     }
   }
-  if (tool == 'tandem_show_view' && status == 'shown') {
+  if (status == ToolStatus.shown) {
     return 'The arrival day is on the screen.';
   }
-  if (status != 'returned') {
+  if (status != ToolStatus.returned) {
     final detail =
         note['reason'] ?? note['error'] ?? 'Check the current screen.';
     return 'I could not confirm that action. $detail';

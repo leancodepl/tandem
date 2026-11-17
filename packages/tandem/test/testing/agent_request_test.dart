@@ -17,11 +17,13 @@ void main() {
             'description': 'app_notes: What happened outside the chat.',
             'value':
                 '{"new":[{"note":"first"},{"pressed":"place_order",'
-                '"result":"ORD-1"}],"earlier":[{"note":"old"}]}',
+                '"arguments":{},"status":"returned","result":"ORD-1"}],'
+                '"earlier":[{"note":"old"}]}',
           },
         ],
         'tools': [
           {'name': 'place_order'},
+          {'name': 'tandem_show_view'},
         ],
       };
       final request = AgentRequest(raw);
@@ -32,9 +34,24 @@ void main() {
       expect(request.context('missing'), isNull);
       expect(request.offersTool('place_order'), isTrue);
       expect(request.offersTool('place'), isFalse);
+      expect(request.offersView, isTrue);
       expect(request.newNotes, [
         {'note': 'first'},
-        {'pressed': 'place_order', 'result': 'ORD-1'},
+        {
+          'pressed': 'place_order',
+          'arguments': <String, Object?>{},
+          'status': 'returned',
+          'result': 'ORD-1',
+        },
+      ]);
+      expect(request.newPressedActions, [
+        isA<PressedAction>()
+            .having((action) => action.tool, 'tool', 'place_order')
+            .having((action) => action.status, 'status', ToolStatus.returned)
+            .having((action) => action.answer, 'answer', {
+              'status': 'returned',
+              'result': 'ORD-1',
+            }),
       ]);
 
       final empty = AgentRequest({});
@@ -42,6 +59,7 @@ void main() {
       expect(empty.context('order'), isNull);
       expect(empty.offersTool('place_order'), isFalse);
       expect(empty.newNotes, isEmpty);
+      expect(empty.newPressedActions, isEmpty);
       expect(empty.latestToolResults, isEmpty);
     },
   );

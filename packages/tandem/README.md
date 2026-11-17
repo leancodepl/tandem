@@ -265,7 +265,7 @@ void wakeOnPlacedOrder(
 }
 ```
 
-Use a strong remote model through an AG-UI backend that puts `context` into the model's prompt. In debug, `TandemView` checks the catalog's example against the screen it is on and reports an example that does not fit. In a test, a `ScriptedAgent` draws with `AgentStep.callTool('tandem_show_view', {'components': const DeskCatalog().example})`.
+Use a strong remote model through an AG-UI backend that puts `context` into the model's prompt. In debug, `TandemView` checks the catalog's example against the screen it is on and reports an example that does not fit. In a test, a `ScriptedAgent` draws with `AgentStep.showView(const DeskCatalog().example)`.
 
 ## Session status
 
@@ -494,7 +494,7 @@ Use `surface` to read the state object, for example with `context.read<ShoppingL
 
 Each function in the script produces one run. A run past the finite script ends with `RUN_ERROR`. For a demo that handles each run with the same callback, use `ScriptedAgent.repeating(turn)`. `agent.requests` records every raw request body.
 
-Inside a callback, `AgentRequest(raw)` reads named JSON context with `context(name)`, offered tools with `offersTool(name)` and new app notes with `newNotes`, oldest first. Missing context returns null. `latestToolResults` contains consecutive tool answers at the end of the request, oldest first, matched to their calls by ID. Each result has a `toolCallId`, a `toolName` that is null when no named call matches, original `content` and JSON-decoded `value`. Reading malformed context JSON or a non-JSON result's `value` throws `FormatException`. Results keep application data as it is, including any `status` key.
+Inside a callback, `AgentRequest(raw)` reads named JSON context with `context(name)`, offered tools with `offersTool(name)` and `offersView`, and new app notes with `newNotes`, oldest first. `newPressedActions` reads the notes of actions the user pressed in a view the agent drew, each with its `tool`, `arguments`, `status` and `answer`. Missing context returns null. `latestToolResults` contains consecutive tool answers at the end of the request, oldest first, matched to their calls by ID. Each result has a `toolCallId`, a `toolName` that is null when no named call matches, original `content` and JSON-decoded `value`. Reading malformed context JSON or a non-JSON result's `value` throws `FormatException`. Results keep application data as it is, including any `status` key. `ToolStatus` has the statuses Tandem answers with, such as `ToolStatus.rejectedByUser`.
 
 Use `AgentListing.of(cubit)` to inspect a class's listed data and methods without opening a session.
 

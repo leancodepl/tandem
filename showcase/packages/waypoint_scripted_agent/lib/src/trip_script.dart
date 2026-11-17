@@ -48,7 +48,7 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
         ),
       ),
     ],
-    {'book_changes': {'status': 'rejected_by_user'}} => const [
+    {'book_changes': {'status': ToolStatus.rejectedByUser}} => const [
       AgentStep.say("OK, I won't book them."),
     ],
     {'book_changes': {'status': _} && final result} => [
@@ -59,7 +59,7 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
       }),
     ],
     {'move_meeting': {'status': final String status} && final result}
-        when status != 'returned' =>
+        when status != ToolStatus.returned =>
       [
         AgentStep.say(switch (result) {
           {'reason': final String detail} || {'error': final String detail} =>
@@ -72,10 +72,10 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
     ],
     {'move_meeting': _} => _fitTheTrip(request),
     {'set_homebound_flight': {'status': final String status} && final result}
-        when status != 'returned' =>
+        when status != ToolStatus.returned =>
       [
         AgentStep.say(switch (result) {
-          {'status': 'refused', 'reason': final String reason} =>
+          {'status': ToolStatus.refused, 'reason': final String reason} =>
             'The flight was not changed: $reason',
           {'reason': final String detail} || {'error': final String detail} =>
             'I could not confirm the flight change: $detail',

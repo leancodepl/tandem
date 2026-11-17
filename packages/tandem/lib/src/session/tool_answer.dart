@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 
 /// What came of a call, as the `status` of its answer, or where a call
@@ -37,6 +38,24 @@ extension type const ToolStatus._(String value) implements String {
 
   /// What the agent sees changed after it asked.
   static const invalidated = ToolStatus._('invalidated');
+
+  static const _all = [
+    pending,
+    approved,
+    returned,
+    shown,
+    refused,
+    failed,
+    resultUnavailable,
+    rejectedByUser,
+    cancelled,
+    invalidated,
+  ];
+
+  /// The status that [value] names, or null when none does.
+  @internal
+  static ToolStatus? named(Object? value) =>
+      _all.where((status) => status == value).firstOrNull;
 }
 
 /// The answer to a call of a listed method: what the method returned, or why

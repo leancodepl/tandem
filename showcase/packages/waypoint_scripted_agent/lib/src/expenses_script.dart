@@ -60,7 +60,7 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
         {'confirmation': final String confirmation, 'total': final int total} =>
           'Submitted as $confirmation. €$total comes back with your next '
               'salary.',
-        {'status': 'rejected_by_user'} =>
+        {'status': ToolStatus.rejectedByUser} =>
           "OK, the report stays unsubmitted. Submit it when you're ready.",
         {'reason': final String reason} =>
           'The report was not submitted: $reason',
@@ -74,7 +74,7 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
   // A meal over the daily limit: the app says what is left for that day.
   for (final result in results) {
     if (result.value case {
-      'status': 'refused',
+      'status': ToolStatus.refused,
       'reason': final String reason,
     }) {
       final left = RegExp(r'€(\d+) is left').firstMatch(reason)?[1];
@@ -93,7 +93,7 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
       return [AgentStep.say('The expense was not added: $reason')];
     }
     if (result.value case {'status': final String status} && final details
-        when status != 'returned') {
+        when status != ToolStatus.returned) {
       final reason =
           details['error'] ?? details['reason'] ?? 'Check the current screen.';
       return [AgentStep.say('I could not confirm the expense change. $reason')];
