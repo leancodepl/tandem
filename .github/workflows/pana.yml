@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [tandem, tandem_generator]
+        package: [tandem, tandem_generator, tandem_firebase_ai]
 
     steps:
       - name: Checkout
