@@ -30,15 +30,20 @@ final class ChunkExpander() {
   Iterable<JsonObject> call(JsonObject event) {
     switch (event[AgUiFields.type]) {
       case AgUiEventTypes.textMessageChunk:
-        return _expandText(event);
+        return _expand(event, .text);
       case AgUiEventTypes.toolCallChunk:
-        return _expandToolCall(event);
+        return _expand(event, .toolCall);
       case AgUiEventTypes.reasoningMessageChunk:
-        _trackReasoningChunk(event);
+        if (event[AgUiFields.messageId] case final String id) {
+          final stream = (kind: _Kind.reasoning, id: id);
+          if (!_openBySender.containsValue(stream)) {
+            _openBySender[_senderOf(event)] = stream;
+          }
+        }
       case final type when _senderClosingEvents.contains(type):
         _openBySender.remove(_senderOf(event));
       case AgUiEventTypes.subagentFinished || AgUiEventTypes.subagentError:
-        _closeSubagentStream(event);
+        if (_senderOf(event) case final sender?) _openBySender.remove(sender);
       case AgUiEventTypes.runStarted ||
           AgUiEventTypes.runFinished ||
           AgUiEventTypes.runError ||
@@ -48,86 +53,38 @@ final class ChunkExpander() {
     return [event];
   }
 
-  List<JsonObject> _expandText(JsonObject chunk) {
-    final messageId = _resolveId(
-      chunk,
-      kind: .text,
-      id: chunk[AgUiFields.messageId],
-    );
-    if (messageId == null) {
-      return [];
-    }
+  List<JsonObject> _expand(JsonObject chunk, _Kind kind) {
+    final isTool = kind == _Kind.toolCall;
+    final idField = isTool ? AgUiFields.toolCallId : AgUiFields.messageId;
+    final id = _resolveId(chunk, kind: kind, id: chunk[idField]);
+    if (id == null) return [];
 
-    if (_isNewStream(.text, messageId)) {
-      _openBySender[_senderOf(chunk)] = (kind: .text, id: messageId);
+    final name = chunk[AgUiFields.toolCallName];
+    final stream = (kind: kind, id: id);
+    final starts = !_openBySender.containsValue(stream);
+    if (starts) {
+      if (isTool && name is! String) return [];
+      _openBySender[_senderOf(chunk)] = stream;
     }
     return [
+      if (starts && isTool)
+        {
+          AgUiFields.type: AgUiEventTypes.toolCallStart,
+          AgUiFields.toolCallId: id,
+          AgUiFields.toolCallName: name,
+          if (chunk[AgUiFields.parentMessageId] case final String parentId)
+            AgUiFields.parentMessageId: parentId,
+        },
       if (chunk[AgUiFields.delta] case final String delta)
         {
-          AgUiFields.type: AgUiEventTypes.textMessageContent,
-          AgUiFields.messageId: messageId,
+          AgUiFields.type: isTool
+              ? AgUiEventTypes.toolCallArgs
+              : AgUiEventTypes.textMessageContent,
+          idField: id,
           AgUiFields.delta: delta,
         },
     ];
   }
-
-  List<JsonObject> _expandToolCall(JsonObject chunk) {
-    final toolCallId = _resolveId(
-      chunk,
-      kind: .toolCall,
-      id: chunk[AgUiFields.toolCallId],
-    );
-    if (toolCallId == null) {
-      return [];
-    }
-
-    final events = <JsonObject>[];
-    if (_isNewStream(.toolCall, toolCallId)) {
-      final name = chunk[AgUiFields.toolCallName];
-      if (name is! String) {
-        return [];
-      }
-      _openBySender[_senderOf(chunk)] = (kind: .toolCall, id: toolCallId);
-      events.add({
-        AgUiFields.type: AgUiEventTypes.toolCallStart,
-        AgUiFields.toolCallId: toolCallId,
-        AgUiFields.toolCallName: name,
-        if (chunk[AgUiFields.parentMessageId] case final String parentMessageId)
-          AgUiFields.parentMessageId: parentMessageId,
-      });
-    }
-    if (chunk[AgUiFields.delta] case final String delta) {
-      events.add({
-        AgUiFields.type: AgUiEventTypes.toolCallArgs,
-        AgUiFields.toolCallId: toolCallId,
-        AgUiFields.delta: delta,
-      });
-    }
-    return events;
-  }
-
-  void _trackReasoningChunk(JsonObject chunk) {
-    final messageId = chunk[AgUiFields.messageId];
-    if (messageId is! String) {
-      return;
-    }
-
-    if (_isNewStream(.reasoning, messageId)) {
-      _openBySender[_senderOf(chunk)] = (kind: .reasoning, id: messageId);
-    }
-  }
-
-  void _closeSubagentStream(JsonObject event) {
-    final sender = _senderOf(event);
-    if (sender == null) {
-      return;
-    }
-
-    _openBySender.remove(sender);
-  }
-
-  bool _isNewStream(_Kind kind, String id) =>
-      _openBySender.values.every((open) => open != (kind: kind, id: id));
 
   String? _resolveId(
     JsonObject chunk, {
