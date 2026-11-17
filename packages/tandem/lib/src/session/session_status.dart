@@ -6,7 +6,13 @@ import 'package:tandem/src/chat/chat_item.dart';
 sealed class const SessionStatus();
 
 /// No run is open and no approval request waits.
-final class const Idle() extends SessionStatus;
+final class const Idle() extends SessionStatus {
+  @override
+  bool operator ==(Object other) => other is Idle;
+
+  @override
+  int get hashCode => (Idle).hashCode;
+}
 
 /// A run is open and the agent's answer streams in.
 final class const Thinking({
@@ -61,4 +67,10 @@ final class const AwaitingApproval(final ApprovalRequest request)
 
 /// The user stopped the open run, which is read to its end. A new message
 /// waits for it.
-final class const Stopping() extends SessionStatus;
+final class const Stopping() extends SessionStatus {
+  @override
+  bool operator ==(Object other) => other is Stopping;
+
+  @override
+  int get hashCode => (Stopping).hashCode;
+}

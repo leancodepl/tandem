@@ -364,6 +364,12 @@ void main() {
     ]);
   });
 
+  test('statuses that say the same are equal, also when not const', () {
+    // An app may build a status at runtime.
+    // ignore: prefer_const_constructors
+    expect([Idle(), Stopping()], const [Idle(), Stopping()]);
+  });
+
   test('a call without approval is Calling while it runs, then Idle', () async {
     final (session, _, serverReply) = await askToRefresh();
     expect(
