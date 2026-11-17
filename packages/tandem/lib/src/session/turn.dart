@@ -60,10 +60,10 @@ final class Turn(final List<ToolCall> calls) {
   /// [next], and keep [seen].
   void ask(SeesSnapshot seen) => _seen = seen;
 
-  /// Shows the next call that waits, unless a request shows already, and
-  /// returns its request.
+  /// Shows the next call that waits and returns its request. The caller
+  /// checks first that no request of any turn shows.
   ApprovalRequest? next() {
-    if (!waitsForUser || shown != null) {
+    if (!waitsForUser) {
       return null;
     }
     return calls.firstWhere(_undecided).ask();
