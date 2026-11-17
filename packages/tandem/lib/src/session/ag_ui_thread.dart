@@ -14,8 +14,9 @@ final class AgUiThread(var ThreadId _id) {
   final _unsentCallMessages = <AgUiMessage>[];
   final agentState = AgentState();
 
-  /// What the screen gave the agent when the last session of the thread let
-  /// it go, null for a thread without history beyond its unsent calls.
+  /// What the screen gave the agent when the last session that sent a
+  /// message let the thread go, null for a thread without history beyond its
+  /// unsent calls.
   SeesSnapshot? get seenAtLeave => _seenAtLeave;
   SeesSnapshot? _seenAtLeave;
 

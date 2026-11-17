@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 
+import '../support/chat_items.dart';
 import '../support/shop.dart';
 
 void main() {
@@ -93,6 +94,50 @@ void main() {
     await tester.pumpWidget(screen(TandemThread()));
     expect(sessionOf(tester), isNot(same(session)));
     expect(sessionOf(tester).items, isEmpty);
+  });
+
+  testWidgets('another connection goes on with the thread of the scope, and '
+      'starts it over when the screen changed since its last message', (
+    tester,
+  ) async {
+    final thread = TandemThread();
+    var stock = <String>[];
+    Widget screen(AgentConnection connection) => TandemScope.connected(
+      surface: (context) => readShop(context)..items.addAll(stock),
+      connection: connection,
+      approvals: const .fromState(),
+      thread: thread,
+      child: const SizedBox(),
+    );
+    await tester.pumpWidget(
+      screen(
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Hi.')],
+        ]),
+      ),
+    );
+    sessionOf(tester).send('hi');
+    await tester.pump();
+    stock = ['milk'];
+    await tester.pumpWidget(screen(ScriptedAgent(const [])));
+
+    await tester.pumpWidget(
+      screen(
+        ScriptedAgent([
+          (_) => const [AgentStep.say('Fresh.')],
+        ]),
+      ),
+    );
+    sessionOf(tester).send('b');
+    await tester.pump();
+
+    expect(summaryOf(sessionOf(tester).items), [
+      ('user', 'hi'),
+      ('agent', 'Hi.', false),
+      ChatNoticeKind.startedOver,
+      ('user', 'b'),
+      ('agent', 'Fresh.', false),
+    ]);
   });
 
   testWidgets('onEvent gets the scope context, the session and the latest '

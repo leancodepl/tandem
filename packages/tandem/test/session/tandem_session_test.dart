@@ -1698,6 +1698,27 @@ void main() {
     ]);
   });
 
+  test('a session that sent nothing leaves the thread what the screen showed '
+      'the last session that sent', () async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    first.dispose();
+    shop.add('milk');
+    openToClose(thread, agent).dispose();
+
+    final next = open(agent, thread: thread)..send('b');
+    await pumpEventQueue();
+    expect(agent.requests[1]['threadId'], isNot(agent.requests[0]['threadId']));
+    expect(summaryOf(next.items).whereType<ChatNoticeKind>(), [
+      ChatNoticeKind.startedOver,
+    ]);
+  });
+
   test('a session closed while a run is open leaves its thread to a new '
       'AG-UI thread', () async {
     final thread = TandemThread();
