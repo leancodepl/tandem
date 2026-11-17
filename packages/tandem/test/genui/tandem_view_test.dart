@@ -40,7 +40,7 @@ void main() {
           child: Builder(
             builder: (context) {
               session = TandemSessionScope.of(context);
-              return const TandemView(catalog: _Controls());
+              return TandemView(catalog: _Controls());
             },
           ),
         ),
@@ -77,6 +77,13 @@ void main() {
         }),
       ),
     );
+  });
+
+  testWidgets('a view stays when a rebuild brings another instance of its '
+      'catalog', (tester) async {
+    await draw(tester);
+
+    expect(find.byType(_Button), findsOneWidget);
   });
 
   testWidgets('an action drawn with a value that changed since calls nothing, '
@@ -218,8 +225,8 @@ final class _Bench() implements AgentSurface {
   );
 }
 
-/// A button and a field.
-final class const _Controls() implements AgentCatalog {
+/// A button and a field. Not const, so every build makes another instance.
+final class _Controls() implements AgentCatalog {
   @override
   List<AgentComponent> get components => [
     AgentComponent<_Button>.of(
