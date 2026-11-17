@@ -69,19 +69,43 @@ void main() {
   }
 
   test('a call runs at once and its result goes in the next run', () async {
-    final agent = ScriptedAgent([
-      (_) => const [
-        AgentStep.callTool('find_customer', {'q': 'Acme'}),
-        AgentStep.callTool('add', {'item': 'milk'}),
-      ],
-      (_) => const [AgentStep.say('Done.')],
-    ]);
-    final session = open(agent)..send('add milk');
+    final connection = _RawFirstRun(
+      Stream.fromIterable([
+        // A tool of the backend, which the run does not offer.
+        {
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'call-1',
+          'toolCallName': 'find_customer',
+        },
+        {
+          'type': 'TOOL_CALL_ARGS',
+          'toolCallId': 'call-1',
+          'delta': '{"q":"Acme"}',
+        },
+        {'type': 'TOOL_CALL_END', 'toolCallId': 'call-1'},
+        {
+          'type': 'TOOL_CALL_START',
+          'toolCallId': 'call-2',
+          'toolCallName': 'add',
+        },
+        {
+          'type': 'TOOL_CALL_ARGS',
+          'toolCallId': 'call-2',
+          'delta': '{"item":"milk"}',
+        },
+        {'type': 'TOOL_CALL_END', 'toolCallId': 'call-2'},
+        {'type': 'RUN_FINISHED'},
+      ]),
+      ScriptedAgent([
+        (_) => const [AgentStep.say('Done.')],
+      ]),
+    );
+    final session = open(connection)..send('add milk');
     await pumpEventQueue();
 
     expect(shop.items, ['milk']);
-    expect(agent.requests, hasLength(2));
-    final messages = messagesOf(agent.requests[1]);
+    expect(connection.requests, hasLength(2));
+    final messages = messagesOf(connection.requests[1]);
     expect(messages.skip(messages.length - 2), [
       {
         'id': 'asst-call-2',
@@ -102,7 +126,7 @@ void main() {
       },
     ]);
     expect(
-      jsonEncode(agent.requests[1]),
+      jsonEncode(connection.requests[1]),
       isNot(anyOf(contains('call-1'), contains('find_customer'))),
     );
     final [AgentCall(:tool, :arguments, :result)] = agentCalls();

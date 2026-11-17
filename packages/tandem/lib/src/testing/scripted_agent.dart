@@ -6,6 +6,7 @@ import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/session/view_tool.dart';
+import 'package:tandem/src/testing/agent_request.dart';
 
 /// What the agent does in one run of a [ScriptedAgent], given the body of
 /// the run.
@@ -17,7 +18,8 @@ sealed class const AgentStep() {
   const factory say(String text) = _Say;
 
   /// Calls the app's method [name], in snake_case, with [arguments]. The
-  /// session runs it when the run ends.
+  /// session runs it when the run ends. A run that does not offer [name]
+  /// ends with `RUN_ERROR` and [ScriptedErrorCode.notOffered].
   const factory callTool(String name, [Map<String, Object?> arguments]) =
       _CallTool;
 
@@ -66,6 +68,9 @@ extension type const ScriptedErrorCode._(String value) implements RunErrorCode {
 
   /// The script had no turn left for the run.
   static const scriptEnded = ScriptedErrorCode._('SCRIPT_ENDED');
+
+  /// An [AgentStep.callTool] step named a tool that the run does not offer.
+  static const notOffered = ScriptedErrorCode._('NOT_OFFERED');
 }
 
 /// An [AgentConnection] that plays a script in the event shapes of
@@ -115,6 +120,7 @@ final class ScriptedAgent._(
       };
       return;
     }
+    final request = AgentRequest(input);
     for (final step in callback(input)) {
       switch (step) {
         case _Say(:final text):
@@ -133,6 +139,15 @@ final class ScriptedAgent._(
             AgUiFields.type: AgUiEventTypes.textMessageEnd,
             AgUiFields.messageId: messageId,
           };
+        case _CallTool(:final name) when !request.offersTool(name):
+          yield {
+            AgUiFields.type: AgUiEventTypes.runError,
+            AgUiFields.message:
+                'The script calls $name, which the run does '
+                'not offer.',
+            AgUiFields.code: ScriptedErrorCode.notOffered,
+          };
+          return;
         case _CallTool(:final name, :final arguments):
           final toolCallId = 'call-${++_toolCalls}';
           yield {

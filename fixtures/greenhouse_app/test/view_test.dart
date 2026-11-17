@@ -43,7 +43,12 @@ void main() {
         child: TandemScope.connected(
           surface: (context) => surface ?? browse,
           connection: ScriptedAgent([
-            record((_) => [_show(components), const .say('There it is.')]),
+            record(
+              (body) => [
+                if (AgentRequest(body).offersView) _show(components),
+                const .say('There it is.'),
+              ],
+            ),
             for (final turn in after) record(turn),
           ]),
           approvals: approvals,
