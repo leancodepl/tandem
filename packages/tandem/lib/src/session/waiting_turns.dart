@@ -21,7 +21,7 @@ final class WaitingTurns() {
   bool isAgentTurn(Turn turn) => identical(turn, _agent);
 
   /// The calls of a run of the in-app agent become its turn.
-  Turn startAgentTurn(Iterable<ToolCall> calls) => _agent = Turn([...calls]);
+  Turn startAgentTurn(List<ToolCall> calls) => _agent = Turn(calls);
 
   /// Returns the in-app agent's turn, whose answers go out now, and leaves
   /// it without calls.

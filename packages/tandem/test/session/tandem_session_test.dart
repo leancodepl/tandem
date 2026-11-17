@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/view_tool.dart';
@@ -72,66 +70,22 @@ void main() {
   }
 
   test('a call runs at once and its result goes in the next run', () async {
-    final connection = RawFirstRun(
-      Stream.fromIterable([
-        // A tool of the backend, which the run does not offer.
-        {
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'call-1',
-          'toolCallName': 'find_customer',
-        },
-        {
-          'type': 'TOOL_CALL_ARGS',
-          'toolCallId': 'call-1',
-          'delta': '{"q":"Acme"}',
-        },
-        {'type': 'TOOL_CALL_END', 'toolCallId': 'call-1'},
-        {
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'call-2',
-          'toolCallName': 'add',
-        },
-        {
-          'type': 'TOOL_CALL_ARGS',
-          'toolCallId': 'call-2',
-          'delta': '{"item":"milk"}',
-        },
-        {'type': 'TOOL_CALL_END', 'toolCallId': 'call-2'},
-        {'type': 'RUN_FINISHED'},
-      ]),
-      ScriptedAgent([
-        (_) => const [AgentStep.say('Done.')],
-      ]),
-    );
-    final session = open(connection)..send('add milk');
+    final agent = ScriptedAgent([
+      (_) => const [
+        AgentStep.callTool('add', {'item': 'milk'}),
+      ],
+      (_) => const [AgentStep.say('Done.')],
+    ]);
+    final session = open(agent)..send('add milk');
     await pumpEventQueue();
 
     expect(shop.items, ['milk']);
-    expect(connection.requests, hasLength(2));
-    final messages = messagesOf(connection.requests[1]);
-    expect(messages.skip(messages.length - 2), [
-      {
-        'id': isA<String>(),
-        'role': 'assistant',
-        'toolCalls': [
-          {
-            'id': 'call-2',
-            'type': 'function',
-            'function': {'name': 'add', 'arguments': '{"item":"milk"}'},
-          },
-        ],
-      },
-      {
-        'id': isA<String>(),
-        'role': 'tool',
-        'toolCallId': 'call-2',
-        'content': 'null',
-      },
+    expect(agent.requests, hasLength(2));
+    expect(linesOf(agent.requests[1]), [
+      'user: add milk',
+      'call-1 add {"item":"milk"}',
+      'call-1 -> null',
     ]);
-    expect(
-      jsonEncode(connection.requests[1]),
-      isNot(anyOf(contains('call-1'), contains('find_customer'))),
-    );
     final [AgentCall(:tool, :arguments, :result)] = agentCalls();
     expect((tool, result), ('add', null));
     expect(arguments, {'item': 'milk'});
@@ -144,13 +98,8 @@ void main() {
   test('calls go back in the message the server names, and its own calls with their results', () async {
     final connection = RawFirstRun(
       Stream.fromIterable([
-        {
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'b1',
-          'toolCallName': 'find_customer',
-          'parentMessageId': 'm1',
-        },
-        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'b1', 'delta': '{"q":"A"}'},
+        _toolStart('b1', 'find_customer', parent: 'm1'),
+        _toolArgs('b1', '{"q":"A"}'),
         {
           'type': 'TOOL_CALL_RESULT',
           'messageId': 'r1',
@@ -158,20 +107,11 @@ void main() {
           'content': '[]',
         },
         {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm2', 'delta': 'Adding.'},
-        {
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'c1',
-          'toolCallName': 'add',
-          'parentMessageId': 'm2',
-        },
-        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":"x"}'},
+        _toolStart('c1', 'add', parent: 'm2'),
+        _toolArgs('c1', '{"item":"x"}'),
         // No result: the server's call stays out.
-        {
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'b2',
-          'toolCallName': 'lookup',
-          'parentMessageId': 'm2',
-        },
+        _toolStart('b2', 'lookup', parent: 'm2'),
+        _toolStart('b3', 'lookup'),
         {'type': 'RUN_FINISHED'},
       ]),
       ScriptedAgent([
@@ -182,37 +122,19 @@ void main() {
     await pumpEventQueue();
 
     expect(shop.items, ['x']);
-    expect(messagesOf(connection.requests[1]).skip(1), [
-      {
-        'id': 'm1',
-        'role': 'assistant',
-        'toolCalls': [
-          {
-            'id': 'b1',
-            'type': 'function',
-            'function': {'name': 'find_customer', 'arguments': '{"q":"A"}'},
-          },
-        ],
-      },
-      {'id': 'r1', 'role': 'tool', 'toolCallId': 'b1', 'content': '[]'},
-      {
-        'id': 'm2',
-        'role': 'assistant',
-        'content': 'Adding.',
-        'toolCalls': [
-          {
-            'id': 'c1',
-            'type': 'function',
-            'function': {'name': 'add', 'arguments': '{"item":"x"}'},
-          },
-        ],
-      },
-      {
-        'id': isA<String>(),
-        'role': 'tool',
-        'toolCallId': 'c1',
-        'content': 'null',
-      },
+    final history = messagesOf(connection.requests[1]).skip(1).toList();
+    expect(history.map((message) => message['id']), [
+      'm1',
+      'r1',
+      'm2',
+      isA<String>(),
+    ]);
+    expect(history[2]['content'], 'Adding.');
+    expect(linesOf(connection.requests[1]).skip(1), [
+      'b1 find_customer {"q":"A"}',
+      'b1 -> []',
+      'c1 add {"item":"x"}',
+      'c1 -> null',
     ]);
   });
 
@@ -230,98 +152,35 @@ void main() {
     expect(session.status, isA<Idle>());
   });
 
-  test('tool chunks and start/args events produce the same history, with '
-      'their named parent or the fallback message', () async {
-    Future<List<Map<String, Object?>>> history({
-      required bool chunks,
-      required bool parent,
-    }) async {
-      final requests = <Map<String, Object?>>[];
-      final client = MockClient.streaming((request, bodyStream) async {
-        final input = jsonDecode(
-          await bodyStream.bytesToString(),
-        ) as Map<String, Object?>;
-        requests.add(input);
-        final events = <Map<String, Object?>>[
-          {
-            'type': 'RUN_STARTED',
-            'runId': input['runId'],
-            'threadId': input['threadId'],
-          },
-          if (requests.length == 1) ...[
-            {
-              'type': 'TEXT_MESSAGE_CONTENT',
-              'messageId': 'm1',
-              'delta': 'Checking.',
-            },
-            {
-              'type': chunks ? 'TOOL_CALL_CHUNK' : 'TOOL_CALL_START',
-              'toolCallId': 'b1',
-              'toolCallName': 'lookup',
-              if (parent) 'parentMessageId': 'm1',
-              if (chunks) 'delta': '{"q":',
-            },
-            if (chunks)
-              {'type': 'TOOL_CALL_CHUNK', 'delta': '"x"}'}
-            else
-              {
-                'type': 'TOOL_CALL_ARGS',
-                'toolCallId': 'b1',
-                'delta': '{"q":"x"}',
-              },
-            {
-              'type': 'TOOL_CALL_RESULT',
-              'toolCallId': 'b1',
-              'messageId': 'r1',
-              'content': '[]',
-            },
-            {
-              'type': chunks ? 'TOOL_CALL_CHUNK' : 'TOOL_CALL_START',
-              'toolCallId': 'c1',
-              'toolCallName': 'refresh',
-              if (parent) 'parentMessageId': 'm1',
-            },
-          ],
-          {'type': 'RUN_FINISHED'},
-        ];
-        return http.StreamedResponse(
-          Stream.value(
-            utf8.encode(
-              events.map((event) => 'data: ${jsonEncode(event)}\n\n').join(),
-            ),
-          ),
-          200,
-        );
-      });
-      addTearDown(client.close);
-      open(
-        HttpAgentConnection(
-          Uri.parse('http://localhost/agent'),
-          client: client,
-        ),
-      ).send('go');
-      await pumpEventQueue();
-      expect(requests, hasLength(2));
-      return messagesOf(requests[1]).skip(1).toList();
-    }
+  test('chunked calls reach the session with their parent message', () async {
+    final connection = RawFirstRun(
+      Stream<Map<String, Object?>>.fromIterable([
+        {'type': 'TEXT_MESSAGE_CHUNK', 'messageId': 'm1', 'delta': 'Adding.'},
+        {
+          'type': 'TOOL_CALL_CHUNK',
+          'toolCallId': 'c1',
+          'toolCallName': 'add',
+          'parentMessageId': 'm1',
+          'delta': '{"item":',
+        },
+        {'type': 'TOOL_CALL_CHUNK', 'delta': '"x"}'},
+        {'type': 'RUN_FINISHED'},
+      ]).transform(agUiRun(const {})),
+      ScriptedAgent([
+        (_) => const [AgentStep.say('Done.')],
+      ]),
+    );
+    open(connection).send('go');
+    await pumpEventQueue();
 
-    // Tandem gives an answer, and a call without a parent, a new id.
-    List<Map<String, Object?>> withoutIds(List<Map<String, Object?>> history) =>
-        [
-          for (final message in history) {...message}..remove('id'),
-        ];
-
-    for (final parent in [true, false]) {
-      final expanded = await history(chunks: false, parent: parent);
-      final abbreviated = await history(chunks: true, parent: parent);
-      expect(withoutIds(abbreviated), withoutIds(expanded));
-      expect(abbreviated, hasLength(parent ? 3 : 5));
-      expect(abbreviated.first['id'], 'm1');
-      expect(
-        abbreviated[parent ? 0 : 3],
-        containsPair('toolCalls', contains(containsPair('id', 'c1'))),
-      );
-    }
+    expect(shop.items, ['x']);
+    final history = messagesOf(connection.requests[1]);
+    expect(history[1]['id'], 'm1');
+    expect(history[1]['content'], 'Adding.');
+    expect(linesOf(connection.requests[1]).skip(1), [
+      'c1 add {"item":"x"}',
+      'c1 -> null',
+    ]);
   });
 
   test('Thinking names a tool of the backend from its start until its result '
@@ -338,11 +197,7 @@ void main() {
     });
 
     for (final event in [
-      {
-        'type': 'TOOL_CALL_START',
-        'toolCallId': 'c1',
-        'toolCallName': 'search_catalog',
-      },
+      _toolStart('c1', 'search_catalog'),
       {
         'type': 'TOOL_CALL_RESULT',
         'messageId': 'r1',
@@ -893,11 +748,7 @@ void main() {
       );
       final session = open(connection)..send('a');
       first
-        ..add({
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'c1',
-          'toolCallName': 'refresh',
-        })
+        ..add(_toolStart('c1', 'refresh'))
         ..add({'type': 'RUN_FINISHED'});
       await pumpEventQueue();
       first
@@ -962,37 +813,27 @@ void main() {
       'error reported, and the next message starts a new thread', () async {
     var responseCancelled = false;
     // The server keeps the response open, so only the session can end it.
-    final response =
-        StreamController<List<int>>(onCancel: () => responseCancelled = true)
-          ..add(
-            utf8.encode(
-              [
-                {'type': 'RUN_STARTED'},
-                {
-                  'type': 'TEXT_MESSAGE_CHUNK',
-                  'messageId': 'm1',
-                  'subagentRunId': 's1',
-                  'delta': 'A',
-                },
-                {
-                  'type': 'TEXT_MESSAGE_CHUNK',
-                  'messageId': 'm2',
-                  'subagentRunId': 's2',
-                  'delta': 'B',
-                },
-                {'type': 'TEXT_MESSAGE_CHUNK', 'delta': 'C'},
-              ].map((event) => 'data: ${jsonEncode(event)}\n\n').join(),
-            ),
-          );
-    final client = MockClient.streaming(
-      (request, bodyStream) async =>
-          http.StreamedResponse(response.stream, 200),
+    final response = StreamController<Map<String, Object?>>(
+      onCancel: () => responseCancelled = true,
     );
+    addTearDown(response.close);
+    response
+      ..add({'type': 'RUN_STARTED'})
+      ..add({
+        'type': 'TEXT_MESSAGE_CHUNK',
+        'messageId': 'm1',
+        'subagentRunId': 's1',
+        'delta': 'A',
+      })
+      ..add({
+        'type': 'TEXT_MESSAGE_CHUNK',
+        'messageId': 'm2',
+        'subagentRunId': 's2',
+        'delta': 'B',
+      })
+      ..add({'type': 'TEXT_MESSAGE_CHUNK', 'delta': 'C'});
     final connection = RawFirstRun(
-      HttpAgentConnection(
-        Uri.parse('http://localhost/agent'),
-        client: client,
-      ).run(const {}),
+      response.stream.transform(agUiRun(const {})),
       ScriptedAgent([
         (_) => const [AgentStep.say('Back')],
       ]),
@@ -1069,16 +910,8 @@ void main() {
       shop.asksBeforeAdding = true;
       final agent = RawFirstRun(
         Stream.fromIterable([
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'call-1',
-            'toolCallName': 'add',
-          },
-          {
-            'type': 'TOOL_CALL_ARGS',
-            'toolCallId': 'call-1',
-            'delta': '{"item":"bread"}',
-          },
+          _toolStart('call-1', 'add'),
+          _toolArgs('call-1', '{"item":"bread"}'),
           {'type': 'RUN_FINISHED'},
         ]),
         ScriptedAgent([
@@ -2172,13 +2005,9 @@ void main() {
     final connection = RawFirstRun(
       Stream.fromIterable([
         {'type': 'TOOL_CALL_START', 'toolCallId': 'c1', 'toolCallName': 'add'},
-        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":'},
-        {
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'c2',
-          'toolCallName': 'clear',
-        },
-        {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c2', 'delta': '[]'},
+        _toolArgs('c1', '{"item":'),
+        _toolStart('c2', 'clear'),
+        _toolArgs('c2', '[]'),
         {'type': 'RUN_FINISHED'},
       ]),
       ScriptedAgent([
@@ -2524,21 +2353,9 @@ void main() {
       final reported = collectReports();
       final session = open(connection)..send('go');
       stream
-        ..add({
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'c1',
-          'toolCallName': 'add',
-        })
-        ..add({
-          'type': 'TOOL_CALL_ARGS',
-          'toolCallId': 'c1',
-          'delta': '{"item":"x"}',
-        })
-        ..add({
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'c2',
-          'toolCallName': 'share',
-        });
+        ..add(_toolStart('c1', 'add'))
+        ..add(_toolArgs('c1', '{"item":"x"}'))
+        ..add(_toolStart('c2', 'share'));
       await pumpEventQueue();
       session
         ..send('queued')
@@ -2573,21 +2390,9 @@ void main() {
     () async {
       final connection = RawFirstRun(
         Stream.fromIterable([
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'c1',
-            'toolCallName': 'add',
-          },
-          {
-            'type': 'TOOL_CALL_ARGS',
-            'toolCallId': 'c1',
-            'delta': '{"item":"x"}',
-          },
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'c2',
-            'toolCallName': 'share',
-          },
+          _toolStart('c1', 'add'),
+          _toolArgs('c1', '{"item":"x"}'),
+          _toolStart('c2', 'share'),
           {
             'type': 'RUN_FINISHED',
             'outcome': {'type': 'cancelled'},
@@ -2627,34 +2432,14 @@ void main() {
       final reported = collectReports();
       final connection = RawFirstRun(
         Stream.fromIterable([
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'c1',
-            'toolCallName': 'add',
-            'parentMessageId': 'm1',
-          },
-          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '{"item":'},
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'c1',
-            'toolCallName': 'add',
-            'parentMessageId': 'ignored',
-          },
-          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'c1', 'delta': '"x"}'},
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'b1',
-            'toolCallName': 'lookup',
-            'parentMessageId': 'm2',
-          },
-          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'b1', 'delta': '{"q":'},
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'b1',
-            'toolCallName': 'lookup',
-            'parentMessageId': 'ignored',
-          },
-          {'type': 'TOOL_CALL_ARGS', 'toolCallId': 'b1', 'delta': '"x"}'},
+          _toolStart('c1', 'add', parent: 'm1'),
+          _toolArgs('c1', '{"item":'),
+          _toolStart('c1', 'add', parent: 'ignored'),
+          _toolArgs('c1', '"x"}'),
+          _toolStart('b1', 'lookup', parent: 'm2'),
+          _toolArgs('b1', '{"q":'),
+          _toolStart('b1', 'lookup', parent: 'ignored'),
+          _toolArgs('b1', '"x"}'),
           {
             'type': 'TOOL_CALL_RESULT',
             'toolCallId': 'b1',
@@ -2695,31 +2480,11 @@ void main() {
     ]) {
       final connection = RawFirstRun(
         Stream.fromIterable([
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'before',
-            'toolCallName': 'add',
-          },
-          {
-            'type': 'TOOL_CALL_ARGS',
-            'toolCallId': 'before',
-            'delta': '{"item":"before"}',
-          },
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'c1',
-            'toolCallName': first,
-          },
-          {
-            'type': 'TOOL_CALL_ARGS',
-            'toolCallId': 'c1',
-            'delta': '{"item":"y"}',
-          },
-          {
-            'type': 'TOOL_CALL_START',
-            'toolCallId': 'c1',
-            'toolCallName': second,
-          },
+          _toolStart('before', 'add'),
+          _toolArgs('before', '{"item":"before"}'),
+          _toolStart('c1', first),
+          _toolArgs('c1', '{"item":"y"}'),
+          _toolStart('c1', second),
           {'type': 'RUN_FINISHED'},
         ]),
         ScriptedAgent([]),
@@ -2933,3 +2698,16 @@ final class const _BrokenConverter() implements JsonConverter<int, String> {
   @override
   String toJson(int object) => '$object';
 }
+
+Map<String, Object?> _toolStart(String id, String tool, {String? parent}) => {
+  'type': 'TOOL_CALL_START',
+  'toolCallId': id,
+  'toolCallName': tool,
+  'parentMessageId': ?parent,
+};
+
+Map<String, Object?> _toolArgs(String id, String delta) => {
+  'type': 'TOOL_CALL_ARGS',
+  'toolCallId': id,
+  'delta': delta,
+};

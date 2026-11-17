@@ -17,19 +17,19 @@ void main() {
   }
 
   Widget scope(
-    Shop shop, {
+    AgentSurface surface, {
     TandemApprovals approvals = const .fromState(),
     void Function(BuildContext, TandemEvent, TandemSession)? onEvent,
   }) => TandemScope(
-    surface: (context) => shop,
+    surface: (context) => surface,
     approvals: approvals,
     onEvent: onEvent,
     child: const SizedBox(),
   );
 
-  Widget connected(Shop shop, AgentConnection connection) =>
+  Widget connected(AgentSurface surface, AgentConnection connection) =>
       TandemScope.connected(
-        surface: (context) => shop,
+        surface: (context) => surface,
         connection: connection,
         approvals: const .fromState(),
         child: const SizedBox(),
@@ -40,6 +40,11 @@ void main() {
 
   ApprovalRequest lastRequest(WidgetTester tester) =>
       sessionOf(tester).items.whereType<ApprovalRequest>().last;
+
+  String currentContext() => switch (TandemBridge.describe()) {
+    {'screens': [{'context': final String context}]} => context,
+    final other => throw StateError('No context in $other.'),
+  };
 
   testWidgets('describe lists the open screens with what the agent sees, '
       'its tools and which need approval', (tester) async {
@@ -541,17 +546,8 @@ void main() {
   testWidgets('a path reads what describe showed: a jar moved since is '
       'refused, and a call without its context too', (tester) async {
     final pantry = _Pantry();
-    await tester.pumpWidget(
-      TandemScope(
-        surface: (context) => pantry,
-        approvals: const .fromState(),
-        child: const SizedBox(),
-      ),
-    );
-    final context = switch (TandemBridge.describe()) {
-      {'screens': [{'context': final String context}]} => context,
-      final other => throw StateError('No context in $other.'),
-    };
+    await tester.pumpWidget(scope(pantry));
+    final context = currentContext();
     const second = {
       'jar': {'path': '/jars/1'},
     };
@@ -588,17 +584,8 @@ void main() {
     tester,
   ) async {
     final pantry = _Pantry();
-    await tester.pumpWidget(
-      TandemScope(
-        surface: (context) => pantry,
-        approvals: const .fromState(),
-        child: const SizedBox(),
-      ),
-    );
-    final context = switch (TandemBridge.describe()) {
-      {'screens': [{'context': final String context}]} => context,
-      final other => throw StateError('No context in $other.'),
-    };
+    await tester.pumpWidget(scope(pantry));
+    final context = currentContext();
 
     final answers = [
       for (var call = 0; call < 40; call++)
@@ -617,13 +604,7 @@ void main() {
   testWidgets('an object the agent writes needs no context, also one with a '
       'field named path', (tester) async {
     final pantry = _Pantry();
-    await tester.pumpWidget(
-      TandemScope(
-        surface: (context) => pantry,
-        approvals: const .fromState(),
-        child: const SizedBox(),
-      ),
-    );
+    await tester.pumpWidget(scope(pantry));
 
     final answer = await TandemBridge.call(
       'stick',
@@ -641,19 +622,10 @@ void main() {
   ) async {
     final before = _Pantry();
     final after = _Pantry();
-    Widget pantry(_Pantry pantry) => TandemScope.connected(
-      surface: (context) => pantry,
-      connection: ScriptedAgent(const []),
-      approvals: const .fromState(),
-      child: const SizedBox(),
-    );
-    await tester.pumpWidget(pantry(before));
-    final context = switch (TandemBridge.describe()) {
-      {'screens': [{'context': final String context}]} => context,
-      final other => throw StateError('No context in $other.'),
-    };
+    await tester.pumpWidget(connected(before, ScriptedAgent(const [])));
+    final context = currentContext();
 
-    await tester.pumpWidget(pantry(after));
+    await tester.pumpWidget(connected(after, ScriptedAgent(const [])));
     final answer = await TandemBridge.call(
       'open',
       arguments: {

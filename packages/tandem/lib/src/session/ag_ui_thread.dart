@@ -1,5 +1,4 @@
 import 'package:tandem/src/protocol/ag_ui.dart';
-import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/session/agent_state.dart';
 import 'package:tandem/src/session/run.dart';
@@ -57,39 +56,10 @@ final class AgUiThread(var ThreadId _id) {
   /// then the results of its calls that ran on the backend. A backend call
   /// without a result stays out.
   void addRun(Run run) {
-    for (final message in run.sent) {
-      final calls = [
-        for (final call in message.calls)
-          if (call.inApp || call.result != null) call,
-      ];
-      if (message.text == null && calls.isEmpty) {
-        continue;
-      }
-      final messages = <AgUiMessage>[
-        .assistant(
-          message.id,
-          text: message.text,
-          toolCalls: [
-            for (final call in calls)
-              AgUiToolCall(
-                id: call.id,
-                name: call.tool,
-                arguments: call.arguments,
-              ),
-          ],
-        ),
-        for (final call in calls)
-          if (call.result case ToolCallResult(:final messageId, :final content))
-            .toolResult(
-              id: .wire(messageId),
-              toolCallId: call.id,
-              content: content,
-            ),
-      ];
-      _messages.addAll(messages);
-      if (_hasAppId && calls.any((call) => call.inApp)) {
-        _unsentCallMessages.addAll(messages);
-      }
+    final history = run.history;
+    _messages.addAll(history.all);
+    if (_hasAppId) {
+      _unsentCallMessages.addAll(history.withAppCalls);
     }
   }
 
