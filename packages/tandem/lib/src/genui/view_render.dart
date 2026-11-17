@@ -183,16 +183,19 @@ final class ViewRender(
   bool _field(_Args args, FieldProperty<Object?> property, _Action? action) {
     final state = _stateOf(action, field: true);
     if (action == null || state == .leftOut) return !property.required;
-    args.callbacks[property.name] = switch (state) {
-      .available => property.callback(
-        (entry) => _actions.call(
-          action.method,
-          action.arguments,
-          _listing,
-          entry: FieldEntry(property.type, entry),
-        ),
+    final enter = property.callback(
+      (entry) => _actions.call(
+        action.method,
+        action.arguments,
+        _listing,
+        entry: FieldEntry(property.type, entry),
       ),
-      _ when property.required => property.callback((_) {}),
+    );
+    args.callbacks[property.name] = switch (state) {
+      .available => enter,
+      // A required field cannot be null: while it waits, the view keeps its
+      // latest entry for later.
+      _ when property.required => enter,
       _ => null,
     };
     return true;

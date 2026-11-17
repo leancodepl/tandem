@@ -125,6 +125,24 @@ void main() {
     expect(bench.set, isEmpty);
   });
 
+  testWidgets('the latest entry of a field made while its method runs goes '
+      'once the method returned', (tester) async {
+    await draw(tester, view: _enterPots);
+    final hold = bench.hold = Completer<void>();
+    void enter(int pots) =>
+        tester.widget<_Field>(find.byType(_Field)).onChanged(pots);
+
+    enter(3);
+    await tester.pump();
+    enter(5);
+    enter(7);
+    bench.hold = null;
+    hold.complete();
+    await tester.pumpAndSettle();
+
+    expect(bench.set, [3, 7]);
+  });
+
   testWidgets('a view whose screen list throws shows that it is not available, '
       'without a cause', (tester) async {
     await draw(tester);
@@ -219,6 +237,9 @@ final class _Bench() implements AgentSurface {
   /// Whether [setPots] needs approval.
   bool guarded = false;
 
+  /// What [setPots] waits for before it returns, if anything.
+  Completer<void>? hold;
+
   @override
   Stream<Object?> get changes => _changes.stream;
 
@@ -236,9 +257,10 @@ final class _Bench() implements AgentSurface {
   }
 
   /// Sets the number of pots.
-  void setPots(int pots) {
+  Future<void> setPots(int pots) async {
     set.add(pots);
     this.pots = pots;
+    await hold?.future;
   }
 
   @override
@@ -250,8 +272,8 @@ final class _Bench() implements AgentSurface {
         name: 'set_pots',
         description: 'Sets the number of pots.',
         parameters: const [AgentParameter<int>('pots', .integer)],
-        invoke: (args) {
-          setPots(args.read('pots'));
+        invoke: (args) async {
+          await setPots(args.read('pots'));
           return null;
         },
       ),
