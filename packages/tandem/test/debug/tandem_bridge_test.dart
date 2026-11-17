@@ -93,15 +93,23 @@ void main() {
     expect(shop.items, ['milk']);
   });
 
-  testWidgets('with two screens on one route, a call names its screen', (
-    tester,
-  ) async {
+  testWidgets('with two screens on one route, a call names its screen or '
+      'passes its context', (tester) async {
     final shop = newShop();
     final other = newShop();
     await tester.pumpWidget(Column(children: [scope(shop), scope(other)]));
+    final otherContext = switch (TandemBridge.describe()) {
+      {'screens': [_, {'context': final String context}]} => context,
+      final other => throw StateError('No context in $other.'),
+    };
 
     final refused = await TandemBridge.call('add', arguments: {'item': 'x'});
     await TandemBridge.call('add', arguments: {'item': 'y'}, screen: 'Shop#2');
+    await TandemBridge.call(
+      'add',
+      arguments: {'item': 'z'},
+      context: otherContext,
+    );
 
     expect(refused, containsPair('status', 'refused'));
     expect(
@@ -112,7 +120,7 @@ void main() {
       ),
     );
     expect(shop.items, isEmpty);
-    expect(other.items, ['y']);
+    expect(other.items, ['y', 'z']);
   });
 
   testWidgets('a call returns the result and the screens after it, and '

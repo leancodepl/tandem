@@ -6,9 +6,7 @@ import 'package:tandem/src/session/tandem_session.dart';
 /// A `TandemScope` of a debug build, which a coding agent reaches through
 /// `TandemBridge`.
 final class OpenScreen._(
-  /// The class name of the scope's surface, numbered when another open
-  /// screen has it: `Shop`, `Shop#2`.
-  final String id,
+  final ScreenId id,
   final BuildContext _context,
   final TandemSession Function() _session,
 ) {
@@ -41,9 +39,9 @@ final class OpenScreens._() {
     TandemSession Function() session,
   ) {
     final name = '${session().surface.runtimeType}';
-    var id = name;
+    var id = ScreenId(name);
     for (var number = 2; _screens.any((screen) => screen.id == id); number++) {
-      id = '$name#$number';
+      id = ScreenId('$name#$number');
     }
     final screen = OpenScreen._(id, context, session);
     _screens.add(screen);
@@ -52,14 +50,12 @@ final class OpenScreens._() {
 
   static void close(OpenScreen screen) => _screens.remove(screen);
 
-  /// The open screen with [id] or, without one, the front screen.
-  static OpenScreen? find(String? id) => switch (id) {
-    final id? => _find(id),
-    null => front,
-  };
+  static OpenScreen? find(ScreenId id) =>
+      all.where((screen) => screen.id == id).singleOrNull;
 
-  /// Why [find] finds no screen for [id], for the coding agent.
-  static String whyNotFound(String? id) {
+  /// Why there is no open screen with [id] or, without one, no front screen,
+  /// for the coding agent.
+  static String whyNotFound(ScreenId? id) {
     final screens = all;
     if (screens.isEmpty) {
       return 'No screen with a TandemScope is open.';
@@ -76,7 +72,12 @@ final class OpenScreens._() {
             'Pass screen, one of: $ids.',
     };
   }
-
-  static OpenScreen? _find(String id) =>
-      all.where((screen) => screen.id == id).singleOrNull;
 }
+
+/// The id of an open screen: the class name of its surface, numbered when
+/// another open screen has it: `Shop`, `Shop#2`.
+extension type const ScreenId(String value);
+
+/// The id of what `TandemBridge.describe` showed of a screen, such as
+/// `context-7`, which a call passes back so that its paths read that.
+extension type const ContextId(String value);
