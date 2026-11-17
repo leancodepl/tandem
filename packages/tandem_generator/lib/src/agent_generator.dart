@@ -97,7 +97,7 @@ class _CapabilityReader(final ClassElement _type)
       resolve: true,
     );
 
-    if (source == null) {
+    if (source is! MethodDeclaration) {
       throw AgentGenerationError.missingSource(getter);
     }
 
@@ -107,20 +107,16 @@ class _CapabilityReader(final ClassElement _type)
     final views = <GetterElement>{};
 
     for (final item in _viewExpressions) {
-      final getter = _readView(item);
-      views.add(getter);
-      copy.nameView(item, agentName: agentName(getter.displayName));
+      final view = _readView(item);
+      views.add(view);
+      copy.nameView(item, agentName: agentName(view.displayName));
     }
 
     final methods = {for (final item in _methodExpressions) _readMethod(item)};
-    final body = switch (source) {
-      MethodDeclaration(:final body) => body,
-      _ => throw AgentGenerationError.missingSource(getter),
-    };
 
     return _AgentCapabilities(
       views: [...views],
-      copy: copy.generate(body),
+      copy: copy.generate(source.body),
       methods: [
         for (final method in methods)
           (
@@ -243,7 +239,7 @@ class _CapabilityReader(final ClassElement _type)
 
     if (!isCapability) return;
 
-    final kind = _CapabilityKind.fromName(constructor.name);
+    final kind = _CapabilityKind.values.asNameMap()[constructor.name];
 
     switch (kind) {
       case .sees:
@@ -267,17 +263,7 @@ final class const _AgentCapabilities({
 enum _CapabilityKind() {
   sees,
   calls,
-  callsWithApproval;
-
-  static _CapabilityKind? fromName(String? name) {
-    if (name == null) return null;
-
-    for (final kind in values) {
-      if (kind.name == name) return kind;
-    }
-
-    return null;
-  }
+  callsWithApproval,
 }
 
 extension on GetterElement {
