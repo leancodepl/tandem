@@ -57,7 +57,7 @@ final class const AgentConverters._(
       byType[converted] = converter;
     }
 
-    final source = await _listSource(type, buildStep);
+    final source = await _listSource(annotation, type, buildStep);
 
     return ._(byType, declaration: 'const List<Object> $listName = $source;');
   }
@@ -103,7 +103,10 @@ final class const AgentConverters._(
     );
   }
 
+  /// The source of `converters:` in [annotation], which other annotations of
+  /// [type], such as `@JsonSerializable`, may take too.
   static Future<String> _listSource(
+    ConstantReader annotation,
     ClassElement type,
     BuildStep buildStep,
   ) async {
@@ -115,9 +118,16 @@ final class const AgentConverters._(
       ClassDeclaration(:final metadata) => metadata,
       _ => const <Annotation>[],
     };
+    final annotationType = annotation.objectValue.type;
 
-    for (final annotation in metadata) {
-      for (final argument in annotation.arguments?.arguments ?? const []) {
+    for (final written in metadata) {
+      final writtenType = written.elementAnnotation
+          ?.computeConstantValue()
+          ?.type;
+
+      if (writtenType != annotationType) continue;
+
+      for (final argument in written.arguments?.arguments ?? const []) {
         if (argument case NamedArgument(:final name, :final argumentExpression)
             when name.lexeme == 'converters') {
           return argumentExpression.toSource();
