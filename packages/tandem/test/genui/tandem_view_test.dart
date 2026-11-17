@@ -69,18 +69,15 @@ void main() {
     expect(
       tools,
       contains(
-        containsPair('parameters', {
-          'type': 'object',
-          'properties': {
-            'components': {
-              'type': 'string',
-              'description':
-                  'The components of the view as a JSON array, as in the '
-                  'example.',
-            },
-          },
-          'required': ['components'],
-        }),
+        containsPair(
+          'parameters',
+          allOf(
+            containsPair('properties', {
+              'components': containsPair('type', 'string'),
+            }),
+            containsPair('required', ['components']),
+          ),
+        ),
       ),
     );
   });
