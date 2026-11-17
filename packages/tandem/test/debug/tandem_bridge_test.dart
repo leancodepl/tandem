@@ -584,6 +584,36 @@ void main() {
     expect(pantry.opened, isNull);
   });
 
+  testWidgets('a context holds while its screen shows the same', (
+    tester,
+  ) async {
+    final pantry = _Pantry();
+    await tester.pumpWidget(
+      TandemScope(
+        surface: (context) => pantry,
+        approvals: const .fromState(),
+        child: const SizedBox(),
+      ),
+    );
+    final context = switch (TandemBridge.describe()) {
+      {'screens': [{'context': final String context}]} => context,
+      final other => throw StateError('No context in $other.'),
+    };
+
+    final answers = [
+      for (var call = 0; call < 40; call++)
+        await TandemBridge.call(
+          'open',
+          arguments: {
+            'jar': {'path': '/jars/0'},
+          },
+          context: context,
+        ),
+    ];
+
+    expect(answers, everyElement(containsPair('status', 'returned')));
+  });
+
   testWidgets('an object the agent writes needs no context, also one with a '
       'field named path', (tester) async {
     final pantry = _Pantry();
