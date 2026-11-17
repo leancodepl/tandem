@@ -17,7 +17,7 @@ Ola travels to her clients, and Waypoint keeps her trips, reads the e-mails she 
 
 The demo's today is Saturday, 24 October 2026. Ola's receipts from Paris in September wait for their report, on Wednesday she flies to Berlin for a workshop that Studio Kraft has just moved to Friday, in November she pitches in Copenhagen, and Alpenlicht has just invited her to Vienna in December.
 
-Travel dates use the Central European clock (`Europe/Warsaw`, CET/CEST), shared by these destinations. Inputs with UTC offsets are converted to that clock; inputs without offsets already use it. See the civil-time limits in [GLOSSARY.md](GLOSSARY.md).
+Travel dates use the Central European clock (`Europe/Warsaw`, CET/CEST), shared by these destinations, as local times of the device. See [GLOSSARY.md](GLOSSARY.md).
 
 ## Run
 

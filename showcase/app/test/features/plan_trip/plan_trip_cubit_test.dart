@@ -90,15 +90,15 @@ void main() {
     );
   });
 
-  test('meeting edits use travel time and keep their identity', () {
+  test('meeting edits keep their identity', () {
     final original = plan.state.meetings.single;
 
     plan.updateMeeting(
       original.id.value,
       original.title,
       original.place,
-      DateTime.parse('2026-12-09T12:30:00+01:00'),
-      DateTime.parse('2026-12-09T17:00:00+01:00'),
+      DateTime(2026, 12, 9, 12, 30),
+      DateTime(2026, 12, 9, 17),
     );
 
     expect(plan.state.meetings.single.id, original.id);

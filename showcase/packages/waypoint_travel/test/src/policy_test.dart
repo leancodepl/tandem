@@ -87,30 +87,6 @@ void main() {
     }
   });
 
-  test('offset meeting times use the same clock as the flight timetable', () {
-    final workshop = meeting(
-      'Workshop',
-      travelDateTime(DateTime.parse('2026-12-09T12:30:00+01:00')),
-      travelDateTime(DateTime.parse('2026-12-09T17:00:00Z')),
-    );
-    final earlyHome = flight('WA 518', DateTime(2026, 12, 9));
-
-    expect(
-      Policy.checkOutbound(flight('WA 511', DateTime(2026, 12, 9)), [workshop]),
-      isNull,
-    );
-    expect(
-      Policy.checkHomebound(earlyHome, [workshop]),
-      LeavesTooEarly(earlyHome, workshop),
-    );
-    expect(
-      Policy.checkHomebound(flight('WA 520', DateTime(2026, 12, 9)), [
-        workshop,
-      ]),
-      isNull,
-    );
-  });
-
   test('a flight home leaves an hour after the meeting that ends last', () {
     final steering = meeting(
       'Steering group',

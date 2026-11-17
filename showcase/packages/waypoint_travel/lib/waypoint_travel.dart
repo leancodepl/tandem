@@ -8,7 +8,6 @@ export 'src/hotel_search.dart';
 export 'src/inbox.dart';
 export 'src/policy.dart';
 export 'src/policy_breach.dart';
-export 'src/travel_date_time.dart';
 export 'src/traveller.dart';
 export 'src/trip.dart';
 export 'src/value_objects.dart';
