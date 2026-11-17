@@ -16,7 +16,7 @@ typedef ApprovalCallback = Future<void> Function(
 sealed class const TandemApprovals() {
   /// Tandem calls [callback] for each request when it shows, one at a time,
   /// for example to open a dialog. A request it leaves undecided stays
-  /// pending until the user's next message cancels it.
+  /// pending until it is cancelled, such as by the user's next message.
   const factory callback(ApprovalCallback callback) = ApprovalsByCallback;
 
   /// The UI draws requests itself, from `session.items` or from the status

@@ -7,8 +7,9 @@ final class MessageQueue() {
   /// Oldest first.
   final _messages = <UserMessage>[];
 
-  /// How many of the oldest messages never reached the agent although a run
-  /// took them. They go with the next run but start none.
+  /// How many of the oldest messages wait for the next run without starting
+  /// one: those of a run that never went out, or those queued during a run
+  /// Tandem could not follow.
   var _carried = 0;
 
   /// Whether the app's messages wait for the user's next one, because the
@@ -21,7 +22,8 @@ final class MessageQueue() {
   bool get userWrote => _waiting.any((message) => !message.fromApp);
 
   /// Whether a message of the app waits to start a run.
-  bool get appMessageWaits => _waiting.isNotEmpty && !_appMessagesHeld;
+  bool get appMessageWaits =>
+      _waiting.any((message) => message.fromApp) && !_appMessagesHeld;
 
   /// The app's messages wait for the user's next one.
   void holdAppMessages() {
@@ -31,7 +33,7 @@ final class MessageQueue() {
   }
 
   /// Every message waits for the next run without starting one, as after a
-  /// run that took them but never reached the agent.
+  /// run that never went out or one Tandem could not follow.
   void carry() {
     _carried = _messages.length;
     _appMessagesHeld = false;

@@ -19,7 +19,7 @@ import 'package:tandem/src/session/tandem_thread.dart';
 ///
 /// ```dart
 /// BlocProvider(
-///   create: (_) => OrderCubit(catalog: catalog, orders: orders),
+///   create: (context) => OrderCubit(orders: context.read<Orders>()),
 ///   child: TandemScope(
 ///     surface: (context) => context.read<OrderCubit>(),
 ///     agent: Uri.parse('https://example.com/agent'),
@@ -69,15 +69,13 @@ final class TandemScope extends StatefulWidget {
 
   /// Reads the object the agent works on, a class with `@TandemAgent()`,
   /// from the context of this scope. The scope calls it when it opens a
-  /// session: once, and again for another `agent` or connection. Another
-  /// object from the provider later opens no new session.
+  /// session: once, and again for another `agent`, connection or [thread].
+  /// Another object from the provider later opens no new session.
   final AgentSurface Function(BuildContext context) surface;
 
   final Uri? _agent;
   final AgentConnection? _connection;
 
-  /// How the screen asks the user to approve a call of a method listed
-  /// with `.callsWithApproval`.
   final TandemApprovals approvals;
 
   /// The screen and its chat, which read the session with
