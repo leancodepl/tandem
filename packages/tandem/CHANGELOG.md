@@ -1,3 +1,16 @@
+## 0.3.1
+
+- `TandemThread(id: ThreadId(conversationId))` sends the backend's own conversation ID with every run. A reset, such as `session.startOver()` or a lost connection, keeps it. `ThreadId('')` throws an `ArgumentError`.
+- With such an ID, the next run after `session.startOver()` or reopening on a changed screen first sends the calls whose answers have not gone out, with those answers. The `startedOver`, `connectionLost` and `runFailed` notices then no longer mean a new conversation, because the backend may keep it. A thread without an ID works as before: Tandem picks one and replaces it at a reset.
+- `request.key` is an `ApprovalKey` for the widget key of an approval card and for data kept per request. Copies from `withStatus()` keep it, and a later request gets a new one even when the backend repeats a `toolCallId`. Key cards by it instead of `toolCallId`.
+- `approve`, `reject` and `isPending` match a request by its `key`. For a card from an earlier run whose `toolCallId` the backend reused, or a request built with `ApprovalRequest()`, `approve` and `reject` throw `ApprovalNotPending` unless the request has that status already. Before, they decided the pending call with the same `toolCallId`, if one waited.
+- `agUiRun(input)` turns the decoded events of one request into the requested run, for an `AgentConnection` over another transport, such as a WebSocket. It skips replayed runs, expands text and tool-call chunks and closes at the run's end. It fails with a `FormatException` when the run is missing or mixed with another.
+- A connection that implements `StoppableAgentConnection` hears about `session.stop()`. The session calls its `stop` once with the run's input, unless the server ended the run already. A `RUN_ERROR` then ends the stopped run quietly, and the session reports its code and message. After a `stop` that threw, a `RUN_ERROR` fails the run.
+- When a response ends before the requested `RUN_STARTED`, a run of `HttpAgentConnection` fails with a `FormatException` that names the cause. The session reports it, and the chat shows a lost connection as before. A second `RUN_STARTED` or an event of another thread inside the run fails it the same way. Before, a repeated `RUN_STARTED` or an event of another thread reached the session, and a `RUN_STARTED` of another run dropped the events after it.
+- A `RUN_ERROR` with the requested `runId` that comes after replayed runs fails the run with its code. Before, the run ended as a lost connection.
+- CI runs the tests of `tandem` in Chrome, compiled to JavaScript and to WebAssembly, and builds the example for the web.
+- The README and the `tandem-in-app-agent` skill cover app-supplied thread IDs, `request.key`, other transports with `agUiRun` and `StoppableAgentConnection`, and that the backend must repeat `threadId` and `runId` in `RUN_STARTED`.
+
 ## 0.3.0
 
 - **Breaking:** Run `dart run build_runner build` again after upgrading both packages.
