@@ -8,7 +8,10 @@ AgentConnection scriptedExpensesAgent() => ScriptedAgent.repeating(_expenses);
 
 List<AgentStep> _expenses(Map<String, Object?> raw) {
   final request = AgentRequest(raw);
-  final submitRequested = _submissionRequested(raw);
+  final submitRequested = RegExp(
+    r'\bsubmit\b',
+    caseSensitive: false,
+  ).hasMatch(request.userText ?? '');
   final receipts = switch (request.context('report')) {
     {'receipts': final List<Object?> receipts} => receipts,
     _ => const <Object?>[],
@@ -100,17 +103,6 @@ List<AgentStep> _expenses(Map<String, Object?> raw) {
     }
   }
   return _reportReply(request, submitRequested: submitRequested);
-}
-
-bool _submissionRequested(Map<String, Object?> raw) {
-  if (raw['messages'] case final List<Object?> messages) {
-    for (final message in messages.reversed) {
-      if (message case {'role': 'user', 'content': final String text}) {
-        return RegExp(r'\bsubmit\b', caseSensitive: false).hasMatch(text);
-      }
-    }
-  }
-  return false;
 }
 
 List<AgentStep> _reportReply(

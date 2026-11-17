@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(session.failure, isNull);
-    expect(_lastUserText(agent.requests.last), 'Fill in the booking.');
+    expect(AgentRequest(agent.requests.last).userText, 'Fill in the booking.');
   });
 
   testWidgets('Retry repeats an explicit request after a lost connection', (
@@ -67,7 +67,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final request = agent.requests.last;
-    expect(_lastUserText(request), 'Fill in the booking.');
+    expect(AgentRequest(request).userText, 'Fill in the booking.');
   });
 }
 
@@ -95,11 +95,5 @@ Future<TandemSession> _open(WidgetTester tester, AgentConnection agent) async {
   );
   return session;
 }
-
-String? _lastUserText(Map<String, Object?> request) =>
-    switch (request['messages']) {
-      [..., {'role': 'user', 'content': final String text}] => text,
-      _ => null,
-    };
 
 final class const _Offline() implements Exception;

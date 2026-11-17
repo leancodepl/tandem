@@ -1,7 +1,6 @@
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 import 'package:waypoint_scripted_agent/src/flight_choice.dart';
-import 'package:waypoint_scripted_agent/src/last_user_text.dart';
 
 /// The trip's agent: when the workshop in Berlin moves to Friday, it fits
 /// the hotel and the flight home around it and asks to book the changes.
@@ -12,7 +11,7 @@ List<AgentStep> _trip(Map<String, Object?> raw) {
   if (request.isUserMessage) {
     // The app's notes come with a wake-up, the traveller's words without.
     final said = [
-      lastUserText(raw),
+      ?request.userText,
       for (final note in request.newNotes)
         if (note case {'note': final String text}) text,
     ].join('\n');

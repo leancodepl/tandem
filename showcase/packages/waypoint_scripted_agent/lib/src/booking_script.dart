@@ -1,7 +1,6 @@
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 import 'package:waypoint_scripted_agent/src/booking_email.dart';
-import 'package:waypoint_scripted_agent/src/last_user_text.dart';
 
 /// The booking form's agent: it fills the form in from a hotel's
 /// confirmation e-mail, in the form the demo's hotels write them.
@@ -10,7 +9,7 @@ AgentConnection scriptedBookingAgent() => ScriptedAgent.repeating(_booking);
 List<AgentStep> _booking(Map<String, Object?> raw) {
   final request = AgentRequest(raw);
   if (request.isUserMessage) {
-    final steps = _fill(lastUserText(raw));
+    final steps = _fill(request.userText ?? '');
     return steps.isEmpty
         ? const [AgentStep.say('This e-mail has no hotel booking.')]
         : steps;

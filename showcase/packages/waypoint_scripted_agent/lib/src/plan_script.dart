@@ -1,7 +1,6 @@
 import 'package:tandem/tandem.dart';
 import 'package:tandem/testing.dart';
 import 'package:waypoint_scripted_agent/src/flight_choice.dart';
-import 'package:waypoint_scripted_agent/src/last_user_text.dart';
 
 /// The new trip's agent: it plans the trip to Vienna from Alpenlicht's
 /// invitation, choosing flights and a hotel the way a traveller would, within
@@ -11,7 +10,7 @@ AgentConnection scriptedPlanAgent() => ScriptedAgent.repeating(_plan);
 List<AgentStep> _plan(Map<String, Object?> raw) {
   final request = AgentRequest(raw);
   if (request.isUserMessage) {
-    final text = lastUserText(raw);
+    final text = request.userText ?? '';
     return text.contains('Vienna') || text.contains('Alpenlicht')
         ? _readTheInvitation
         : const [
