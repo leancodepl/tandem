@@ -9,8 +9,10 @@ import 'package:tandem/src/report.dart';
 
 /// Whether a method of an action can run now.
 enum ActionState() {
-  /// The screen does not list it: a component that needs it is left out.
-  unlisted,
+  /// It cannot run here: the screen does not list it, a value its
+  /// arguments read is missing, or it needs an approval this place cannot
+  /// ask for. A component that needs it is left out.
+  leftOut,
 
   /// It is listed, but cannot run now, such as while another action of the
   /// view runs or a method that needs approval while the agent thinks.
@@ -165,7 +167,7 @@ final class ViewRender(
 
   bool _press(_Args args, PressProperty property, _Action? action) {
     final state = _stateOf(action, field: false);
-    if (action == null || state == .unlisted) return !property.required;
+    if (action == null || state == .leftOut) return !property.required;
     args.callbacks[property.name] = switch (state) {
       .available => () => _actions.call(
         action.method,
@@ -180,7 +182,7 @@ final class ViewRender(
 
   bool _field(_Args args, FieldProperty<Object?> property, _Action? action) {
     final state = _stateOf(action, field: true);
-    if (action == null || state == .unlisted) return !property.required;
+    if (action == null || state == .leftOut) return !property.required;
     args.callbacks[property.name] = switch (state) {
       .available => property.callback(
         (entry) => _actions.call(
@@ -196,11 +198,11 @@ final class ViewRender(
     return true;
   }
 
-  /// The state of [action], unlisted also while a value its arguments read
+  /// The state of [action], left out also while a value its arguments read
   /// is missing, or null for a parameter that takes no null, as for a
   /// component's required value.
   ActionState _stateOf(_Action? action, {required bool field}) {
-    if (action == null || !_hasValues(action)) return .unlisted;
+    if (action == null || !_hasValues(action)) return .leftOut;
     return _actions.stateOf(action.method, field: field);
   }
 
