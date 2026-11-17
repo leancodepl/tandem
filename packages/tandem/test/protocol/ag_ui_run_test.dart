@@ -15,8 +15,27 @@ void main() {
         .toList();
 
     source
+      ..add({
+        'type': 'RUN_ERROR',
+        'threadId': 'thread-A',
+        'runId': 'run-old',
+        'message': 'Old failure',
+      })
+      ..add({
+        'type': 'RUN_ERROR',
+        'threadId': 'thread-B',
+        'runId': 'run-current',
+        'message': 'Other thread',
+      })
       ..add({'type': 'RUN_STARTED', 'threadId': 'thread-A', 'runId': 'run-old'})
       ..add({'type': 'TEXT_MESSAGE_CHUNK', 'messageId': 'm1', 'delta': 'Old.'})
+      ..add({'type': 'MESSAGES_SNAPSHOT', 'messages': <Object?>[]})
+      ..add({'type': 'RUN_ERROR', 'message': 'Old'})
+      ..add({
+        'type': 'RUN_STARTED',
+        'threadId': 'thread-B',
+        'runId': 'run-current',
+      })
       ..add({'type': 'RUN_FINISHED'})
       ..add({
         'type': 'RUN_STARTED',
@@ -24,6 +43,12 @@ void main() {
         'runId': 'run-current',
       })
       ..add({'type': 'TEXT_MESSAGE_CHUNK', 'messageId': 'm2', 'delta': 'New.'})
+      ..add({
+        'type': 'TOOL_CALL_CHUNK',
+        'toolCallId': 'c2',
+        'toolCallName': 'add',
+        'delta': '{"item":"eggs"}',
+      })
       ..add({'type': 'RUN_FINISHED'})
       ..add({
         'type': 'RUN_STARTED',
@@ -34,6 +59,12 @@ void main() {
     expect(await run, [
       {'type': 'RUN_STARTED', 'threadId': 'thread-A', 'runId': 'run-current'},
       {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm2', 'delta': 'New.'},
+      {'type': 'TOOL_CALL_START', 'toolCallId': 'c2', 'toolCallName': 'add'},
+      {
+        'type': 'TOOL_CALL_ARGS',
+        'toolCallId': 'c2',
+        'delta': '{"item":"eggs"}',
+      },
       {'type': 'RUN_FINISHED'},
     ]);
     expect(sourceCancelled, isTrue);
@@ -78,17 +109,21 @@ void main() {
     );
   });
 
-  test('a RUN_ERROR that names the requested run passes after a replayed '
-      'run', () async {
+  test('before the requested run started, a RUN_ERROR ends it when it names '
+      'the run, or names none and no run started', () async {
     const input = {'threadId': 'thread-A', 'runId': 'run-current'};
-    const error = {'type': 'RUN_ERROR', ...input, 'message': 'Out of quota.'};
-    final run = Stream<Map<String, Object?>>.fromIterable([
+    const named = {'type': 'RUN_ERROR', ...input, 'message': 'Out of quota.'};
+    const idless = {'type': 'RUN_ERROR', 'message': 'Unavailable'};
+    final afterReplay = Stream<Map<String, Object?>>.fromIterable([
       {'type': 'RUN_STARTED', 'threadId': 'thread-A', 'runId': 'run-old'},
       {'type': 'RUN_FINISHED', 'threadId': 'thread-A', 'runId': 'run-old'},
-      error,
+      named,
     ]).transform(agUiRun(input));
+    final first = Stream<Map<String, Object?>>.value(idless)
+        .transform(agUiRun(input));
 
-    await expectLater(run, emitsInOrder([error, emitsDone]));
+    await expectLater(afterReplay, emitsInOrder([named, emitsDone]));
+    await expectLater(first, emitsInOrder([idless, emitsDone]));
   });
 
   test('a response that ends before the requested run started fails with an '
