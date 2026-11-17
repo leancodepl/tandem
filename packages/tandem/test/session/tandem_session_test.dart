@@ -46,6 +46,18 @@ void main() {
   TandemSession openToClose(TandemThread thread, AgentConnection connection) =>
       TandemSession(surface: shop, connection: connection, thread: thread);
 
+  Future<(TandemThread, ScriptedAgent)> closeAfterFirstReply() async {
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Fresh.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    first.dispose();
+    return (thread, agent);
+  }
+
   Future<(TandemSession, ScriptedAgent)> askToClear() async {
     shop.add('x');
     final agent = ScriptedAgent([
@@ -715,24 +727,29 @@ void main() {
     expect(summaryOf(session.items).last, ('agent', 'Hi', false));
   });
 
-  test('the pieces of one message grow one item until the run ends', () async {
-    final connection = RawFirstRun(
-      Stream.fromIterable([
-        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'Hel'},
-        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'lo'},
-        {'type': 'RUN_FINISHED'},
-        {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': ' late'},
-      ]),
-      ScriptedAgent([]),
-    );
-    final session = open(connection)..send('a');
-    await pumpEventQueue();
+  test(
+    'interleaved text grows each message in place until the run ends',
+    () async {
+      final connection = RawFirstRun(
+        Stream.fromIterable([
+          {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'Hel'},
+          {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm2', 'delta': 'Next'},
+          {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': 'lo'},
+          {'type': 'RUN_FINISHED'},
+          {'type': 'TEXT_MESSAGE_CONTENT', 'messageId': 'm1', 'delta': ' late'},
+        ]),
+        ScriptedAgent([]),
+      );
+      final session = open(connection)..send('a');
+      await pumpEventQueue();
 
-    expect(summaryOf(session.items), [
-      ('user', 'a'),
-      ('agent', 'Hello', false),
-    ]);
-  });
+      expect(summaryOf(session.items), [
+        ('user', 'a'),
+        ('agent', 'Hello', false),
+        ('agent', 'Next', false),
+      ]);
+    },
+  );
 
   test(
     'events after the end of a run change nothing while its calls run',
@@ -1046,55 +1063,35 @@ void main() {
     },
   );
 
-  test('a change to .sees while the agent thinks invalidates its request '
-      'before it shows', () async {
-    shop.add('x');
-    final gate = Completer<void>();
-    final agent = ScriptedAgent([
-      (_) => [
-        AgentStep.waitFor(gate.future),
-        const AgentStep.callTool('clear'),
-      ],
-      (_) => const [AgentStep.say('The list changed.')],
-    ]);
-    final session = open(agent)..send('clear it');
-    await pumpEventQueue();
+  for (final (signal, addWhileThinking) in [
+    ('with a change signal', () => shop.add('y')),
+    ('without a change signal', () => shop.items.add('y')),
+  ]) {
+    test('a change to .sees $signal while the agent thinks invalidates its '
+        'request before it shows', () async {
+      shop.add('x');
+      final gate = Completer<void>();
+      final agent = ScriptedAgent([
+        (_) => [
+          AgentStep.waitFor(gate.future),
+          const AgentStep.callTool('clear'),
+        ],
+        (_) => const [AgentStep.say('The list changed.')],
+      ]);
+      final session = open(agent)..send('clear it');
+      await pumpEventQueue();
 
-    shop.add('y');
-    gate.complete();
-    await pumpEventQueue();
+      addWhileThinking();
+      gate.complete();
+      await pumpEventQueue();
 
-    expect(session.items.whereType<ApprovalRequest>(), isEmpty);
-    expect(
-      linesOf(agent.requests[1]).last,
-      'call-1 -> ${ToolAnswer.invalidated.content}',
-    );
-  });
-
-  test('a change to .sees that `changes` never reports, made while the agent '
-      'thinks, invalidates its request before it shows', () async {
-    shop.add('x');
-    final gate = Completer<void>();
-    final agent = ScriptedAgent([
-      (_) => [
-        AgentStep.waitFor(gate.future),
-        const AgentStep.callTool('clear'),
-      ],
-      (_) => const [AgentStep.say('The list changed.')],
-    ]);
-    final session = open(agent)..send('clear it');
-    await pumpEventQueue();
-
-    shop.items.add('y');
-    gate.complete();
-    await pumpEventQueue();
-
-    expect(session.items.whereType<ApprovalRequest>(), isEmpty);
-    expect(
-      linesOf(agent.requests[1]).last,
-      'call-1 -> ${ToolAnswer.invalidated.content}',
-    );
-  });
+      expect(session.items.whereType<ApprovalRequest>(), isEmpty);
+      expect(
+        linesOf(agent.requests[1]).last,
+        'call-1 -> ${ToolAnswer.invalidated.content}',
+      );
+    });
+  }
 
   test('a change outside .sees leaves the card pending', () async {
     final (session, _) = await askToClear();
@@ -1638,14 +1635,7 @@ void main() {
 
   test('a thread whose screen changed while no session had it starts over '
       'before the next message', () async {
-    final thread = TandemThread();
-    final agent = ScriptedAgent([
-      (_) => const [AgentStep.say('Hi.')],
-      (_) => const [AgentStep.say('Fresh.')],
-    ]);
-    final first = openToClose(thread, agent)..send('a');
-    await pumpEventQueue();
-    first.dispose();
+    final (thread, agent) = await closeAfterFirstReply();
     shop.add('milk');
 
     final next = open(agent, thread: thread)..send('b');
@@ -1663,14 +1653,7 @@ void main() {
 
   test('a session that sent nothing leaves the thread what the screen showed '
       'the last session that sent', () async {
-    final thread = TandemThread();
-    final agent = ScriptedAgent([
-      (_) => const [AgentStep.say('Hi.')],
-      (_) => const [AgentStep.say('Fresh.')],
-    ]);
-    final first = openToClose(thread, agent)..send('a');
-    await pumpEventQueue();
-    first.dispose();
+    final (thread, agent) = await closeAfterFirstReply();
     shop.add('milk');
     openToClose(thread, agent).dispose();
 
@@ -1684,14 +1667,7 @@ void main() {
 
   test('startOver forgets what the screen showed when the last session let '
       'the thread go', () async {
-    final thread = TandemThread();
-    final agent = ScriptedAgent([
-      (_) => const [AgentStep.say('Hi.')],
-      (_) => const [AgentStep.say('Fresh.')],
-    ]);
-    final first = openToClose(thread, agent)..send('a');
-    await pumpEventQueue();
-    first.dispose();
+    final (thread, agent) = await closeAfterFirstReply();
     final next = open(agent, thread: thread)..startOver();
     shop.add('milk');
     next.send('b');

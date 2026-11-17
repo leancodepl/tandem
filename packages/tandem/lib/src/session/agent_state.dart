@@ -1,6 +1,8 @@
 import 'package:rfc_6902/rfc_6902.dart';
 import 'package:tandem/src/frozen_json.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
+import 'package:tandem/src/protocol/events.dart';
+import 'package:tandem/src/report.dart';
 
 /// The state that the agent's backend keeps of a thread, as it streams it
 /// with `STATE_SNAPSHOT` and `STATE_DELTA`. Every run sends it back, as
@@ -15,35 +17,27 @@ final class AgentState() {
 
   JsonObject get value => _value;
 
-  /// Replaces the state with [snapshot]. Throws a [FormatException] when it
-  /// is not a JSON object, and keeps the state.
-  void replace(Object? snapshot) {
+  /// A malformed update keeps the last good state and is reported once.
+  /// Ignore subsequent deltas until the server supplies a new starting point.
+  bool apply(StateUpdate update) {
     try {
-      if (snapshot is! JsonObject) {
-        throw const FormatException(
-          'The agent sent a STATE_SNAPSHOT that is not a JSON object.',
-        );
+      switch (update) {
+        case StateSnapshot(:final snapshot):
+          if (snapshot is! JsonObject) {
+            throw const FormatException(
+              'The agent sent a STATE_SNAPSHOT that is not a JSON object.',
+            );
+          }
+          _value = frozenJson(snapshot);
+          _waitsForSnapshot = false;
+        case StateDelta(:final delta):
+          if (!_waitsForSnapshot) _value = _patched(delta);
       }
-      _value = frozenJson(snapshot);
-      _waitsForSnapshot = false;
-    } on FormatException {
+      return true;
+    } on FormatException catch (err, st) {
       _waitsForSnapshot = true;
-      rethrow;
-    }
-  }
-
-  /// Applies [delta], JSON Patch operations, unless an earlier delta did
-  /// not apply. Throws a [FormatException] when it does not apply or leaves
-  /// no JSON object, and keeps the state.
-  void patch(Object? delta) {
-    if (_waitsForSnapshot) {
-      return;
-    }
-    try {
-      _value = _patched(delta);
-    } on FormatException {
-      _waitsForSnapshot = true;
-      rethrow;
+      report(err, st);
+      return false;
     }
   }
 

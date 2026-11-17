@@ -18,8 +18,11 @@ final class const RunFinished([final RunOutcome outcome = .success])
 final class const RunError(final RunErrorCode? code, final String? message)
     extends AgentEvent;
 
+/// Text and tool calls streamed into the assistant messages of one run.
+sealed class const RunOutput() extends AgentEvent;
+
 final class const TextDelta(final String messageId, final String delta)
-    extends AgentEvent;
+    extends RunOutput;
 
 /// [parentMessageId] is the agent's message that holds the call, when the
 /// server names it.
@@ -27,22 +30,24 @@ final class const ToolCallStarted(
   final String toolCallId,
   final String name, [
   final String? parentMessageId,
-]) extends AgentEvent;
+]) extends RunOutput;
 
 final class const ToolCallArgs(final String toolCallId, final String delta)
-    extends AgentEvent;
+    extends RunOutput;
 
 /// The result of a tool that ran on the backend.
 final class const ToolCallResult(
   final String messageId,
   final String toolCallId,
   final ToolResultContent content,
-) extends AgentEvent;
+) extends RunOutput;
+
+sealed class const StateUpdate() extends AgentEvent;
 
 /// The agent's whole state, as JSON, which replaces the one the app has.
-final class const StateSnapshot(final Object? snapshot) extends AgentEvent;
+final class const StateSnapshot(final Object? snapshot) extends StateUpdate;
 
 /// JSON Patch operations (RFC 6902) on the agent's state, as JSON.
-final class const StateDelta(final Object? delta) extends AgentEvent;
+final class const StateDelta(final Object? delta) extends StateUpdate;
 
 final class const IgnoredEvent() extends AgentEvent;

@@ -147,3 +147,16 @@ final class const ApprovalRequest._({
     key: key,
   );
 }
+
+/// One slot in the thread's append-only chat. Only this entry replaces
+/// that slot, and each replacement has the same item type.
+final class ChatEntry<T extends ChatItem>(final List<ChatItem> _chat, T item) {
+  this {
+    _chat.add(item);
+  }
+
+  final int _index = _chat.length;
+
+  T get value => _chat[_index] as T;
+  set value(T item) => _chat[_index] = item;
+}

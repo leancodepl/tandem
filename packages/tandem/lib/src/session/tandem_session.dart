@@ -70,9 +70,7 @@ final class TandemSession({
   @internal
   this {
     _thread.claim(this);
-    _stateChangesSubscription = _surface.changes.listen(
-      (_) => _invalidateAndGoOn(),
-    );
+    _stateChangesSubscription = _surface.changes.listen((_) => _checkScreen());
   }
 
   late final StreamSubscription<Object?> _stateChangesSubscription;
@@ -108,18 +106,12 @@ final class TandemSession({
   @internal
   bool get isActive => !_disposed;
 
-  SessionStatus get status => switch (_run) {
-    Run(stopped: true) => const Stopping(),
-    Run(:final calling?) => calling,
-    Run(:final backendTool, :final drawing) => Thinking(
-      backendTool: backendTool,
-      drawing: drawing,
-    ),
-    null => switch (_approved) {
-      final call? => Calling(call.tool, approved: true),
-      null => _waitingStatus,
-    },
-  };
+  SessionStatus get status {
+    if (_run case final run?) return run.status;
+    if (_approved case final call?) return Calling(call.tool, approved: true);
+    if (_waiting.shown case final request?) return AwaitingApproval(request);
+    return const Idle();
+  }
 
   /// The state that the agent's backend keeps of the thread, such as the
   /// steps of its plan, as the backend streams it: a `STATE_SNAPSHOT`
@@ -135,16 +127,7 @@ final class TandemSession({
   /// run is open. A request that waits for the user is cancelled.
   void send(String text) {
     final message = text.trim();
-    if (message.isEmpty || _disposed) {
-      return;
-    }
-    _post(UserMessage(message));
-    _waiting.cancelShownOfOthers().forEach(_showDecision);
-    if (_isBusy) {
-      notifyListeners();
-    } else {
-      _start();
-    }
+    if (message.isNotEmpty) _post(UserMessage(message));
   }
 
   /// Tells the agent [text] about what happened in the app outside the
@@ -163,23 +146,13 @@ final class TandemSession({
   /// it waits while a run is open or a request waits, and goes with the next
   /// run. When the user stops the run it waited for, it waits for the user's
   /// next message. Does nothing once the session is disposed.
-  void wake() {
-    if (_disposed) {
-      return;
-    }
-    _post(
-      const UserMessage(
-        'The app sent this, not the user. Something happened in the app: '
-        'read app_notes in your context and act on it if it needs you.',
-        fromApp: true,
-      ),
-    );
-    if (status is Idle) {
-      _start();
-    } else {
-      notifyListeners();
-    }
-  }
+  void wake() => _post(
+    const UserMessage(
+      'The app sent this, not the user. Something happened in the app: '
+      'read app_notes in your context and act on it if it needs you.',
+      fromApp: true,
+    ),
+  );
 
   /// Stops the open run: its later text is hidden, none of its remaining
   /// calls runs, and no run follows it. The run is still read to its end,
@@ -192,12 +165,7 @@ final class TandemSession({
     if (run == null || run.stopped) {
       return;
     }
-    run.stopped = true;
-    if (run.texts.values.lastOrNull case final last?) {
-      _items[_items.lastIndexOf(last)] = AgentMessage(last.text, stopped: true);
-    } else {
-      _items.add(const ChatNotice(.stopped));
-    }
+    run.stop();
     notifyListeners();
     _emit(const RunStopped());
     if (_run == run) {
@@ -214,11 +182,9 @@ final class TandemSession({
   /// asked, which invalidates it.
   void approve(ApprovalRequest request) {
     // `changes` may not report every value the agent sees.
-    _invalidateAndGoOn();
-    final turn = _waiting.turnOf(request);
-    if (turn.approve(_latest(request)) case final call?) {
-      _showDecision(call);
-      unawaited(_runApproved(call, turn));
+    _checkScreen();
+    if (_waiting.decide(_latest(request), .approved) case final call?) {
+      unawaited(_runApproved(call));
     }
   }
 
@@ -227,16 +193,13 @@ final class TandemSession({
   /// already. Throws an [ApprovalNotPending] when it was approved, cancelled
   /// or invalidated.
   void reject(ApprovalRequest request) {
-    final turn = _waiting.turnOf(request);
-    if (turn.reject(_latest(request)) case final call?) {
-      _showDecision(call);
-      _continueAfter(turn);
+    if (_waiting.decide(_latest(request), .rejected) case final call?) {
+      _goOn(withAnswers: call.caller == .inAppAgent);
     }
   }
 
   /// Whether [request] waits for the user to approve or reject it.
-  bool isPending(ApprovalRequest request) =>
-      _waiting.turnOf(request).isPending(request);
+  bool isPending(ApprovalRequest request) => _waiting.isPending(request);
 
   /// Clears the local history and agent state. The items stay, with a
   /// [ChatNoticeKind.startedOver] notice, and waiting requests are cancelled.
@@ -252,7 +215,7 @@ final class TandemSession({
       return;
     }
     _closeTurn();
-    _waiting.cancelAll().forEach(_showDecision);
+    _waiting.cancelAll();
     _startThreadOver(keepUnsentCalls: true);
     notifyListeners();
   }
@@ -275,7 +238,7 @@ final class TandemSession({
       return;
     }
     _disposed = true;
-    _waiting.cancelAll().forEach(_showDecision);
+    _waiting.cancelAll();
     if (_inAppAgentWorks) {
       // The backend may finish the run, and the method its call, where the
       // app never sees it.
@@ -390,28 +353,22 @@ final class TandemSession({
   }
 
   void _post(UserMessage message) {
+    if (_disposed) return;
     _drawing.resetRefusals();
     if (_screenToCheck) {
       _screenToCheck = false;
-      _startOverIfScreenChanged();
+      if (_agUiThread.seenAtLeave case final seen? when seen != _seesNow) {
+        _startThreadOver(keepUnsentCalls: true);
+      }
     }
     _items.add(message);
     _queue.add(message);
-  }
-
-  /// Opens the next run and notifies, unless the session let its thread go
-  /// meanwhile, such as when `onEvent` disposed it on a run that failed.
-  void _start() {
-    _closeTurn();
-    _open();
-    if (!_disposed) {
+    if (!message.fromApp) _waiting.cancelShownOfOthers();
+    final waitsForApproval = message.fromApp && _waiting.shown != null;
+    if (_isBusy || waitsForApproval) {
       notifyListeners();
-    }
-  }
-
-  void _startOverIfScreenChanged() {
-    if (_agUiThread.seenAtLeave case final seen? when seen != _seesNow) {
-      _startThreadOver(keepUnsentCalls: true);
+    } else {
+      _start();
     }
   }
 
@@ -420,19 +377,20 @@ final class TandemSession({
     _items.add(const ChatNotice(.startedOver));
   }
 
-  void _closeTurn() {
-    final turn = _waiting.closeAgentTurn();
-    turn.cancelUndecided().forEach(_showDecision);
-    _agUiThread.addAnswers(turn);
-  }
+  void _closeTurn() => _agUiThread.addAnswers(_waiting.closeAgentTurn());
 
-  void _open() {
+  void _start() {
+    _closeTurn();
     try {
       final listing = AgentListing.of(_surface);
-      final run = _run = Run(listing, view: _drawing.offer(listing));
+      final run = _run = Run(
+        listing,
+        chat: _items,
+        view: _drawing.offer(listing),
+      );
       run.input = _agUiThread.input(
         tools: run.tools,
-        context: [...run.listing.context, ?_notes.offer()],
+        context: [...listing.context, ?_notes.offer()],
         userText: _queue.text,
       );
       _runSubscription = _connection
@@ -459,6 +417,8 @@ final class TandemSession({
       _queue.carry();
       _runFailed(err, st);
     }
+    // A failure callback can let go of the thread.
+    if (!_disposed) notifyListeners();
   }
 
   void _handleEvent(Run run, AgentEvent event) {
@@ -466,30 +426,10 @@ final class TandemSession({
       return;
     }
     switch (event) {
-      case final TextDelta text when !run.stopped:
-        _showText(run.write(text));
-      // A call of a tool the run does not offer runs on the server.
-      case final ToolCallStarted start:
-        run.startTool(start);
-        notifyListeners();
-      case final ToolCallArgs arguments:
-        run.addArguments(arguments);
-      case final ToolCallResult result:
-        run.finishTool(result);
-        notifyListeners();
-      case StateSnapshot(:final snapshot):
-        _changeAgentState(() => _agUiThread.agentState.replace(snapshot));
-      case StateDelta(:final delta):
-        _changeAgentState(() => _agUiThread.agentState.patch(delta));
-      case RunFinished(outcome: .cancelled):
-        run.ended = true;
-        _notes.read();
-        stop();
-        if (_run != run) {
-          return;
-        }
-        _recordRun(run);
-        _endRunAndGoOn();
+      case final RunOutput output:
+        if (run.receive(output)) notifyListeners();
+      case final StateUpdate update:
+        if (_agUiThread.agentState.apply(update)) notifyListeners();
       case RunFinished(outcome: .unsupported):
         _abort(
           run,
@@ -499,31 +439,31 @@ final class TandemSession({
           ),
           .current,
         );
-      case RunFinished(outcome: .success):
+      case RunFinished(:final outcome):
         run.ended = true;
         _notes.read();
-        unawaited(_finish(run));
+        if (outcome == .cancelled) {
+          stop();
+          // A stop listener may have let go of the thread.
+          if (_run != run) return;
+          _recordRun(run);
+          _endRunAndGoOn();
+        } else {
+          unawaited(_finish(run));
+        }
       case RunError(:final code, :final message):
         run.ended = true;
         _agUiThread.addFailedRun(run);
+        final error = AgentRunException(code, message);
         // A server may end a run it was told to stop with RUN_ERROR.
         if (run.toldToStop) {
-          report(AgentRunException(code, message), .current);
+          report(error, .current);
           _endRunAndGoOn();
         } else {
-          _runFailed(AgentRunException(code, message), .current);
+          _runFailed(error, .current);
         }
-      case _:
-    }
-  }
-
-  // A backend's state that does not fit fails no run.
-  void _changeAgentState(void Function() change) {
-    try {
-      change();
-      notifyListeners();
-    } on FormatException catch (err, st) {
-      report(err, st);
+      case IgnoredEvent():
+        break;
     }
   }
 
@@ -535,10 +475,10 @@ final class TandemSession({
   Future<void> _finish(Run run) async {
     final turn = _recordRun(run);
     try {
-      _invalidateIfSeesChanged();
+      _checkScreen();
       await _answerCalls(run, turn);
       if (!run.stopped && _run == run) {
-        _askUser(turn, seen: run.listing, seesChanged: run.seesChanged);
+        _askUser(turn, run);
       }
     } catch (err, st) {
       _runFailed(err, st);
@@ -576,24 +516,21 @@ final class TandemSession({
           ),
         );
         run.calling = null;
-        _invalidateIfSeesChanged();
+        _checkScreen();
       }
     }
   }
 
-  void _askUser(
-    Turn turn, {
-    required AgentListing seen,
-    required bool seesChanged,
-  }) {
+  void _askUser(Turn turn, Run run) {
+    final seesChanged = run.seesChanged;
     if (!_asksForApproval()) {
       turn.refuseApprovals();
     } else if (seesChanged) {
       // The agent asked about what it has not seen.
-      turn.invalidateUndecided();
+      turn.decideUndecided(.invalidated);
     } else {
       turn
-        ..freezeArguments(seen)
+        ..freezeArguments(run.listing)
         ..ask(_seesNow);
     }
   }
@@ -607,7 +544,7 @@ final class TandemSession({
   }
 
   // As Calling, so a new message waits for it.
-  Future<void> _runApproved(ToolCall call, Turn turn) async {
+  Future<void> _runApproved(ToolCall call) async {
     final listing = AgentListing.of(_surface);
     _approved = call;
     notifyListeners();
@@ -623,16 +560,10 @@ final class TandemSession({
     if (_disposed) {
       return;
     }
-    _invalidateIfSeesChanged();
+    _checkScreen();
     _approved = null;
-    _continueAfter(turn);
+    _goOn(withAnswers: call.caller == .inAppAgent);
   }
-
-  /// Goes on once a request of [turn] is decided and, when approved, its
-  /// method returned. Another caller's request leaves the agent's turn as it
-  /// was: its answers wait for the user's next message.
-  void _continueAfter(Turn turn) =>
-      _goOn(withAnswers: _waiting.isAgentTurn(turn));
 
   /// Runs the method behind [tool] for [caller]. Unless the session is
   /// disposed by then, the agent gets a note of an action of a view, and
@@ -672,50 +603,19 @@ final class TandemSession({
     }
   }
 
-  void _showText(({AgentMessage? shown, AgentMessage grown}) text) {
-    if (text.shown case final shown?) {
-      _items[_items.lastIndexOf(shown)] = text.grown;
-    } else {
-      _items.add(text.grown);
-    }
-    notifyListeners();
-  }
-
-  /// For a change seen while a run is open or an approved method runs,
-  /// which go on by themselves.
-  void _invalidateIfSeesChanged() {
-    if (_invalidateUnlikeNow()) {
-      notifyListeners();
-    }
-  }
-
-  /// For a change seen by `changes` or Approve: a request that no longer
-  /// shows uncovers the next one, or the app's message that waited for it.
-  void _invalidateAndGoOn() {
-    if (!_invalidateUnlikeNow()) {
-      return;
-    }
+  /// A change can invalidate a request even after the screen changes back.
+  /// When idle, the next request or queued app message can then proceed.
+  void _checkScreen() {
+    final run = _run;
+    if (run == null && !_waiting.waitsForUser) return;
+    final seen = _seesNow;
+    run?.compareScreen(seen);
+    if (!_waiting.invalidateUnlike(seen)) return;
     if (status is Idle) {
       _goOn(withAnswers: false);
     } else {
       notifyListeners();
     }
-  }
-
-  /// Invalidates the requests that saw other than what the agent sees now,
-  /// and returns whether there were any. The open run notes whether it sent
-  /// other than that.
-  bool _invalidateUnlikeNow() {
-    final run = _run;
-    if (run == null && !_waiting.waitsForUser) {
-      return false;
-    }
-    final seen = _seesNow;
-    if (run != null) {
-      run.seesChanged = run.seesChanged || seen != SeesSnapshot.of(run.listing);
-    }
-    final invalidated = _waiting.invalidateUnlike(seen)..forEach(_showDecision);
-    return invalidated.isNotEmpty;
   }
 
   SeesSnapshot get _seesNow => .read(_surface, report: report);
@@ -726,24 +626,10 @@ final class TandemSession({
   /// result the thread would miss.
   bool get _inAppAgentWorks => _run != null || _approved?.caller == .inAppAgent;
 
-  SessionStatus get _waitingStatus => switch (_waiting.shown) {
-    final request? => AwaitingApproval(request),
-    null => const Idle(),
-  };
-
   /// The app may hold an older copy of [request], with an older status.
   ApprovalRequest _latest(ApprovalRequest request) => _items
       .whereType<ApprovalRequest>()
       .lastWhere((item) => item.key == request.key, orElse: () => request);
-
-  void _showDecision(ToolCall call) {
-    if (call.request case final decided?) {
-      final shown = _items.indexWhere(
-        (item) => item is ApprovalRequest && item.key == decided.key,
-      );
-      _items[shown] = decided;
-    }
-  }
 
   void _abort(Run run, Object error, StackTrace stack) {
     if (_run != run) {
@@ -806,10 +692,7 @@ final class TandemSession({
   }
 
   void _showNextRequest() {
-    final request = _waiting.showNext();
-    if (request != null) {
-      _items.add(request);
-    }
+    final request = _waiting.showNext(_items);
     notifyListeners();
     if (request != null) {
       unawaited(_ask(request));

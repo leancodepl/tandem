@@ -39,10 +39,10 @@ final class ToolCall({
   /// method still runs, and the method's answer comes after it.
   Future<ToolAnswer> get answered => _answered.future;
 
-  ApprovalRequest? _request;
+  ChatEntry<ApprovalRequest>? _card;
 
   /// Null until the call showed to the user.
-  ApprovalRequest? get request => _request;
+  ApprovalRequest? get request => _card?.value;
 
   bool get pending => request?.status == .pending;
   bool get approved => request?.status == .approved;
@@ -85,22 +85,26 @@ final class ToolCall({
       tool == other.tool &&
       jsonEncode(_frozen?.json) == jsonEncode(other._frozen?.json);
 
-  ApprovalRequest ask() => _request = ApprovalRequest.issued(
-    toolCallId: id.value,
-    tool: tool,
-    description: description,
-    argumentsJson: switch (_frozen) {
-      final frozen? => jsonEncode(frozen.json),
-      null => argumentsJson,
-    },
-    caller: caller,
-  );
+  ApprovalRequest ask(List<ChatItem> chat) {
+    final request = ApprovalRequest.issued(
+      toolCallId: id.value,
+      tool: tool,
+      description: description,
+      argumentsJson: switch (_frozen) {
+        final frozen? => jsonEncode(frozen.json),
+        null => argumentsJson,
+      },
+      caller: caller,
+    );
+    _card = ChatEntry(chat, request);
+    return request;
+  }
 
   /// Gives the call the answer that [status] means, and its request, when it
   /// showed, that status. A call that is pending or approved has no answer
   /// yet.
   void decide(ApprovalStatus status) {
-    _request = _request?.withStatus(status);
+    if (_card case final card?) card.value = card.value.withStatus(status);
     final answer = switch (status) {
       .rejected => ToolAnswer.rejected,
       .cancelled => ToolAnswer.cancelled,

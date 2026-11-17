@@ -6,6 +6,7 @@ import 'package:tandem/src/protocol/agent_connection.dart';
 import 'package:tandem/src/protocol/events.dart';
 import 'package:tandem/src/protocol/run_input.dart';
 import 'package:tandem/src/report.dart';
+import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/session_status.dart';
 import 'package:tandem/src/session/tool_call.dart';
 import 'package:tandem/src/session/view_tool.dart';
@@ -13,17 +14,19 @@ import 'package:tandem/src/session/view_tool.dart';
 /// What the session keeps of its open run.
 final class Run(
   final AgentListing listing, {
+  required final List<ChatItem> _chat,
 
   /// The view the run offers the agent to draw on.
   final OfferedView? view,
 }) {
   /// The agent's messages as the chat shows them, by message id.
-  final texts = <MessageId, AgentMessage>{};
+  final _texts = <MessageId, ChatEntry<AgentMessage>>{};
 
   /// The body the connection got, which a Stop sends back to it.
   late final JsonObject input;
 
-  bool stopped = false;
+  bool get stopped => _stopped;
+  var _stopped = false;
 
   /// Whether the connection was told to stop the run on its server and did
   /// not fail, so a `RUN_ERROR` may be the server's answer.
@@ -32,7 +35,13 @@ final class Run(
 
   /// Whether what the agent sees differed from what this run sent, at any
   /// check since it started, even when it changed back.
-  bool seesChanged = false;
+  bool get seesChanged => _seesChanged;
+  var _seesChanged = false;
+  late final _seen = SeesSnapshot.of(listing);
+
+  void compareScreen(SeesSnapshot now) {
+    if (now != _seen) _seesChanged = true;
+  }
 
   /// The listed method that runs now.
   Calling? calling;
@@ -65,33 +74,64 @@ final class Run(
     }
   }
 
-  /// Adds the [text] to the agent's message. Returns the message as it grew
-  /// and the one it replaces, null for a new message.
-  ({AgentMessage? shown, AgentMessage grown}) write(TextDelta text) {
-    final TextDelta(:delta) = text;
-    final messageId = MessageId.wire(text.messageId);
-    _used = null;
-    _messages.putIfAbsent(messageId, () => []);
-    final shown = texts[messageId];
-    final grown = texts[messageId] = AgentMessage('${shown?.text ?? ''}$delta');
-    return (shown: shown, grown: grown);
+  /// Marks the last text as stopped, or adds a notice before the first text.
+  void stop() {
+    _stopped = true;
+    if (_texts.values.lastOrNull case final last?) {
+      last.value = AgentMessage(last.value.text, stopped: true);
+    } else {
+      _chat.add(const ChatNotice(.stopped));
+    }
   }
 
-  /// The tools of the run: the listed methods, then the view's tool.
   List<JsonObject> get tools => [...listing.tools, ?view?.definition];
 
-  /// The tool of the backend that runs now, such as a search.
-  String? get backendTool => switch (_used) {
-    _StreamedCall(inApp: false, :final tool) => tool,
-    _ => null,
-  };
+  SessionStatus get status {
+    if (stopped) return const Stopping();
+    if (calling case final method?) return method;
+    return switch (_used) {
+      _StreamedCall(inApp: false, :final tool) => Thinking(backendTool: tool),
+      _StreamedCall(tool: ViewTool.name) => const Thinking(drawing: true),
+      _ => const Thinking(),
+    };
+  }
 
-  /// Whether the agent draws a view now.
-  bool get drawing => _used?.inApp == true && _used?.tool == ViewTool.name;
+  /// Records streamed output. Returns whether the session should notify its
+  /// listeners: argument fragments are buffered until the call is complete.
+  bool receive(RunOutput output) {
+    switch (output) {
+      case TextDelta(:final messageId, :final delta):
+        if (stopped) return false;
+        _write(MessageId.wire(messageId), delta);
+      case final ToolCallStarted start:
+        _startTool(start);
+      case ToolCallArgs(:final toolCallId, :final delta):
+        if (_calls[ToolCallId.wire(toolCallId)] case final call?) {
+          call.arguments += delta;
+        }
+        return false;
+      case final ToolCallResult result:
+        final call = _calls[ToolCallId.wire(result.toolCallId)];
+        if (identical(_used, call)) _used = null;
+        if (call case _StreamedCall(inApp: false)) call.result = result;
+    }
+    return true;
+  }
+
+  void _write(MessageId id, String delta) {
+    _used = null;
+    _messages.putIfAbsent(id, () => []);
+    final shown = _texts[id];
+    if (shown == null) {
+      _texts[id] = ChatEntry(_chat, AgentMessage(delta));
+    } else {
+      shown.value = AgentMessage('${shown.value.text}$delta');
+    }
+  }
 
   /// Records the first start of a call with its parent message. A repeated
   /// start must name the same tool.
-  void startTool(ToolCallStarted start) {
+  void _startTool(ToolCallStarted start) {
     final ToolCallStarted(name: tool, :parentMessageId) = start;
     final id = ToolCallId.wire(start.toolCallId);
     final knownTool = _calls[id]?.tool;
@@ -118,23 +158,6 @@ final class Run(
     _messages.putIfAbsent(messageId, () => []).add(call);
   }
 
-  void addArguments(ToolCallArgs arguments) {
-    final ToolCallArgs(:delta) = arguments;
-    final toolCallId = ToolCallId.wire(arguments.toolCallId);
-    if (_calls[toolCallId] case final call?) {
-      call.arguments += delta;
-    }
-  }
-
-  /// A tool of the backend returned its [result].
-  void finishTool(ToolCallResult result) {
-    final call = _calls[ToolCallId.wire(result.toolCallId)];
-    if (identical(_used, call)) {
-      _used = null;
-    }
-    if (call case _StreamedCall(inApp: false)) call.result = result;
-  }
-
   /// The calls that run in the app, once the run finished streaming.
   List<ToolCall> collectAppCalls() => [
     for (final call in _calls.values)
@@ -148,18 +171,23 @@ final class Run(
         ),
   ];
 
+  /// On failure the backend has seen the text but has no answers to its calls.
+  Iterable<AgUiMessage> get textHistory sync* {
+    for (final MapEntry(key: id, value: shown) in _texts.entries) {
+      yield AgUiMessage.assistant(id, text: shown.value.text);
+    }
+  }
+
   /// The messages of the run, each followed by its backend results. A
   /// backend call without a result stays out. An app-id thread also keeps
   /// the messages with app calls until their answers go out.
-  ({List<AgUiMessage> all, List<AgUiMessage> withAppCalls}) get history {
-    final all = <AgUiMessage>[];
-    final withAppCalls = <AgUiMessage>[];
+  Iterable<({List<AgUiMessage> messages, bool hasAppCalls})> get history sync* {
     for (final MapEntry(key: id, value: proposed) in _messages.entries) {
       final calls = [
         for (final call in proposed)
           if (call.inApp || call.result != null) call,
       ];
-      final text = texts[id]?.text;
+      final text = _texts[id]?.value.text;
       if (text == null && calls.isEmpty) continue;
       final messages = <AgUiMessage>[
         .assistant(
@@ -175,12 +203,8 @@ final class Run(
               content: result.content,
             ),
       ];
-      all.addAll(messages);
-      if (calls.any((call) => call.inApp)) {
-        withAppCalls.addAll(messages);
-      }
+      yield (messages: messages, hasAppCalls: calls.any((call) => call.inApp));
     }
-    return (all: all, withAppCalls: withAppCalls);
   }
 }
 
