@@ -56,7 +56,8 @@ final class AgentListing._(
   /// Throws a [StateError] when the list names a getter or a method the
   /// generated code does not know; in debug an assert also compares the copy
   /// with [AgentSurface.agentCapabilities]. Either means the code was not
-  /// generated again after the list changed.
+  /// generated again after the list changed. Also throws one for a method
+  /// whose tool starts with `tandem_`, which names Tandem's own tools.
   factory of(AgentSurface surface) {
     final schema = surface.agentSchema;
     final capabilities = _read(surface, schema);
@@ -71,6 +72,12 @@ final class AgentListing._(
             'Run build_runner again.',
           ),
         );
+        if (tool.name.startsWith('tandem_')) {
+          throw StateError(
+            'The agent list calls ${tool.name}, but tandem_ starts only the '
+            "names of Tandem's own tools. Rename the method.",
+          );
+        }
         if (tools.containsKey(tool.name)) {
           throw StateError('The agent list has ${tool.name} twice.');
         }
