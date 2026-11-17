@@ -6,7 +6,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 
 | Package | Owns | Depends on |
 |---|---|---|
-| `tandem` | the agent list, remote and Apple AG-UI connections, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent`, `TandemView` | flutter, http, json_annotation, meta, rfc_6902, uuid; FoundationModels on Apple systems |
+| `tandem` | the agent list, the remote AG-UI connection and the deprecated Apple one, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent`, `TandemView` | flutter, http, json_annotation, meta, rfc_6902, uuid; FoundationModels on Apple systems |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` and the widgets of a class with `@TandemCatalog([...])` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
@@ -21,7 +21,7 @@ The generated mixin implements `AgentSurface` of `tandem` and builds its `AgentS
 
 `packages/tandem/README.md`, the README pub.dev shows for `tandem`, is a copy of the root README. Change both.
 
-`tandem` ships three Agent Skills in `skills/`, which apps install with `dart run skills@ get --package tandem --all`: `tandem-agent-aware-screen` lists what the agent sees and calls and wraps the screen, `tandem-coding-agent` lets a coding agent drive it through `TandemBridge`, and `tandem-in-app-agent` adds a chat or a button with a backend or Apple's model. The installer takes only skills whose name starts with `tandem-`. The skills follow the API: change one, change the other.
+`tandem` ships three Agent Skills in `skills/`, which apps install with `dart run skills@ get --package tandem --all`: `tandem-agent-aware-screen` lists what the agent sees and calls and wraps the screen, `tandem-coding-agent` lets a coding agent drive it through `TandemBridge`, and `tandem-in-app-agent` adds a chat or a button with a backend. The installer takes only skills whose name starts with `tandem-`. The skills follow the API: change one, change the other.
 
 `skills/tandem` at the repo root is the entry, `/tandem`, which apps install from GitHub with `dart run skills@ add leancodepl/tandem --skill tandem`. It follows `main`, not the app's version of `tandem`, so it only checks the packages, installs the package's skills of the version in `pubspec.lock` and hands the work to them. It needs `user-invocable: true`, or the installer marks it `false` and `/tandem` does not run.
 
@@ -96,6 +96,8 @@ A coding agent, such as Claude Code or Cursor, drives a debug build through the 
 Every answer of `call` is a `ToolAnswer` as `json`: the tool answer of the in-app agent with its `status`, and `{"status":"returned","result":<result>}` when the method returned. No screen, an unknown `screen` or no front screen is `refused`, with the ids of the open screens. So is another call that needs approval while one waits, and one on a screen with `approvals: .none()`, with what to do.
 
 ## Apple on-device connection
+
+`OnDeviceAgent` is deprecated in 0.3.2 and removed in 0.4.0, with its plugin, its Pigeon API and their checks. This section stays as a record.
 
 `OnDeviceAgent.apple()` is an `AgentConnection` backed by a plugin inside `tandem`, with shared Darwin sources for SwiftPM and CocoaPods. Dart and Swift talk through the Pigeon API of `packages/tandem/pigeons/apple_api.dart`: the run's AG-UI body goes as JSON, and the answer comes back as text, a batch of calls or a failure code. `apple()` returns one immutable object, so a scope keeps its session across rebuilds. Each run gets its own request ID, native task and model session, so sharing the connection shares no conversation. Tandem keeps the history, context, execution and approvals.
 

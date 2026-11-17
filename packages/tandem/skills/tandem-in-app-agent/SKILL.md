@@ -1,6 +1,6 @@
 ---
 name: tandem-in-app-agent
-description: Give an agent-aware Flutter screen an in-app agent for the app's users, with a chat or a button, over an AG-UI backend or Apple's on-device model. Use when asked to add an AI chat, assistant or "fill with AI" button to a screen that has a TandemScope, or when the code uses TandemSessionScope, ScriptedAgent or OnDeviceAgent.
+description: Give an agent-aware Flutter screen an in-app agent for the app's users, with a chat or a button, over an AG-UI backend. Use when asked to add an AI chat, assistant or "fill with AI" button to a screen that has a TandemScope, or when the code uses TandemSessionScope, ScriptedAgent or OnDeviceAgent.
 user-invocable: false
 ---
 
@@ -13,9 +13,7 @@ The in-app agent works with the app's users: they write to it, it calls the meth
 Ask the user two questions, unless the request already answers them:
 
 - **How the user talks to the agent.** A chat next to the screen, or a button that sends one prepared message, such as "Fill from e-mail" next to a pasted text. A button needs no chat.
-- **Which agent.**
-  - An AG-UI backend: the user gives its address. Any AG-UI endpoint works. Tandem is checked with Google ADK, LangGraph and Pydantic AI, and [`example/agents`](https://github.com/leancodepl/tandem/tree/main/example/agents) has an agent on each to copy from.
-  - Apple's on-device model, on iOS and macOS 26 with Apple Intelligence: no backend and no API key. It is experimental and small: offer it only for the simplest tasks, such as one sentence that becomes one call.
+- **Which AG-UI backend.** The user gives its address. Any AG-UI endpoint works. Tandem is checked with Google ADK, LangGraph and Pydantic AI, and [`example/agents`](https://github.com/leancodepl/tandem/tree/main/example/agents) has an agent on each to copy from.
 
 **Done when** you know both answers, and the backend's address when there is one. Without an address, put none into the app: step 7 tests the screen with a script, and the address comes later.
 
@@ -43,7 +41,7 @@ TandemScope(
 - For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field.
 - For another transport, implement an `AgentConnection` whose `run` passes `agUiRun(input)` only the decoded frames of that run's request, with an `input` that carries the IDs the server will echo. Follow the [transport rules](https://github.com/leancodepl/tandem#the-agent-backend) for routing, timeouts and cancellation. A transport with a cancel message also implements `StoppableAgentConnection`, whose `stop(input)` gets the same input object as `run`. Pass the connection to `TandemScope.connected` and keep it in a field.
 
-For Apple's on-device model, pass `OnDeviceAgent.apple()` to `TandemScope.connected` as `connection`; calling it in `build` is fine. Offer it only when `await OnDeviceAgent.apple().availability()` is `available`. On `RunFailed(code: OnDeviceErrorCode.contextWindowExceeded)`, call `session.startOver()`. [Requirements and limits](https://github.com/leancodepl/tandem#apples-on-device-model).
+`OnDeviceAgent` is deprecated and goes away in 0.4.0. Where the app uses it, connect the screen to an AG-UI backend instead.
 
 For a screen that opens again, such as a page the user leaves and comes back to, keep a `TandemThread` above it and pass it as `thread:`, so the chat and the agent's history go on. One screen at a time has it. When the backend keeps the conversation under its own ID, pass it: `TandemThread(id: ThreadId(conversationId))`, kept in a field or a `State` like any thread, not built in `build`. Tandem then never changes the ID. [What the backend must do](https://github.com/leancodepl/tandem#the-agent-backend).
 
@@ -95,7 +93,7 @@ When the screen has no chat, show what the agent does now, such as a progress li
 
 ## 6. Let the agent draw, if the user wants it
 
-Only with an AG-UI backend and a strong remote model, such as Gemini: a small local model or Apple's on-device model rarely writes a valid view. List the app's widgets the agent may draw with in a class with `@TandemCatalog([...])`, `final class const AppCatalog() with _$AppCatalog;`, give each widget a doc comment, and give the class a doc comment with guidelines and one example view in a ```json block. The guidelines and the example name one screen's data and methods, so another screen that draws with the same widgets gets its own catalog class from the same list, as `@TandemCatalog([...DesignSystem.components])`. A design system can export its widgets as a `static const` list that the app spreads. A required parameter of a type without a form, such as `IconData`, stops the build: add a `JsonConverter<IconData, String>` to `converters:`. Run build_runner. Then put `TandemView(catalog: const AppCatalog())` below the scope where the view goes, in a scroll view when it can be taller than its place. Every run then offers the agent `tandem_show_view`. A view is checked before it shows, and a view that does not fit is refused with what to fix; after three refusals in a row the agent answers in text until the next message. While the agent draws, the status is `Thinking(drawing: true)`. An action calls a listed method with the usual approvals, as `caller: Caller.view`; give the card of such a request its own text, since the user pressed it. The agent reads what an action answered in `app_notes` on its next run; to let it react at once, call `session.wake()` in `onEvent`.
+Only with an AG-UI backend and a strong remote model, such as Gemini: a small local model rarely writes a valid view. List the app's widgets the agent may draw with in a class with `@TandemCatalog([...])`, `final class const AppCatalog() with _$AppCatalog;`, give each widget a doc comment, and give the class a doc comment with guidelines and one example view in a ```json block. The guidelines and the example name one screen's data and methods, so another screen that draws with the same widgets gets its own catalog class from the same list, as `@TandemCatalog([...DesignSystem.components])`. A design system can export its widgets as a `static const` list that the app spreads. A required parameter of a type without a form, such as `IconData`, stops the build: add a `JsonConverter<IconData, String>` to `converters:`. Run build_runner. Then put `TandemView(catalog: const AppCatalog())` below the scope where the view goes, in a scroll view when it can be taller than its place. Every run then offers the agent `tandem_show_view`. A view is checked before it shows, and a view that does not fit is refused with what to fix; after three refusals in a row the agent answers in text until the next message. While the agent draws, the status is `Thinking(drawing: true)`. An action calls a listed method with the usual approvals, as `caller: Caller.view`; give the card of such a request its own text, since the user pressed it. The agent reads what an action answered in `app_notes` on its next run; to let it react at once, call `session.wake()` in `onEvent`.
 
 **Done when** `TandemView` with the app's catalog is below the scope and the build passes, or the user wants no drawn view.
 
@@ -150,4 +148,4 @@ The same script in place of the backend runs the screen in the app, without a ba
 - A chat with no `TandemScope` above it.
 - An address in the app that no backend answers, such as a placeholder. Every message fails.
 - `approvals: .none()` on a screen with `.callsWithApproval`. Every such call is refused.
-- A connection or a `ScriptedAgent` made in `build`. A new connection starts a new session, so keep it in a field. `OnDeviceAgent.apple()` returns the same one every time.
+- A connection or a `ScriptedAgent` made in `build`. A new connection starts a new session, so keep it in a field.

@@ -27,7 +27,7 @@ Pick a screen. Its state class lists the data an AI agent can read and the metho
 
 ## How it works
 
-![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies and calls to the app's methods. On iOS and macOS 26, OnDeviceAgent does the same with Apple's on-device model, without a backend or an API key.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
+![The Flutter app with tandem sends the agent backend the user's message, what the agent sees and what it may call, over AG-UI. The backend keeps the API key, asks the model, and sends back replies and calls to the app's methods.](https://github.com/leancodepl/tandem/raw/main/doc/imgs/how-it-works.svg)
 
 With a remote agent, your backend calls the model and keeps the API key. The app talks to the backend over [AG-UI](https://docs.ag-ui.com), an open protocol between agents and apps. Tandem is checked with Google ADK, LangGraph and Pydantic AI. Other AG-UI backends can connect by following [the backend contract](#the-agent-backend).
 
@@ -539,6 +539,8 @@ On the web, configure CORS to allow the app's origin. The reference agents do no
 
 To send the user's token, give `HttpAgentConnection` an `http.Client` that adds the token, then pass the connection to `TandemScope.connected`. Keep the connection in a field, because a new connection starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the backend.
 
+`OnDeviceAgent` is deprecated and goes away in 0.4.0. Use an AG-UI backend instead.
+
 For another transport, such as a WebSocket, implement `AgentConnection`. In `run`, pass `agUiRun(input)` only the decoded frames of this run's request, and end the stream when the transport says the request is over. Route frames by a per-request ID where the transport has one. Routing only by thread or socket mixes an ID-less `RUN_ERROR` or terminal event of an earlier run into the next one, and AG-UI allows a `RUN_ERROR` even after `RUN_FINISHED`. Give `agUiRun` the input with the IDs the server will echo, rewritten if the transport rewrites them, and deduplicate a resumed or reattached stream first.
 
 `agUiRun` skips replayed runs and expands chunk events. If a delta depends on a snapshot from replay, send a `STATE_SNAPSHOT` inside the requested run first. Once the requested run started, another `RUN_STARTED` or an event that names another thread fails the stream with a `FormatException`, because AG-UI does not start a run while one is open. Tandem ends the stream at the first `RUN_FINISHED` or `RUN_ERROR` it passes through, even though [AG-UI allows a later error](https://docs.ag-ui.com/spec/1.0/events/lifecycle#after-a-run-closes).
@@ -549,7 +551,7 @@ A connection whose transport can cancel a run, such as a WebSocket protocol with
 
 ## Project status
 
-Each release of Tandem is checked on iOS and Android. For the web, CI runs the tests of `tandem` and the example in Chrome and builds the example with WebAssembly. Other platforms are outside these checks. Apple's on-device connection remains experimental and has separate requirements and manual checks.
+Each release of Tandem is checked on iOS and Android. For the web, CI runs the tests of `tandem` and the example in Chrome and builds the example with WebAssembly. Other platforms are outside these checks.
 
 Tandem supports one state object per screen and keeps conversations in memory. Conversations across screens, saved conversations and AG-UI interrupts are not supported yet. An interrupt fails the run and resets the local history and agent state. The chat stays visible. An app-supplied thread ID stays too.
 
