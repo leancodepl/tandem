@@ -6,7 +6,6 @@ import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/debug/open_screens.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/report.dart';
-import 'package:tandem/src/session/tandem_session.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
 
@@ -30,11 +29,6 @@ final class TandemBridge._() {
   static var _registered = false;
   static var _autoApprove = false;
 
-  /// What [describe] showed, by the `context` it gave, newest last.
-  static final _contexts = <ContextId, _Described>{};
-  static var _lastContext = 0;
-  static const _keptContexts = 32;
-
   /// Registers the extensions, once per isolate. Does nothing in a profile
   /// or release build.
   ///
@@ -57,7 +51,8 @@ final class TandemBridge._() {
   ///
   /// Each screen has a `context`, which a [call] whose arguments point at
   /// values with `{"path": ...}` passes back, so that the paths read what
-  /// the coding agent saw. Only the latest contexts are kept.
+  /// the coding agent saw. A screen keeps its latest 32 contexts, and gives
+  /// the newest one again while it shows the same.
   ///
   /// A screen whose agent list throws, such as one that the generated code
   /// no longer fits, has only its `id`, `front` and the `error`, which goes
@@ -99,7 +94,9 @@ final class TandemBridge._() {
   }) async {
     final screenId = screen == null ? null : ScreenId(screen);
     final contextId = context == null ? null : ContextId(context);
-    final described = _contexts[contextId];
+    final described = contextId == null
+        ? null
+        : OpenScreens.described(contextId);
     final target = switch (screenId) {
       final id? => OpenScreens.find(id),
       null => described?.screen ?? OpenScreens.front,
@@ -193,15 +190,10 @@ final class TandemBridge._() {
       return {'id': screen.id, 'front': front, 'error': '$err'};
     }
     final lastApproval = session.lastAsked(.codingAgent);
-    final context = ContextId('context-${++_lastContext}');
-    _contexts[context] = (screen: screen, session: session, seen: listing);
-    if (_contexts.length > _keptContexts) {
-      _contexts.remove(_contexts.keys.first);
-    }
     return {
       'id': screen.id,
       'front': front,
-      'context': context,
+      'context': screen.contextFor(session, listing),
       'sees': listing.context,
       'tools': listing.tools,
       'needsApproval': [
@@ -227,10 +219,3 @@ final class TandemBridge._() {
   static developer.ServiceExtensionResponse _respond(JsonObject answer) =>
       .result(jsonEncode(answer));
 }
-
-/// What `describe` showed of a screen, from the session it read.
-typedef _Described = ({
-  OpenScreen screen,
-  TandemSession session,
-  AgentListing seen,
-});

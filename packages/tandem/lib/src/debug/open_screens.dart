@@ -1,6 +1,8 @@
 import 'dart:collection';
 
 import 'package:flutter/widgets.dart';
+import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/tandem_session.dart';
 
 /// A `TandemScope` of a debug build, which a coding agent reaches through
@@ -10,17 +12,53 @@ final class OpenScreen._(
   final BuildContext _context,
   final TandemSession Function() _session,
 ) {
+  static const _keptContexts = 32;
+
+  /// What `TandemBridge.describe` showed of this screen, by context, oldest
+  /// first.
+  final _described = <ContextId, DescribedScreen>{};
+
   /// The scope's session now: another `agent` replaces it.
   TandemSession get session => _session();
 
   /// Whether the scope is on the current route. A scope outside any route
   /// counts as on it.
   bool get isOnCurrentRoute => ModalRoute.isCurrentOf(_context) ?? true;
+
+  /// The context for [listing], which `TandemBridge.describe` read from
+  /// [session]: the newest one when it saw the same, else a new one.
+  ContextId contextFor(TandemSession session, AgentListing listing) {
+    final sees = SeesSnapshot.of(listing);
+    if (_described.entries.lastOrNull case MapEntry(:final key, :final value)
+        when identical(value.session, session) && value.sees == sees) {
+      return key;
+    }
+    final context = ContextId('context-${++OpenScreens._lastContext}');
+    _described[context] = (
+      screen: this,
+      session: session,
+      seen: listing,
+      sees: sees,
+    );
+    if (_described.length > _keptContexts) {
+      _described.remove(_described.keys.first);
+    }
+    return context;
+  }
 }
+
+/// What `TandemBridge.describe` showed of a screen, read from its session.
+typedef DescribedScreen = ({
+  OpenScreen screen,
+  TandemSession session,
+  AgentListing seen,
+  SeesSnapshot sees,
+});
 
 /// The open screens of a debug build, oldest first.
 final class OpenScreens._() {
   static final _screens = <OpenScreen>[];
+  static var _lastContext = 0;
 
   static List<OpenScreen> get all => UnmodifiableListView([
     for (final screen in _screens)
@@ -49,6 +87,11 @@ final class OpenScreens._() {
   }
 
   static void close(OpenScreen screen) => _screens.remove(screen);
+
+  /// What the open screen that gave [context] showed with it, or null when
+  /// no open screen keeps it.
+  static DescribedScreen? described(ContextId context) =>
+      _screens.map((screen) => screen._described[context]).nonNulls.firstOrNull;
 
   static OpenScreen? find(ScreenId id) =>
       all.where((screen) => screen.id == id).singleOrNull;
