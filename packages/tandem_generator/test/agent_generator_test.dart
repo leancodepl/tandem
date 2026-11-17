@@ -73,6 +73,27 @@ class OrderCubit() {
     );
   });
 
+  test('two methods of one agent name fail the build', () async {
+    expect(
+      await _buildErrors('''
+@TandemAgent()
+class LinkCubit() {
+  List<AgentCapability> get agentCapabilities => [
+    .calls(setUrl),
+    .calls(setURL),
+  ];
+
+  /// Sets the link.
+  void setUrl(String url) {}
+
+  /// Sets the link and opens it.
+  void setURL(String url) {}
+}
+'''),
+      [contains('Rename setUrl or setURL: the agent knows both as set_url.')],
+    );
+  });
+
   test('a class Tandem cannot build fails the build', () async {
     expect(
       await _buildErrors('''

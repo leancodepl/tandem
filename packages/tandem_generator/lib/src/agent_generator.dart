@@ -114,6 +114,9 @@ class _CapabilityReader(final ClassElement _type)
 
     final methods = {for (final item in _methodExpressions) _readMethod(item)};
 
+    _checkAgentNames(views);
+    _checkAgentNames(methods);
+
     return _AgentCapabilities(
       views: [...views],
       copy: copy.generate(source.body),
@@ -176,6 +179,27 @@ class _CapabilityReader(final ClassElement _type)
     }
 
     return method;
+  }
+
+  /// Checks that no two of [elements], all getters or all methods, have the
+  /// name the agent knows them by.
+  void _checkAgentNames(Iterable<ExecutableElement> elements) {
+    final byName = <String, ExecutableElement>{};
+
+    for (final element in elements) {
+      final name = agentName(element.displayName);
+
+      if (byName[name] case final other?
+          when other.baseElement != element.baseElement) {
+        throw AgentGenerationError.sameAgentName(
+          name,
+          first: other,
+          second: element,
+        );
+      }
+
+      byName[name] = element;
+    }
   }
 
   /// The type of each parameter of [method] as code of the class's library:
