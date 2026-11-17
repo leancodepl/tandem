@@ -299,45 +299,44 @@ final class AgentTypes(
 
     if (!origin.hasDefaultValue) return null;
 
-    final copied = copyDefault(origin, path: parameter.displayName);
-
-    if (copied case (:final code)) return code;
-
-    throw AgentTypeError.unsupportedDefault(
-      _source,
-      parameterName: parameter.displayName,
-    );
+    return switch (copyDefault(origin, path: parameter.displayName)) {
+      NoDefault() => null,
+      DefaultCode(:final code) => code,
+      UncopyableDefault() => throw AgentTypeError.unsupportedDefault(
+        _source,
+        parameterName: parameter.displayName,
+      ),
+    };
   }
 
-  /// The default value of [parameter], which is at [path], as code: null for
-  /// none or null, and a null record when Tandem cannot copy it. Throws when
-  /// it is a member of a class that the library does not see.
-  ({String? code})? copyDefault(
+  /// The default value of [parameter], which is at [path]. Throws when it is
+  /// a member of a class that the library does not see.
+  CopiedDefault copyDefault(
     FormalParameterElement parameter, {
     required String path,
   }) {
     final value = parameter.computeConstantValue();
 
-    if (value == null || value.isNull) return (code: null);
+    if (value == null || value.isNull) return const NoDefault();
 
     final declared = _typeSystem.promoteToNonNull(parameter.type);
 
     // A constant of an extension type has the type of its representation.
     if (declared case InterfaceType(element: ExtensionTypeElement())) {
-      return null;
+      return const UncopyableDefault();
     }
 
     final literal = value.toBoolValue() ?? value.toIntValue();
 
-    if (literal != null) return (code: '$literal');
+    if (literal != null) return DefaultCode('$literal');
 
     final number = value.toDoubleValue();
 
-    if (number != null && number.isFinite) return (code: '$number');
+    if (number != null && number.isFinite) return DefaultCode('$number');
 
     final text = value.toStringValue();
 
-    if (text != null) return (code: DartLiteral.json(text));
+    if (text != null) return DefaultCode(DartLiteral.json(text));
 
     // An enum value is a static const member of its enum.
     if (value.type case InterfaceType(:final element)) {
@@ -347,19 +346,14 @@ final class AgentTypes(
             field.isAccessibleIn(_library) &&
             _typeSystem.isSubtypeOf(field.type, parameter.type) &&
             field.computeConstantValue() == value) {
-          return (
-            code: _member(
-              field,
-              element: element,
-              declared: declared,
-              path: path,
-            ),
+          return DefaultCode(
+            _member(field, element: element, declared: declared, path: path),
           );
         }
       }
     }
 
-    return null;
+    return const UncopyableDefault();
   }
 
   /// [field] of [element] as code where a value of [declared] stands: `.name`
@@ -439,7 +433,9 @@ final class AgentTypes(
         return;
       }
 
-      if (!type.isAgentClass) return;
+      final object = AgentClass.tryRead(type);
+
+      if (object == null) return;
 
       final nonNull = type.element.library.typeSystem.promoteToNonNull(type);
       final id = idOf(nonNull);
@@ -450,7 +446,6 @@ final class AgentTypes(
 
       if (converters[nonNull] != null) return;
 
-      final object = AgentClass.read(type, source: type.element, path: '');
       for (final field in object.fields) {
         visit(field.parameter.type);
       }
@@ -460,9 +455,12 @@ final class AgentTypes(
     return classes;
   }
 
-  /// Whether [code], an expression of [describe], is a constant.
-  static bool isConstant(String code) =>
-      _scalars.containsValue(code) || _builtIns.containsValue(code);
+  /// Whether the expression that [describe] gives for [type] is a constant.
+  bool isConstant(DartType type) =>
+      !type.isNullable &&
+      _converters[type] == null &&
+      (_builtIns.containsKey(idOf(type)) ||
+          _scalars.containsKey(_scalarName(type)));
 
   static const _builtIns = {
     'dart:ui#Color': '.color',
@@ -498,6 +496,17 @@ final class AgentTypes(
     return element.displayName;
   }
 }
+
+/// The default value of a parameter, as [AgentTypes.copyDefault] copies it.
+sealed class const CopiedDefault();
+
+/// No default value, or null.
+final class const NoDefault() extends CopiedDefault;
+
+final class const DefaultCode(final String code) extends CopiedDefault;
+
+/// A default value that Tandem cannot copy.
+final class const UncopyableDefault() extends CopiedDefault;
 
 extension on DartType {
   bool get isNullable => nullabilitySuffix != .none;

@@ -404,7 +404,7 @@ AgentComponent<$widgetName>.of(
       );
     }
 
-    final ({String? code})? fallback;
+    final CopiedDefault fallback;
     try {
       fallback = _types.copyDefault(parameter, path: path);
     } on AgentTypeError catch (error) {
@@ -412,7 +412,7 @@ AgentComponent<$widgetName>.of(
       return _Parameter.skipped(parameter);
     }
 
-    if (parameter.hasDefaultValue && fallback == null) {
+    if (fallback is UncopyableDefault) {
       log.warning(
         '$path keeps its default: Tandem copies only literals, enum values '
         "and the static const members of the value's class.",
@@ -430,7 +430,7 @@ AgentComponent<$widgetName>.of(
     };
     final requiredCode = optional ? ', required: false' : '';
     final read = switch (fallback) {
-      (code: final defaultCode?) => 'args.valueOr($key, $defaultCode)',
+      DefaultCode(:final code) => 'args.valueOr($key, $code)',
       _ => 'args.value($key)',
     };
 

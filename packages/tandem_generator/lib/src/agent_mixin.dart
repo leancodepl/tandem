@@ -125,7 +125,7 @@ AgentTool(
       null => '',
     };
     final optional = parameter.isOptionalForAgent ? ', required: false' : '';
-    final constant = AgentTypes.isConstant(typeCode) ? 'const ' : '';
+    final constant = types.isConstant(type) ? 'const ' : '';
     final inputCode = input ? ', input: true' : '';
     final key = DartLiteral.json(name);
 
