@@ -22,6 +22,26 @@ void main() {
     }
   });
 
+  test('keeps the content parts of a TOOL_CALL_RESULT as they came', () {
+    const parts = [
+      {'type': 'text', 'text': 'Found it.'},
+      {
+        'type': 'image',
+        'source': {'type': 'url', 'value': 'https://example.com/a.png'},
+      },
+    ];
+
+    expect(
+      decodeAgUiEvent({
+        'type': 'TOOL_CALL_RESULT',
+        'messageId': 'r1',
+        'toolCallId': 'c1',
+        'content': parts,
+      }),
+      isA<ToolCallResult>().having((event) => event.content, 'content', parts),
+    );
+  });
+
   test('reads the outcome of RUN_FINISHED as AG-UI 1.0 does', () {
     final cases = <(Map<String, Object?>, RunOutcome)>[
       ({}, .success),

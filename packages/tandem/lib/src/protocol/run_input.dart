@@ -46,16 +46,17 @@ extension type AgUiMessage._(JsonObject json) implements JsonObject {
 
   /// The app's answer to a call of a listed method.
   factory toolAnswer(String toolCallId, String content) =>
-      AgUiMessage.toolResult('tool-$toolCallId', toolCallId, content);
+      AgUiMessage.toolResult('tool-$toolCallId', toolCallId, .text(content));
 
   /// The result of a call, under the id of its `TOOL_CALL_RESULT` for a call
   /// that ran on the server.
-  factory toolResult(String id, String toolCallId, String content) => ._({
-    AgUiFields.id: id,
-    AgUiFields.role: AgUiMessageRoles.tool,
-    AgUiFields.toolCallId: toolCallId,
-    AgUiFields.content: content,
-  });
+  factory toolResult(String id, String toolCallId, ToolResultContent content) =>
+      ._({
+        AgUiFields.id: id,
+        AgUiFields.role: AgUiMessageRoles.tool,
+        AgUiFields.toolCallId: toolCallId,
+        AgUiFields.content: content,
+      });
 
   /// The id of the agent's message for a call the server sent without one.
   /// Never the bare call id: ag-ui-adk marks every message id it has seen as
