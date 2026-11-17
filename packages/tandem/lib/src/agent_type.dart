@@ -396,7 +396,8 @@ final class const _Scalar<T>(final String _jsonType, final String _dartName)
   @override
   bool accepts(AgentType<Object?> other) => switch ((this, _nonNull(other))) {
     (_, final other) when other.id == id => true,
-    (AgentType<num>(), AgentType<num>()) when 0.5 is T => true,
+    // Not an extension type over int, which is an int at runtime.
+    (_, _Scalar<num>()) when 0.5 is T => true,
     _ => false,
   };
 
