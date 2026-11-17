@@ -2166,6 +2166,35 @@ void main() {
     );
   });
 
+  test('the same call of a coding agent joins the waiting request in any key '
+      'order, and the same tool with other arguments is refused', () async {
+    final mailbox = _Mailbox();
+    final session = TandemSession(
+      surface: mailbox,
+      connection: ScriptedAgent(const []),
+    );
+    addTearDown(session.dispose);
+
+    final first = session.callFor(.codingAgent, 'post', {
+      'to': 'Ana',
+      'text': 'Hi.',
+    });
+    final again = session.callFor(.codingAgent, 'post', {
+      'text': 'Hi.',
+      'to': 'Ana',
+    });
+    final other = await session.callFor(.codingAgent, 'post', {
+      'to': 'Bea',
+      'text': 'Hi.',
+    });
+    session.approve(_card(session));
+
+    expect((await first).status, ToolStatus.returned);
+    expect((await again).status, ToolStatus.returned);
+    expect(other.status, ToolStatus.refused);
+    expect(mailbox.sent, ['Ana: Hi.']);
+  });
+
   test('a decision after dispose throws and sends nothing', () async {
     shop.add('x');
     final agent = ScriptedAgent([
@@ -2632,6 +2661,39 @@ final class _Nursery() implements AgentSurface {
 }
 
 final class const _Grower(final String name);
+
+/// A screen whose method that needs approval takes two arguments.
+final class _Mailbox() implements AgentSurface {
+  final sent = <String>[];
+
+  void post(String to, String text) => sent.add('$to: $text');
+
+  @override
+  List<AgentCapability> get agentCapabilities => [.callsWithApproval(post)];
+
+  @override
+  Stream<Object?> get changes => const Stream.empty();
+
+  @override
+  AgentSchema get agentSchema => AgentSchema(
+    sees: [],
+    calls: [
+      AgentTool(
+        post,
+        name: 'post',
+        description: 'Posts [text] to [to].',
+        parameters: const [
+          AgentParameter<String>('to', .string),
+          AgentParameter<String>('text', .string),
+        ],
+        invoke: (args) {
+          post(args.read('to'), args.read('text'));
+          return null;
+        },
+      ),
+    ],
+  );
+}
 
 /// A screen whose color converter has a bug.
 final class _Palette() implements AgentSurface {
