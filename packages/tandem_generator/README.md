@@ -15,7 +15,7 @@ Tandem describes each type once: the same description gives the JSON Schema of a
 | `String`, `bool` | string, boolean | |
 | `int`, `double`, `num` | integer, number | `15.0` is read as `15`. An `int` refuses `1.5` and any double of magnitude 2^53 or more. |
 | `DateTime` | ISO 8601 string | Read with [`DateTime.parse`](https://api.dart.dev/dart-core/DateTime/parse.html), so `2026-10-23` and `2026-10-23T10:20:00Z` both work. A time with an offset or `Z` is read as the same moment in local time. A local value is written with the device's offset, as `2026-10-23T10:20:00.000+02:00`. A day that does not exist rolls over: `2026-02-30` is 2 March. |
-| `Uri` | string | Written with `toString`, read with `Uri.parse`. |
+| `Uri` | string | Written with `toString`, read with `Uri.parse`. The agent writes an absolute URI, with a scheme such as `https:`. |
 | enum | the value's name | Also with `@JsonValue`: the backend may write `1`, the agent writes `shade`. |
 | token class | the member's name | A class without a public constructor whose values are its own `static const` members, such as a design system's text styles. |
 | extension type over `String`, `int`, `double`, `num` or `bool` | that value | Built as `Code(value)`, so the unnamed constructor must be public and take only the value, as one positional, non-nullable parameter of the type it wraps. A factory constructor there checks the agent's values too, and throws a `ToolCallRefused` to tell the agent what is wrong. |

@@ -61,6 +61,22 @@ void main() {
     }
   });
 
+  test('a URI without a scheme is refused', () {
+    expect(
+      () => AgentType.uri.read(
+        'example.com/page',
+        const AgentReading('link', objects: .fields),
+      ),
+      throwsA(
+        isA<ToolCallRefused>().having(
+          (error) => error.message,
+          'message',
+          startsWith('link: expected an absolute URI'),
+        ),
+      ),
+    );
+  });
+
   test('a list or a set of nullable items takes its own type and non-null '
       'items, and one of non-null items takes no nullable ones', () {
     final AgentType<String?> nullable = .nullable(.string);
