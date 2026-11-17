@@ -134,6 +134,15 @@ final class CatalogError extends InvalidGenerationSource {
       '${parameter.type.getDisplayString()} has no form, so it keeps its '
       'default. A JsonConverter in converters: lets the agent set it.';
 
+  /// The one line of the build for a child with a default, which the
+  /// generated code cannot copy.
+  static String defaultChildMessage(
+    Element widget,
+    FormalParameterElement parameter,
+  ) =>
+      '${widget.displayName}.${parameter.displayName} keeps its default: '
+      'Tandem cannot copy a widget, so the agent cannot set it.';
+
   /// The one line of the build for an optional parameter that holds a widget
   /// of another type than `Widget`.
   static String childTypeMessage(
