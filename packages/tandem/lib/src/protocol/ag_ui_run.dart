@@ -29,122 +29,56 @@ import 'package:tandem/src/protocol/chunk_events.dart';
 StreamTransformer<JsonObject, JsonObject> agUiRun(JsonObject input) =>
     StreamTransformer(
       (events, cancelOnError) => events
-          .transform(_requestedRun(input))
+          .transform(_RequestedRun(input).events)
           .expand(ChunkExpander().call)
           .listen(null, cancelOnError: cancelOnError),
     );
 
-StreamTransformer<JsonObject, JsonObject> _requestedRun(JsonObject input) {
-  final response = _Response(input);
-  var sourceFailed = false;
+/// Selects one run per subscription. Closing the sink also cancels a response
+/// the server may leave open.
+final class _RequestedRun(final JsonObject _request) {
+  final _replayedRuns = <String>[];
+  var _waitingForStart = true;
+  var _receivedEvent = false;
+  var _sourceFailed = false;
 
-  return StreamTransformer.fromHandlers(
-    handleData: (event, sink) {
-      switch (response.place(event)) {
-        case .beforeTheRun:
-          break;
-        case .inTheRun:
-          sink.add(event);
-        case .endOfTheRun:
-          // Closing the sink cancels a response the server may leave open.
-          sink
-            ..add(event)
-            ..close();
-        case .secondStart:
-          sink
-            ..addError(_startedTwice(input))
-            ..close();
-        case .inAnotherRun:
-          sink
-            ..addError(_mixedIn(event, into: input))
-            ..close();
+  StreamTransformer<JsonObject, JsonObject> get events =>
+      StreamTransformer.fromHandlers(
+        handleData: _receive,
+        handleError: (error, stack, sink) {
+          _sourceFailed = true;
+          sink.addError(error, stack);
+        },
+        handleDone: (sink) {
+          if (_looksForTheRun && _waitingForStart && !_sourceFailed) {
+            sink.addError(_missingRun());
+          }
+          sink.close();
+        },
+      );
+
+  void _receive(JsonObject event, EventSink<JsonObject> sink) {
+    _receivedEvent = true;
+    if (_looksForTheRun) {
+      if (_waitingForStart) {
+        if (_startsTheRun(event) || _failsTheRun(event)) {
+          _waitingForStart = false;
+        } else {
+          if (_startsARun(event)) _replayedRuns.add(_describe(event));
+          return;
+        }
+      } else if (_startsARun(event) || _namesAnotherThread(event)) {
+        final error = _startsTheRun(event)
+            ? _startedTwice(_request)
+            : _mixedIn(event, into: _request);
+        sink
+          ..addError(error)
+          ..close();
+        return;
       }
-    },
-    handleError: (error, stackTrace, sink) {
-      sourceFailed = true;
-      sink.addError(error, stackTrace);
-    },
-    handleDone: (sink) {
-      // A source that failed has already said why the run is missing.
-      if (response.endedBeforeTheRun && !sourceFailed) {
-        sink.addError(_missingRun(input, response));
-      }
-      sink.close();
-    },
-  );
-}
-
-/// Where an event of a response belongs.
-enum _Place() {
-  /// In a run the server replays, or anywhere else before the requested run.
-  beforeTheRun,
-  inTheRun,
-
-  /// The `RUN_FINISHED` or `RUN_ERROR` of the requested run.
-  endOfTheRun,
-
-  /// The requested `RUN_STARTED` again, as a resumed stream sends it.
-  secondStart,
-  inAnotherRun,
-}
-
-enum _Phase() {
-  beforeTheRun,
-  inTheRun,
-  afterTheRun,
-}
-
-/// Follows the response to one request and places each of its events.
-final class _Response(final JsonObject _request) {
-  var _phase = _Phase.beforeTheRun;
-
-  /// The runs the response started before the requested one, as the error
-  /// of a response that never starts it names them.
-  final replayedRuns = <String>[];
-
-  /// Whether no event came yet.
-  bool isEmpty = true;
-
-  bool get endedBeforeTheRun => _looksForTheRun && _phase == .beforeTheRun;
-
-  _Place place(JsonObject event) {
-    isEmpty = false;
-    if (!_looksForTheRun) {
-      return _endsARun(event) ? .endOfTheRun : .inTheRun;
     }
-
-    return switch (_phase) {
-      .beforeTheRun => _placeBeforeTheRun(event),
-      .inTheRun => _placeInTheRun(event),
-      .afterTheRun => .inAnotherRun,
-    };
-  }
-
-  _Place _placeBeforeTheRun(JsonObject event) {
-    if (_startsTheRun(event)) {
-      _phase = .inTheRun;
-      return .inTheRun;
-    }
-    if (_failsTheRun(event)) {
-      _phase = .afterTheRun;
-      return .endOfTheRun;
-    }
-
-    if (_startsARun(event)) {
-      replayedRuns.add(_describe(event));
-    }
-    return .beforeTheRun;
-  }
-
-  _Place _placeInTheRun(JsonObject event) {
-    if (_startsTheRun(event)) return .secondStart;
-    if (_startsARun(event) || _namesAnotherThread(event)) return .inAnotherRun;
-    if (_endsARun(event)) {
-      _phase = .afterTheRun;
-      return .endOfTheRun;
-    }
-
-    return .inTheRun;
+    sink.add(event);
+    if (_endsARun(event)) sink.close();
   }
 
   /// An input without a `runId` names no run to look for.
@@ -164,12 +98,36 @@ final class _Response(final JsonObject _request) {
 
     final runId = event[AgUiFields.runId];
     return runId == _request[AgUiFields.runId] ||
-        runId == null && replayedRuns.isEmpty;
+        runId == null && _replayedRuns.isEmpty;
   }
 
   bool _namesAnotherThread(JsonObject event) =>
       event[AgUiFields.threadId] != null &&
       event[AgUiFields.threadId] != _request[AgUiFields.threadId];
+
+  FormatException _missingRun() {
+    final missing =
+        'The response ended before the RUN_STARTED of ${_describe(_request)}.';
+    if (!_receivedEvent) {
+      return FormatException(
+        '$missing It had no AG-UI event. Check that the endpoint serves AG-UI.',
+      );
+    }
+
+    if (_replayedRuns.isEmpty) {
+      return FormatException('$missing It started no run.');
+    }
+
+    const namedAtMost = 3;
+    final named = _replayedRuns.take(namedAtMost).join(', ');
+    final more = _replayedRuns.length > namedAtMost
+        ? ' and ${_replayedRuns.length - namedAtMost} more'
+        : '';
+    return FormatException(
+      '$missing It started only $named$more. Check that the server repeats '
+      "the input's threadId and runId in RUN_STARTED.",
+    );
+  }
 }
 
 bool _startsARun(JsonObject event) =>
@@ -181,29 +139,6 @@ bool _endsARun(JsonObject event) => switch (event[AgUiFields.type]) {
   AgUiEventTypes.runFinished || AgUiEventTypes.runError => true,
   _ => false,
 };
-
-FormatException _missingRun(JsonObject input, _Response response) {
-  final missing =
-      'The response ended before the RUN_STARTED of ${_describe(input)}.';
-  if (response.isEmpty) {
-    return FormatException(
-      '$missing It had no AG-UI event. Check that the endpoint serves AG-UI.',
-    );
-  }
-
-  final runs = response.replayedRuns;
-  if (runs.isEmpty) return FormatException('$missing It started no run.');
-
-  const namedAtMost = 3;
-  final named = runs.take(namedAtMost).join(', ');
-  final more = runs.length > namedAtMost
-      ? ' and ${runs.length - namedAtMost} more'
-      : '';
-  return FormatException(
-    '$missing It started only $named$more. Check that the server repeats '
-    "the input's threadId and runId in RUN_STARTED.",
-  );
-}
 
 FormatException _startedTwice(JsonObject input) => FormatException(
   'The response started ${_describe(input)} twice. Deduplicate a resumed '
