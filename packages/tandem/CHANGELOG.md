@@ -1,3 +1,49 @@
+## 0.3.2
+
+### Connections and history
+
+- `OnDeviceAgent`, `OnDeviceAvailability` and `OnDeviceErrorCode` are deprecated ahead of their removal in 0.4.0. Use an AG-UI backend through `HttpAgentConnection`.
+- `HttpAgentConnection(idleTimeout: ...)` sets how long a run waits for response headers or the next bytes, including SSE comments. The default is 60 seconds.
+- AG-UI tool results sent as a list of content parts stay in the conversation history and go back to the backend unchanged. Before, Tandem dropped them.
+- Each tool answer and each call without a parent message gets its own message ID. Before, reusing a tool call ID in a later run could make the backend skip the second answer.
+- A response with no AG-UI events reports that the endpoint returned no events. An event whose JSON is not an object fails with a `FormatException`.
+
+### Values and tool schemas
+
+- Tandem writes local `DateTime` values with their UTC offset and reads date-time arguments as local time. Before, local values went out without an offset, and arguments with an offset or `Z` came back as UTC.
+- A `Uri` argument must include a scheme, as its schema promises. Before, a relative URI was accepted.
+- A parameter or field with a doc comment keeps its type's instructions in the schema, including converter formats and how to point to an object by path.
+- A view property of type `double` rejects a path to an extension type over `int`. Before, a property such as a price could display a value expressed in cents as an ordinary number.
+- The inset converters refuse a value that names the same side twice.
+- When the agent list cannot encode a `.sees` value, its `StateError` names the getter.
+- The agent list throws a `StateError` when an app method's tool name starts with the reserved `tandem_` prefix.
+- The `AgentCall.arguments` delivered to `onEvent` are read-only, including nested maps and lists. Before, changing them could change the view action note sent to the agent.
+
+### Drawn views
+
+- A rebuilt `TandemView` keeps the drawn view when it receives another instance of the same catalog class. A different catalog class starts an empty view.
+- A required field in a drawn view keeps the latest entry made while another action runs and submits it when that action finishes. Before, those edits were lost.
+- When the screen's agent list throws while drawing, the view call answers `failed` and the run continues. A converter that throws unexpectedly gets a separate answer asking the agent to draw without the unreadable value.
+- View refusals name the template item's fields, explain list indices and report binding errors even alongside an unknown component. They omit repeated and empty hints and say when the next message will turn drawing back on.
+- Before the first view is drawn, screen changes no longer make the view read and encode the agent list. A catalog conflict is reported when a run offers the view tool, once until the conflict changes.
+
+### Coding agents and scripts
+
+- A bridge call returns its method's answer even when another screen's agent list throws. The bridge reports the error through Flutter and includes it on that screen in `ext.tandem.describe`.
+- A bridge call with only a known `context` selects the screen it describes. Repeated descriptions reuse the context while that screen shows the same data, and activity on other screens no longer expires it.
+- A repeated coding-agent call joins the pending call even when its JSON object keys arrive in a different order.
+- In `testing.dart`, `AgentRequest.userText` reads the user's latest text, `offersView` checks whether the run can draw, and `AgentStep.showView` draws the given components. `AgentRequest.newPressedActions` reads each `PressedAction` with its `tool`, `arguments`, typed `ToolStatus status`, and `answer`.
+- A `ScriptedAgent` run that calls an unoffered tool ends with `RUN_ERROR` and `ScriptedErrorCode.notOffered`. Before, the call was silently dropped.
+
+### Sessions and package guidance
+
+- A session closed before it sends a message preserves the screen recorded by the last session that sent one. Closing during an approved coding-agent or view call also preserves the in-app agent's thread.
+- A session stops dispatching a method if a listener releases its thread during `Calling`. It also stops notifying listeners if `onEvent` disposes it as a run fails to open.
+- All `Idle()` instances compare equal and share a hash code, and so do all `Stopping()` instances.
+- Runtime-only members of `AgentType`, `AgentView.write`, `AgentView.checked`, `AgentComponent.property` and `ToolArgs.json` are annotated `@internal`. The analyzer warns when an app uses them.
+- The README and skills guide apps to an AG-UI backend and show how to script views in the order desk. The coding-agent skill explains how to identify an unreadable screen and how to check whether a method ran before retrying it.
+- The API docs explain how converter IDs distinguish configurations, when catalog actions are required, when approvals end and which arguments a call reports.
+
 ## 0.3.1
 
 - `TandemThread(id: ThreadId(conversationId))` sends the backend's own conversation ID with every run. A reset, such as `session.startOver()` or a lost connection, keeps it. `ThreadId('')` throws an `ArgumentError`.
