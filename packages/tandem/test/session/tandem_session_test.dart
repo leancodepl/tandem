@@ -1832,6 +1832,35 @@ void main() {
     expect(agent.requests, isEmpty);
   });
 
+  test('a session closed while an approved method of a coding agent runs '
+      'keeps the thread', () async {
+    final gate = Completer<void>();
+    shop.serverReply = gate.future;
+    final thread = TandemThread();
+    final agent = ScriptedAgent([
+      (_) => const [AgentStep.say('Hi.')],
+      (_) => const [AgentStep.say('Again.')],
+    ]);
+    final first = openToClose(thread, agent)..send('a');
+    await pumpEventQueue();
+    final answer = first.callFor(.codingAgent, 'share', {});
+    first
+      ..approve(_card(first))
+      ..dispose();
+    gate.complete();
+    expect((await answer).status, ToolStatus.returned);
+
+    final next = open(agent, thread: thread)..send('b');
+    await pumpEventQueue();
+    expect(agent.requests[1]['threadId'], agent.requests[0]['threadId']);
+    expect(linesOf(agent.requests[1]), [
+      'user: a',
+      'assistant: Hi.',
+      'user: b',
+    ]);
+    expect(summaryOf(next.items).whereType<ChatNoticeKind>(), isEmpty);
+  });
+
   test('a change on the screen before it closed keeps the thread', () async {
     final thread = TandemThread();
     final agent = ScriptedAgent([

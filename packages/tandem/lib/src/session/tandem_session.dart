@@ -88,8 +88,8 @@ final class TandemSession({
   /// Null when no run is open, and once the session is disposed.
   Run? _run;
 
-  /// The approved method that runs now, outside any run.
-  Calling? _approvedCall;
+  /// The approved call whose method runs now, outside any run.
+  ToolCall? _approved;
 
   /// The view that the next run offers the agent to draw on.
   ViewTool? _view;
@@ -123,7 +123,10 @@ final class TandemSession({
       backendTool: backendTool,
       drawing: drawing,
     ),
-    null => _approvedCall ?? _waitingStatus,
+    null => switch (_approved) {
+      final call? => Calling(call.tool, approved: true),
+      null => _waitingStatus,
+    },
   };
 
   /// The state that the agent's backend keeps of the thread, such as the
@@ -262,8 +265,8 @@ final class TandemSession({
 
   /// Cancels the requests that wait, so a later decision throws. Nothing runs,
   /// goes to the agent or notifies after it. The thread keeps the answers of
-  /// the agent's turn for the next session, or starts over when a run is
-  /// open or an approved method runs.
+  /// the agent's turn for the next session, or starts over when a run or an
+  /// approved method of the in-app agent is open.
   @override
   void dispose() {
     letGoOfThread();
@@ -279,7 +282,7 @@ final class TandemSession({
     }
     _disposed = true;
     _waiting.cancelAll().forEach(_showDecision);
-    if (_isBusy) {
+    if (_inAppAgentWorks) {
       // The backend may finish the run, and the method its call, where the
       // app never sees it.
       _startThreadOver();
@@ -661,7 +664,7 @@ final class TandemSession({
   // As Calling, so a new message waits for it.
   Future<void> _runApproved(ToolCall call, Turn turn) async {
     final listing = AgentListing.of(_surface);
-    _approvedCall = Calling(call.tool, approved: true);
+    _approved = call;
     notifyListeners();
     call.answerWith(
       await _callMethod(
@@ -676,7 +679,7 @@ final class TandemSession({
       return;
     }
     _invalidateIfSeesChanged();
-    _approvedCall = null;
+    _approved = null;
     _continueAfter(turn);
   }
 
@@ -781,7 +784,11 @@ final class TandemSession({
     };
   }
 
-  bool get _isBusy => _run != null || _approvedCall != null;
+  bool get _isBusy => _run != null || _approved != null;
+
+  /// Whether a run or an approved method of the in-app agent is open, whose
+  /// result the thread would miss.
+  bool get _inAppAgentWorks => _run != null || _approved?.caller == .inAppAgent;
 
   SessionStatus get _waitingStatus => switch (_waiting.shown) {
     final request? => AwaitingApproval(request),
