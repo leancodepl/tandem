@@ -165,6 +165,8 @@ bool _matchParts(
     switch (part) {
       case {'text': final String value}:
         if (part['thought'] != true) visible.write(value);
+      case {'functionCall': JsonObject(), 'thought': true}:
+        break;
       case {'functionCall': final JsonObject function}:
         if (callIndex >= calls.length) return false;
         final call = calls[callIndex];
