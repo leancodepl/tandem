@@ -83,6 +83,9 @@ the latest user turn. Earlier turns omit these snapshots.
 | `safetySettings` | Firebase's `SafetySetting` list |
 | `idleTimeout` | Maximum wait for credentials, response headers or the next response bytes. Defaults to 60 seconds. SSE heartbeats count as bytes even while the model is silent. |
 
+With `FirebaseAI.googleAI()`, leave `SafetySetting.method` null: the SDK
+refuses the setting, and the run fails with `FirebaseErrorCode.invalidInput`.
+
 One candidate and text output are supported. Requests for multiple candidates,
 image generation or speech generation are rejected. Model-specific combinations
 of structured output and function calling remain subject to Firebase's model

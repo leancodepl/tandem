@@ -177,6 +177,12 @@ final class _Run({
         FirebaseErrorCode.timedOut,
         message ?? 'Firebase stopped responding.',
       ),
+      // The SDK refuses a setting for its backend only when it builds the
+      // request, such as `SafetySetting.method` with the Gemini Developer API.
+      ArgumentError(:final message) => FirebaseFailure(
+        FirebaseErrorCode.invalidInput,
+        '$message',
+      ),
       // Not every exception of the SDK prints its message.
       FirebaseAIException(:final message) => FirebaseFailure(
         FirebaseErrorCode.generationFailed,
