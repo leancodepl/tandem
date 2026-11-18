@@ -141,6 +141,9 @@ FirebaseFailure _incompleteAnswer(FinishReason reason, String? message) {
     FinishReason.imageRecitation => FirebaseErrorCode.blocked,
     FinishReason.malformedFunctionCall ||
     FinishReason.malformedResponse => FirebaseErrorCode.invalidResponse,
+    // Firebase rejected the history, so sending it again cannot work.
+    FinishReason.missingThoughtSignature =>
+      FirebaseErrorCode.incompatibleHistory,
     _ => FirebaseErrorCode.generationFailed,
   };
   return FirebaseFailure(
