@@ -1,21 +1,20 @@
 # tandem_firebase_ai
 
-Connect Firebase AI Logic to your Flutter app's screens and actions with
-[Tandem](https://tandem.leancode.co). No custom agent backend is required.
+Connect Firebase AI Logic to the screens of your Flutter app with
+[Tandem](https://tandem.leancode.co). The app needs no agent backend.
 
-The model reads the screen's current state and proposes calls to the methods it
-exposes. Tandem checks arguments, executes methods and asks for approval where
-the screen declares `.callsWithApproval`.
+Gemini reads what a screen lists with `.sees` and proposes calls of the
+methods the screen lists with `.calls` and `.callsWithApproval`. Tandem checks
+the arguments, runs the methods in the app and asks the user to approve the
+calls that need approval.
 
 ## Connect a screen
 
-Use `tandem_firebase_ai` 0.1.0 with `tandem` 0.3.3 or a compatible later
-0.3.x release. The connection uses message metadata introduced in 0.3.3 to
-continue a conversation after a tool call.
+`tandem_firebase_ai` 0.1.0 needs `tandem` 0.3.3 or a later 0.3.x release.
 
 Set up [Firebase AI Logic](https://firebase.google.com/docs/ai-logic/get-started?platform=flutter)
 and [App Check](https://firebase.google.com/docs/ai-logic/app-check) in your app.
-Initialize Firebase and activate App Check before the first model request.
+Initialize Firebase and activate App Check before the first message.
 
 Create a connection once, outside `build`:
 
@@ -33,9 +32,9 @@ Create a connection once, outside `build`:
 
 Import `package:firebase_ai/firebase_ai.dart` and
 `package:tandem_firebase_ai/tandem_firebase_ai.dart`. `model` is the name of a
-Gemini model available in your project that supports function calling.
+Gemini model in your project that supports function calling.
 
-Pass the connection to your existing scope:
+Pass the connection to your scope:
 
 <!-- example/lib/firebase_order_app.dart -->
 ```dart
@@ -45,79 +44,72 @@ Pass the connection to your existing scope:
         approvals: const .fromState(),
 ```
 
-The screen and chat go in the scope's `child`, as with any other Tandem
-connection. Keep the same connection while its threads are in use. Several
-screens may share a connection; their conversations stay separate. A connection
-owns only its active requests, so it needs no `dispose` call from the app.
+The screen and the chat go in the scope's `child`, as with any other Tandem
+connection. Several screens can share one connection, and each keeps its own
+conversation. The connection needs no `dispose` call.
 
 The [runnable example](https://github.com/leancodepl/tandem/blob/main/example/README.md#connect-directly-to-firebase-ai-logic)
-includes Firebase configuration, a form, streaming chat, approvals and Stop.
-Its `Orders` implementation stores orders in memory.
+has the Firebase configuration, a form, a chat, approvals and Stop. Its
+`Orders` class keeps the orders in memory.
 
-## What the adapter handles
+## What a run does
 
-- Text input, streamed text output and multi-turn conversation.
-- Current `.sees`, `.calls` and `.callsWithApproval` on each model request.
-- Several proposed calls in one answer, with the actual results returned by
-  Tandem. The adapter waits for the complete answer and checks all tool names
-  and native call IDs before handing any calls to Tandem. Tandem checks each
-  method's arguments when it handles that call.
-- Existing `TandemView` catalogs through the `tandem_show_view` tool.
-- Gemini's native response parts and thought signatures in message metadata.
-- Stop, request timeout and cleanup when the session leaves the screen.
+- A run sends the screen's current `.sees`, `.calls` and `.callsWithApproval`
+  and asks Firebase for one answer. The `.sees` values go as data in the
+  latest user turn. `instructions` go in the system instruction.
+- Text reaches the chat while Firebase streams it.
+- Tool calls reach Tandem only after Firebase sent the whole answer with the
+  finish reason `STOP`. One call of a tool the run does not offer fails the
+  run, and Tandem gets none of the answer's calls.
+- A `TandemView` catalog works through the `tandem_show_view` tool.
+- Gemini needs its answer back with the thought signatures of its parts. The
+  connection keeps the answer in the metadata of the assistant message, so
+  the answer stays in the `TandemThread`.
 
-Tandem owns the conversation and tool execution. Use its `TandemThread`,
-`session.send`, `session.stop` and approval methods. The adapter adds no separate
-chat session or tool registry. `instructions` supplies system guidance.
-Each request includes the current screen context in a separate text part of
-the latest user turn. Earlier turns omit these snapshots.
+The connection has no chat session and no tool registry of its own. Use
+`TandemThread`, `session.send`, `session.stop` and the approval methods.
 
-## Configuration
+## Settings
 
-`FirebaseConnection` requires `firebase` and `model`. It also accepts:
+`generationConfig` and `safetySettings` take Firebase's own types. The
+connection delivers one candidate of text. Its constructor throws an
+`ArgumentError` for several candidates, image output or speech output. Files,
+images, audio, the Live API and grounding are not supported.
 
-| Parameter | Meaning |
-|---|---|
-| `instructions` | Application instructions, empty by default |
-| `generationConfig` | Firebase's `GenerationConfig`, including output token and thinking settings |
-| `safetySettings` | Firebase's `SafetySetting` list |
-| `idleTimeout` | Maximum wait for credentials, response headers or the next response bytes. Defaults to 60 seconds. SSE heartbeats count as bytes even while the model is silent. |
+`idleTimeout` is 60 seconds by default. It limits three waits: for
+credentials, for the response headers and for the next bytes of the response.
+A model that thinks for longer without sending bytes fails the run with
+`FirebaseErrorCode.timedOut`.
 
-With `FirebaseAI.googleAI()`, leave `SafetySetting.method` null: the SDK
-refuses the setting, and the run fails with `FirebaseErrorCode.invalidInput`.
+The connection is tested on a real model with `FirebaseAI.googleAI()`, the
+Gemini Developer API, and not with `FirebaseAI.agentPlatform()`. With the
+Gemini Developer API, leave `SafetySetting.method` null: the SDK refuses the
+setting, and the run fails with `FirebaseErrorCode.invalidInput`.
 
-One candidate and text output are supported. Requests for multiple candidates,
-image generation or speech generation are rejected. Model-specific combinations
-of structured output and function calling remain subject to Firebase's model
-support. Files, images, audio, Live API and grounding are outside this adapter's
-scope.
-
-Project selection, App Check, Firebase Authentication and quotas stay in the
-application's Firebase configuration. Approval cards govern the app's user
-experience; authorization for protected data still belongs to the service that
-stores it.
+Project selection, App Check, Firebase Authentication and quotas belong to
+the app's Firebase configuration. An approval card is not authorization: the
+service that stores protected data still decides who may change it.
 
 ## Stop and errors
 
-Stop prevents the remaining methods from running and aborts the client request.
-It cannot undo a method that already ran or guarantee that generation stopped
-on Firebase's servers. Closing the screen cancels that request without closing
-other screens' requests.
+Stop ends the run in the app and aborts its HTTP request. Tandem runs none of
+the run's remaining calls, and the next run sends the text the user saw. Stop
+does not undo a method that already ran, and Firebase may go on generating and
+charge for it. A screen that closes cancels only its own request.
 
-Failures appear through Tandem's `RunFailed` event. `FirebaseErrorCode`
-distinguishes invalid input or responses, incompatible history, blocked output,
-output limits, timeouts and other generation failures. A blocked chunk ends the
-run before its text is shown. Earlier streamed text can remain visible. The app
-receives tool calls only after the entire response completes successfully.
-The adapter does not retry requests or shorten history automatically.
+A failed run reaches the app as Tandem's `RunFailed` event with a
+`FirebaseErrorCode`. A blocked chunk ends the run before its text shows, but
+text of earlier chunks stays in the chat. The connection does not retry a
+request and does not shorten the history.
 
-Keep a thread with the connection that created its native history. Start a new
-thread when replacing the connection or model. Signed tool history that no
-longer matches the retained conversation fails explicitly instead of replaying
-different arguments or text. Visible partial text without retained tool calls
-can continue as ordinary text.
+`FirebaseErrorCode.incompatibleHistory` means that the thread has tool calls
+or messages this connection cannot send to Firebase. Start a new thread then.
+The known causes:
 
-If you press Stop after Gemini finishes an answer with tool calls but before
-all its text appears, the visible text can differ from the signed answer.
-The next send reports `FirebaseErrorCode.incompatibleHistory`. Start a new
-thread to continue.
+- Another connection wrote the thread: a second `FirebaseConnection`, or one
+  to an AG-UI backend. Keep a thread with the connection that started it,
+  also when you change the model.
+- Firebase refused the thought signatures of the thread.
+- A wrapper around the connection delivered a finished answer late, and the
+  user pressed Stop before all its text showed. Pass the `FirebaseConnection`
+  itself to the scope to rule this case out.
