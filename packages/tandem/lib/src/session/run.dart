@@ -99,7 +99,8 @@ final class Run(
   /// listeners: argument fragments are buffered until the call is complete.
   bool receive(RunOutput output) {
     switch (output) {
-      case TextMessageMetadata(:final messageId, :final metadata):
+      case TextStarted(:final messageId, :final metadata) ||
+          TextEnded(:final messageId, :final metadata):
         _message(MessageId.wire(messageId)).metadata.addAll(metadata);
         return false;
       case TextDelta(:final messageId, :final delta, :final metadata):

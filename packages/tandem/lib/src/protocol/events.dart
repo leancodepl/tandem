@@ -21,10 +21,11 @@ final class const RunError(final RunErrorCode? code, final String? message)
 /// Text and tool calls streamed into the assistant messages of one run.
 sealed class const RunOutput() extends AgentEvent;
 
-final class const TextMessageMetadata(
-  final String messageId,
-  final JsonObject metadata,
-) extends RunOutput;
+/// The start of a message, which fixes its place among the run's messages.
+final class const TextStarted(
+  final String messageId, {
+  final JsonObject metadata = const {},
+}) extends RunOutput;
 
 final class const TextDelta(
   final String messageId,
@@ -32,14 +33,19 @@ final class const TextDelta(
   final JsonObject metadata = const {},
 }) extends RunOutput;
 
-/// [parentMessageId] is the agent's message that holds the call, when the
-/// server names it.
+final class const TextEnded(
+  final String messageId, {
+  final JsonObject metadata = const {},
+}) extends RunOutput;
+
 final class const ToolCallStarted(
   final String toolCallId,
-  final String name, [
+  final String name, {
+
+  /// The agent's message that holds the call, when the server names it.
   final String? parentMessageId,
   final JsonObject metadata = const {},
-]) extends RunOutput;
+}) extends RunOutput;
 
 final class const ToolCallArgs(
   final String toolCallId,
