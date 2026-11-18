@@ -113,7 +113,7 @@ its own native-history identity. Replacing it requires a new thread. Partial
 text without calls can continue as the visible text; incompatible signed tool
 history fails explicitly.
 
-A function call marked as a thought is not a call, so Tandem does not get it.
+The connection accepts an answer only when its last chunk with content has the finish reason `STOP`. A function call marked as a thought is not a call, so Tandem does not get it.
 
 When a reset keeps a tool call and its unsent result under an app-supplied
 thread ID, the resulting history starts with the model's call. Gemini requires
