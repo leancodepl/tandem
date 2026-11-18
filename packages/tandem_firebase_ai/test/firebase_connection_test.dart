@@ -277,6 +277,21 @@ void main() {
     });
   });
 
+  test(
+    'an input that is not an AG-UI run fails before the run starts',
+    () async {
+      final events = await connect().run({'threadId': 'thread'}).toList();
+
+      expect(events, [
+        {
+          'type': 'RUN_ERROR',
+          'code': FirebaseErrorCode.invalidInput,
+          'message': isA<String>(),
+        },
+      ]);
+    },
+  );
+
   test('a request has the app instructions, the tools with their JSON Schema '
       'and the screen context as data of the user turn', () async {
     final server = _Server([

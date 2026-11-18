@@ -18,7 +18,10 @@ void main() {
         }
         throw StateError('Expected an abortable request.');
       });
-      final client = RunClient(const Duration(seconds: 1), inner);
+      final client = http.runWithClient(
+        () => _client(const Duration(seconds: 1)),
+        () => inner,
+      );
       final pending = client.get(Uri.https('example.invalid', '/generate'));
       final aborted = expectLater(
         pending,
@@ -38,9 +41,9 @@ void main() {
     'idle timeout also observes a response body that never sends bytes',
     () async {
       final body = StreamController<List<int>>();
-      final client = RunClient(
-        const Duration(milliseconds: 10),
-        MockClient.streaming(
+      final client = http.runWithClient(
+        () => _client(const Duration(milliseconds: 10)),
+        () => MockClient.streaming(
           (_, _) async => http.StreamedResponse(body.stream, 200),
         ),
       );
@@ -66,9 +69,9 @@ void main() {
     'a header timeout identifies the phase before any response bytes',
     () async {
       final headers = Completer<http.StreamedResponse>();
-      final client = RunClient(
-        const Duration(milliseconds: 10),
-        MockClient.streaming((_, _) => headers.future),
+      final client = http.runWithClient(
+        () => _client(const Duration(milliseconds: 10)),
+        () => MockClient.streaming((_, _) => headers.future),
       );
       addTearDown(client.close);
       await expectLater(
@@ -87,3 +90,6 @@ void main() {
     },
   );
 }
+
+RunClient _client(Duration idleTimeout) =>
+    RunClient(idleTimeout, onCredentialsTimeout: (_) {});
