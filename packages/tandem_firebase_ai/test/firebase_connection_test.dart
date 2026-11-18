@@ -80,6 +80,38 @@ void main() {
       }, server.client);
     });
 
+    testWidgets('an empty text part without a signature is not sent '
+        'back', (tester) async {
+      final server = _Server([
+        Stream.fromIterable([
+          _chunk([
+            {'text': 'Hello.'},
+          ], finishReason: null),
+          _chunk([
+            {'text': ''},
+          ]),
+        ]),
+        _reply([
+          {'text': 'Again.'},
+        ]),
+      ]);
+      await http.runWithClient(() async {
+        final screen = _Screen(connect());
+        await screen.mount(tester);
+        screen.session.send('hello');
+        await screen.settle(tester);
+        screen.session.send('again');
+        await screen.settle(tester);
+
+        expect(_contents(server.requests.last)[1], {
+          'role': 'model',
+          'parts': [
+            _asSentBack({'text': 'Hello.'}),
+          ],
+        });
+      }, server.client);
+    });
+
     testWidgets('Stop during generation keeps the visible text, and the next '
         'message works', (tester) async {
       final response = StreamController<List<int>>();
