@@ -5,6 +5,7 @@ import 'package:tandem/src/protocol/events.dart';
 
 /// Returns [IgnoredEvent] for unknown events or invalid required fields.
 /// Interrupts and malformed run outcomes become [RunOutcome.unsupported].
+/// Throws a [FormatException] for `metadata` that is not a JSON object.
 AgentEvent decodeAgUiEvent(JsonObject json) {
   final decode = _decoders[json[AgUiFields.type]];
   if (decode == null) {
@@ -17,9 +18,9 @@ AgentEvent decodeAgUiEvent(JsonObject json) {
 const _decoders = <String, AgentEvent Function(JsonObject)>{
   AgUiEventTypes.runFinished: _decodeRunFinished,
   AgUiEventTypes.runError: _decodeRunError,
-  AgUiEventTypes.textMessageStart: _decodeTextMetadata,
+  AgUiEventTypes.textMessageStart: _decodeTextStarted,
   AgUiEventTypes.textMessageContent: _decodeTextDelta,
-  AgUiEventTypes.textMessageEnd: _decodeTextMetadata,
+  AgUiEventTypes.textMessageEnd: _decodeTextEnded,
   AgUiEventTypes.toolCallStart: _decodeToolCallStarted,
   AgUiEventTypes.toolCallArgs: _decodeToolCallArgs,
   AgUiEventTypes.toolCallEnd: _decodeToolCallEnded,
@@ -36,9 +37,18 @@ RunError _decodeRunError(JsonObject json) => RunError(
   _tryString(json[AgUiFields.message]),
 );
 
-AgentEvent _decodeTextMetadata(JsonObject json) =>
+AgentEvent _decodeTextStarted(JsonObject json) =>
     switch (json[AgUiFields.messageId]) {
-      final String messageId => TextMessageMetadata(messageId, _metadata(json)),
+      final String messageId => TextStarted(
+        messageId,
+        metadata: _metadata(json),
+      ),
+      _ => const IgnoredEvent(),
+    };
+
+AgentEvent _decodeTextEnded(JsonObject json) =>
+    switch (json[AgUiFields.messageId]) {
+      final String messageId => TextEnded(messageId, metadata: _metadata(json)),
       _ => const IgnoredEvent(),
     };
 
@@ -62,8 +72,8 @@ AgentEvent _decodeToolCallStarted(JsonObject json) {
   return ToolCallStarted(
     toolCallId,
     name,
-    _tryString(json[AgUiFields.parentMessageId]),
-    _metadata(json),
+    parentMessageId: _tryString(json[AgUiFields.parentMessageId]),
+    metadata: _metadata(json),
   );
 }
 
