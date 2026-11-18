@@ -614,6 +614,26 @@ void main() {
     expect(events.last['code'], FirebaseErrorCode.invalidInput);
     expect(server.requests, isEmpty);
   });
+
+  test('a setting the SDK refuses for its backend fails the run as invalid '
+      'input', () async {
+    final connection = FirebaseConnection(
+      firebase: firebase,
+      model: 'test-model',
+      safetySettings: [
+        SafetySetting(
+          HarmCategory.harassment,
+          HarmBlockThreshold.high,
+          HarmBlockMethod.severity,
+        ),
+      ],
+    );
+    final server = _Server(const []);
+    final events = await _run(connection, server);
+
+    expect(events.last['code'], FirebaseErrorCode.invalidInput);
+    expect(server.requests, isEmpty);
+  });
 }
 
 typedef _Json = Map<String, Object?>;
