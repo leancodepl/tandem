@@ -1,8 +1,13 @@
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:http/http.dart' as http;
 import 'package:tandem/tandem.dart';
+import 'package:tandem_firebase_ai/src/ag_ui_events.dart';
+import 'package:tandem_firebase_ai/src/ag_ui_input.dart';
+import 'package:tandem_firebase_ai/src/firebase_answer.dart';
 import 'package:tandem_firebase_ai/src/firebase_failure.dart';
 import 'package:tandem_firebase_ai/src/firebase_request.dart';
-import 'package:tandem_firebase_ai/src/firebase_runs.dart';
+import 'package:tandem_firebase_ai/src/firebase_run.dart';
+import 'package:tandem_firebase_ai/src/json_object.dart';
 
 /// Runs a Tandem agent through Firebase AI Logic without an agent server.
 ///
@@ -10,84 +15,112 @@ import 'package:tandem_firebase_ai/src/firebase_runs.dart';
 /// connection for the lifetime of its threads. Start over before replacing it.
 /// Tools and approvals run in Tandem; Firebase only proposes calls.
 final class FirebaseConnection({
-  /// The app owns Firebase initialization, App Check and authentication.
-  required FirebaseAI firebase,
-  required String model,
+  required final FirebaseAI _firebase,
+  required final String _model,
 
   /// Application guidance included in the system instruction.
-  String instructions = '',
+  final String _instructions = '',
 
   /// Native model settings. Multiple candidates, images and audio are rejected.
-  GenerationConfig? generationConfig,
+  final GenerationConfig? _generationConfig,
   List<SafetySetting>? safetySettings,
 
   /// How long credentials, response headers or the next bytes may take.
-  Duration idleTimeout = const Duration(seconds: 60),
+  final Duration _idleTimeout = const Duration(seconds: 60),
 }) implements StoppableAgentConnection {
   this {
-    if (model.trim().isEmpty) {
-      throw ArgumentError.value(model, 'model', 'Must not be empty.');
+    if (_model.trim().isEmpty) {
+      throw ArgumentError.value(_model, 'model', 'Must not be empty.');
     }
-    if (idleTimeout <= Duration.zero) {
+    if (_idleTimeout <= Duration.zero) {
       throw ArgumentError.value(
-        idleTimeout,
+        _idleTimeout,
         'idleTimeout',
         'Must be positive.',
       );
     }
-    if (_unsupportedConfig(generationConfig) case final reason?) {
+    if (_generationConfig?.unsupportedReason case final reason?) {
       throw ArgumentError(reason);
     }
-    final safety = safetySettings == null
-        ? null
-        : List<SafetySetting>.unmodifiable(safetySettings);
-    _runs = FirebaseRuns(
-      instructions: instructions,
-      idleTimeout: idleTimeout,
-      generate: (request, client) {
-        // The SDK retains the caller's mutable list of response modalities.
-        if (_unsupportedConfig(generationConfig) case final reason?) {
-          throw FirebaseFailure(FirebaseErrorCode.invalidInput, reason);
-        }
-        return firebase
-            .generativeModel(
-              model: model,
-              generationConfig: generationConfig,
-              safetySettings: safety,
-              systemInstruction: request.systemInstruction,
-              tools: request.tools,
-              httpClient: client,
-            )
-            .generateContentStream(request.contents);
-      },
-    );
   }
 
-  late final FirebaseRuns _runs;
+  final List<SafetySetting>? _safetySettings = safetySettings == null
+      ? null
+      : List.unmodifiable(safetySettings);
+  final _id = ConnectionId.unique();
+
+  /// The runs by the identity of their input: the session passes the same
+  /// object to [stop]. An `Expando` holds them weakly, so an ended run needs
+  /// no removal.
+  final _runs = Expando<FirebaseRun>();
 
   @override
-  Stream<JsonObject> run(JsonObject input) => _runs.run(input);
+  Stream<JsonObject> run(JsonObject input) {
+    final AgUiInput runInput;
+    try {
+      runInput = .read(input);
+    } on FormatException catch (error) {
+      final failure = FirebaseFailure.invalidInput(error);
+      return .value(AgUiEvents.runErrorEvent(failure.code, failure.message));
+    }
+
+    final run = FirebaseRun(
+      runInput,
+      generate: _generate,
+      connectionId: _id,
+      idleTimeout: _idleTimeout,
+    );
+    _runs[input] = run;
+    return run.events;
+  }
 
   /// Ends local delivery and aborts the HTTP request. Firebase may already have
   /// generated content; cancellation does not guarantee zero further charges.
   @override
-  Future<void> stop(JsonObject input) => _runs.stop(input);
+  Future<void> stop(JsonObject input) async => _runs[input]?.stop();
+
+  Stream<GenerateContentResponse> _generate(
+    AgUiInput input,
+    http.Client client,
+  ) {
+    // The SDK keeps the caller's list of response modalities, which the app
+    // can still change.
+    if (_generationConfig?.unsupportedReason case final reason?) {
+      throw FirebaseFailure.unsupportedSettings(reason);
+    }
+
+    final request = FirebaseRequest(
+      input,
+      instructions: _instructions,
+      connectionId: _id,
+    );
+    final model = _firebase.generativeModel(
+      model: _model,
+      generationConfig: _generationConfig,
+      safetySettings: _safetySettings,
+      systemInstruction: request.systemInstruction,
+      tools: request.tools,
+      httpClient: client,
+    );
+    return model.generateContentStream(request.contents);
+  }
 }
 
-String? _unsupportedConfig(GenerationConfig? config) {
-  if (config == null) return null;
-  // Older models still accept candidateCount.
-  // ignore: deprecated_member_use
-  final count = config.candidateCount;
-  if (count != null && count != 1) {
-    return 'FirebaseConnection supports one candidate.';
+extension on GenerationConfig {
+  /// Why this connection cannot serve the settings, or null when it can.
+  String? get unsupportedReason {
+    // Older models still accept candidateCount.
+    // ignore: deprecated_member_use
+    if (candidateCount case final count? when count != 1) {
+      return 'FirebaseConnection supports one candidate.';
+    }
+    if (responseModalities case final modalities?
+        when modalities.any((modality) => modality != .text)) {
+      return 'FirebaseConnection supports text responses only.';
+    }
+    if (imageConfig != null || speechConfig != null) {
+      return 'Image and speech generation are not supported.';
+    }
+    return null;
   }
-  if (config.responseModalities case final modalities?
-      when modalities.any((modality) => modality != ResponseModalities.text)) {
-    return 'FirebaseConnection supports text responses only.';
-  }
-  if (config.imageConfig != null || config.speechConfig != null) {
-    return 'Image and speech generation are not supported.';
-  }
-  return null;
 }

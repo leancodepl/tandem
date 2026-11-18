@@ -2,75 +2,102 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 
-final class RunClient(final Duration idleTimeout, final http.Client _client)
-    extends http.BaseClient {
-  final _abort = Completer<void>();
-  var _readingSuccessfulResponse = false;
-  void Function()? onSend;
-  bool get readingSuccessfulResponse => _readingSuccessfulResponse;
+/// The HTTP client of one run. The Firebase SDK can neither abort a request
+/// nor time out, so this client does both: [close] aborts the request, and
+/// each wait of the run fails after [_idleTimeout].
+final class RunClient(
+  final Duration _idleTimeout, {
+  required final void Function(TimeoutException) _onCredentialsTimeout,
+}) extends http.BaseClient {
+  final _inner = http.Client();
+  final _aborted = Completer<void>();
+  Timer? _credentialsTimeout;
+  var _readsAnswer = false;
 
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    if (_abort.isCompleted) throw http.RequestAbortedException(request.url);
-    onSend?.call();
-    final body = await request.finalize().toBytes();
-    if (_abort.isCompleted) throw http.RequestAbortedException(request.url);
-    final abortable =
-        http.AbortableRequest(
-            request.method,
-            request.url,
-            abortTrigger: _abort.future,
-          )
-          ..headers.addAll(request.headers)
-          ..followRedirects = request.followRedirects
-          ..maxRedirects = request.maxRedirects
-          ..persistentConnection = request.persistentConnection
-          ..bodyBytes = body;
-    final response = await _client
-        .send(abortable)
-        .timeout(
-          idleTimeout,
-          onTimeout: () => throw TimeoutException(
-            'Timed out waiting for Firebase response headers.',
-            idleTimeout,
-          ),
-        );
-    _readingSuccessfulResponse = response.statusCode == 200;
-    final bodyStream = response.stream.handleError((
-      Object error,
-      StackTrace stack,
-    ) {
-      _readingSuccessfulResponse = false;
-      Error.throwWithStackTrace(error, stack);
-    });
-    return http.StreamedResponse(
-      bodyStream.timeout(
-        idleTimeout,
-        onTimeout: (sink) {
-          sink
-            ..addError(
-              TimeoutException(
-                'Timed out waiting for Firebase response bytes.',
-                idleTimeout,
-              ),
-            )
-            ..close();
-        },
-      ),
-      response.statusCode,
-      contentLength: response.contentLength,
-      request: response.request,
-      headers: response.headers,
-      isRedirect: response.isRedirect,
-      persistentConnection: response.persistentConnection,
-      reasonPhrase: response.reasonPhrase,
+  /// Whether a 200 response is being read and its transport has not failed.
+  /// An error of the SDK's stream then comes from parsing the response.
+  bool get readsAnswer => _readsAnswer;
+
+  /// Starts the wait for the SDK's request. The SDK asks for credentials
+  /// before it sends, and nothing can fail its stream while it waits for
+  /// them, so that timeout goes to `onCredentialsTimeout`.
+  void expectRequest() {
+    _credentialsTimeout = Timer(
+      _idleTimeout,
+      () => _onCredentialsTimeout(_timedOut('credentials', _idleTimeout)),
     );
   }
 
   @override
-  void close() {
-    if (_abort.isCompleted) return;
-    _abort.complete();
-    _client.close();
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    _credentialsTimeout?.cancel();
+    final abortable = await _abortable(request);
+    // Credentials can arrive after the run ended. The request is then not
+    // sent.
+    if (_aborted.isCompleted) throw http.RequestAbortedException(request.url);
+
+    final response = await _inner
+        .send(abortable)
+        .timeout(
+          _idleTimeout,
+          onTimeout: () => throw _timedOut('response headers', _idleTimeout),
+        );
+    _readsAnswer = response.statusCode == 200;
+    final body = response.stream.handleError(_transportFailed);
+    return _withBody(response, _failingWhenIdle(body));
   }
+
+  @override
+  void close() {
+    if (_aborted.isCompleted) return;
+
+    _aborted.complete();
+    _credentialsTimeout?.cancel();
+    _inner.close();
+  }
+
+  /// A copy of [request] that [close] aborts. The SDK sends a plain one.
+  Future<http.AbortableRequest> _abortable(http.BaseRequest request) async =>
+      http.AbortableRequest(
+          request.method,
+          request.url,
+          abortTrigger: _aborted.future,
+        )
+        ..headers.addAll(request.headers)
+        ..followRedirects = request.followRedirects
+        ..maxRedirects = request.maxRedirects
+        ..persistentConnection = request.persistentConnection
+        ..bodyBytes = await request.finalize().toBytes();
+
+  void _transportFailed(Object error, StackTrace stack) {
+    _readsAnswer = false;
+    // The SDK still gets the error.
+    Error.throwWithStackTrace(error, stack);
+  }
+
+  Stream<List<int>> _failingWhenIdle(Stream<List<int>> body) => body.timeout(
+    _idleTimeout,
+    // Closing the sink cancels the silent connection; an error alone does
+    // not.
+    onTimeout: (sink) => sink
+      ..addError(_timedOut('response bytes', _idleTimeout))
+      ..close(),
+  );
 }
+
+TimeoutException _timedOut(String awaited, Duration timeout) =>
+    TimeoutException('Timed out waiting for Firebase $awaited.', timeout);
+
+http.StreamedResponse _withBody(
+  http.StreamedResponse response,
+  Stream<List<int>> body,
+) => http.StreamedResponse(
+  body,
+  response.statusCode,
+  contentLength: response.contentLength,
+  request: response.request,
+  headers: response.headers,
+  isRedirect: response.isRedirect,
+  persistentConnection: response.persistentConnection,
+  reasonPhrase: response.reasonPhrase,
+);

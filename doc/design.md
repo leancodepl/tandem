@@ -7,7 +7,7 @@ Vocabulary: [GLOSSARY.md](../GLOSSARY.md). Decisions: [ADR 0001](adr/0001-own-pr
 | Package | Owns | Depends on |
 |---|---|---|
 | `tandem` | the agent list, the remote AG-UI connection and the deprecated Apple one, the session, `TandemScope`, `TandemBridge`, `ScriptedAgent`, `TandemView` | flutter, http, json_annotation, meta, rfc_6902, uuid; FoundationModels on Apple systems |
-| `tandem_firebase_ai` | the Firebase AI Logic connection, request conversion and native model metadata | tandem, firebase_ai, http, uuid |
+| `tandem_firebase_ai` | the Firebase AI Logic connection: the Firebase request of a run, and Gemini's answer kept in message metadata | tandem, firebase_ai, http, uuid |
 | `tandem_generator` | the builder that turns the `agentCapabilities` of a class with `@TandemAgent()` and the widgets of a class with `@TandemCatalog([...])` into code | analyzer, build, build_config, source_gen |
 
 `tandem` depends on no state library. `TandemScope` reads the state object with its `surface` closure, and the object reports its own changes in `changes`, so a state library needs no adapter package.
@@ -105,15 +105,22 @@ any tool results, and requests one generation. Tandem owns execution, approvals
 and the following run with the methods' results. The adapter does not use Firebase's
 `ChatSession` or execute tool callbacks.
 
-The connection keeps active requests, not a second conversation. Native ordered
-response parts and call IDs travel in versioned message metadata. On the next
-run they must match the message and calls Tandem retained. This preserves Gemini
-thought signatures and prevents replaying different arguments. A connection has
-its own native-history identity. Replacing it requires a new thread. Partial
-text without calls can continue as the visible text; incompatible signed tool
-history fails explicitly.
+The connection keeps active requests, not a second conversation. Gemini's
+complete answer travels in versioned metadata of the assistant message it
+became, as a `FirebaseAnswer`: its parts in order with their thought
+signatures, the text the user saw, and the proposed calls under Tandem's ID
+and Firebase's. The next run sends the parts back only while Tandem still has
+that message with the same text and calls, and only through the connection
+that stored them. So Gemini gets its thought signatures back and never
+different arguments. A message without such an answer goes back as its
+visible text, which covers text a Stop cut. Tool calls without it fail the run
+with `incompatibleHistory`, and so does a thread another connection wrote. A
+new thread works.
 
-The connection accepts an answer only when its last chunk with content has the finish reason `STOP`. A function call marked as a thought is not a call, so Tandem does not get it. An empty text part without a thought signature is not stored.
+The connection accepts an answer only when its last chunk with content has
+the finish reason `STOP`. The calls of an answer reach Tandem together or not
+at all: each names a tool of the run, and a function call marked as a thought
+is not a call. An empty text part without a thought signature is not stored.
 
 When a reset keeps a tool call and its unsent result under an app-supplied
 thread ID, the resulting history starts with the model's call. Gemini requires
