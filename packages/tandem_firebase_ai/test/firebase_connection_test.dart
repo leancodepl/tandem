@@ -379,6 +379,19 @@ void main() {
     });
   });
 
+  test('a function call marked as a thought is not handed to Tandem', () async {
+    final server = _Server([
+      _reply([
+        {'text': 'I could edit.'},
+        {..._editCall(1), 'thought': true},
+      ]),
+    ]);
+    final events = await _run(connect(), server);
+
+    expect(_ofType(events, 'TOOL_CALL_START'), isEmpty);
+    expect(events.last['type'], 'RUN_FINISHED');
+  });
+
   test('a transport failure is a failed generation, not a malformed '
       'response', () async {
     final server = _Server([Stream.error(const FormatException('transport'))]);

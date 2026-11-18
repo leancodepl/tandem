@@ -76,7 +76,9 @@ final class NativeResponse() {
     final calls = <NativeCall>[];
     final nativeIds = <String>{};
     for (final part in _parts) {
-      if (part['functionCall'] case final JsonObject function) {
+      // As the SDK's own `functionCalls`, which skips thoughts.
+      if (part['functionCall'] case final JsonObject function
+          when part['thought'] != true) {
         if (function
             case {'name': final String name, 'args': final JsonObject args}
             when request.toolNames.contains(name)) {
