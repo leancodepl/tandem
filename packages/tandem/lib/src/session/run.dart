@@ -122,7 +122,7 @@ final class Run(
       case final ToolCallResult result:
         final call = _calls[ToolCallId.wire(result.toolCallId)];
         if (identical(_used, call)) _used = null;
-        if (call case _StreamedCall(inApp: false)) call.finish(result);
+        if (call case _StreamedCall(inApp: false)) call.result = result;
     }
     return true;
   }
@@ -250,17 +250,4 @@ final class _StreamedCall(
 
   AgUiToolCall get wire =>
       .new(id: id, name: tool, arguments: argumentsJson, metadata: metadata);
-
-  void finish(ToolCallResult next) {
-    final previous = result;
-    result = ToolCallResult(
-      next.messageId,
-      next.toolCallId,
-      next.content,
-      metadata: {
-        if (previous?.messageId == next.messageId) ...?previous?.metadata,
-        ...next.metadata,
-      },
-    );
-  }
 }
