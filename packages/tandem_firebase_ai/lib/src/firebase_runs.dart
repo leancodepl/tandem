@@ -177,6 +177,11 @@ final class _Run({
         FirebaseErrorCode.timedOut,
         message ?? 'Firebase stopped responding.',
       ),
+      // Not every exception of the SDK prints its message.
+      FirebaseAIException(:final message) => FirebaseFailure(
+        FirebaseErrorCode.generationFailed,
+        message,
+      ),
       _ => FirebaseFailure(
         FirebaseErrorCode.generationFailed,
         error.toString(),

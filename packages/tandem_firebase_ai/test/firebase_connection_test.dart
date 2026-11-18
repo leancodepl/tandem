@@ -474,6 +474,18 @@ void main() {
     expect(events.last['code'], FirebaseErrorCode.generationFailed);
   });
 
+  test("a failed run reports Firebase's own message", () async {
+    const message = 'User location is not supported for the API use.';
+    final refusal = jsonEncode({
+      'error': {'code': 400, 'message': message},
+    });
+    final server = _Server([Stream.value(utf8.encode(refusal))], status: 400);
+    final events = await _run(connect(), server);
+
+    expect(events.last['code'], FirebaseErrorCode.generationFailed);
+    expect(events.last['message'], message);
+  });
+
   group('while Firebase waits for credentials,', () {
     late Completer<String?> token;
     setUp(() {
@@ -607,13 +619,16 @@ void main() {
 typedef _Json = Map<String, Object?>;
 
 /// The Firebase endpoint: answers the n-th request with the n-th body.
-final class _Server(final List<Stream<List<int>>> _bodies) {
+final class _Server(
+  final List<Stream<List<int>>> _bodies, {
+  final int status = 200,
+}) {
   final requests = <_Json>[];
 
   http.Client client() => MockClient.streaming((request, body) async {
     final sent = jsonDecode(utf8.decode(await body.toBytes())) as _Json;
     requests.add(sent);
-    return http.StreamedResponse(_bodies[requests.length - 1], 200);
+    return http.StreamedResponse(_bodies[requests.length - 1], status);
   });
 }
 
