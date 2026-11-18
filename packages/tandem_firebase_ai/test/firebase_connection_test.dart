@@ -308,6 +308,7 @@ void main() {
       ('SAFETY', FirebaseErrorCode.blocked),
       ('MAX_TOKENS', FirebaseErrorCode.outputLimit),
       ('MODEL_ARMOR', FirebaseErrorCode.generationFailed),
+      ('MISSING_THOUGHT_SIGNATURE', FirebaseErrorCode.incompatibleHistory),
     ]) {
       test('the finish reason $reason, also before a later STOP', () async {
         final server = _Server([
