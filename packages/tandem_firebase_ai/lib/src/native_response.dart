@@ -58,6 +58,11 @@ final class NativeResponse() {
             'Invalid native content part.',
           );
         }
+        // Firebase's own chat drops empty text. A signed one must go back.
+        if (part case TextPart(text: '')
+            when !json.containsKey('thoughtSignature')) {
+          continue;
+        }
         _parts.add(json);
         if (part case TextPart(:final text, :final isThought)
             when isThought != true) {
