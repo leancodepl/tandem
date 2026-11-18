@@ -1,3 +1,11 @@
+## 0.3.3
+
+- The README, `example/example.md` and the skills show how to connect a screen to Firebase AI Logic with `FirebaseConnection` from `tandem_firebase_ai`, without an agent backend. They also name it as a replacement for `OnDeviceAgent`.
+- AG-UI `metadata` on text messages, tool calls and backend tool results stays in the conversation history and goes back to the backend with them. Before, Tandem dropped it.
+- An event whose `metadata` is not a JSON object fails the run with a `FormatException`.
+- A `TEXT_MESSAGE_CONTENT` event with an empty `delta` adds no chat message. Before, the chat showed an empty one.
+- After a failed run, the agent's texts go back to the backend in the order their messages started, as after a finished run. Before, they followed the order of their first text.
+
 ## 0.3.2
 
 ### Connections and history

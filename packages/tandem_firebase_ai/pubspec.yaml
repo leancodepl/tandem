@@ -23,7 +23,7 @@ environment:
 dependencies:
   firebase_ai: ^5.2.0
   http: ^1.6.0
-  tandem: ^0.3.2
+  tandem: ^0.3.3
   uuid: ^4.6.0
 
 dev_dependencies:
