@@ -9,8 +9,8 @@ extension type const FirebaseErrorCode._(String value) implements RunErrorCode {
   static const invalidInput = FirebaseErrorCode._('FIREBASE_INVALID_INPUT');
 
   /// The thread is not one this connection can continue: another connection
-  /// wrote its tool calls, the app changed them, or Firebase refused them.
-  /// A new thread works.
+  /// or backend wrote it, the app changed its tool calls, or Firebase refused
+  /// them. A new thread works.
   static const incompatibleHistory = FirebaseErrorCode._(
     'FIREBASE_INCOMPATIBLE_HISTORY',
   );
@@ -60,6 +60,12 @@ final class FirebaseFailure._(
     .incompatibleHistory,
     'An assistant message has tool calls, but not the answer this connection '
     'stored for them. Start a new thread.',
+  );
+
+  factory foreignMessage() => ._(
+    .incompatibleHistory,
+    'The thread has a message that is neither text of the user or the agent '
+    'nor a tool result as text. Start a new thread.',
   );
 
   factory unpairedToolResults() => ._(

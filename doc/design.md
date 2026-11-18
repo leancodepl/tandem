@@ -114,8 +114,8 @@ that message with the same text and calls, and only through the connection
 that stored them. So Gemini gets its thought signatures back and never
 different arguments. A message without such an answer goes back as its
 visible text, which covers text a Stop cut. Tool calls without it fail the run
-with `incompatibleHistory`, and so does a thread another connection wrote. A
-new thread works.
+with `incompatibleHistory`, and so does a thread another connection wrote,
+or one with a message that is not text. A new thread works.
 
 The connection accepts an answer only when its last chunk with content has
 the finish reason `STOP`. The calls of an answer reach Tandem together or not

@@ -74,6 +74,8 @@ final class _ContentsWriter(final ConnectionId _connectionId) {
         final call = _awaitingResult.remove(toolCallId);
         if (call == null) throw FirebaseFailure.unpairedToolResults();
         _addToUserContent(_functionResponse(call, content));
+      case AgUiOtherMessage():
+        throw FirebaseFailure.foreignMessage();
     }
   }
 

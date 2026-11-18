@@ -481,6 +481,30 @@ void main() {
     },
   );
 
+  test(
+    'a thread with a message that is not text is not one to continue',
+    () async {
+      final input = _firstRun()
+        ..['messages'] = [
+          {
+            'id': 'user-1',
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': 'Do both edits.'},
+            ],
+          },
+        ];
+      final server = _Server(const []);
+      final events = await http.runWithClient(
+        () => connect().run(input).toList(),
+        server.client,
+      );
+
+      expect(events.last['code'], FirebaseErrorCode.incompatibleHistory);
+      expect(server.requests, isEmpty);
+    },
+  );
+
   test('a transport failure is a failed generation, not a malformed '
       'response', () async {
     final server = _Server([Stream.error(const FormatException('transport'))]);

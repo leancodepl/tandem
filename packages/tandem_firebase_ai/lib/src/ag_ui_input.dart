@@ -62,17 +62,14 @@ sealed class const AgUiMessage() {
   factory read(Object? json) => switch (json) {
     {'role': 'user', 'content': final String text} => AgUiUserMessage(text),
     {'role': 'assistant'} && final JsonObject message =>
-      AgUiAssistantMessage._read(message),
+      AgUiAssistantMessage.tryRead(message) ?? const AgUiOtherMessage(),
     {
       'role': 'tool',
       'toolCallId': final String toolCallId,
       'content': final String content,
     } =>
       AgUiToolMessage(.wire(toolCallId), content),
-    _ => throw FormatException(
-      'Not a user, assistant or tool message with text content.',
-      json,
-    ),
+    _ => const AgUiOtherMessage(),
   };
 }
 
@@ -85,7 +82,8 @@ final class const AgUiAssistantMessage({
   required final List<AgUiToolCall> toolCalls,
   required final JsonObject metadata,
 }) extends AgUiMessage {
-  factory _read(JsonObject json) {
+  /// Null for a message whose content is not text.
+  static AgUiAssistantMessage? tryRead(JsonObject json) {
     // Tandem leaves out a field that is empty.
     final text = json['content'] ?? '';
     final toolCalls = json['toolCalls'] ?? const <Object?>[];
@@ -93,16 +91,20 @@ final class const AgUiAssistantMessage({
     if (text is! String ||
         toolCalls is! List<Object?> ||
         metadata is! JsonObject) {
-      throw FormatException('Not an AG-UI assistant message.', json);
+      return null;
     }
 
-    return .new(
+    return AgUiAssistantMessage(
       text: text,
       toolCalls: [for (final call in toolCalls) .read(call)],
       metadata: metadata,
     );
   }
 }
+
+/// A message this reader has no type for: another role, or content that is
+/// not text, such as the content parts of a backend tool's result.
+final class const AgUiOtherMessage() extends AgUiMessage;
 
 /// The result of the call [toolCallId], as text.
 final class const AgUiToolMessage(
