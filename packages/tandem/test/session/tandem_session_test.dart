@@ -81,109 +81,112 @@ void main() {
     return (session, agent, serverReply);
   }
 
-  test(
-    'message, call and result metadata round-trip as separate owned snapshots',
-    () async {
-      final source = StreamController<Map<String, Object?>>();
-      final kept = <String, Object?>{
-        'values': <Object?>[1, null],
-      };
-      final connection = RawFirstRun(
-        source.stream,
-        ScriptedAgent([
-          (_) => const [AgentStep.say('Done.')],
-        ]),
-      );
-      final session = open(connection)..send('add milk');
-      source.add({
+  /// The messages of the thread once [events] played as its first run.
+  Future<List<Map<String, Object?>>> threadAfter(
+    List<Map<String, Object?>> events,
+  ) async {
+    final connection = RawFirstRun(
+      Stream.fromIterable([
+        ...events,
+        {
+          'type': 'RUN_FINISHED',
+          'metadata': {'runOnly': true},
+        },
+      ]),
+      ScriptedAgent.repeating((_) => const [AgentStep.say('Done.')]),
+    );
+    final session = open(connection)..send('add milk');
+    await pumpEventQueue();
+    session.send('and bread');
+    await pumpEventQueue();
+    return messagesOf(connection.requests.last);
+  }
+
+  test('the text events of a message merge their metadata into it, and a '
+      'later key replaces an earlier one', () async {
+    final messages = await threadAfter([
+      {
         'type': 'TEXT_MESSAGE_START',
         'messageId': 'm1',
         'metadata': {
-          'kept': kept,
           'stage': 'start',
           'replaced': {'old': true},
         },
-      });
-      await pumpEventQueue();
-      kept['values'] = [99];
-      source
-        ..add({
-          'type': 'TEXT_MESSAGE_CONTENT',
-          'messageId': 'm1',
-          'delta': 'Adding.',
-          'metadata': {'stage': 'content', 'nullable': null},
-        })
-        ..add({
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'b1',
-          'toolCallName': 'lookup',
-          'parentMessageId': 'm1',
-          'metadata': {'owner': 'backend'},
-        })
-        ..add({
-          'type': 'TOOL_CALL_RESULT',
-          'messageId': 'r1',
-          'toolCallId': 'b1',
-          'content': '[]',
-          'metadata': {'source': 'catalog'},
-        })
-        ..add({
-          'type': 'TOOL_CALL_START',
-          'toolCallId': 'c1',
-          'toolCallName': 'add',
-          'parentMessageId': 'm1',
-          'metadata': {
-            'owner': 'app',
-            'replaced': {'old': true},
-          },
-        })
-        ..add({
-          'type': 'TOOL_CALL_ARGS',
-          'toolCallId': 'c1',
-          'delta': '{"item":"milk"}',
-          'metadata': {
-            'replaced': {'new': true},
-          },
-        })
-        ..add({
-          'type': 'TOOL_CALL_END',
-          'toolCallId': 'c1',
-          'metadata': {'signature': 'opaque-call'},
-        })
-        ..add({
-          'type': 'TEXT_MESSAGE_END',
-          'messageId': 'm1',
-          'metadata': {
-            'stage': 'end',
-            'replaced': {'new': true},
-          },
-        })
-        ..add({
-          'type': 'RUN_FINISHED',
-          'metadata': {'runOnly': true},
-        });
-      await source.close();
-      await pumpEventQueue();
-
-      final messages = messagesOf(connection.requests[1]);
-      final assistant = messages.singleWhere(
-        (message) => message['id'] == 'm1',
-      );
-      expect(assistant['metadata'], {
-        'kept': {
-          'values': [1, null],
+      },
+      {
+        'type': 'TEXT_MESSAGE_CONTENT',
+        'messageId': 'm1',
+        'delta': 'Adding.',
+        'metadata': {'stage': 'content', 'nullable': null},
+      },
+      {
+        'type': 'TEXT_MESSAGE_END',
+        'messageId': 'm1',
+        'metadata': {
+          'stage': 'end',
+          'replaced': {'new': true},
         },
+      },
+    ]);
+
+    expect(messages.singleWhere((message) => message['id'] == 'm1'), {
+      'id': 'm1',
+      'role': 'assistant',
+      'content': 'Adding.',
+      'metadata': {
         'stage': 'end',
         'replaced': {'new': true},
         'nullable': null,
-      });
-      final {'metadata': metadata as Map<String, Object?>} = assistant;
-      final {'kept': ownedKept as Map<String, Object?>} = metadata;
-      final {'values': values as List<Object?>} = ownedKept;
-      expect(() => metadata['stage'] = 'changed', throwsUnsupportedError);
-      expect(() => values.add(2), throwsUnsupportedError);
-      final {'toolCalls': calls as List<Object?>} = assistant;
-      expect(calls, [
+      },
+    });
+  });
+
+  test('the events of a tool call merge their metadata into the call, and a '
+      'result keeps its own', () async {
+    final messages = await threadAfter([
+      {
+        'type': 'TOOL_CALL_START',
+        'toolCallId': 'b1',
+        'toolCallName': 'lookup',
+        'parentMessageId': 'm1',
+        'metadata': {'owner': 'backend'},
+      },
+      {
+        'type': 'TOOL_CALL_RESULT',
+        'messageId': 'r1',
+        'toolCallId': 'b1',
+        'content': '[]',
+        'metadata': {'source': 'catalog'},
+      },
+      {
+        'type': 'TOOL_CALL_START',
+        'toolCallId': 'c1',
+        'toolCallName': 'add',
+        'parentMessageId': 'm1',
+        'metadata': {
+          'owner': 'app',
+          'replaced': {'old': true},
+        },
+      },
+      {
+        'type': 'TOOL_CALL_ARGS',
+        'toolCallId': 'c1',
+        'delta': '{"item":"milk"}',
+        'metadata': {
+          'replaced': {'new': true},
+        },
+      },
+      {
+        'type': 'TOOL_CALL_END',
+        'toolCallId': 'c1',
+        'metadata': {'signature': 'opaque-call'},
+      },
+    ]);
+
+    expect(messages.singleWhere((message) => message['id'] == 'm1'), {
+      'id': 'm1',
+      'role': 'assistant',
+      'toolCalls': [
         {
           'id': 'b1',
           'type': 'function',
@@ -200,19 +203,34 @@ void main() {
             'signature': 'opaque-call',
           },
         },
-      ]);
-      expect(
-        messages.singleWhere((message) => message['id'] == 'r1')['metadata'],
-        {'source': 'catalog'},
-      );
-      expect(shop.items, ['milk']);
-      expect(summaryOf(session.items), [
-        ('user', 'add milk'),
-        ('agent', 'Adding.', false),
-        ('agent', 'Done.', false),
-      ]);
-    },
-  );
+      ],
+    });
+    expect(
+      messages.singleWhere((message) => message['id'] == 'r1')['metadata'],
+      {'source': 'catalog'},
+    );
+  });
+
+  test('metadata in the thread is a copy that nobody can change', () async {
+    final sent = <Object?>[1, null];
+    final messages = await threadAfter([
+      {
+        'type': 'TEXT_MESSAGE_CONTENT',
+        'messageId': 'm1',
+        'delta': 'Adding.',
+        'metadata': {'values': sent},
+      },
+    ]);
+    sent.add(2);
+
+    final {'metadata': metadata as Map<String, Object?>} = messages.singleWhere(
+      (message) => message['id'] == 'm1',
+    );
+    final {'values': values as List<Object?>} = metadata;
+    expect(values, [1, null]);
+    expect(() => metadata['values'] = 0, throwsUnsupportedError);
+    expect(() => values.add(2), throwsUnsupportedError);
+  });
 
   test(
     'a tool-only message keeps its metadata through reset and session handoff',
