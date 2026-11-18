@@ -59,43 +59,32 @@ final class ChunkExpander() {
     final id = _resolveId(chunk, kind: kind, id: chunk[idField]);
     if (id == null) return [];
 
-    final delta = chunk[AgUiFields.delta];
-    final hasMetadata = chunk.containsKey(AgUiFields.metadata);
     final stream = (kind: kind, id: id);
-    final events = <JsonObject>[];
-    if (!_openBySender.containsValue(stream)) {
-      if (isTool) {
-        final name = chunk[AgUiFields.toolCallName];
-        if (name is! String) return [];
-        events.add({
-          AgUiFields.type: AgUiEventTypes.toolCallStart,
-          AgUiFields.toolCallId: id,
-          AgUiFields.toolCallName: name,
-          if (chunk[AgUiFields.parentMessageId] case final String parentId)
-            AgUiFields.parentMessageId: parentId,
-          if (hasMetadata) AgUiFields.metadata: chunk[AgUiFields.metadata],
-        });
-      } else if (delta == null) {
-        events.add({
-          AgUiFields.type: AgUiEventTypes.textMessageStart,
-          AgUiFields.messageId: id,
-          AgUiFields.role: chunk[AgUiFields.role] ?? AgUiMessageRoles.assistant,
-          if (hasMetadata) AgUiFields.metadata: chunk[AgUiFields.metadata],
-        });
-      }
-      _openBySender[_senderOf(chunk)] = stream;
+    final isNew = !_openBySender.containsValue(stream);
+    final toolName = chunk[AgUiFields.toolCallName];
+    if (isNew && isTool && toolName is! String) return [];
+    if (isNew) _openBySender[_senderOf(chunk)] = stream;
+
+    final delta = chunk[AgUiFields.delta];
+    final JsonObject? start;
+    if (isNew && isTool) {
+      start = _toolCallStart(chunk, id: id, name: toolName);
+    } else if (isNew && delta == null) {
+      // A new message needs a start event only when it opens without text.
+      start = _textMessageStart(chunk, id: id);
+    } else {
+      start = null;
     }
-    if (delta is String || (hasMetadata && events.isEmpty)) {
-      events.add({
-        AgUiFields.type: isTool
-            ? AgUiEventTypes.toolCallArgs
-            : AgUiEventTypes.textMessageContent,
-        idField: id,
-        AgUiFields.delta: delta is String ? delta : '',
-        if (hasMetadata) AgUiFields.metadata: chunk[AgUiFields.metadata],
-      });
-    }
-    return events;
+
+    // Metadata needs an event to carry it: an empty delta when the chunk has
+    // no delta and no start.
+    final carriesDelta =
+        delta is String ||
+        (start == null && chunk.containsKey(AgUiFields.metadata));
+    return [
+      ?start,
+      if (carriesDelta) _deltaEvent(chunk, isTool: isTool, id: id),
+    ];
   }
 
   String? _resolveId(
@@ -138,6 +127,51 @@ String? _senderOf(JsonObject event) =>
       final String sender => sender,
       _ => null,
     };
+
+JsonObject _toolCallStart(
+  JsonObject chunk, {
+  required String id,
+  required Object? name,
+}) => {
+  AgUiFields.type: AgUiEventTypes.toolCallStart,
+  AgUiFields.toolCallId: id,
+  AgUiFields.toolCallName: name,
+  if (chunk[AgUiFields.parentMessageId] case final String parentId)
+    AgUiFields.parentMessageId: parentId,
+  ..._metadataEntry(chunk),
+};
+
+JsonObject _textMessageStart(JsonObject chunk, {required String id}) => {
+  AgUiFields.type: AgUiEventTypes.textMessageStart,
+  AgUiFields.messageId: id,
+  AgUiFields.role: chunk[AgUiFields.role] ?? AgUiMessageRoles.assistant,
+  ..._metadataEntry(chunk),
+};
+
+/// The args or content event of [chunk]. Its delta is empty when the chunk
+/// has none.
+JsonObject _deltaEvent(
+  JsonObject chunk, {
+  required bool isTool,
+  required String id,
+}) => {
+  AgUiFields.type: isTool
+      ? AgUiEventTypes.toolCallArgs
+      : AgUiEventTypes.textMessageContent,
+  (isTool ? AgUiFields.toolCallId : AgUiFields.messageId): id,
+  AgUiFields.delta: switch (chunk[AgUiFields.delta]) {
+    final String delta => delta,
+    _ => '',
+  },
+  ..._metadataEntry(chunk),
+};
+
+/// The `metadata` of [chunk] as the entry of an event, when the chunk has
+/// one.
+JsonObject _metadataEntry(JsonObject chunk) => {
+  if (chunk.containsKey(AgUiFields.metadata))
+    AgUiFields.metadata: chunk[AgUiFields.metadata],
+};
 
 FormatException _ambiguous(JsonObject chunk) => FormatException(
   '${chunk[AgUiFields.type]} without an id could continue the stream of several '
