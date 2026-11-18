@@ -32,6 +32,10 @@ final class NativeResponse() {
           throw _incompleteAnswer(reason, candidate.finishMessage);
         }
         _stopped = true;
+      } else if (candidate.content.parts.isNotEmpty) {
+        // Some models put STOP on every chunk, so content with the reason
+        // may follow. Content without it is not an end.
+        _stopped = false;
       }
       if (candidate.groundingMetadata != null ||
           candidate.urlContextMetadata != null) {

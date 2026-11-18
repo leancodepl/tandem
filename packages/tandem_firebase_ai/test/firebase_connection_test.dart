@@ -44,7 +44,7 @@ void main() {
     testWidgets('the app runs the proposed calls, and the next request sends '
         'the signed answer back with their results', (tester) async {
       final server = _Server([
-        _reply(_signedAnswer),
+        Stream.fromIterable([_chunk(_signedAnswer), _usageOnly]),
         _reply([
           {'text': 'Added.'},
         ]),
@@ -328,6 +328,21 @@ void main() {
       });
     }
 
+    test('content without a finish reason after STOP', () async {
+      final server = _Server([
+        Stream.fromIterable([
+          _chunk([
+            {'text': 'Done.'},
+          ]),
+          _chunk([_editCall(1)], finishReason: null),
+        ]),
+      ]);
+      final events = await _run(connect(), server);
+
+      expect(_ofType(events, 'TOOL_CALL_START'), isEmpty);
+      expect(events.last['code'], FirebaseErrorCode.generationFailed);
+    });
+
     test('a stream that ends without a finish reason', () async {
       final server = _Server([
         Stream.value(_chunk([_editCall(1)], finishReason: null)),
@@ -391,6 +406,32 @@ void main() {
     expect(_ofType(events, 'TOOL_CALL_START'), isEmpty);
     expect(events.last['type'], 'RUN_FINISHED');
   });
+
+  test(
+    'an answer with the finish reason STOP on every chunk is whole',
+    () async {
+      final server = _Server([
+        Stream.fromIterable([
+          _chunk([
+            {'text': 'One.'},
+          ]),
+          _chunk([
+            {'text': ' Two.'},
+          ]),
+        ]),
+      ]);
+      final events = await _run(connect(), server);
+
+      expect(
+        [
+          for (final text in _ofType(events, 'TEXT_MESSAGE_CONTENT'))
+            text['delta'],
+        ],
+        ['One.', ' Two.'],
+      );
+      expect(events.last['type'], 'RUN_FINISHED');
+    },
+  );
 
   test('a transport failure is a failed generation, not a malformed '
       'response', () async {
@@ -752,6 +793,13 @@ List<int> _chunk(List<_Json> parts, {String? finishReason = 'STOP'}) =>
         ],
       })}\n\n',
     );
+
+/// The chunk Firebase may still send after the finish reason.
+final _usageOnly = utf8.encode(
+  'data: ${jsonEncode({
+    'usageMetadata': {'totalTokenCount': 12},
+  })}\n\n',
+);
 
 Future<List<_Json>> _run(FirebaseConnection connection, _Server server) => http
     .runWithClient(() => connection.run(_firstRun()).toList(), server.client);
