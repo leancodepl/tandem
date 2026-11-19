@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:http/http.dart' as http;
+import 'package:tandem_firebase_ai/src/response_status.dart';
 
 /// The HTTP client of one run. The Firebase SDK can neither abort a request
 /// nor time out, so this client does both: [close] aborts the request, and
@@ -12,11 +13,11 @@ final class RunClient(
   final _inner = http.Client();
   final _aborted = Completer<void>();
   Timer? _credentialsTimeout;
-  var _readsAnswer = false;
+  ResponseStatus? _responseStatus;
 
-  /// Whether a 200 response is being read and its transport has not failed.
-  /// An error of the SDK's stream then comes from parsing the response.
-  bool get readsAnswer => _readsAnswer;
+  /// The status of the response whose body the SDK reads, from its headers
+  /// until the transport of that body fails.
+  ResponseStatus? get responseStatus => _responseStatus;
 
   /// Starts the wait for the SDK's request. The SDK asks for credentials
   /// before it sends, and nothing can fail its stream while it waits for
@@ -42,7 +43,7 @@ final class RunClient(
           _idleTimeout,
           onTimeout: () => throw _timedOut('response headers', _idleTimeout),
         );
-    _readsAnswer = response.statusCode == 200;
+    _responseStatus = ResponseStatus(response.statusCode);
     final body = response.stream.handleError(_transportFailed);
     return _withBody(response, _failingWhenIdle(body));
   }
@@ -70,7 +71,7 @@ final class RunClient(
         ..bodyBytes = await request.finalize().toBytes();
 
   void _transportFailed(Object error, StackTrace stack) {
-    _readsAnswer = false;
+    _responseStatus = null;
     // The SDK still gets the error.
     Error.throwWithStackTrace(error, stack);
   }
