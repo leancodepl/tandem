@@ -31,14 +31,10 @@ void main() {
   });
   tearDown(() => firebase.appCheck = null);
 
-  FirebaseConnection connect({
-    String instructions = '',
-    Duration idleTimeout = const Duration(seconds: 60),
-  }) => FirebaseConnection(
+  FirebaseConnection connect({String instructions = ''}) => FirebaseConnection(
     firebase: firebase,
     model: 'test-model',
     instructions: instructions,
-    idleTimeout: idleTimeout,
   );
 
   group('a conversation', () {
@@ -631,10 +627,12 @@ void main() {
     });
 
     test('the run times out', () async {
-      final events = await _run(
-        connect(idleTimeout: const Duration(milliseconds: 10)),
-        _Server(const []),
+      final connection = FirebaseConnection(
+        firebase: firebase,
+        model: 'test-model',
+        idleTimeout: const Duration(milliseconds: 10),
       );
+      final events = await _run(connection, _Server(const []));
 
       expect(events.last['code'], FirebaseErrorCode.timedOut);
       expect(
@@ -692,7 +690,14 @@ void main() {
       ),
       throwsArgumentError,
     );
-    expect(() => connect(idleTimeout: Duration.zero), throwsArgumentError);
+    expect(
+      () => FirebaseConnection(
+        firebase: firebase,
+        model: 'test-model',
+        idleTimeout: Duration.zero,
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('response modalities changed after the connection was built fail the '

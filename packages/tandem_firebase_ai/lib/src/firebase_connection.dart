@@ -26,7 +26,7 @@ final class FirebaseConnection({
   List<SafetySetting>? safetySettings,
 
   /// How long credentials, response headers or the next bytes may take.
-  final Duration _idleTimeout = const Duration(seconds: 60),
+  final Duration _idleTimeout = const Duration(seconds: 120),
 }) implements StoppableAgentConnection {
   this {
     if (_model.trim().isEmpty) {

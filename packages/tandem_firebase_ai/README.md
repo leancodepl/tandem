@@ -76,7 +76,7 @@ connection delivers one candidate of text. Its constructor throws an
 `ArgumentError` for several candidates, image output or speech output. Files,
 images, audio, the Live API and grounding are not supported.
 
-`idleTimeout` is 60 seconds by default. It limits three waits: for
+`idleTimeout` is 120 seconds by default. It limits three waits: for
 credentials, for the response headers and for the next bytes of the response.
 A model that thinks for longer without sending bytes fails the run with
 `FirebaseErrorCode.timedOut`.
