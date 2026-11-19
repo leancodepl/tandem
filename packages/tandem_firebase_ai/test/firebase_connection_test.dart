@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:tandem/tandem.dart';
+import 'package:tandem/testing.dart';
 import 'package:tandem_firebase_ai/tandem_firebase_ai.dart';
 
 void main() {
@@ -77,6 +78,65 @@ void main() {
             ],
           },
         ]);
+      }, server.client);
+    });
+
+    testWidgets('the view the model draws shows, and the next message sends '
+        'the signed call back with its result', (tester) async {
+      final catalog = _NoteCatalog();
+      final viewCall = _signedViewCall(catalog.example);
+      final server = _Server([
+        _reply([viewCall]),
+        _reply([
+          {'text': 'Glad it helps.'},
+        ]),
+      ]);
+      await http.runWithClient(() async {
+        final screen = _Screen(connect());
+        await screen.mount(tester, child: TandemView(catalog: catalog));
+        screen.session.send('leave a note');
+        await screen.settle(tester);
+
+        expect(find.text('A note'), findsOneWidget);
+
+        screen.session.send('thanks');
+        await screen.settle(tester);
+        final [_, answer, nextTurn] = _contents(server.requests.last);
+        expect(answer['parts'], [_asSentBack(viewCall)]);
+        expect(nextTurn['parts'], anyElement(_viewShown));
+      }, server.client);
+    });
+
+    testWidgets('a function call marked as a thought is not handed to Tandem, '
+        'and goes back with the answer without a result', (tester) async {
+      final thoughtCall = {..._addThree, 'thought': true};
+      final server = _Server([
+        _reply([
+          {'text': 'I could add.'},
+          thoughtCall,
+        ]),
+        _reply([
+          {'text': 'Not added.'},
+        ]),
+      ]);
+      await http.runWithClient(() async {
+        final screen = _Screen(connect());
+        await screen.mount(tester);
+        screen.session.send('add three?');
+        await screen.settle(tester);
+        screen.session.send('no');
+        await screen.settle(tester);
+
+        expect(screen.surface.value, 0);
+        final [_, answer, nextTurn] = _contents(server.requests.last);
+        expect(answer['parts'], [
+          _asSentBack({'text': 'I could add.'}),
+          thoughtCall,
+        ]);
+        expect(
+          nextTurn['parts'],
+          everyElement(isNot(contains('functionResponse'))),
+        );
       }, server.client);
     });
 
@@ -202,7 +262,7 @@ void main() {
           {
             'role': 'user',
             'parts': [
-              _addResult({'status': 'cancelled'}, id: 'native-add'),
+              _addResult({'status': ToolStatus.cancelled}, id: 'native-add'),
               {'text': 'keep it'},
               {'text': contains('"value":"0"')},
             ],
@@ -440,19 +500,6 @@ void main() {
       expect(_types(events), ['RUN_STARTED', 'RUN_ERROR']);
       expect(events.last['code'], FirebaseErrorCode.unsupportedResponse);
     });
-  });
-
-  test('a function call marked as a thought is not handed to Tandem', () async {
-    final server = _Server([
-      _reply([
-        {'text': 'I could edit.'},
-        {..._editCall(1), 'thought': true},
-      ]),
-    ]);
-    final events = await _run(connect(), server);
-
-    expect(_ofType(events, 'TOOL_CALL_START'), isEmpty);
-    expect(events.last['type'], 'RUN_FINISHED');
   });
 
   test(
@@ -707,21 +754,22 @@ final class _Screen(AgentConnection connection, {TandemThread? thread}) {
     for (final message in session.items.whereType<AgentMessage>()) message.text,
   ];
 
-  Future<void> mount(WidgetTester tester) => tester.pumpWidget(
-    TandemScope.connected(
-      surface: (context) => surface,
-      connection: connection,
-      thread: thread,
-      approvals: const .fromState(),
-      onEvent: (context, event, session) => events.add(event),
-      child: Builder(
-        builder: (context) {
-          session = TandemSessionScope.of(context);
-          return const SizedBox();
-        },
-      ),
-    ),
-  );
+  Future<void> mount(WidgetTester tester, {Widget child = const SizedBox()}) =>
+      tester.pumpWidget(
+        TandemScope.connected(
+          surface: (context) => surface,
+          connection: connection,
+          thread: thread,
+          approvals: const .fromState(),
+          onEvent: (context, event, session) => events.add(event),
+          child: Builder(
+            builder: (context) {
+              session = TandemSessionScope.of(context);
+              return child;
+            },
+          ),
+        ),
+      );
 
   /// Presses Stop as soon as the agent's first text shows.
   void stopAtFirstText() {
@@ -778,6 +826,26 @@ final class _Counter() implements AgentSurface {
       ),
     ],
   );
+}
+
+final class _NoteCatalog() implements AgentCatalog {
+  @override
+  List<AgentComponent> get components => [
+    AgentComponent<Text>.of(
+      name: 'Note',
+      description: 'Shows a note.',
+      properties: (_) => [],
+      build: (_) => const Text('A note', textDirection: .ltr),
+    ),
+  ];
+
+  @override
+  String get guidelines => 'Leave a note.';
+
+  @override
+  List<_Json> get example => const [
+    {'id': 'root', 'component': 'Note'},
+  ];
 }
 
 /// Hands the session a run only once Firebase finished it, as a wrapper that
@@ -866,6 +934,25 @@ const _addThree = <String, Object?>{
     'id': 'native-add',
   },
   'thoughtSignature': 'call-signature',
+};
+
+_Json _signedViewCall(List<_Json> components) => {
+  ..._call(
+    'tandem_show_view',
+    arguments: {'components': jsonEncode(components)},
+    id: 'native-view',
+  ),
+  'thoughtSignature': 'view-signature',
+};
+
+const _viewShown = <String, Object?>{
+  'functionResponse': {
+    'name': 'tandem_show_view',
+    'response': {
+      'result': {'status': ToolStatus.shown},
+    },
+    'id': 'native-view',
+  },
 };
 
 /// [part] as the SDK sends it back: its `UnknownPart` adds `thought`.
