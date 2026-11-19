@@ -32,7 +32,10 @@ Create a connection once, outside `build`:
 
 Import `package:firebase_ai/firebase_ai.dart` and
 `package:tandem_firebase_ai/tandem_firebase_ai.dart`. `model` is the name of a
-Gemini model in your project that supports function calling.
+Gemini model in your project that supports function calling. The connection is
+tested on `gemini-3.5-flash-lite` and `gemini-3.6-flash` with
+`FirebaseAI.googleAI()`, the Gemini Developer API, and not with
+`FirebaseAI.agentPlatform()`.
 
 Pass the connection to your scope:
 
@@ -81,10 +84,8 @@ credentials, for the response headers and for the next bytes of the response.
 A model that thinks for longer without sending bytes fails the run with
 `FirebaseErrorCode.timedOut`.
 
-The connection is tested on a real model with `FirebaseAI.googleAI()`, the
-Gemini Developer API, and not with `FirebaseAI.agentPlatform()`. With the
-Gemini Developer API, leave `SafetySetting.method` null: the SDK refuses the
-setting, and the run fails with `FirebaseErrorCode.invalidInput`.
+With the Gemini Developer API, leave `SafetySetting.method` null: the SDK
+refuses the setting, and the run fails with `FirebaseErrorCode.invalidInput`.
 
 Project selection, App Check, Firebase Authentication and quotas belong to
 the app's Firebase configuration. An approval card is not authorization: the
