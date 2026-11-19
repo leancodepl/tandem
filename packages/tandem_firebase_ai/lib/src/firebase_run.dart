@@ -8,6 +8,7 @@ import 'package:tandem_firebase_ai/src/firebase_answer.dart';
 import 'package:tandem_firebase_ai/src/firebase_failure.dart';
 import 'package:tandem_firebase_ai/src/firebase_response.dart';
 import 'package:tandem_firebase_ai/src/json_object.dart';
+import 'package:tandem_firebase_ai/src/response_status.dart';
 import 'package:tandem_firebase_ai/src/run_client.dart';
 
 /// Asks Firebase for the one generation of a run, over the run's client.
@@ -94,16 +95,11 @@ final class FirebaseRun(
     }
   }
 
-  void _streamFailed(Object error) {
-    if (_client.readsAnswer && _isParsingError(error)) {
-      _fail(FirebaseFailure.unreadableResponse());
-    } else {
-      _fail(error);
-    }
-  }
+  void _streamFailed(Object error) =>
+      _fail(error, responseStatus: _client.responseStatus);
 
-  void _fail(Object error) {
-    final failure = FirebaseFailure.of(error);
+  void _fail(Object error, {ResponseStatus? responseStatus}) {
+    final failure = FirebaseFailure.of(error, responseStatus: responseStatus);
     _end(() => _agUi.runError(failure.code, failure.message));
   }
 
@@ -124,10 +120,3 @@ final class FirebaseRun(
     _chunks?.cancel().ignore();
   }
 }
-
-/// The SDK reads a response with casts and `jsonDecode`, and has its own
-/// exception for a shape it does not know.
-bool _isParsingError(Object error) =>
-    error is TypeError ||
-    error is FormatException ||
-    error is FirebaseAISdkException;

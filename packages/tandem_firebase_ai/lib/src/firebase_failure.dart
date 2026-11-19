@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:tandem/tandem.dart';
+import 'package:tandem_firebase_ai/src/response_status.dart';
 
 /// Codes reported through Tandem's `RunFailed` event.
 extension type const FirebaseErrorCode._(String value) implements RunErrorCode {
@@ -40,16 +41,25 @@ final class FirebaseFailure._(
   final String message,
 ) implements Exception {
   /// What an error of the SDK or its transport means for the run.
-  factory of(Object error) => switch (error) {
-    final FirebaseFailure failure => failure,
-    TimeoutException(:final message) => ._(
-      .timedOut,
-      message ?? 'Firebase did not respond in time.',
-    ),
-    // Not every exception of the SDK prints its message.
-    FirebaseAIException(:final message) => ._(.generationFailed, message),
-    _ => ._(.generationFailed, '$error'),
-  };
+  /// [responseStatus] is the status of the response the SDK read when [error]
+  /// came, unless its transport failed: a parsing error is then about the
+  /// body Firebase sent.
+  factory of(Object error, {ResponseStatus? responseStatus}) {
+    if (responseStatus != null && _isParsingError(error)) {
+      return ._unreadableBody(responseStatus);
+    }
+
+    return switch (error) {
+      final FirebaseFailure failure => failure,
+      TimeoutException(:final message) => ._(
+        .timedOut,
+        message ?? 'Firebase did not respond in time.',
+      ),
+      // Not every exception of the SDK prints its message.
+      FirebaseAIException(:final message) => ._(.generationFailed, message),
+      _ => ._(.generationFailed, '$error'),
+    };
+  }
 
   factory invalidInput(FormatException error) =>
       ._(.invalidInput, error.message);
@@ -108,9 +118,6 @@ final class FirebaseFailure._(
     'has no finish reason.',
   );
 
-  factory unreadableResponse() =>
-      ._(.invalidResponse, 'Firebase returned a response the SDK cannot read.');
-
   factory unusableCalls() => ._(
     .invalidResponse,
     'The model called a tool the run does not offer, or Firebase gave a call '
@@ -131,6 +138,30 @@ final class FirebaseFailure._(
     'Firebase returned a part that is neither text nor a function call.',
   );
 
+  /// The SDK reads the body of a 200 as the answer and any other body as a
+  /// JSON error, which the HTML page of a gateway is not.
+  factory _unreadableBody(ResponseStatus status) {
+    if (status == ResponseStatus.ok) {
+      return ._(
+        .invalidResponse,
+        'Firebase returned a response the SDK cannot read.',
+      );
+    }
+
+    return ._(
+      .generationFailed,
+      'Firebase answered with HTTP ${status.code} and a body the SDK cannot '
+      'read.',
+    );
+  }
+
   @override
   String toString() => '$code: $message';
 }
+
+/// The SDK reads a response with casts and `jsonDecode`, and has its own
+/// exception for a shape it does not know.
+bool _isParsingError(Object error) =>
+    error is TypeError ||
+    error is FormatException ||
+    error is FirebaseAISdkException;

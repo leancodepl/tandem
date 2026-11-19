@@ -572,6 +572,16 @@ void main() {
     expect(events.last['message'], message);
   });
 
+  test('an error page that is not JSON fails the run with its HTTP '
+      'status', () async {
+    const page = '<!DOCTYPE html><title>Server Error</title>';
+    final server = _Server([Stream.value(utf8.encode(page))], status: 502);
+    final events = await _run(connect(), server);
+
+    expect(events.last['code'], FirebaseErrorCode.generationFailed);
+    expect(events.last['message'], contains('HTTP 502'));
+  });
+
   group('while Firebase waits for credentials,', () {
     late Completer<String?> token;
     setUp(() {
