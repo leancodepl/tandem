@@ -38,7 +38,7 @@ bash tool/check_apple.sh                           # OnDeviceAgent, deprecated; 
 (cd showcase/agent && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run pytest)
 ```
 
-CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` and a pana score for each package. On a PR it also runs commitlint on the commits and the title, and checks the sections of the description. CI has no macOS runner, so the Swift plugin of the deprecated `OnDeviceAgent` is built by hand.
+CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` and a pana score for each package. On a PR it also runs commitlint on the commits and the title, and checks the length of the description. CI has no macOS runner, so the Swift plugin of the deprecated `OnDeviceAgent` is built by hand.
 
 ## Rules
 
@@ -66,5 +66,5 @@ CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` a
 - Only a release PR changes a CHANGELOG. It writes the entries of every change since the last release, from the commits and their PRs. In `doc/checks.json` it replaces `next` with its version, such as `0.3.4`, in the cells of the package it releases.
 - One commit per logical change that builds and passes the tests on its own, such as a refactor and then the fix that needs it. Its test, docs and generated code go in the same commit. Most PRs need one to three.
 - Review fixes go into the commit they fix: `git commit --fixup`, then `git rebase --autosquash`. A PR branch has no merge commits: rebase it onto `main`.
-- The PR title has the form of a commit subject. The description fills the sections of [.github/pull_request_template.md](.github/pull_request_template.md) and follows its hints.
+- The PR title has the form of a commit subject. The description follows [.github/pull_request_template.md](.github/pull_request_template.md): prose for a reader who was not there, at most 400 words.
 - A commit an AI agent wrote ends with a `Co-Authored-By:` trailer naming the agent and its model, such as `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Only a commit a human reviewed in full can carry no attribution. The PR description has no attribution line.
