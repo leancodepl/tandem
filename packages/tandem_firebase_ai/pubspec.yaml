@@ -1,6 +1,6 @@
 name: tandem_firebase_ai
 description: Connect Tandem screens to Firebase AI Logic without an agent server.
-version: 0.1.0
+version: 0.1.1
 homepage: https://tandem.leancode.co
 repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem_firebase_ai
 issue_tracker: https://github.com/leancodepl/tandem/issues
