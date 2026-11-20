@@ -41,13 +41,17 @@ jobs:
         env:
           TITLE: ${{ github.event.pull_request.title }}
 
-      - name: Check description sections
+      - name: Check description length
         run: |
-          for section in What Why How; do
-            if ! grep -Eq "^## $section[[:space:]]*$" <<< "$BODY"; then
-              echo "::error title=Description::Missing the $section section of .github/pull_request_template.md"
-              exit 1
-            fi
-          done
+          words=$(perl -0777 -pe 's/<!--.*?-->//gs; s/^ *```.*?^ *```//gms' <<< "$BODY" | wc -w)
+          if [ "$words" -eq 0 ]; then
+            echo "::error title=Description::The description is empty. .github/pull_request_template.md says what goes in it."
+            exit 1
+          fi
+          if [ "$words" -gt "$MAX_WORDS" ]; then
+            echo "::error title=Description::The description has $words words, the limit is $MAX_WORDS."
+            exit 1
+          fi
         env:
           BODY: ${{ github.event.pull_request.body }}
+          MAX_WORDS: 400

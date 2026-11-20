@@ -1,17 +1,20 @@
-<!-- Each section is one to three short sentences of prose. End each sentence when its point is made. Name real things: methods, files, numbers. Leave out what the diff, the commits or CI show, such as file lists and test counts. Plain words, straight quotes, no em dashes, no "not X but Y", no "ensure", "robust", "seamless" or "comprehensive". -->
+<!--
+The reader was not with you when you wrote the code. They have this text,
+the commits and the diff, and one minute.
 
-## What
+Prose, in this order. Stop when it is said.
 
-<!-- What changes, as the app or its user sees it. A screenshot or a short video when the chat looks different. If the public API breaks, what an app changes. -->
+1. What was wrong or missing, as an app or its user met it. For a fix, the cause.
+2. What changes. If the public API breaks, what an app changes.
+3. Where the review starts, if the diff does not show it.
 
-## Why
+Paste an error message or output as a block. Add a screenshot or a short video
+when the screen looks different.
 
-<!-- The reason for the change. The other way you considered and why you dropped it. -->
+Leave out what the diff, the commits or CI show, and any name or number that
+exists only in your notes or your session. A run on a real model is a cell in
+doc/checks.json.
 
-## How
-
-<!-- The approach, and the file or method where the review starts. What to check closely. -->
-
-## Not here
-
-<!-- What is left out on purpose. Delete the section if nothing is. -->
+No headings, at most 400 words. Two descriptions of this kind:
+winglang/wing#4088 for a fix, winglang/wing#4018 for a feature.
+-->
