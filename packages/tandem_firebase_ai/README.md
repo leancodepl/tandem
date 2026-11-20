@@ -32,10 +32,9 @@ Create a connection once, outside `build`:
 
 Import `package:firebase_ai/firebase_ai.dart` and
 `package:tandem_firebase_ai/tandem_firebase_ai.dart`. `model` is the name of a
-Gemini model in your project that supports function calling. The connection is
-tested on `gemini-3.5-flash-lite` and `gemini-3.6-flash` with
-`FirebaseAI.googleAI()`, the Gemini Developer API, and not with
-`FirebaseAI.agentPlatform()`.
+Gemini model in your project that supports function calling.
+[doc/checks.json](https://github.com/leancodepl/tandem/blob/main/doc/checks.json)
+lists the models and Firebase backends each release ran on.
 
 Pass the connection to your scope:
 

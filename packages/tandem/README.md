@@ -555,7 +555,7 @@ A connection whose transport can cancel a run, such as a WebSocket protocol with
 
 ## Project status
 
-Each release of Tandem is checked on iOS and Android. For the web, CI runs the tests of `tandem` and the example in Chrome and builds the example with WebAssembly. Other platforms are outside these checks.
+[doc/checks.json](https://github.com/leancodepl/tandem/blob/main/doc/checks.json) lists the platforms, agent backends and models each release ran on. A platform, backend or model that is missing there was not run.
 
 Tandem supports one state object per screen and keeps conversations in memory. Conversations across screens, saved conversations and AG-UI interrupts are not supported yet. An interrupt fails the run and resets the local history and agent state. The chat stays visible. An app-supplied thread ID stays too.
 
