@@ -1,0 +1,62 @@
+name: slop-police
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  review:
+    name: Review with slop-police
+
+    if: github.event.label.name == 'slop-police'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.x
+          cache: true
+
+      # slop-police stops when a tracked file differs from the head commit.
+      - name: Download pub dependencies
+        run: flutter pub get --enforce-lockfile
+
+      # tandem_generator is not a workspace member and commits no lockfile.
+      - name: Download pub dependencies of tandem_generator
+        run: dart pub get
+        working-directory: packages/tandem_generator
+
+      # The base is the branch and not the commit the pull request recorded, so
+      # .review comes from the current main and an older pull request needs no
+      # rebase. The diff still starts at the merge base.
+      - name: Review
+        uses: wzslr321/slop-police@11257c3fe0775b5d2dc5ff652e06731c4f76c150 # v1.1.0
+        with:
+          base: origin/${{ github.event.pull_request.base.ref }}
+          codex-api-key: ${{ secrets.TANDEM_SLOP_POLICE_OPENAI }}
+
+  post:
+    name: Post the review
+
+    needs: review
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Post
+        uses: wzslr321/slop-police/post@11257c3fe0775b5d2dc5ff652e06731c4f76c150 # v1.1.0
