@@ -2,13 +2,17 @@ name: slop-police
 
 on:
   pull_request:
-    types: [labeled]
+    types: [labeled, unlabeled]
 
 jobs:
   review:
     name: Review with slop-police
 
-    if: github.event.label.name == 'slop-police'
+    if: github.event.action == 'labeled' && github.event.label.name == 'slop-police'
+
+    concurrency:
+      group: slop-police-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
 
     runs-on: ubuntu-latest
 
@@ -46,6 +50,23 @@ jobs:
         with:
           base: origin/${{ github.event.pull_request.base.ref }}
           codex-api-key: ${{ secrets.TANDEM_SLOP_POLICE_OPENAI }}
+
+  stop:
+    name: Stop the review
+
+    if: github.event.action == 'unlabeled' && github.event.label.name == 'slop-police'
+
+    concurrency:
+      group: slop-police-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+
+    runs-on: ubuntu-latest
+
+    permissions: {}
+
+    steps:
+      - name: Stop
+        run: echo "The label slop-police was removed."
 
   post:
     name: Post the review
