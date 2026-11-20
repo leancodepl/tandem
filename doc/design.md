@@ -158,7 +158,7 @@ The system must accept the full schema or the run fails with the same code. Tand
 
 ## Wire rules
 
-Checked with ag-ui-adk 0.11.0, ag-ui-langgraph 0.0.47 and Pydantic AI 2.61.0. The history follows the events, as `@ag-ui/client` keeps it, so that a backend that dedupes by message id and one that keeps no state both read the conversation they sent.
+Checked with the adapter versions in [checks.json](checks.json). The history follows the events, as `@ag-ui/client` keeps it, so that a backend that dedupes by message id and one that keeps no state both read the conversation they sent.
 
 - POST with `Accept: text/event-stream` and `Content-Type: application/json`.
 - Body `{threadId, runId, state, messages, tools, context, forwardedProps: {}}`, with the agent's state, `{}` until the backend sends one. `tools` is always there, `[]` when empty. No `resume`, no `protocolVersion`.
