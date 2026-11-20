@@ -1,0 +1,73 @@
+{
+  "models": {
+    "qwen3.5:4b": { "provider": "Ollama" },
+    "gemini-3.8-flash": { "provider": "Gemini" },
+    "gemini-3.6-flash": { "provider": "Gemini", "requestedAs": "gemini-3.5-flash" },
+    "gemini-3.5-flash-lite": { "provider": "Gemini" }
+  },
+  "connections": {
+    "adk": { "package": "tandem", "name": "Google ADK", "adapter": "ag-ui-adk 0.11.0", "providers": ["Ollama", "Gemini"] },
+    "lang-graph": { "package": "tandem", "name": "LangGraph", "adapter": "ag-ui-langgraph 0.0.47", "providers": ["Ollama", "Gemini"] },
+    "pydantic-ai": { "package": "tandem", "name": "Pydantic AI", "adapter": "pydantic-ai-slim 2.61.0", "providers": ["Ollama", "Gemini"] },
+    "firebase-google-ai": { "package": "tandem_firebase_ai", "name": "Firebase AI Logic, Gemini Developer API", "providers": ["Gemini"] },
+    "firebase-agent-platform": { "package": "tandem_firebase_ai", "name": "Firebase AI Logic, Agent Platform Gemini API", "providers": ["Gemini"] }
+  },
+  "trials": {
+    "order": {
+      "name": "Order with approval",
+      "does": "The agent turns a request into an order through the screen's methods, and one order exists after the approval.",
+      "cells": {
+        "adk": {
+          "qwen3.5:4b": { "result": "passed", "release": "0.3.3", "note": "Needed one correction of the draft, and the final message gave the old quantity." },
+          "gemini-3.8-flash": { "result": "passed", "release": "0.3.3" },
+          "gemini-3.6-flash": { "result": "passed", "release": "0.3.0" }
+        },
+        "lang-graph": {
+          "qwen3.5:4b": { "result": "passed", "release": "0.3.3", "note": "Needed one correction of the draft, and the final message gave the old quantity." },
+          "gemini-3.8-flash": { "result": "passed", "release": "0.3.3" },
+          "gemini-3.6-flash": { "result": "passed", "release": "0.3.0" }
+        },
+        "pydantic-ai": {
+          "qwen3.5:4b": { "result": "passed", "release": "0.3.3", "note": "Needed one correction of the draft, and the final message gave the old quantity." },
+          "gemini-3.8-flash": { "result": "passed", "release": "0.3.3" },
+          "gemini-3.6-flash": { "result": "passed", "release": "0.3.0" }
+        },
+        "firebase-google-ai": {
+          "gemini-3.8-flash": { "result": "failed", "release": "0.1.1", "note": "Firebase sent no answer, also without the adapter." },
+          "gemini-3.5-flash-lite": { "result": "passed", "release": "0.1.1", "note": "From one sentence on the example's order form." }
+        }
+      }
+    },
+    "view": {
+      "name": "View from the app's catalog",
+      "does": "The agent draws a view with the app's catalog, and Tandem shows it.",
+      "cells": {
+        "adk": {
+          "gemini-3.6-flash": { "result": "passed", "release": "0.3.1" }
+        },
+        "lang-graph": {
+          "gemini-3.6-flash": { "result": "passed", "release": "0.3.0" }
+        },
+        "pydantic-ai": {
+          "gemini-3.6-flash": { "result": "passed", "release": "0.3.0" }
+        },
+        "firebase-google-ai": {
+          "gemini-3.6-flash": { "result": "passed", "release": "0.1.1" },
+          "gemini-3.5-flash-lite": { "result": "passed", "release": "0.1.1" }
+        }
+      }
+    }
+  },
+  "platforms": {
+    "tandem": {
+      "ios": { "result": "passed", "release": "0.3.3", "note": "Scripted order trial on an iOS 26.2 simulator." },
+      "android": { "result": "passed", "release": "0.3.3", "note": "Scripted order trial on an API 37 emulator." },
+      "web": { "result": "passed", "release": "0.3.3", "note": "Tests in Chrome and a WebAssembly build in CI." }
+    },
+    "tandem_firebase_ai": {
+      "ios": { "result": "passed", "release": "0.1.1", "note": "Live order trial on an iPhone 17 Pro simulator." },
+      "android": { "result": "passed", "release": "0.1.1", "note": "Live order trial on an API 37 emulator." },
+      "web": { "result": "passed", "release": "0.1.1", "note": "Live order trial in headless Chrome." }
+    }
+  }
+}
