@@ -68,9 +68,6 @@ export 'src/genui/tandem_view.dart' show TandemView;
 export 'src/protocol/ag_ui_run.dart' show agUiRun;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection, StoppableAgentConnection;
-// The deprecated OnDeviceAgent, OnDeviceAvailability and OnDeviceErrorCode.
-// A `show` would itself be a deprecated use.
-export 'src/protocol/on_device_agent.dart';
 export 'src/session/approvals.dart' show ApprovalCallback, TandemApprovals;
 export 'src/session/caller.dart' show Caller;
 export 'src/session/session_scope.dart' show TandemSessionScope;

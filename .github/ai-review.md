@@ -20,6 +20,5 @@ Review the pull request against `AGENTS.md` and `doc/code-quality.md` for how th
 
 ## Do not flag
 
-- Code that Pigeon generates.
 - A breaking change before 1.0 that has `!` and a `BREAKING CHANGE:` footer.
 - Rough code in the scripted model or other demo-only code kept apart from the library.

@@ -253,10 +253,6 @@ jobs:
           (cd showcase/packages/waypoint_travel && dart run build_runner build)
           (cd showcase/app && flutter gen-l10n && dart run build_runner build)
 
-      - name: Generate the Swift bridge API
-        run: dart run pigeon --input pigeons/apple_api.dart && dart format lib test
-        working-directory: packages/tandem
-
       - name: Check the generated code is up to date
         run: git diff --exit-code
 
