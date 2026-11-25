@@ -1,5 +1,4 @@
 import 'package:flutter/widgets.dart';
-import 'package:meta/meta.dart';
 import 'package:tandem/src/agent_type.dart';
 
 /// The widgets the agent may draw a view with. The `_$Name` mixin that
@@ -47,11 +46,6 @@ final class AgentComponent<W extends Widget>._(
     properties,
     required W Function(ComponentArgs args) build,
   }) => ._(name, description, properties(AgentProperties<W>._()), build);
-
-  /// The property [name], or null when the component has none.
-  @internal
-  AgentProperty? property(String name) =>
-      properties.where((property) => property.name == name).firstOrNull;
 }
 
 /// Makes the properties of an [AgentComponent].

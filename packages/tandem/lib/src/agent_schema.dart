@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:meta/meta.dart';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/agent_type.dart';
 import 'package:tandem/src/errors.dart';
@@ -61,23 +61,39 @@ final class const AgentView<T>._(
   /// closure is never called.
   static AgentViewOf<T> of<T>(T Function() _) => AgentViewOf<T>._();
 
-  /// [value], read from the agent list, as JSON.
-  @internal
-  Object? write(Object? value) => type.write(checked(value));
+  SeenValue<T> _seen(Object? value) {
+    if (value is! T) {
+      throw StateError(
+        'The agent list sees a ${value.runtimeType} as $name, the generated '
+        'code a $T. Run build_runner again.',
+      );
+    }
+    final json = _encodeJson(value);
+    return SeenValue._(view: this, value: value, json: json);
+  }
 
-  /// [value], read from the agent list, as the getter's type.
-  ///
-  /// Throws a [StateError] when its type is not the getter's, which means the
-  /// code was not generated again after the list changed.
-  @internal
-  T checked(Object? value) => switch (value) {
-    final T value => value,
-    _ => throw StateError(
-      'The agent list sees a ${value.runtimeType} as $name, the generated '
-      'code a $T. Run build_runner again.',
-    ),
-  };
+  String _encodeJson(T value) {
+    try {
+      final json = type.write(value);
+      return jsonEncode(json);
+    } catch (err, st) {
+      Error.throwWithStackTrace(
+        StateError('The agent list cannot write the .sees $name: $err'),
+        st,
+      );
+    }
+  }
 }
+
+extension SeenValues on AgentView<Object?> {
+  SeenValue<Object?> seen(Object? value) => _seen(value);
+}
+
+final class const SeenValue<T>._({
+  required final AgentView<T> view,
+  required final T value,
+  required final String json,
+});
 
 /// An [AgentView] that waits for its name, description and type.
 final class AgentViewOf<T>._() {
@@ -144,11 +160,11 @@ final class const AgentTool(
   /// The JSON Schema of the arguments.
   JsonObject get schema => parameters.schema;
 
-  /// The agent's JSON [arguments] read as the method's parameter types, a
-  /// `{"path": ...}` as what [paths] gives for it. Without [paths], every
-  /// object is read field by field. Throws a [ToolCallRefused] for a
+  /// Reads object arguments field by field. Throws a [ToolCallRefused] for a
   /// missing, unknown or wrong argument.
-  ToolArgs read(JsonObject arguments, {AgentPaths? paths}) {
+  ToolArgs read(JsonObject arguments) => _read(arguments);
+
+  ToolArgs _read(JsonObject arguments, {AgentPaths? paths}) {
     final names = {for (final parameter in parameters) parameter.name};
     for (final key in arguments.keys) {
       if (!names.contains(key)) {
@@ -178,4 +194,11 @@ final class const AgentTool(
 /// `AgentResult(result).as(type)`.
 final class const AgentResult<T>(final T _value) {
   Object? as(AgentType<T> type) => type.write(_value);
+}
+
+extension AgentToolPaths on AgentTool {
+  /// Resolves a `{"path": ...}` through [paths] for an object value under a
+  /// parameter with `input: false`.
+  ToolArgs readWithPaths(JsonObject arguments, AgentPaths paths) =>
+      _read(arguments, paths: paths);
 }
