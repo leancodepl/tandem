@@ -38,6 +38,20 @@ void main() {
     );
   });
 
+  test('a .sees of another type than the generated code asks for a build', () {
+    expect(
+      () => AgentListing.of(_Gauge(0.5, listed: 'ten')),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'The agent list sees a String as ratio, the generated code a '
+              'double. Run build_runner again.',
+        ),
+      ),
+    );
+  });
+
   test('a .sees from outside agentCapabilities is refused', () {
     expect(
       () => AgentListing.of(_Split()),
@@ -105,9 +119,10 @@ final class _Split() implements AgentSurface {
   );
 }
 
-final class _Gauge(final double ratio) implements AgentSurface {
+final class _Gauge(final double ratio, {final Object? listed})
+    implements AgentSurface {
   @override
-  List<AgentCapability> get agentCapabilities => [.sees(ratio)];
+  List<AgentCapability> get agentCapabilities => [.sees(listed ?? ratio)];
 
   @override
   Stream<Object?> get changes => const Stream.empty();

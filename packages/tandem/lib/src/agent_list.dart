@@ -46,7 +46,7 @@ final class const _Calls(
 final class AgentListing._(
   final AgentSurface _surface,
   final List<AgentCapability> _capabilities,
-  final List<_Seen> _seen,
+  final List<SeenValue<Object?>> _seen,
   final Map<String, AgentTool> _tools, [
   final String? _unseen,
 ]) {
@@ -120,7 +120,7 @@ final class AgentListing._(
 
   /// Each `.sees` with its view: by its getter's name when the generated code
   /// names it, else by place.
-  static List<_Seen> _pairViews(
+  static List<SeenValue<Object?>> _pairViews(
     List<AgentCapability> capabilities,
     AgentSchema schema,
   ) {
@@ -135,7 +135,7 @@ final class AgentListing._(
         '${schema.sees.length}. Run build_runner again.',
       );
     }
-    final seen = <_Seen>[];
+    final seen = <SeenValue<Object?>>[];
     for (final (index, _Sees(:value, :name)) in sees.indexed) {
       final view = switch ((name, schema.capabilities)) {
         (final name?, _) =>
@@ -154,29 +154,14 @@ final class AgentListing._(
       if (seen.any((item) => item.view.name == view.name)) {
         throw StateError('The agent list sees ${view.name} twice.');
       }
-      seen.add((view: view, value: value, json: _encode(view, value)));
+      seen.add(view.seen(value));
     }
     return seen;
   }
 
-  /// [value] of [view] as JSON text. Throws a [StateError] that names the
-  /// `.sees` when its type cannot write the value, such as `double.nan` or
-  /// an `Alignment` without a name, which would fail every run.
-  static String _encode(AgentView<Object?> view, Object? value) {
-    final checked = view.checked(value);
-    try {
-      return jsonEncode(view.type.write(checked));
-    } catch (err, st) {
-      Error.throwWithStackTrace(
-        StateError('The agent list cannot write the .sees ${view.name}: $err'),
-        st,
-      );
-    }
-  }
-
   /// The `context` of AG-UI's `RunAgentInput`: one entry for every `.sees`.
   List<Map<String, Object?>> get context => [
-    for (final (:view, value: _, :json) in _seen)
+    for (final SeenValue(:view, :json) in _seen)
       {
         AgUiFields.description: '${view.name}: ${view.description}',
         AgUiFields.value: json,
@@ -185,7 +170,7 @@ final class AgentListing._(
 
   /// The value of every `.sees` by its name, as JSON.
   late final Map<String, Object?> seen = {
-    for (final (:view, value: _, :json) in _seen) view.name: jsonDecode(json),
+    for (final SeenValue(:view, :json) in _seen) view.name: jsonDecode(json),
   };
 
   /// The `tools` of AG-UI's `RunAgentInput`: the methods listed when this
@@ -280,16 +265,20 @@ final class AgentListing._(
     if (capability.needsApproval && !approved) {
       throw ToolCallRefused('$tool runs only after the user approves it.');
     }
-    final args = target.read(
-      arguments.json,
-      paths: switch ((arguments, _unseen)) {
-        (WrittenArguments(), null) => ListingPaths(seen: this, now: now),
-        (WrittenArguments(), final reason?) => _UnseenPaths(reason),
-        (FrozenArguments(), _) => null,
-      },
-    );
+    final args = switch (arguments) {
+      WrittenArguments(:final json) => target.readWithPaths(
+        json,
+        _pathsForArguments(now),
+      ),
+      FrozenArguments(:final json) => target.read(json),
+    };
     return (target: target, args: args);
   }
+
+  AgentPaths _pathsForArguments(AgentListing now) => switch (_unseen) {
+    null => ListingPaths(seen: this, now: now),
+    final reason => _UnseenPaths(reason),
+  };
 
   /// This listing for a caller that did not see it: a `{"path": ...}` in
   /// the arguments is refused with [reason].
@@ -300,7 +289,7 @@ final class AgentListing._(
   /// The type and the value of each `.sees` by its name, for paths.
   @internal
   Map<String, PathValue> get roots => {
-    for (final (:view, :value, json: _) in _seen)
+    for (final SeenValue(:view, :value) in _seen)
       view.name: PathValue(view.type, value, seen[view.name]),
   };
 }
@@ -308,13 +297,11 @@ final class AgentListing._(
 /// The types and methods a view can bind on this screen.
 extension ListingSchema on AgentListing {
   Map<String, AgentType<Object?>> get rootTypes => {
-    for (final entry in _seen) entry.view.name: entry.view.type,
+    for (final SeenValue(:view) in _seen) view.name: view.type,
   };
 
   Iterable<AgentTool> get listedTools => _tools.values;
 }
-
-typedef _Seen = ({AgentView<Object?> view, Object? value, String json});
 
 final class const _UnseenPaths(final String _reason) implements AgentPaths {
   @override

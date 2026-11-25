@@ -19,15 +19,7 @@ export 'src/agent_schema.dart'
         AgentView,
         AgentViewOf;
 export 'src/agent_type.dart'
-    show
-        AgentField,
-        AgentFieldOf,
-        AgentFieldValues,
-        AgentFields,
-        AgentObjects,
-        AgentPaths,
-        AgentReading,
-        AgentType;
+    show AgentField, AgentFieldOf, AgentFieldValues, AgentFields, AgentType;
 export 'src/chat/chat_item.dart'
     show
         AgentMessage,
