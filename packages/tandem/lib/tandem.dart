@@ -57,6 +57,7 @@ export 'src/genui/agent_catalog.dart'
         AgentPropertyOf,
         ComponentArgs;
 export 'src/genui/tandem_view.dart' show TandemView;
+export 'src/protocol/ag_ui_ids.dart' show ToolCallId;
 export 'src/protocol/ag_ui_run.dart' show agUiRun;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection, StoppableAgentConnection;

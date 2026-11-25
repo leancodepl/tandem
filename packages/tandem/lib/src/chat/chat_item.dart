@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:meta/meta.dart';
+import 'package:tandem/src/protocol/ag_ui_ids.dart';
 import 'package:tandem/src/session/caller.dart';
 
 /// Immutable: the session replaces an item to change it.
@@ -72,10 +73,10 @@ enum ApprovalStatus() {
 extension type ApprovalKey._(Object _identity) implements Object;
 
 /// A call of a method listed with `.callsWithApproval`.
-final class const ApprovalRequest._({
+final class ApprovalRequest._({
   /// The id of the tool call on the wire. A backend can repeat it in a later
   /// run, so key a card by [key].
-  required final String toolCallId,
+  required final ToolCallId toolCallId,
 
   /// The method's name in snake_case.
   required final String tool,
@@ -88,30 +89,31 @@ final class const ApprovalRequest._({
 
   /// Who asked, so the card can say what happens next.
   required final Caller caller,
-  required final ApprovalKey? _key,
+  ApprovalKey? key,
 }) extends ChatItem {
   /// A request for tests and previews. The session never decides it, and its
   /// [key] matches only this request and its copies from [withStatus].
-  const new({
-    required String toolCallId,
+  ///
+  /// Throws a [JsonUnsupportedObjectError] when [arguments] hold a value
+  /// that is not JSON.
+  new({
     required String tool,
     required String description,
-    required String argumentsJson,
+    required Map<String, Object?> arguments,
     ApprovalStatus status = .pending,
     Caller caller = .inAppAgent,
   }) : this._(
-         toolCallId: toolCallId,
+         toolCallId: .local(),
+         argumentsJson: jsonEncode(arguments),
          tool: tool,
          description: description,
-         argumentsJson: argumentsJson,
          status: status,
          caller: caller,
-         key: null,
        );
 
   @internal
   new issued({
-    required String toolCallId,
+    required ToolCallId toolCallId,
     required String tool,
     required String description,
     required String argumentsJson,
@@ -123,12 +125,10 @@ final class const ApprovalRequest._({
          argumentsJson: argumentsJson,
          status: .pending,
          caller: caller,
-         key: ApprovalKey._(Object()),
        );
 
-  /// The local identity of this request. Use it for widget keys and caches.
-  /// The same request keeps its key when its status changes.
-  ApprovalKey get key => _key ?? ApprovalKey._(this);
+  /// Use it for widget keys and caches.
+  final ApprovalKey key = key ?? ApprovalKey._(Object());
 
   /// Decoded again on every read, so changing the map changes nothing the
   /// method gets.

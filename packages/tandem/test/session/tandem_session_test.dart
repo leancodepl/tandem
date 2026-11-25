@@ -1309,15 +1309,13 @@ void main() {
     });
   }
 
-  test('a request built by hand decides nothing, also with the toolCallId '
-      'of a pending card', () async {
+  test('a request built by hand decides nothing', () async {
     final (session, _) = await askToClear();
     final card = _card(session);
     final byHand = ApprovalRequest(
-      toolCallId: card.toolCallId,
       tool: card.tool,
       description: card.description,
-      argumentsJson: '{}',
+      arguments: {},
     );
 
     expect(() => session.approve(byHand), throwsA(isA<ApprovalNotPending>()));
@@ -1325,6 +1323,45 @@ void main() {
 
     expect(shop.items, ['x']);
     expect(session.isPending(card), isTrue);
+  });
+
+  test('a request built by hand keeps the nested arguments it got', () {
+    final tags = ['cold'];
+    final request = ApprovalRequest(
+      tool: 'add',
+      description: 'Adds items.',
+      arguments: {
+        'items': [
+          {'name': 'milk', 'tags': tags},
+        ],
+      },
+    );
+
+    tags.add('fresh');
+
+    expect(request.arguments, {
+      'items': [
+        {
+          'name': 'milk',
+          'tags': ['cold'],
+        },
+      ],
+    });
+  });
+
+  test('each request built by hand has a key of its own', () {
+    final first = ApprovalRequest(
+      tool: 'add',
+      description: 'Adds items.',
+      arguments: {},
+    );
+    final second = ApprovalRequest(
+      tool: 'add',
+      description: 'Adds items.',
+      arguments: {},
+    );
+
+    expect(first.key, isNot(second.key));
   });
 
   test('a pending card is AwaitingApproval', () async {

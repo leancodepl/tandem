@@ -189,7 +189,7 @@ void main() {
       (_) => const [AgentStep.callTool('share'), AgentStep.callTool('share')],
       (_) => const [AgentStep.say('Shared twice.')],
     ]);
-    final asked = <(String, Widget)>[];
+    final asked = <(ToolCallId, Widget)>[];
     await tester.pumpWidget(
       connected(
         agent,
@@ -204,7 +204,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final [(first, scope), (second, _)] = asked;
-    expect([first, second], ['call-1', 'call-2']);
+    expect([first.value, second.value], ['call-1', 'call-2']);
     expect(scope, isA<TandemScope>());
     expect(agent.requests, hasLength(2));
   });

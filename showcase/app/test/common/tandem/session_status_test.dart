@@ -11,20 +11,16 @@ void main() {
   });
 
   test('a run that stops still runs, and one that waits does not', () {
+    final request = ApprovalRequest(
+      tool: 'book_changes',
+      description: 'Books every change.',
+      arguments: {},
+    );
+
     expect(const Stopping().isRunning, isTrue);
     expect(const Calling('find_flights', approved: false).isRunning, isTrue);
     expect(const Idle().isRunning, isFalse);
-    expect(
-      const AwaitingApproval(
-        ApprovalRequest(
-          toolCallId: 'call-1',
-          tool: 'book_changes',
-          description: 'Books every change.',
-          argumentsJson: '{}',
-        ),
-      ).isRunning,
-      isFalse,
-    );
+    expect(AwaitingApproval(request).isRunning, isFalse);
   });
 
   test('a call the traveller approved cannot be stopped', () {

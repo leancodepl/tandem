@@ -1,4 +1,4 @@
-import 'package:tandem/tandem.dart';
+import 'package:tandem/tandem.dart' show RunErrorCode;
 import 'package:tandem_firebase_ai/src/ag_ui_ids.dart';
 import 'package:tandem_firebase_ai/src/json_object.dart';
 
