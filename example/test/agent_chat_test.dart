@@ -43,7 +43,7 @@ void main() {
         (_) => const [AgentStep.callTool('clear')],
       ],
       approvalBuilder: (context, request) =>
-          TextFormField(initialValue: request.toolCallId),
+          TextFormField(initialValue: request.toolCallId.value),
     );
 
     expect(find.text('call-1'), findsOneWidget);

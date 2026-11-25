@@ -87,7 +87,7 @@ final class ToolCall({
 
   ApprovalRequest ask(List<ChatItem> chat) {
     final request = ApprovalRequest.issued(
-      toolCallId: id.value,
+      toolCallId: id,
       tool: tool,
       description: description,
       argumentsJson: switch (_frozen) {

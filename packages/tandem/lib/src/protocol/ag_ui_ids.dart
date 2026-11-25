@@ -1,13 +1,16 @@
+import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
 /// The id of a tool call in an AG-UI thread. A backend picks the id of each
 /// call it makes, and may repeat it in a later run of the thread.
 extension type const ToolCallId._(String value) {
   /// The id a backend gave its call.
+  @internal
   const new wire(String value) : this._(value);
 
   /// A new id, for a call that comes from outside a run, such as a coding
   /// agent's.
+  @internal
   new local() : this._(const Uuid().v4());
 }
 
