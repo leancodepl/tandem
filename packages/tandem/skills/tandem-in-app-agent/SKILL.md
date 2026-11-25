@@ -1,6 +1,6 @@
 ---
 name: tandem-in-app-agent
-description: Give an agent-aware Flutter screen an in-app agent for the app's users, with a chat or a button, using Firebase AI Logic or an AG-UI backend. Use when asked to add an AI chat, assistant or "fill with AI" button to a screen that has a TandemScope, or when the code uses TandemSessionScope, ScriptedAgent, FirebaseConnection or OnDeviceAgent.
+description: Give an agent-aware Flutter screen an in-app agent for the app's users, with a chat or a button, using Firebase AI Logic or an AG-UI backend. Use when asked to add an AI chat, assistant or "fill with AI" button to a screen that has a TandemScope, or when the code uses TandemSessionScope, ScriptedAgent or FirebaseConnection.
 user-invocable: false
 ---
 
@@ -42,8 +42,6 @@ TandemScope(
 - The backend must put the AG-UI `context` into the model's prompt (ag-ui-adk, ag-ui-langgraph and Pydantic AI do not on their own; the agents in `example/agents` show how) and accept `tools` on every run. Its `RUN_STARTED` must repeat the input's `threadId` and `runId`, as these three adapters do. On the web it needs CORS for the app's origin. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement in both entitlement files.
 - For a backend that needs the user's token, pass `HttpAgentConnection(uri, client: ...)` with an `http.Client` that adds it to `TandemScope.connected`, and keep the connection in a field.
 - For another transport, implement an `AgentConnection` whose `run` passes `agUiRun(input)` only the decoded frames of that run's request, with an `input` that carries the IDs the server will echo. Follow the [transport rules](https://github.com/leancodepl/tandem#the-agent-backend) for routing, timeouts and cancellation. A transport with a cancel message also implements `StoppableAgentConnection`, whose `stop(input)` gets the same input object as `run`. Pass the connection to `TandemScope.connected` and keep it in a field.
-
-`OnDeviceAgent` is deprecated and goes away in 0.4.0. Where the app uses it, connect the screen through Firebase AI Logic or an AG-UI backend instead.
 
 For a screen that opens again, such as a page the user leaves and comes back to, keep a `TandemThread` above it and pass it as `thread:`, so the chat and the agent's history go on. One screen at a time has it. When the backend keeps the conversation under its own ID, pass it: `TandemThread(id: ThreadId(conversationId))`, kept in a field or a `State` like any thread, not built in `build`. Tandem then never changes the ID. [What the backend must do](https://github.com/leancodepl/tandem#the-agent-backend).
 

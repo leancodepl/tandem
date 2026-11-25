@@ -26,24 +26,22 @@ fvm dart format --set-exit-if-changed .
 (cd packages/tandem_generator && fvm dart test)
 (cd example && fvm dart run build_runner build)     # then git diff --exit-code: the generated code is committed
 (cd fixtures/kit_ds && fvm dart run build_runner build) && (cd fixtures/greenhouse_app && fvm dart run build_runner build)
-(cd packages/tandem && fvm dart run pigeon --input pigeons/apple_api.dart && fvm dart format lib test)  # the Swift bridge of the deprecated OnDeviceAgent
 (cd example && fvm flutter test)
 (cd packages/tandem && fvm flutter test --platform chrome && fvm flutter test --platform chrome --wasm) && (cd example && fvm flutter test --platform chrome && fvm flutter build web --wasm)
 (cd fixtures/greenhouse_app && fvm flutter test)
 (cd showcase/packages/waypoint_design_system && fvm flutter gen-l10n) && (cd showcase/packages/waypoint_travel && fvm dart run build_runner build && fvm flutter test) && (cd showcase/packages/waypoint_scripted_agent && fvm flutter test) && (cd showcase/app && fvm flutter gen-l10n && fvm dart run build_runner build && fvm flutter test)  # then git diff --exit-code
-bash tool/check_apple.sh                           # OnDeviceAgent, deprecated; macOS 26+, no inference
 (cd example/agents/adk && uv sync --locked && uv run ruff check . ../order-desk ../adk-streaming && uv run ruff format --check . ../order-desk ../adk-streaming && uv run pytest)  # and lang-graph, pydantic-ai without ../adk-streaming
 (cd example/agents/adk && TANDEM_FAKE_LLM=1 uv run order-agent)  # in its own terminal; and lang-graph, pydantic-ai
 (cd example && fvm flutter test test/desk/agent_server_test.dart --dart-define=AGENT_URL=http://127.0.0.1:8000/agent)  # while that agent runs
 (cd showcase/agent && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run pytest)
 ```
 
-CI runs the same except `tool/check_apple.sh`, plus a dry run of `pub publish` and a pana score for each package. On a PR it also runs commitlint on the commits and the title, and checks the length of the description. CI has no macOS runner, so the Swift plugin of the deprecated `OnDeviceAgent` is built by hand.
+CI runs the same, plus a dry run of `pub publish` and a pana score for each package. On a PR it also runs commitlint on the commits and the title, and checks the length of the description.
 
 ## Rules
 
 - Make every change in a dedicated Git worktree. Keep the primary checkout on a clean `main`.
-- Never use the null-assertion operator `!`, also not in tests or in the code `tandem_generator` writes. Code from other generators, such as Pigeon's, is exempt: nobody edits it. Check null with a pattern (`if (x case final y?)`), with `?.` or `??` and a real fallback, or use a type that cannot be null.
+- Never use the null-assertion operator `!`, also not in tests or in the code `tandem_generator` writes. Code from other generators is exempt: nobody edits it. Check null with a pattern (`if (x case final y?)`), with `?.` or `??` and a real fallback, or use a type that cannot be null.
 - For behavior changes or refactors, read [code quality](doc/code-quality.md) before editing and apply its readability review before handoff. Spelling and formatting edits need only the relevant mechanical checks.
 - Named constants for real values, not for obvious JSON keys. Exception: AG-UI wire keys in `packages/tandem/lib` use `AgUiFields` from [ag_ui.dart](packages/tandem/lib/src/protocol/ag_ui.dart). UI strings and spacing go inline at the use site, not in blocks of private constants. In `showcase`, UI strings go to the arb file of the package that shows them instead, and what the agent reads stays English in the code.
 - No `Widget _buildX()` methods: write a private `StatelessWidget` with a const constructor.

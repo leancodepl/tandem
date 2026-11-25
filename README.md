@@ -543,8 +543,6 @@ On the web, configure CORS to allow the app's origin. The reference agents do no
 
 To send the user's token, give `HttpAgentConnection` an `http.Client` that adds the token, then pass the connection to `TandemScope.connected`. Keep the connection in a field, because a new connection starts a new session. A sandboxed macOS app needs the `com.apple.security.network.client` entitlement to reach the backend.
 
-`OnDeviceAgent` is deprecated and goes away in 0.4.0. Use Firebase AI Logic through `tandem_firebase_ai` or an AG-UI backend instead.
-
 For another transport, such as a WebSocket, implement `AgentConnection`. In `run`, pass `agUiRun(input)` only the decoded frames of this run's request, and end the stream when the transport says the request is over. Route frames by a per-request ID where the transport has one. Routing only by thread or socket mixes an ID-less `RUN_ERROR` or terminal event of an earlier run into the next one, and AG-UI allows a `RUN_ERROR` even after `RUN_FINISHED`. Give `agUiRun` the input with the IDs the server will echo, rewritten if the transport rewrites them, and deduplicate a resumed or reattached stream first.
 
 `agUiRun` skips replayed runs and expands chunk events. If a delta depends on a snapshot from replay, send a `STATE_SNAPSHOT` inside the requested run first. Once the requested run started, another `RUN_STARTED` or an event that names another thread fails the stream with a `FormatException`, because AG-UI does not start a run while one is open. Tandem ends the stream at the first `RUN_FINISHED` or `RUN_ERROR` it passes through, even though [AG-UI allows a later error](https://docs.ag-ui.com/spec/1.0/events/lifecycle#after-a-run-closes).
