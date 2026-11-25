@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:tandem/tandem.dart';
-import 'package:tandem_firebase_ai/src/response_status.dart';
 
 /// Codes reported through Tandem's `RunFailed` event.
 extension type const FirebaseErrorCode._(String value) implements RunErrorCode {

@@ -1,4 +1,5 @@
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/protocol/response_status.dart';
 
 /// Thrown by `approve` and `reject` for a request that no longer waits for
 /// the user: one that was invalidated, cancelled or decided the other way.
@@ -24,13 +25,13 @@ final class const ToolCallRefused(final String message) implements Exception {
 /// The agent's endpoint answered with a status other than 200.
 final class const AgentHttpException(
   /// The HTTP status the endpoint answered with.
-  final int statusCode,
+  final ResponseStatus status,
 
   /// The response body as text, such as the server's error message.
   final String body,
 ) implements Exception {
   @override
-  String toString() => 'AgentHttpException: $statusCode $body';
+  String toString() => 'AgentHttpException: ${status.code} $body';
 }
 
 /// The agent's run ended with `RUN_ERROR`. The session reports it for the

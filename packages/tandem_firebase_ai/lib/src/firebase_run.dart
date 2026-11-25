@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:http/http.dart' as http;
+import 'package:tandem/tandem.dart';
 import 'package:tandem_firebase_ai/src/ag_ui_events.dart';
 import 'package:tandem_firebase_ai/src/ag_ui_input.dart';
 import 'package:tandem_firebase_ai/src/firebase_answer.dart';
 import 'package:tandem_firebase_ai/src/firebase_failure.dart';
 import 'package:tandem_firebase_ai/src/firebase_response.dart';
 import 'package:tandem_firebase_ai/src/json_object.dart';
-import 'package:tandem_firebase_ai/src/response_status.dart';
 import 'package:tandem_firebase_ai/src/run_client.dart';
 
 /// Asks Firebase for the one generation of a run, over the run's client.

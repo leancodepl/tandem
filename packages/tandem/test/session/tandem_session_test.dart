@@ -1148,7 +1148,10 @@ void main() {
   );
 
   test('a stream error is reported and shows connection lost', () async {
-    const error = AgentHttpException(422, 'messages: field required');
+    const error = AgentHttpException(
+      ResponseStatus(422),
+      'messages: field required',
+    );
     final reported = collectReports();
     final session = open(RawFirstRun(Stream.error(error), ScriptedAgent([])))
       ..send('a');

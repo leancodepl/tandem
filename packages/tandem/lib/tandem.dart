@@ -61,6 +61,7 @@ export 'src/protocol/ag_ui_ids.dart' show ToolCallId;
 export 'src/protocol/ag_ui_run.dart' show agUiRun;
 export 'src/protocol/agent_connection.dart'
     show AgentConnection, HttpAgentConnection, StoppableAgentConnection;
+export 'src/protocol/response_status.dart' show ResponseStatus;
 export 'src/session/approvals.dart' show ApprovalCallback, TandemApprovals;
 export 'src/session/caller.dart' show Caller;
 export 'src/session/session_scope.dart' show TandemSessionScope;

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/agent_connection.dart';
+import 'package:tandem/src/protocol/response_status.dart';
 
 const _pastIdleTimeout = Duration(seconds: 61);
 
@@ -77,7 +78,11 @@ void main() {
       emitsInOrder([
         emitsError(
           isA<AgentHttpException>()
-              .having((error) => error.statusCode, 'statusCode', 422)
+              .having(
+                (error) => error.status,
+                'status',
+                const ResponseStatus(422),
+              )
               .having(
                 (error) => error.body,
                 'body',
