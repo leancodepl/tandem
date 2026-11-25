@@ -418,7 +418,7 @@ final class const _AgentStep() extends StatelessWidget {
 
 ## Keep the conversation
 
-By default, each session starts a new thread. To keep a conversation when a screen closes, store its `TandemThread` outside the screen and pass it to `TandemScope(thread:)` when the screen reopens. The `State` of the page that opens the screen can own the thread. The next session restores the chat, conversation history and agent state. `session.thread.id` is the AG-UI thread ID.
+By default, each session starts a new thread. To keep a conversation when a screen closes, store its `TandemThread` outside the screen and pass it to `TandemScope(thread:)` when the screen reopens. The `State` of the page that opens the screen can own the thread. The next session restores the chat, conversation history and agent state. `session.thread.id.value` is the AG-UI thread ID.
 
 - Only the newest session uses a thread. The previous session detaches, even if its screen is still animating out. Conversations across different screens are not supported yet.
 - A thread can resume on the same screen. Before the first message, Tandem compares the screen's `.sees` values with those saved when the screen closed. Different values reset the thread and add a `startedOver` notice. Keep the state object for as long as the thread to preserve the conversation and screen state together.

@@ -30,7 +30,7 @@ final class TandemThread({
   TandemSession? _session;
 
   /// The id of its AG-UI thread, which every run sends.
-  String get id => agUiThread.id;
+  ThreadId get id => agUiThread.id;
 
   /// Lets [session] go on with the thread. A session that went on with it
   /// lets it go as if it closed, such as one of a screen that animates out.

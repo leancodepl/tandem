@@ -998,6 +998,15 @@ void main() {
     expect(() => ThreadId(''), throwsArgumentError);
   });
 
+  test('a thread id equals an id the app gives with its value', () {
+    final generated = TandemThread().id;
+    final fromApp = ThreadId(generated.value);
+
+    expect(generated, fromApp);
+    expect(fromApp, generated);
+    expect(generated.hashCode, fromApp.hashCode);
+  });
+
   test('an app-id thread that started over and closed before the next message '
       'starts over only once on a changed screen', () async {
     shop.add('milk');

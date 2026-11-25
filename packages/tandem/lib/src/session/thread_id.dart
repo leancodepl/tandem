@@ -20,8 +20,7 @@ final class AppThreadId(String id) implements ThreadId {
       : id;
 
   @override
-  bool operator ==(Object other) =>
-      other is AppThreadId && other.value == value;
+  bool operator ==(Object other) => other is ThreadId && other.value == value;
 
   @override
   int get hashCode => value.hashCode;
@@ -32,4 +31,10 @@ final class AppThreadId(String id) implements ThreadId {
 final class GeneratedThreadId() implements ThreadId {
   @override
   final String value = const Uuid().v4();
+
+  @override
+  bool operator ==(Object other) => other is ThreadId && other.value == value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
