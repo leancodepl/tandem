@@ -19,7 +19,7 @@ final class AgUiThread(var ThreadId _id) {
   SeesSnapshot? get seenAtLeave => _seenAtLeave;
   SeesSnapshot? _seenAtLeave;
 
-  String get id => _id.value;
+  ThreadId get id => _id;
 
   /// The user's message of the last [input], until its run goes out.
   AgUiMessage? _outgoing;
