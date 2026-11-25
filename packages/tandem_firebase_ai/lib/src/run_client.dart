@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:http/http.dart' as http;
-import 'package:tandem_firebase_ai/src/response_status.dart';
+import 'package:tandem/tandem.dart';
 
 /// The HTTP client of one run. The Firebase SDK can neither abort a request
 /// nor time out, so this client does both: [close] aborts the request, and

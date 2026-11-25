@@ -48,7 +48,7 @@ void _logFlutterError(FlutterErrorDetails details) {
 /// the message of a failed run and the source of what could not be read can
 /// hold the conversation.
 String _agentFailure(Exception exception) => switch (exception) {
-  AgentHttpException(:final statusCode) => 'The agent answered $statusCode',
+  AgentHttpException(:final status) => 'The agent answered ${status.code}',
   AgentRunException(:final code) =>
     'The agent run failed: ${code ?? 'no code'}',
   FormatException(:final message) =>

@@ -24,7 +24,10 @@ void main() {
       setUpLogging();
       FlutterError.reportError(
         const FlutterErrorDetails(
-          exception: AgentHttpException(500, 'The conversation.'),
+          exception: AgentHttpException(
+            ResponseStatus(500),
+            'The conversation.',
+          ),
           library: 'tandem',
         ),
       );

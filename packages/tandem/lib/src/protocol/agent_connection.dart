@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/protocol/ag_ui_run.dart';
+import 'package:tandem/src/protocol/response_status.dart';
 import 'package:tandem/src/protocol/sse.dart';
 
 /// One AG-UI run per call, over a transport or a fake agent.
@@ -87,9 +88,10 @@ final class HttpAgentConnection(
     try {
       final request = _request(input, abortTrigger: abortTrigger);
       final response = await httpClient.send(request).timeout(idleTimeout);
-      if (response.statusCode != 200) {
+      final status = ResponseStatus(response.statusCode);
+      if (status != ResponseStatus.ok) {
         final body = await response.stream.bytesToString().timeout(idleTimeout);
-        throw AgentHttpException(response.statusCode, body);
+        throw AgentHttpException(status, body);
       }
 
       // Count raw bytes so ADK's ping comments reset the timeout.
