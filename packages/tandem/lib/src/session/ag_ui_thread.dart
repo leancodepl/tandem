@@ -5,6 +5,7 @@ import 'package:tandem/src/session/run.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
 import 'package:tandem/src/session/thread_id.dart';
 import 'package:tandem/src/session/turn.dart';
+import 'package:uuid/uuid.dart';
 
 /// The AG-UI thread of a `TandemThread`: its id, and the messages and the
 /// agent's state that every run sends again.
@@ -19,11 +20,11 @@ final class AgUiThread({ThreadId? appId}) {
   SeesSnapshot? get seenAtLeave => _seenAtLeave;
   SeesSnapshot? _seenAtLeave;
 
-  ThreadId get id => _appId ?? (_generatedId ??= GeneratedThreadId());
+  ThreadId get id => _appId ?? (_generatedId ??= ThreadId(const Uuid().v4()));
 
   /// Kept at a reset: the backend may hold the conversation under it.
   final ThreadId? _appId = appId;
-  GeneratedThreadId? _generatedId;
+  ThreadId? _generatedId;
 
   /// The user's message of the last [input], until its run goes out.
   AgUiMessage? _outgoing;
