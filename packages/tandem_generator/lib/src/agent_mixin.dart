@@ -52,7 +52,7 @@ mixin _\$$className implements AgentSurface {
 
     final names = [
       for (final (:method, parameterTypes: _) in methods)
-        toolEnumMemberName(method.displayName),
+        _toolEnumMember(method.displayName),
     ];
     final cases = [
       for (final (:method, parameterTypes: _) in methods)
@@ -76,10 +76,31 @@ enum $_toolEnum implements ToolName {
 }''';
   }
 
-  String get _toolEnum => '${className}Tool';
+  static String toolEnumName(String className) => '${className}Tool';
 
-  static String _wireNameCase(String method) =>
-      '${toolEnumMemberName(method)} => ${DartLiteral.json(agentName(method))},';
+  /// The member of the enum of [className]'s tool names for [method], with a
+  /// trailing underscore also where it is the enum's name or a name that the
+  /// enum's code reads.
+  static String toolEnumMemberName(String method, {required String className}) {
+    final member = enumMemberName(method);
+    final isTaken =
+        member == toolEnumName(className) ||
+        _toolEnumBodyNames.contains(member);
+
+    return isTaken ? '${member}_' : member;
+  }
+
+  /// What the enum of [generateToolNames] reads in its body, and what its
+  /// `value` switch cannot match as a bare name.
+  static const _toolEnumBodyNames = {'String', 'override', 'as', 'when'};
+
+  String get _toolEnum => toolEnumName(className);
+
+  String _toolEnumMember(String method) =>
+      toolEnumMemberName(method, className: className);
+
+  String _wireNameCase(String method) =>
+      '${_toolEnumMember(method)} => ${DartLiteral.json(agentName(method))},';
 
   String _generateView(GetterElement getter) {
     final name = getter.displayName;
@@ -125,7 +146,7 @@ AgentView.of(() => surface.$name).as(
     return '''
 AgentTool(
   surface.$name,
-  name: $_toolEnum.${toolEnumMemberName(name)},
+  name: $_toolEnum.${_toolEnumMember(name)},
   description: $description,
   parameters: [$parameterCode],
   invoke: $invoke,
