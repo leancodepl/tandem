@@ -552,6 +552,12 @@ final class TandemSession({
     final listing = AgentListing.of(_surface);
     _approved = call;
     notifyListeners();
+    // A listener may have let the thread go.
+    if (_disposed) {
+      _approved = null;
+      call.decide(.cancelled);
+      return;
+    }
     call.answerWith(
       await _callMethod(
         listing,

@@ -33,7 +33,8 @@ extension type const ToolStatus._(String value) implements String {
   static const rejectedByUser = ToolStatus._('rejected_by_user');
 
   /// The call did not run: its run was stopped or failed, the user wrote
-  /// instead of deciding, or an earlier request of its turn was rejected.
+  /// instead of deciding, an earlier request of its turn was rejected, or
+  /// its session let the thread go before the method started.
   static const cancelled = ToolStatus._('cancelled');
 
   /// What the agent sees changed after it asked.
