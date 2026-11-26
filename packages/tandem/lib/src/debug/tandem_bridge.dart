@@ -51,8 +51,9 @@ final class TandemBridge._() {
   ///
   /// Each screen has a `context`, which a [call] whose arguments point at
   /// values with `{"path": ...}` passes back, so that the paths read what
-  /// the coding agent saw. A screen keeps its latest 32 contexts, and gives
-  /// the newest one again while it shows the same.
+  /// the coding agent saw. A screen keeps its latest 32 contexts. It gives
+  /// the newest one again while its session, what the agent sees and the set
+  /// of method names it lists stay the same.
   ///
   /// A screen whose agent list throws, such as one that the generated code
   /// no longer fits, has only its `id`, `front` and the `error`, which goes

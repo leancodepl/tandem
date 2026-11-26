@@ -604,6 +604,26 @@ void main() {
     expect(answers, everyElement(containsPair('status', 'returned')));
   });
 
+  testWidgets('describe and call agree once a method shows while the screen '
+      'sees the same', (tester) async {
+    final pantry = _Pantry()..listsOpen = false;
+    await tester.pumpWidget(scope(pantry));
+    TandemBridge.describe();
+
+    pantry.listsOpen = true;
+    final context = currentContext();
+    final answer = await TandemBridge.call(
+      'open',
+      arguments: {
+        'jar': {'path': '/jars/0'},
+      },
+      context: context,
+    );
+
+    expect(answer, containsPair('status', 'returned'));
+    expect(pantry.opened?.name, 'jam');
+  });
+
   testWidgets('an object the agent writes needs no context, also one with a '
       'field named path', (tester) async {
     final pantry = _Pantry();
@@ -695,10 +715,12 @@ final class _Pantry() implements AgentSurface {
   _Jar? opened;
   _Label? label;
 
+  bool listsOpen = true;
+
   @override
   List<AgentCapability> get agentCapabilities => [
     .sees(jars),
-    .calls(open),
+    if (listsOpen) .calls(open),
     .calls(stick),
   ];
 

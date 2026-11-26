@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/session/sees_snapshot.dart';
@@ -26,11 +27,15 @@ final class OpenScreen._(
   bool get isOnCurrentRoute => ModalRoute.isCurrentOf(_context) ?? true;
 
   /// The context for [listing], which `TandemBridge.describe` read from
-  /// [session]: the newest one when it saw the same, else a new one.
+  /// [session]: the newest one when it saw the same and listed the same
+  /// methods, else a new one.
   ContextId contextFor(TandemSession session, AgentListing listing) {
     final sees = SeesSnapshot.of(listing);
+    final tools = listing.toolNames.toSet();
     if (_described.entries.lastOrNull case MapEntry(:final key, :final value)
-        when identical(value.session, session) && value.sees == sees) {
+        when identical(value.session, session) &&
+            value.sees == sees &&
+            setEquals(value.seen.toolNames.toSet(), tools)) {
       return key;
     }
     final context = ContextId('context-${++OpenScreens._lastContext}');
