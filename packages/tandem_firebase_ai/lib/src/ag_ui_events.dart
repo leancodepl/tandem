@@ -46,7 +46,7 @@ final class AgUiEvents(
   /// A whole call of the message.
   void toolCall(
     ToolCallId id, {
-    required ToolName name,
+    required AgUiToolName name,
     required String argumentsJson,
   }) {
     _startMessageOnce();
