@@ -67,7 +67,7 @@ mixin _$BookingCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.setHotel,
-          name: 'set_hotel',
+          name: BookingCubitTool.setHotel,
           description: "Sets the hotel's name.",
           parameters: [const AgentParameter<String>('name', .string)],
           invoke: (args) {
@@ -77,7 +77,7 @@ mixin _$BookingCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setAddress,
-          name: 'set_address',
+          name: BookingCubitTool.setAddress,
           description: "Sets the hotel's street address with its city.",
           parameters: [const AgentParameter<String>('address', .string)],
           invoke: (args) {
@@ -87,7 +87,7 @@ mixin _$BookingCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setCheckIn,
-          name: 'set_check_in',
+          name: BookingCubitTool.setCheckIn,
           description: 'Sets the day and the earliest time of the check-in.',
           parameters: [const AgentParameter<DateTime>('at', .dateTime)],
           invoke: (args) {
@@ -97,7 +97,7 @@ mixin _$BookingCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setCheckOut,
-          name: 'set_check_out',
+          name: BookingCubitTool.setCheckOut,
           description: 'Sets the day of the check-out.',
           parameters: [const AgentParameter<DateTime>('day', .dateTime)],
           invoke: (args) {
@@ -107,7 +107,7 @@ mixin _$BookingCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setTotalPrice,
-          name: 'set_total_price',
+          name: BookingCubitTool.setTotalPrice,
           description: 'Sets what the whole stay costs, in whole euros.',
           parameters: [const AgentParameter<int>('euros', .integer)],
           invoke: (args) {
@@ -117,7 +117,7 @@ mixin _$BookingCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setConfirmation,
-          name: 'set_confirmation',
+          name: BookingCubitTool.setConfirmation,
           description: "Sets the hotel's confirmation number.",
           parameters: [const AgentParameter<String>('number', .string)],
           invoke: (args) {
@@ -129,6 +129,31 @@ mixin _$BookingCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [BookingCubit] by.
+// `enum BookingCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum BookingCubitTool implements ToolName {
+  setHotel,
+  setAddress,
+  setCheckIn,
+  setCheckOut,
+  setTotalPrice,
+  setConfirmation;
+
+  @override
+  String get value => switch (this) {
+    setHotel => 'set_hotel',
+    setAddress => 'set_address',
+    setCheckIn => 'set_check_in',
+    setCheckOut => 'set_check_out',
+    setTotalPrice => 'set_total_price',
+    setConfirmation => 'set_confirmation',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on BookingCubit {

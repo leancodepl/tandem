@@ -147,7 +147,7 @@ void main() {
     });
     expect(events, [
       isA<AgentCall>()
-          .having((call) => call.tool, 'tool', 'add')
+          .having((call) => call.tool, 'tool', ShopTool.add)
           .having((call) => call.arguments, 'arguments', {'item': 'milk'})
           .having((call) => call.caller, 'caller', Caller.codingAgent),
     ]);
@@ -296,7 +296,7 @@ void main() {
 
   testWidgets('the approval callback gets the request', (tester) async {
     final shop = newShop();
-    final asked = <String>[];
+    final asked = <ToolName>[];
     await tester.pumpWidget(
       scope(
         shop,
@@ -310,7 +310,7 @@ void main() {
     final answer = await TandemBridge.call('share');
 
     expect(answer, containsPair('status', 'returned'));
-    expect(asked, ['share']);
+    expect(asked, [ShopTool.share]);
   });
 
   testWidgets('a screen that takes no approvals refuses the call, and '
@@ -388,7 +388,10 @@ void main() {
     await tester.pumpWidget(connected(shop, agent));
     sessionOf(tester).send('refresh');
     await tester.pump();
-    expect(sessionOf(tester).status, const Calling('refresh', approved: false));
+    expect(
+      sessionOf(tester).status,
+      const Calling(ShopTool.refresh, approved: false),
+    );
     sessionOf(tester).stop();
     serverReply.complete();
     await tester.pumpAndSettle();
@@ -455,7 +458,7 @@ void main() {
     changesArrive.complete();
     await tester.pump();
 
-    expect(lastRequest(tester).tool, 'clear');
+    expect(lastRequest(tester).tool, ShopTool.clear);
     expect(sessionOf(tester).status, AwaitingApproval(lastRequest(tester)));
   });
 
@@ -483,11 +486,11 @@ void main() {
     await tester.pump();
 
     expect(sessionOf(tester).status, isA<Thinking>());
-    expect(lastRequest(tester).tool, 'share');
+    expect(lastRequest(tester).tool, ShopTool.share);
 
     gate.complete();
     await tester.pumpAndSettle();
-    expect(lastRequest(tester).tool, 'clear');
+    expect(lastRequest(tester).tool, ShopTool.clear);
     sessionOf(tester).approve(lastRequest(tester));
     expect(await answer, containsPair('status', 'returned'));
     expect(
@@ -714,7 +717,7 @@ final class _Pantry() implements AgentSurface {
     calls: [
       AgentTool(
         open,
-        name: 'open',
+        name: _PantryTool.open,
         description: 'Opens jar.',
         parameters: [AgentParameter<_Jar>('jar', _jarType)],
         invoke: (args) {
@@ -724,7 +727,7 @@ final class _Pantry() implements AgentSurface {
       ),
       AgentTool(
         stick,
-        name: 'stick',
+        name: _PantryTool.stick,
         description: 'Sticks label on the pantry.',
         parameters: [AgentParameter<_Label>('label', _labelType, input: true)],
         invoke: (args) {
@@ -750,3 +753,8 @@ final class _Pantry() implements AgentSurface {
 
 PageRouteBuilder<void> _route(Widget screen) =>
     PageRouteBuilder(pageBuilder: (context, _, _) => screen);
+
+enum _PantryTool(@override final String value) implements ToolName {
+  open('open'),
+  stick('stick'),
+}

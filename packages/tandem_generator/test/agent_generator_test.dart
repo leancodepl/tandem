@@ -113,6 +113,43 @@ class ViewCubit() {
     );
   });
 
+  test('a private method names its tool with a public enum member', () async {
+    final code = await _generate('''
+@TandemAgent()
+class OrderCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(_refresh)];
+
+  /// Loads the order again.
+  void _refresh() {}
+}
+''');
+
+    expect(
+      code,
+      allOf(
+        contains('enum OrderCubitTool implements ToolName {'),
+        contains("refresh => 'refresh',"),
+        contains('name: OrderCubitTool.refresh,'),
+      ),
+    );
+  });
+
+  test('a method named like a member of an enum fails the build', () async {
+    final errors = await _buildErrors('''
+@TandemAgent()
+class PageCubit() {
+  List<AgentCapability> get agentCapabilities => [.calls(_index)];
+
+  /// Opens the index.
+  void _index() {}
+}
+''');
+
+    expect(errors, [
+      contains('Rename _index: it would be index in the enum of tool names'),
+    ]);
+  });
+
   for (final (capability, message) in [
     ('.sees(draft.length)', '.sees takes a getter of NoteCubit'),
     ('.calls(() => save())', '.calls takes a method of NoteCubit'),

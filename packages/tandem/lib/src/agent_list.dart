@@ -7,6 +7,7 @@ import 'package:tandem/src/agent_type.dart';
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/tool_args.dart';
+import 'package:tandem/src/tool_name.dart';
 
 /// One item of the agent list: a value the agent sees or a method it may
 /// call. Write it as `.sees`, `.calls` or `.callsWithApproval`.
@@ -72,16 +73,17 @@ final class AgentListing._(
             'Run build_runner again.',
           ),
         );
-        if (tool.name.startsWith('tandem_')) {
+        final name = tool.name.value;
+        if (name.startsWith('tandem_')) {
           throw StateError(
-            'The agent list calls ${tool.name}, but tandem_ starts only the '
+            'The agent list calls $name, but tandem_ starts only the '
             "names of Tandem's own tools. Rename the method.",
           );
         }
-        if (tools.containsKey(tool.name)) {
-          throw StateError('The agent list has ${tool.name} twice.');
+        if (tools.containsKey(name)) {
+          throw StateError('The agent list has $name twice.');
         }
-        tools[tool.name] = tool;
+        tools[name] = tool;
       }
     }
     return ._(surface, capabilities, seen, tools);
@@ -178,7 +180,7 @@ final class AgentListing._(
   List<Map<String, Object?>> get tools => [
     for (final tool in _tools.values)
       {
-        AgUiFields.name: tool.name,
+        AgUiFields.name: tool.name.value,
         AgUiFields.description: tool.description,
         AgUiFields.parameters: tool.schema,
       },
@@ -238,13 +240,14 @@ final class AgentListing._(
   /// Like [call], and gives the arguments too, as JSON with every path
   /// replaced by the value it points at.
   @internal
-  Future<({Object? result, JsonObject arguments})> run(
-    String tool,
-    CallArguments arguments, {
-    required bool approved,
-  }) async {
+  Future<({ToolName toolName, Object? result, JsonObject resolvedArguments})>
+  run(String tool, CallArguments arguments, {required bool approved}) async {
     final (:target, :args) = prepare(tool, arguments, approved: approved);
-    return (result: await target.invoke(args), arguments: args.json);
+    return (
+      toolName: target.name,
+      result: await target.invoke(args),
+      resolvedArguments: args.json,
+    );
   }
 
   /// The method behind [tool] and its [arguments] read as its parameter

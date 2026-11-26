@@ -150,7 +150,7 @@ Future<void> confirmOrder(
 ```
 
 - Tandem calls it for each request when it shows, with the scope's context, so `context.read<OrderCubit>()` works.
-- `request.tool` names the method. `request.description` and `request.arguments` are written for the agent: show the user what the screen shows, in the app's words.
+- `request.tool` names the method with a value of the enum that `tandem_generator` writes, such as `OrderCubitTool.placeOrder`. `request.description` and `request.arguments` are written for the agent: show the user what the screen shows, in the app's words.
 - Write the texts as the rest of the app does: from its localization when it has one, inline when it has none.
 - `approve` and `reject` throw `ApprovalNotPending` when the request changed meanwhile: catch it.
 

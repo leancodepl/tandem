@@ -173,7 +173,7 @@ mixin _$StockCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.restock,
-          name: 'restock',
+          name: StockCubitTool.restock,
           description: 'Orders [count] more pots of [sku] from the grower.',
           parameters: [
             AgentParameter<Sku>(
@@ -193,7 +193,7 @@ mixin _$StockCubit implements AgentSurface {
         ),
         AgentTool(
           surface.group,
-          name: 'group',
+          name: StockCubitTool.group,
           description: 'Files the stock under [names] and sets it out on [benches], null for the floor.',
           parameters: [
             AgentParameter<Set<String>>('names', .set(.string)),
@@ -208,6 +208,23 @@ mixin _$StockCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [StockCubit] by.
+// `enum StockCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum StockCubitTool implements ToolName {
+  restock,
+  group;
+
+  @override
+  String get value => switch (this) {
+    restock => 'restock',
+    group => 'group',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on StockCubit {

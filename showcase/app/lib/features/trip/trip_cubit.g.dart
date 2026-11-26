@@ -193,7 +193,7 @@ mixin _$TripCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.findFlights,
-          name: 'find_flights',
+          name: TripCubitTool.findFlights,
           description: 'Finds the flights from [origin] to [destination] on [date], with their fares in euros. Airports are IATA codes: WAW for Warsaw, BER for Berlin.',
           parameters: [
             const AgentParameter<String>('origin', .string),
@@ -239,7 +239,7 @@ mixin _$TripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.moveMeeting,
-          name: 'move_meeting',
+          name: TripCubitTool.moveMeeting,
           description: "Moves the meeting [meetingId] to start at [start], keeping its length. Meetings are in the traveller's calendar, so moving one books nothing.",
           parameters: [
             const AgentParameter<String>('meetingId', .string),
@@ -252,7 +252,7 @@ mixin _$TripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setHomeboundFlight,
-          name: 'set_homebound_flight',
+          name: TripCubitTool.setHomeboundFlight,
           description: 'Puts the traveller on flight [number] home on [date], one that find_flights gives. Nothing is booked until book_changes.',
           parameters: [
             const AgentParameter<String>('number', .string),
@@ -265,7 +265,7 @@ mixin _$TripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setHotelNights,
-          name: 'set_hotel_nights',
+          name: TripCubitTool.setHotelNights,
           description: 'Sets how many nights the traveller stays at the hotel, counted from the check-in. Nothing is booked until book_changes.',
           parameters: [const AgentParameter<int>('nights', .integer)],
           invoke: (args) {
@@ -275,7 +275,7 @@ mixin _$TripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.bookChanges,
-          name: 'book_changes',
+          name: TripCubitTool.bookChanges,
           description: 'Books every change exactly as it is on the screen and charges its cost to the company card. Returns what was booked, to tell the traveller.',
           parameters: [],
           invoke: (args) async {
@@ -314,6 +314,29 @@ mixin _$TripCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [TripCubit] by.
+// `enum TripCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum TripCubitTool implements ToolName {
+  findFlights,
+  moveMeeting,
+  setHomeboundFlight,
+  setHotelNights,
+  bookChanges;
+
+  @override
+  String get value => switch (this) {
+    findFlights => 'find_flights',
+    moveMeeting => 'move_meeting',
+    setHomeboundFlight => 'set_homebound_flight',
+    setHotelNights => 'set_hotel_nights',
+    bookChanges => 'book_changes',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on TripCubit {

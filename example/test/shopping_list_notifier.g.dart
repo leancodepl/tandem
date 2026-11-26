@@ -19,7 +19,7 @@ mixin _$ShoppingListNotifier implements AgentSurface {
       calls: [
         AgentTool(
           surface.clear,
-          name: 'clear',
+          name: ShoppingListNotifierTool.clear,
           description: 'Empties the list.',
           parameters: [],
           invoke: (args) {
@@ -31,6 +31,21 @@ mixin _$ShoppingListNotifier implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [ShoppingListNotifier] by.
+// `enum ShoppingListNotifierTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum ShoppingListNotifierTool implements ToolName {
+  clear;
+
+  @override
+  String get value => switch (this) {
+    clear => 'clear',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on ShoppingListNotifier {

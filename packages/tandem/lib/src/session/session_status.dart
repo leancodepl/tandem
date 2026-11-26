@@ -1,4 +1,5 @@
 import 'package:tandem/src/chat/chat_item.dart';
+import 'package:tandem/src/tool_name.dart';
 
 /// What a session does now. Stop is available while it is [Thinking] or
 /// [Calling] a method the user did not approve. Two statuses that say the
@@ -38,8 +39,7 @@ final class const Thinking({
 /// A listed method runs: one the agent called in its run, or one the user
 /// approved for any caller.
 final class const Calling(
-  /// The method's name in snake_case.
-  final String tool, {
+  final ToolName tool, {
 
   /// The user approved the call, so it runs to its end and cannot be
   /// stopped.

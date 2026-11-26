@@ -101,7 +101,7 @@ mixin _$OrderDeskCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.searchCatalog,
-          name: 'search_catalog',
+          name: OrderDeskCubitTool.searchCatalog,
           description: 'Finds products by SKU, name or description.',
           parameters: [const AgentParameter<String>('query', .string)],
           invoke: (args) async {
@@ -133,7 +133,7 @@ mixin _$OrderDeskCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setCustomer,
-          name: 'set_customer',
+          name: OrderDeskCubitTool.setCustomer,
           description: 'Sets the customer the order is for; prices follow their price list.',
           parameters: [const AgentParameter<String>('customerId', .string)],
           invoke: (args) {
@@ -143,7 +143,7 @@ mixin _$OrderDeskCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setQuantity,
-          name: 'set_quantity',
+          name: OrderDeskCubitTool.setQuantity,
           description: 'Sets how many pieces of [sku] the order has; 0 removes the line.',
           parameters: [
             const AgentParameter<String>('sku', .string),
@@ -156,7 +156,7 @@ mixin _$OrderDeskCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setDelivery,
-          name: 'set_delivery',
+          name: OrderDeskCubitTool.setDelivery,
           description: 'Sets where and when the order is delivered.',
           parameters: [
             const AgentParameter<String>('address', .string),
@@ -169,7 +169,7 @@ mixin _$OrderDeskCubit implements AgentSurface {
         ),
         AgentTool(
           surface.placeOrder,
-          name: 'place_order',
+          name: OrderDeskCubitTool.placeOrder,
           description: 'Places the order exactly as it is on the screen.',
           parameters: [],
           invoke: (args) async {
@@ -188,6 +188,29 @@ mixin _$OrderDeskCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [OrderDeskCubit] by.
+// `enum OrderDeskCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum OrderDeskCubitTool implements ToolName {
+  searchCatalog,
+  setCustomer,
+  setQuantity,
+  setDelivery,
+  placeOrder;
+
+  @override
+  String get value => switch (this) {
+    searchCatalog => 'search_catalog',
+    setCustomer => 'set_customer',
+    setQuantity => 'set_quantity',
+    setDelivery => 'set_delivery',
+    placeOrder => 'place_order',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on OrderDeskCubit {

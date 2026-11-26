@@ -107,7 +107,7 @@ mixin _$NurseryCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.openPlant,
-          name: 'open_plant',
+          name: NurseryCubitTool.openPlant,
           description: 'Opens the page of [plant].',
           parameters: [
             AgentParameter<PlantDTO>(
@@ -176,7 +176,7 @@ mixin _$NurseryCubit implements AgentSurface {
         ),
         AgentTool(
           surface.comparePlants,
-          name: 'compare_plants',
+          name: NurseryCubitTool.comparePlants,
           description: 'Shows [plants] side by side.',
           parameters: [
             AgentParameter<List<PlantDTO>>(
@@ -252,7 +252,7 @@ mixin _$NurseryCubit implements AgentSurface {
         ),
         AgentTool(
           surface.reversePlants,
-          name: 'reverse_plants',
+          name: NurseryCubitTool.reversePlants,
           description: 'Lists the plants in reverse.',
           parameters: [],
           invoke: (args) {
@@ -262,7 +262,7 @@ mixin _$NurseryCubit implements AgentSurface {
         ),
         AgentTool(
           surface.keepFirst,
-          name: 'keep_first',
+          name: NurseryCubitTool.keepFirst,
           description: 'Keeps only the first plant.',
           parameters: [],
           invoke: (args) {
@@ -272,7 +272,7 @@ mixin _$NurseryCubit implements AgentSurface {
         ),
         AgentTool(
           surface.discardTray,
-          name: 'discard_tray',
+          name: NurseryCubitTool.discardTray,
           description: 'Throws [tray] away.',
           parameters: [
             AgentParameter<Tray>(
@@ -294,7 +294,7 @@ mixin _$NurseryCubit implements AgentSurface {
         ),
         AgentTool(
           surface.assignGrower,
-          name: 'assign_grower',
+          name: NurseryCubitTool.assignGrower,
           description: 'Puts [grower] in charge of the greenhouse.',
           parameters: [
             AgentParameter<Grower>(
@@ -315,7 +315,7 @@ mixin _$NurseryCubit implements AgentSurface {
         ),
         AgentTool(
           surface.addGrower,
-          name: 'add_grower',
+          name: NurseryCubitTool.addGrower,
           description: 'Adds [grower], whom the nursery does not list yet.',
           parameters: [
             AgentParameter<Grower>(
@@ -339,6 +339,33 @@ mixin _$NurseryCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [NurseryCubit] by.
+// `enum NurseryCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum NurseryCubitTool implements ToolName {
+  openPlant,
+  comparePlants,
+  reversePlants,
+  keepFirst,
+  discardTray,
+  assignGrower,
+  addGrower;
+
+  @override
+  String get value => switch (this) {
+    openPlant => 'open_plant',
+    comparePlants => 'compare_plants',
+    reversePlants => 'reverse_plants',
+    keepFirst => 'keep_first',
+    discardTray => 'discard_tray',
+    assignGrower => 'assign_grower',
+    addGrower => 'add_grower',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on NurseryCubit {

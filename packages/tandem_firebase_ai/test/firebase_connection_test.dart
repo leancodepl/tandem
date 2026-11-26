@@ -834,7 +834,7 @@ final class _Counter() implements AgentSurface {
     calls: [
       AgentTool(
         add,
-        name: 'add',
+        name: _CounterTool.add,
         description: 'Adds an amount to the total.',
         parameters: const [AgentParameter<int>('amount', .integer)],
         invoke: (args) => add(args.read('amount')),
@@ -1034,4 +1034,8 @@ Future<void> _pumpUntil(WidgetTester tester, bool Function() ready) async {
     if (ready()) return;
   }
   fail('The session did not reach the expected state.');
+}
+
+enum _CounterTool(@override final String value) implements ToolName {
+  add('add'),
 }

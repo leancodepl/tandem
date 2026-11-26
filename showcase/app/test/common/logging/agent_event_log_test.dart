@@ -12,7 +12,7 @@ void main() {
 
     const <TandemEvent>[
       AgentCall(
-        tool: 'message_host',
+        tool: _Tool.messageHost,
         arguments: {'text': 'I land at 08:40.'},
         result: 'Sent.',
         caller: .view,
@@ -28,4 +28,11 @@ void main() {
       (Level.WARNING, 'Agent connection lost'),
     ]);
   });
+}
+
+enum _Tool(@override final String value) implements ToolName {
+  messageHost('message_host');
+
+  @override
+  String toString() => value;
 }

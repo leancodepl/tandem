@@ -423,7 +423,7 @@ void main() {
       'call-1 -> null',
     ]);
     final [AgentCall(:tool, :arguments, :result)] = agentCalls();
-    expect((tool, result), ('add', null));
+    expect((tool, result), (ShopTool.add, null));
     expect(arguments, {'item': 'milk'});
     expect(summaryOf(session.items), [
       ('user', 'add milk'),
@@ -566,7 +566,7 @@ void main() {
     expect(
       session.status,
       isA<Calling>()
-          .having((status) => status.tool, 'tool', 'refresh')
+          .having((status) => status.tool, 'tool', ShopTool.refresh)
           .having((status) => status.approved, 'approved', isFalse),
     );
 
@@ -1217,7 +1217,12 @@ void main() {
     final card = _card(session);
     expect(
       [card.tool, card.arguments, card.status, card.caller],
-      ['clear', <String, Object?>{}, ApprovalStatus.pending, Caller.inAppAgent],
+      [
+        ShopTool.clear,
+        <String, Object?>{},
+        ApprovalStatus.pending,
+        Caller.inAppAgent,
+      ],
     );
     expect(shop.items, ['x']);
 
@@ -1235,7 +1240,7 @@ void main() {
     ]);
     expect(_card(session).status, ApprovalStatus.approved);
     final [AgentCall(:tool, :arguments, :result, :caller)] = agentCalls();
-    expect((tool, result, caller), ('clear', null, Caller.inAppAgent));
+    expect((tool, result, caller), (ShopTool.clear, null, Caller.inAppAgent));
     expect(arguments, isEmpty);
   });
 
@@ -1331,7 +1336,7 @@ void main() {
   test('a request built by hand keeps the nested arguments it got', () {
     final tags = ['cold'];
     final request = ApprovalRequest(
-      tool: 'add',
+      tool: ShopTool.add,
       description: 'Adds items.',
       arguments: {
         'items': [
@@ -1354,12 +1359,12 @@ void main() {
 
   test('each request built by hand has a key of its own', () {
     final first = ApprovalRequest(
-      tool: 'add',
+      tool: ShopTool.add,
       description: 'Adds items.',
       arguments: {},
     );
     final second = ApprovalRequest(
-      tool: 'add',
+      tool: ShopTool.add,
       description: 'Adds items.',
       arguments: {},
     );
@@ -1577,7 +1582,7 @@ void main() {
     expect(
       session.status,
       isA<Calling>()
-          .having((status) => status.tool, 'tool', 'clear')
+          .having((status) => status.tool, 'tool', ShopTool.clear)
           .having((status) => status.approved, 'approved', isTrue),
     );
     expect(events.whereType<RunStopped>(), isEmpty);
@@ -1592,7 +1597,7 @@ void main() {
     ]);
     expect(summaryOf(session.items), [
       ('user', 'clear it'),
-      ('clear', ApprovalStatus.approved),
+      (ShopTool.clear, ApprovalStatus.approved),
       ('agent', 'Cleared.', false),
     ]);
   });
@@ -2273,7 +2278,10 @@ void main() {
     await pumpEventQueue();
     session.approve(_card(session));
     await pumpEventQueue();
-    expect(summaryOf(session.items).last, ('share', ApprovalStatus.pending));
+    expect(summaryOf(session.items).last, (
+      ShopTool.share,
+      ApprovalStatus.pending,
+    ));
     expect(agent.requests, hasLength(2));
 
     session.approve(session.items.whereType<ApprovalRequest>().last);
@@ -2335,7 +2343,7 @@ void main() {
     gate.complete();
     await pumpEventQueue();
 
-    expect(session.status, const Calling('share', approved: true));
+    expect(session.status, const Calling(ShopTool.share, approved: true));
     expect(agent.requests, hasLength(1));
 
     serverReply.complete();
@@ -2390,13 +2398,16 @@ void main() {
 
     session.approve(_card(session));
     await pumpEventQueue();
-    expect(summaryOf(session.items).last, ('share', ApprovalStatus.approved));
+    expect(summaryOf(session.items).last, (
+      ShopTool.share,
+      ApprovalStatus.approved,
+    ));
 
     serverReply.complete();
     await pumpEventQueue();
     expect(summaryOf(session.items).skip(1), [
-      ('share', ApprovalStatus.approved),
-      ('share', ApprovalStatus.pending),
+      (ShopTool.share, ApprovalStatus.approved),
+      (ShopTool.share, ApprovalStatus.pending),
     ]);
   });
 
@@ -2412,7 +2423,7 @@ void main() {
     session.approve(_card(session));
     await pumpEventQueue();
 
-    expect(_card(session).tool, 'clear');
+    expect(_card(session).tool, ShopTool.clear);
     expect(linesOf(agent.requests[1]).skip(3), [
       'call-1 -> null',
       'call-2 -> ${ToolAnswer.invalidated.content}',
@@ -2937,7 +2948,7 @@ final class _Nursery() implements AgentSurface {
     calls: [
       AgentTool(
         open,
-        name: 'open',
+        name: _NurseryTool.open,
         description: 'Opens grower.',
         parameters: [AgentParameter<_Grower>('grower', _grower)],
         invoke: (args) {
@@ -2947,6 +2958,10 @@ final class _Nursery() implements AgentSurface {
       ),
     ],
   );
+}
+
+enum _NurseryTool(@override final String value) implements ToolName {
+  open('open'),
 }
 
 final class const _Grower(final String name);
@@ -2984,7 +2999,7 @@ final class _Mailbox() implements AgentSurface {
     calls: [
       AgentTool(
         post,
-        name: 'post',
+        name: _MailboxTool.post,
         description: 'Posts [text] to [to].',
         parameters: const [
           AgentParameter<String>('to', .string),
@@ -2997,6 +3012,10 @@ final class _Mailbox() implements AgentSurface {
       ),
     ],
   );
+}
+
+enum _MailboxTool(@override final String value) implements ToolName {
+  post('post'),
 }
 
 /// A screen whose color converter has a bug.
@@ -3025,7 +3044,10 @@ final class _Palette() implements AgentSurface {
   AgentSchema get agentSchema => AgentSchema(
     sees: [],
     calls: [
-      for (final (name, method) in [('paint', paint), ('order', order)])
+      for (final (:name, :method) in [
+        (name: _PaletteTool.paint, method: paint),
+        (name: _PaletteTool.order, method: order),
+      ])
         AgentTool(
           method,
           name: name,
@@ -3038,6 +3060,11 @@ final class _Palette() implements AgentSurface {
         ),
     ],
   );
+}
+
+enum _PaletteTool(@override final String value) implements ToolName {
+  paint('paint'),
+  order('order'),
 }
 
 final class const _BrokenConverter() implements JsonConverter<int, String> {

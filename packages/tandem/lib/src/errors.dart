@@ -10,7 +10,7 @@ final class const ApprovalNotPending(final ApprovalRequest request)
     implements Exception {
   @override
   String toString() =>
-      'ApprovalNotPending: ${request.tool} is ${request.status.name}.';
+      'ApprovalNotPending: ${request.tool.value} is ${request.status.name}.';
 }
 
 /// A call of a listed method that did not run, because the agent called a

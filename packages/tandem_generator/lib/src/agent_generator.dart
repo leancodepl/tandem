@@ -51,6 +51,7 @@ class const AgentGenerator() extends MixinGenerator {
 
     return [
       mixin.generate(),
+      mixin.generateToolNames(),
       capabilities.copy,
       converters.declaration,
     ].join('\n\n');
@@ -154,10 +155,19 @@ class _CapabilityReader(final ClassElement _type)
       throw AgentGenerationError.invalidMethod(item, _type);
     }
 
-    final name = agentName(method.displayName);
+    final methodName = method.displayName;
+    final wireName = agentName(methodName);
+    final enumMemberName = toolEnumMemberName(methodName);
 
-    if (name.startsWith(tandemToolPrefix)) {
-      throw AgentGenerationError.reservedName(item, name: name);
+    if (wireName.startsWith(tandemToolPrefix)) {
+      throw AgentGenerationError.reservedName(item, name: wireName);
+    }
+
+    if (reservedToolEnumMemberNames.contains(enumMemberName)) {
+      throw AgentGenerationError.reservedToolEnumMember(
+        item,
+        enumMemberName: enumMemberName,
+      );
     }
 
     return method;

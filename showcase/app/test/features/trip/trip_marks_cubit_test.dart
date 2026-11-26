@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:waypoint/features/trip/trip_action.dart';
 import 'package:waypoint/features/trip/trip_activity.dart';
 import 'package:waypoint/features/trip/trip_activity_state.dart';
+import 'package:waypoint/features/trip/trip_cubit.dart';
 import 'package:waypoint/features/trip/trip_item_id.dart';
 import 'package:waypoint/features/trip/trip_marks_cubit.dart';
 import 'package:waypoint/features/trip/trip_marks_presentation_event.dart';
@@ -40,10 +41,10 @@ void main() {
     );
 
     for (final (tool, arguments) in [
-      ('move_meeting', {'meetingId': ' workshop '}),
-      ('set_hotel_nights', {'nights': 2}),
-      ('find_flights', {'origin': 'BER', 'destination': 'WAW'}),
-      ('set_homebound_flight', {'number': 'WA 388'}),
+      (TripCubitTool.moveMeeting, {'meetingId': ' workshop '}),
+      (TripCubitTool.setHotelNights, {'nights': 2}),
+      (TripCubitTool.findFlights, {'origin': 'BER', 'destination': 'WAW'}),
+      (TripCubitTool.setHomeboundFlight, {'number': 'WA 388'}),
     ]) {
       marks.markAction(_action(tool, arguments), unbookedItems: {});
     }
@@ -65,10 +66,10 @@ void main() {
   test('a meeting named hotel keeps its own mark', () {
     marks
       ..markAction(
-        _action('move_meeting', {'meetingId': 'hotel'}),
+        _action(.moveMeeting, {'meetingId': 'hotel'}),
         unbookedItems: {},
       )
-      ..markAction(_action('set_hotel_nights'), unbookedItems: {})
+      ..markAction(_action(.setHotelNights), unbookedItems: {})
       ..unmark(.hotel);
 
     expect(marks.state.ids, {TripItemId.meeting(MeetingId('hotel'))});
@@ -76,15 +77,17 @@ void main() {
 
   test('booking the changes clears the marks', () {
     marks
-      ..markAction(_action('set_hotel_nights'), unbookedItems: {})
-      ..markAction(_action('book_changes'), unbookedItems: {});
+      ..markAction(_action(.setHotelNights), unbookedItems: {})
+      ..markAction(_action(.bookChanges), unbookedItems: {});
 
     expect(marks.state.ids, isEmpty);
   });
 }
 
-TripAction _action(String tool, [Map<String, Object?> arguments = const {}]) =>
-    switch (TripAction.of(tool, arguments)) {
-      final action? => action,
-      null => fail('$tool is not a tool of the trip.'),
-    };
+TripAction _action(
+  TripCubitTool tool, [
+  Map<String, Object?> arguments = const {},
+]) => switch (TripAction.of(tool, arguments)) {
+  final action? => action,
+  null => fail('$tool is not a tool of the trip.'),
+};

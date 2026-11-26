@@ -150,7 +150,7 @@ mixin _$PlanTripCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.setCity,
-          name: 'set_city',
+          name: PlanTripCubitTool.setCity,
           description:
               'Sets the city of the trip: Berlin, Copenhagen or Vienna.',
           parameters: [const AgentParameter<String>('city', .string)],
@@ -161,7 +161,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setPurpose,
-          name: 'set_purpose',
+          name: PlanTripCubitTool.setPurpose,
           description:
               'Sets what the trip is for, such as "Discovery · Alpenlicht".',
           parameters: [const AgentParameter<String>('purpose', .string)],
@@ -172,7 +172,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.addMeeting,
-          name: 'add_meeting',
+          name: PlanTripCubitTool.addMeeting,
           description: 'Adds a meeting from [start] to [end] at [place]. An identical meeting already in the plan is kept once.',
           parameters: [
             const AgentParameter<String>('title', .string),
@@ -192,7 +192,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.updateMeeting,
-          name: 'update_meeting',
+          name: PlanTripCubitTool.updateMeeting,
           description:
               'Updates the existing meeting [meetingId], keeping its identity.',
           parameters: [
@@ -215,7 +215,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.removeMeeting,
-          name: 'remove_meeting',
+          name: PlanTripCubitTool.removeMeeting,
           description: 'Removes the meeting [meetingId] from the plan.',
           parameters: [const AgentParameter<String>('meetingId', .string)],
           invoke: (args) {
@@ -225,7 +225,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.findFlights,
-          name: 'find_flights',
+          name: PlanTripCubitTool.findFlights,
           description: "Finds the flights from [origin] to [destination] on [date], with their fares in euros and why the trip or the policy rules one out. Airports are IATA codes: WAW for Warsaw, BER, CPH and VIE for the trip's city.",
           parameters: [
             const AgentParameter<String>('origin', .string),
@@ -271,7 +271,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setOutboundFlight,
-          name: 'set_outbound_flight',
+          name: PlanTripCubitTool.setOutboundFlight,
           description: 'Puts the traveller on flight [number] from Warsaw on [date], one that find_flights gives.',
           parameters: [
             const AgentParameter<String>('number', .string),
@@ -284,7 +284,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setHomeboundFlight,
-          name: 'set_homebound_flight',
+          name: PlanTripCubitTool.setHomeboundFlight,
           description: 'Puts the traveller on flight [number] home to Warsaw on [date], one that find_flights gives.',
           parameters: [
             const AgentParameter<String>('number', .string),
@@ -297,7 +297,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.findHotels,
-          name: 'find_hotels',
+          name: PlanTripCubitTool.findHotels,
           description: 'Finds the hotels in [city], with their price a night, the minutes on foot to the meetings and why the trip or the policy rules one out.',
           parameters: [const AgentParameter<String>('city', .string)],
           invoke: (args) {
@@ -337,7 +337,7 @@ mixin _$PlanTripCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setHotel,
-          name: 'set_hotel',
+          name: PlanTripCubitTool.setHotel,
           description: 'Books the traveller into the hotel [hotelId], one that find_hotels gives, from the day they land to the day they fly home.',
           parameters: [const AgentParameter<String>('hotelId', .string)],
           invoke: (args) {
@@ -349,6 +349,39 @@ mixin _$PlanTripCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [PlanTripCubit] by.
+// `enum PlanTripCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum PlanTripCubitTool implements ToolName {
+  setCity,
+  setPurpose,
+  addMeeting,
+  updateMeeting,
+  removeMeeting,
+  findFlights,
+  setOutboundFlight,
+  setHomeboundFlight,
+  findHotels,
+  setHotel;
+
+  @override
+  String get value => switch (this) {
+    setCity => 'set_city',
+    setPurpose => 'set_purpose',
+    addMeeting => 'add_meeting',
+    updateMeeting => 'update_meeting',
+    removeMeeting => 'remove_meeting',
+    findFlights => 'find_flights',
+    setOutboundFlight => 'set_outbound_flight',
+    setHomeboundFlight => 'set_homebound_flight',
+    findHotels => 'find_hotels',
+    setHotel => 'set_hotel',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on PlanTripCubit {

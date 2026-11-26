@@ -325,7 +325,7 @@ List<String> _problemsOf<T>(
 }) {
   final pick = AgentTool(
     _pick,
-    name: 'pick',
+    name: _PickerTool.pick,
     description: 'Picks what the user entered.',
     parameters: [AgentParameter('picked', parameter, input: input)],
     invoke: (_) => null,
@@ -522,4 +522,8 @@ final class const _Empty() implements AgentSurface {
 
   @override
   AgentSchema get agentSchema => const AgentSchema(sees: [], calls: []);
+}
+
+enum _PickerTool(@override final String value) implements ToolName {
+  pick('pick'),
 }
