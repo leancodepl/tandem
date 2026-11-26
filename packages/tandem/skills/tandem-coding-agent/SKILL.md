@@ -67,7 +67,7 @@ curl -s -G "${VM}ext.tandem.call" \
 
 With the MCP tool, the same call has `"arguments": {"tool": "set_quantity", "arguments": "{\"sku\": \"VM-27Q\", \"quantity\": 15}"}`.
 
-A parameter whose schema says "A path to a Customer in the data you see, never the object." takes a path to an object the screen lists, such as `{"customer": {"path": "/customers/1"}}`. When the schema asks for an object or a form, write it in the call. A call with a path needs `context`, the one `describe` gave for the screen, so the path reads what you saw: `--data-urlencode 'context=context-7'`. A call without it, with an old one, or whose object changed since is refused: describe the screen again and use the new `context`.
+A parameter whose schema says "A path to a Customer in the data you see, never the object." takes a path to an object the screen lists, such as `{"customer": {"path": "/customers/1"}}`. When the schema asks for an object or a form, write it in the call. A call with a path needs `context`, the one `describe` gave for the screen, so the path reads what you saw: `--data-urlencode 'context=context-7'`. A call without it, with an old one, or whose object changed since is refused, and the table below says what to do.
 
 - Fill only what the source text states. Leave a field as it is when the text does not say, and never invent a value, an id or a date to fill a gap.
 - Call only the listed tools, with arguments that fit their schemas. Read the `screens` of every answer: the tools change with the state, so a method can appear once the form is complete.
@@ -79,7 +79,7 @@ Every answer has a `status`, and the `screens` as they are after the call:
 | `status` | What to do |
 |---|---|
 | `returned` | Done. `result` is what the method returned. |
-| `refused` | Read `reason`. Fix the arguments when it says how, pass `screen` when it lists ids, otherwise leave the field and tell the user. |
+| `refused` | Read `reason`. Fix the arguments when it says how, and pass `screen` when it lists ids. When it says to describe or read again, call `ext.tandem.describe`, check your paths against the new `sees` and pass the new `context` of the screen you meant. When that screen closed, tell the user. Otherwise leave the field and tell the user. |
 | `failed`, `result_unavailable` | The method threw, or its result cannot be read: the app may have changed. Read `screens`, and tell the user. |
 | `rejected_by_user` | The user said no. Do not call it again unless they ask. |
 | `invalidated` | What the screen shows changed while the request waited. Read `screens`, and ask the user before you call it again. |
