@@ -8,7 +8,7 @@ import 'package:tandem/src/session/turn.dart';
 
 /// The AG-UI thread of a `TandemThread`: its id, and the messages and the
 /// agent's state that every run sends again.
-final class AgUiThread(var ThreadId _id) {
+final class AgUiThread({ThreadId? appId}) {
   final _messages = <AgUiMessage>[];
   final _unsentCallMessages = <AgUiMessage>[];
   final agentState = AgentState();
@@ -19,7 +19,11 @@ final class AgUiThread(var ThreadId _id) {
   SeesSnapshot? get seenAtLeave => _seenAtLeave;
   SeesSnapshot? _seenAtLeave;
 
-  ThreadId get id => _id;
+  ThreadId get id => _appId ?? (_generatedId ??= GeneratedThreadId());
+
+  /// Kept at a reset: the backend may hold the conversation under it.
+  final ThreadId? _appId = appId;
+  GeneratedThreadId? _generatedId;
 
   /// The user's message of the last [input], until its run goes out.
   AgUiMessage? _outgoing;
@@ -35,7 +39,7 @@ final class AgUiThread(var ThreadId _id) {
     _outgoing = userText == null ? null : .user(userText);
     agentState.startRun();
     return RunInput(
-      threadId: _id.value,
+      threadId: id.value,
       messages: [..._messages, ?_outgoing],
       state: agentState.value,
       tools: tools,
@@ -76,7 +80,7 @@ final class AgUiThread(var ThreadId _id) {
 
   void _append(List<AgUiMessage> messages, {required bool keepUntilSent}) {
     _messages.addAll(messages);
-    if (_id is AppThreadId && keepUntilSent) {
+    if (_appId != null && keepUntilSent) {
       _unsentCallMessages.addAll(messages);
     }
   }
@@ -85,10 +89,7 @@ final class AgUiThread(var ThreadId _id) {
   /// [keepUnsentCalls] after closing a known turn to keep its calls and
   /// answers for the next run under that id.
   void startOver({bool keepUnsentCalls = false}) {
-    _id = switch (_id) {
-      AppThreadId() => _id,
-      GeneratedThreadId() => GeneratedThreadId(),
-    };
+    _generatedId = null;
     _messages.clear();
     if (keepUnsentCalls) {
       _messages.addAll(_unsentCallMessages);
