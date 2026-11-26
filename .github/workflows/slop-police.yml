@@ -46,7 +46,7 @@ jobs:
       # .review comes from the current main and an older pull request needs no
       # rebase. The diff still starts at the merge base.
       - name: Review
-        uses: wzslr321/slop-police@11257c3fe0775b5d2dc5ff652e06731c4f76c150 # v1.1.0
+        uses: wzslr321/slop-police@11cfb76c189464c0c903a42e1c84ac7a1d2244a6 # v1.2.0
         with:
           base: origin/${{ github.event.pull_request.base.ref }}
           codex-api-key: ${{ secrets.TANDEM_SLOP_POLICE_OPENAI }}
@@ -80,4 +80,4 @@ jobs:
 
     steps:
       - name: Post
-        uses: wzslr321/slop-police/post@11257c3fe0775b5d2dc5ff652e06731c4f76c150 # v1.1.0
+        uses: wzslr321/slop-police/post@11cfb76c189464c0c903a42e1c84ac7a1d2244a6 # v1.2.0

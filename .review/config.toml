@@ -4,7 +4,7 @@ name = "leancodepl/tandem"
 about = "a public Flutter package whose code is written by AI agents and reviewed by one maintainer"
 
 rules = ["AGENTS.md", "doc/code-quality.md"]
-lenses = ["raw-types", "structure", "responsibility", "noise", "reuse"]
+lenses = ["raw-types", "structure", "responsibility", "noise", "reuse", "description"]
 
 ignore = ["*.g.dart", "*.freezed.dart", "*.lock", "*.png", "*.jpg", "*.svg", "*.ttf"]
 
