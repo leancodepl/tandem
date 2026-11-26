@@ -101,6 +101,14 @@ final class AgentGenerationError extends InvalidGenerationSource {
          'both would be $memberName in the enum of tool names.',
        );
 
+  new sameToolEnumName(Element declaration, ClassElement type)
+    : this._nameCollision(
+        declaration,
+        type,
+        'the enum of tool names of ${type.displayName} would have the same '
+        'name.',
+      );
+
   new missingDocumentation(Element element)
     : super(
         'Add a doc comment to ${element.displayName}: the agent reads it to '
@@ -108,11 +116,8 @@ final class AgentGenerationError extends InvalidGenerationSource {
         element: element,
       );
 
-  new _nameCollision(
-    ExecutableElement first,
-    ExecutableElement second,
-    String explanation,
-  ) : super(
+  new _nameCollision(Element first, Element second, String explanation)
+    : super(
         'Rename ${first.displayName} or ${second.displayName}: $explanation',
         element: second,
       );

@@ -1,3 +1,4 @@
+import 'package:analyzer/dart/analysis/results.dart';
 import 'package:build/build.dart';
 import 'package:build_test/build_test.dart';
 import 'package:tandem_generator/tandem_generator.dart';
@@ -113,15 +114,20 @@ class ViewCubit() {
     );
   });
 
-  test('a private method names its tool with a public enum member, with a '
-      'trailing underscore where the enum cannot use the name', () async {
-    final code = await _generate('''
+  test('a private method names its tool with a public enum member that '
+      'compiles, and the name on the wire stays', () async {
+    final code = await _compile('''
 @TandemAgent()
 class OrderCubit() {
   List<AgentCapability> get agentCapabilities => [
     .calls(_refresh),
     .calls(_switch),
     .calls(_index),
+    .calls(_2fa),
+    .calls(_OrderCubitTool),
+    .calls(_String),
+    .calls(_as),
+    .calls(_when),
   ];
 
   /// Loads the order again.
@@ -132,18 +138,36 @@ class OrderCubit() {
 
   /// Opens the index of orders.
   void _index() {}
+
+  /// Asks for the second factor.
+  void _2fa() {}
+
+  /// Opens the tools of the order.
+  void _OrderCubitTool() {}
+
+  /// Copies the order as text.
+  void _String() {}
+
+  /// Saves the order as a draft.
+  void _as() {}
+
+  /// Plans when to deliver.
+  void _when() {}
 }
 ''');
 
     expect(
       code,
-      allOf(
+      allOf([
         contains('enum OrderCubitTool implements ToolName {'),
         contains("refresh => 'refresh',"),
         contains('name: OrderCubitTool.refresh,'),
         contains("switch_ => 'switch',"),
         contains("index_ => 'index',"),
-      ),
+        contains(r"$2fa => '2fa',"),
+        contains("OrderCubitTool_ => 'order_cubit_tool',"),
+        contains("String_ => 'string',"),
+      ]),
     );
   });
 
@@ -167,6 +191,23 @@ class OrderCubit() {
     expect(errors, [
       contains('Rename _switch or switch_: both would be switch_ in'),
     ]);
+  });
+
+  test('a declaration named like the tool enum fails the build', () async {
+    expect(
+      await _buildErrors('''
+final class NameTool();
+
+@TandemAgent()
+class Name() {
+  List<AgentCapability> get agentCapabilities => [.calls(placeOrder)];
+
+  /// Places the order.
+  void placeOrder() {}
+}
+'''),
+      [contains('Rename NameTool or Name: ')],
+    );
   });
 
   for (final (capability, message) in [
@@ -1349,6 +1390,34 @@ final class const ShopCatalog();
 Future<List<String>> _buildErrors(String source) async =>
     (await _build(source)).errors.toList();
 
+/// The generated code of [source], in which the analyzer finds no error.
+Future<String> _compile(String source) async {
+  final files = (await _build(source)).readerWriter.testing;
+  final screen = AssetId.parse('app|lib/screen.dart');
+  final code = files.readString(.parse('app|lib/screen.tandem.g.part'));
+  final errors = await resolveSources(
+    {
+      for (final asset in files.assets) '$asset': files.readString(asset),
+      '$screen': '${files.readString(screen)}\n$code',
+    },
+    (resolver) async {
+      final library = await resolver.libraryFor(screen);
+      final analysis = await library.session.getResolvedLibraryByElement(
+        library,
+      ) as ResolvedLibraryResult;
+
+      return [
+        for (final diagnostic in analysis.units.single.diagnostics)
+          if (diagnostic.severity == .error) diagnostic.message,
+      ];
+    },
+  );
+
+  expect(errors, isEmpty);
+
+  return code;
+}
+
 /// The generated code of [source], which builds without errors.
 Future<String> _generate(
   String source, {
@@ -1390,6 +1459,12 @@ sealed class AgentCapability {
       throw UnimplementedError();
   factory AgentCapability.calls(Function method) => throw UnimplementedError();
 }
+
+abstract interface class AgentSurface { Object get agentSchema; }
+abstract interface class ToolName { String get value; }
+final class AgentSchema({Object? sees, Object? calls, Object? capabilities});
+final class AgentTool(Function method, {required ToolName name,
+    Object? description, Object? parameters, Object? invoke});
 ''',
     'flutter|lib/widgets.dart': '''
 export 'src/painting/alignment.dart';

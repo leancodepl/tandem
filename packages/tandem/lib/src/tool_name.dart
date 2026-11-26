@@ -2,8 +2,10 @@
 /// enum of them for every class with `@TandemAgent()`, such as
 /// `OrderCubitTool`, and the session hands its values back. A method whose
 /// name the enum cannot use gets a trailing underscore: `_switch` gives
-/// `OrderCubitTool.switch_`, and its `value` stays `switch`. A schema written
-/// by hand declares an enum of its own:
+/// `OrderCubitTool.switch_`, and its `value` stays `switch`. One that starts
+/// with a digit gets a leading `$`: `_2fa` gives `$2fa`. The build fails when
+/// the class's library already declares the enum's name. A schema written by
+/// hand declares an enum of its own:
 ///
 /// ```dart
 /// enum ShopTool(@override final String value) implements ToolName {

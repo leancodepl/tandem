@@ -3,9 +3,14 @@ import 'package:analyzer/dart/ast/token.dart';
 /// The start of the names of the tools that Tandem offers itself.
 const tandemToolPrefix = 'tandem_';
 
-/// The member of a class's enum of tool names for the method [name].
-String toolEnumMemberName(String name) {
+/// [name] without its privacy as the member of an enum: after a `$` where it
+/// starts with a digit, and before a trailing underscore where it is a reserved
+/// word or a member of the enum.
+String enumMemberName(String name) {
   final member = _withoutPrivacy(name);
+
+  if (member.startsWith(RegExp('[0-9]'))) return '\$$member';
+
   final isReserved =
       (Keyword.keywords[member]?.isReservedWord ?? false) ||
       _reservedToolEnumMemberNames.contains(member);
@@ -21,9 +26,6 @@ const _reservedToolEnumMemberNames = {
   'runtimeType',
   'toString',
   'noSuchMethod',
-  // The generated `value` switch uses bare member names as patterns.
-  'as',
-  'when',
 };
 
 /// The name the agent gets for a getter or a method: [name] in snake_case.

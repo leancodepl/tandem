@@ -177,9 +177,21 @@ class _CapabilityReader(final ClassElement _type)
     );
     _checkNameCollisions(
       _methods,
-      nameOf: toolEnumMemberName,
+      nameOf: (name) =>
+          AgentMixin.toolEnumMemberName(name, className: _type.displayName),
       collisionError: AgentGenerationError.sameToolEnumMemberName,
     );
+
+    // A class that lists no method gets no enum.
+    if (_methods.isEmpty) return;
+
+    final toolEnum = AgentMixin.toolEnumName(_type.displayName);
+
+    for (final declaration in _type.library.children) {
+      if (declaration.name == toolEnum) {
+        throw AgentGenerationError.sameToolEnumName(declaration, _type);
+      }
+    }
   }
 
   void _checkNameCollisions(
