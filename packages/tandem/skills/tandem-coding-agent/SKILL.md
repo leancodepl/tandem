@@ -87,7 +87,7 @@ Every answer has a `status`, and the `screens` as they are after the call:
 
 A screen with an `error` in place of its `sees` and `tools` has an agent list that throws, such as when its generated code is out of date: run build_runner, and tell the user to hot reload the app.
 
-When `ext.tandem.call` answers with an error instead of a `status`, or your call timed out, the method may have run already. Call `ext.tandem.describe` and check `sees` before you call it again.
+When `ext.tandem.call` answers with an error instead of a `status`, or your call timed out, the method may have run already. For a method that needs approval, follow "Wait for an approval" below. Otherwise call `ext.tandem.describe` and check `sees` before you call it again.
 
 **Done when** every value the text states is set, the `sees` of the last answer shows them, and you told the user what you set, what you left and why, and what waits for them.
 
@@ -102,7 +102,8 @@ A call of a `.callsWithApproval` method waits until the user decides in the app,
 The request keeps waiting in the app after your call timed out. Then:
 
 1. Call `ext.tandem.describe` first. The screen's `lastApproval` has the `tool`, the `arguments` and the `status` of your last request: `pending` while it waits for the user, `approved` while the method runs, then the answer as in the table of step 3.
-2. When it is your call and has an answer, report it. Calling again would run the method a second time, such as a second order.
-3. When it is `pending` or `approved`, call the same tool with the same arguments: the call waits for the same answer. Another call that needs approval is refused while one waits.
+2. When the `tool` and `arguments` of `lastApproval` are not those of your call, you cannot tell what became of your request. Tell the user the outcome is uncertain, and stop.
+3. When `lastApproval` has the answer, report it. Calling again would run the method a second time, such as a second order.
+4. When `lastApproval` is `pending` or `approved`, call `ext.tandem.describe` again every few seconds until it has the answer, and report it. Do not call the tool again: once the user decided, the same call asks the user again.
 
-**Done when** you reported the user's decision, or told them the request still waits in the app.
+**Done when** you reported the user's decision, or told them the request still waits in the app or that its outcome is uncertain.
