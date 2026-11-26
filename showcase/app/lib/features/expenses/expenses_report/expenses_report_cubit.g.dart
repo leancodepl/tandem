@@ -88,7 +88,7 @@ mixin _$ExpensesReportCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.addExpense,
-          name: 'add_expense',
+          name: ExpensesReportCubitTool.addExpense,
           description: 'Adds the receipt [receiptId] to the report, paying back [claimed] whole euros of it: what was paid, or less where the policy limits it.',
           parameters: [
             const AgentParameter<String>('receiptId', .string),
@@ -101,7 +101,7 @@ mixin _$ExpensesReportCubit implements AgentSurface {
         ),
         AgentTool(
           surface.removeExpense,
-          name: 'remove_expense',
+          name: ExpensesReportCubitTool.removeExpense,
           description: 'Takes the receipt [receiptId] out of the report.',
           parameters: [const AgentParameter<String>('receiptId', .string)],
           invoke: (args) {
@@ -111,7 +111,7 @@ mixin _$ExpensesReportCubit implements AgentSurface {
         ),
         AgentTool(
           surface.submitReport,
-          name: 'submit_report',
+          name: ExpensesReportCubitTool.submitReport,
           description: 'Submits the report exactly as it is on the screen, to be paid back. Returns its confirmation, to tell the traveller.',
           parameters: [],
           invoke: (args) async {
@@ -140,6 +140,25 @@ mixin _$ExpensesReportCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [ExpensesReportCubit] by.
+// `enum ExpensesReportCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum ExpensesReportCubitTool implements ToolName {
+  addExpense,
+  removeExpense,
+  submitReport;
+
+  @override
+  String get value => switch (this) {
+    addExpense => 'add_expense',
+    removeExpense => 'remove_expense',
+    submitReport => 'submit_report',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on ExpensesReportCubit {

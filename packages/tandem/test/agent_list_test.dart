@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tandem/src/agent_list.dart';
+import 'package:tandem/src/session/view_tool.dart';
 import 'package:tandem/tandem.dart';
 
 void main() {
@@ -67,26 +68,27 @@ void main() {
 
   test('a method whose tool starts with tandem_ is refused', () {
     expect(
-      () => AgentListing.of(_Studio(method: 'tandem_show_view')),
+      () => AgentListing.of(_Studio(toolName: .showView)),
       throwsA(
         isA<StateError>().having(
           (error) => error.message,
           'message',
-          startsWith('The agent list calls tandem_show_view'),
+          startsWith('The agent list calls ${ViewTool.name}'),
         ),
       ),
     );
   });
 
   test('the arguments a call reports cannot be changed', () async {
-    final (:arguments, result: _) = await AgentListing.of(_Studio()).run(
-      'paint',
+    final invocation = await AgentListing.of(_Studio()).run(
+      _StudioTool.paint.value,
       const WrittenArguments({
         'pot': {'path': '/pots/0'},
         'tint': '#ff0000',
       }),
       approved: false,
     );
+    final arguments = invocation.resolvedArguments;
     final pot = switch (arguments['pot']) {
       final Map<String, Object?> pot => pot,
       _ => <String, Object?>{},
@@ -136,7 +138,8 @@ final class _Gauge(final double ratio, {final Object? listed})
 
 final class _Pot(final String name);
 
-final class _Studio({final String method = 'paint'}) implements AgentSurface {
+final class _Studio({final _StudioTool toolName = .paint})
+    implements AgentSurface {
   final pots = [_Pot('fern')];
 
   void paint(_Pot pot, Color tint) {}
@@ -159,7 +162,7 @@ final class _Studio({final String method = 'paint'}) implements AgentSurface {
       calls: [
         AgentTool(
           paint,
-          name: method,
+          name: toolName,
           description: 'Paints [pot] in [tint].',
           parameters: [
             AgentParameter('pot', pot, description: 'The pot to paint.'),
@@ -173,4 +176,9 @@ final class _Studio({final String method = 'paint'}) implements AgentSurface {
       ],
     );
   }
+}
+
+enum _StudioTool(@override final String value) implements ToolName {
+  paint('paint'),
+  showView(ViewTool.name),
 }

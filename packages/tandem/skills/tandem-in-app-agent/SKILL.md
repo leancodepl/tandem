@@ -81,7 +81,7 @@ A screen with `.callsWithApproval` asks the user in one place. With a chat, that
 - Use `request.key` for the card's widget key and for any data you capture when it shows. The `ApprovalKey` stays the same when the status changes. A new request gets its own key.
 - A card whose `request.status` is `pending` has Approve and Reject, which call `session.approve(request)` and `session.reject(request)`. Both throw an `ApprovalNotPending` when the request changed as the user tapped, such as when what the agent sees changed: catch it, the card then shows the new `request.status`.
 - Every other `request.status` gets a line: `approved`, `rejected`, `invalidated` (what the screen shows changed after the call asked) and `cancelled`. Its line names whom to ask again, by `request.caller`.
-- `request.description` and `request.arguments` are written for the agent. Show the user what the method will do in the app's words, chosen by `request.tool`.
+- `request.description` and `request.arguments` are written for the agent. Show the user what the method will do in the app's words, chosen by `request.tool`, such as `OrderCubitTool.placeOrder`.
 
 **Done when** every `.callsWithApproval` method shows to the user before it runs, as a card or in the dialog.
 

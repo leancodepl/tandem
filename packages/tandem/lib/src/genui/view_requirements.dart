@@ -92,7 +92,7 @@ final class ViewRequirements(final AgentCatalog _catalog) {
       roots: {for (final view in schema.sees) view.name: view.type},
       methods: {
         for (final tool in schema.calls)
-          tool.name: (tool: tool, needsApproval: false),
+          tool.name.value: (tool: tool, needsApproval: false),
       },
     );
     try {
@@ -166,9 +166,9 @@ final class ViewRequirements(final AgentCatalog _catalog) {
     roots: listing.rootTypes,
     methods: {
       for (final tool in listing.listedTools)
-        tool.name: (
+        tool.name.value: (
           tool: tool,
-          needsApproval: listing.listedWithApproval(tool.name),
+          needsApproval: listing.listedWithApproval(tool.name.value),
         ),
     },
   );

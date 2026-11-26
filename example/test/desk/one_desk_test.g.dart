@@ -122,7 +122,7 @@ mixin _$ShopAgent implements AgentSurface {
       calls: [
         AgentTool(
           surface.setQuantity,
-          name: 'set_quantity',
+          name: ShopAgentTool.setQuantity,
           description: 'Sets how many pieces of [sku] the order has; 0 removes the line.',
           parameters: [
             const AgentParameter<String>('sku', .string),
@@ -135,7 +135,7 @@ mixin _$ShopAgent implements AgentSurface {
         ),
         AgentTool(
           surface.placeOrder,
-          name: 'place_order',
+          name: ShopAgentTool.placeOrder,
           description: 'Places the order exactly as it is on the desk.',
           parameters: [],
           invoke: (args) async {
@@ -152,7 +152,7 @@ mixin _$ShopAgent implements AgentSurface {
         ),
         AgentTool(
           surface.openCatalog,
-          name: 'open_catalog',
+          name: ShopAgentTool.openCatalog,
           description: 'Opens the catalog of products.',
           parameters: [],
           invoke: (args) {
@@ -162,7 +162,7 @@ mixin _$ShopAgent implements AgentSurface {
         ),
         AgentTool(
           surface.openDesk,
-          name: 'open_desk',
+          name: ShopAgentTool.openDesk,
           description: 'Opens the order desk.',
           parameters: [],
           invoke: (args) {
@@ -174,6 +174,27 @@ mixin _$ShopAgent implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [ShopAgent] by.
+// `enum ShopAgentTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum ShopAgentTool implements ToolName {
+  setQuantity,
+  placeOrder,
+  openCatalog,
+  openDesk;
+
+  @override
+  String get value => switch (this) {
+    setQuantity => 'set_quantity',
+    placeOrder => 'place_order',
+    openCatalog => 'open_catalog',
+    openDesk => 'open_desk',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on ShopAgent {

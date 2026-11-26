@@ -1,3 +1,5 @@
+import 'package:tandem/tandem.dart';
+import 'package:waypoint/features/arrival/arrival_cubit.dart';
 import 'package:waypoint_travel/waypoint_travel.dart';
 
 /// What the agent or a button of its view asks to do in the traveller's
@@ -7,16 +9,20 @@ sealed class const ArrivalAction() {
   /// The action of a call of [tool]. Its [arguments] are known once the
   /// call has run, and missing while it runs.
   static ArrivalAction? of(
-    String tool, [
+    ToolName tool, [
     Map<String, Object?> arguments = const {},
-  ]) => switch (tool) {
-    'book_ride' => BookRide(switch (arguments['rideId']) {
-      final String rideId => RideId.tryParse(rideId),
-      _ => null,
-    }),
-    'message_host' => const MessageHost(),
-    _ => null,
-  };
+  ]) {
+    if (tool is! ArrivalCubitTool) return null;
+
+    return switch (tool) {
+      .bookRide => BookRide(switch (arguments['rideId']) {
+        final String rideId => RideId.tryParse(rideId),
+        _ => null,
+      }),
+      .messageHost => const MessageHost(),
+      .requestEarlyCheckIn => null,
+    };
+  }
 }
 
 final class const BookRide(final RideId? rideId) extends ArrivalAction;

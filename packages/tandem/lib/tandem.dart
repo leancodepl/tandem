@@ -75,3 +75,4 @@ export 'src/session/tandem_thread.dart' show TandemThread;
 export 'src/session/thread_id.dart' show ThreadId;
 export 'src/tandem_agent.dart' show TandemAgent, TandemCatalog, TandemInput;
 export 'src/tool_args.dart' show ToolArgs;
+export 'src/tool_name.dart' show ToolName;

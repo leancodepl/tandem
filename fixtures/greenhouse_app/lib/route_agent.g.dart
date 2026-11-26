@@ -139,7 +139,7 @@ mixin _$RouteAgent implements AgentSurface {
       calls: [
         AgentTool(
           surface.openCuttings,
-          name: 'open_cuttings',
+          name: RouteAgentTool.openCuttings,
           description: 'Opens the propagation tray.',
           parameters: [],
           invoke: (args) {
@@ -149,7 +149,7 @@ mixin _$RouteAgent implements AgentSurface {
         ),
         AgentTool(
           surface.openBench,
-          name: 'open_bench',
+          name: RouteAgentTool.openBench,
           description: 'Opens the bench.',
           parameters: [],
           invoke: (args) {
@@ -161,6 +161,23 @@ mixin _$RouteAgent implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [RouteAgent] by.
+// `enum RouteAgentTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum RouteAgentTool implements ToolName {
+  openCuttings,
+  openBench;
+
+  @override
+  String get value => switch (this) {
+    openCuttings => 'open_cuttings',
+    openBench => 'open_bench',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on RouteAgent {

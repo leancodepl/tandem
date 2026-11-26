@@ -108,7 +108,9 @@ final class TandemSession({
 
   SessionStatus get status {
     if (_run case final run?) return run.status;
-    if (_approved case final call?) return Calling(call.tool, approved: true);
+    if (_approved?.request case final request?) {
+      return Calling(request.tool, approved: true);
+    }
     if (_waiting.shown case final request?) return AwaitingApproval(request);
     return const Idle();
   }
@@ -500,11 +502,13 @@ final class TandemSession({
       } else if (run.view case final view? when call.tool == ViewTool.name) {
         call.answerWith(_drawing.show(view, arguments));
       } else if (!run.listing.needsApproval(call.tool)) {
-        run.calling = Calling(call.tool, approved: false);
-        notifyListeners();
-        // A listener may have stopped the run or let the thread go.
-        if (run.stopped || _run != run) {
-          return;
+        if (run.listing.toolNamed(call.tool) case final listed?) {
+          run.calling = Calling(listed.name, approved: false);
+          notifyListeners();
+          // A listener may have stopped the run or let the thread go.
+          if (run.stopped || _run != run) {
+            return;
+          }
         }
         call.answerWith(
           await _callMethod(

@@ -46,6 +46,41 @@ mixin _\$$className implements AgentSurface {
 }''';
   }
 
+  String generateToolNames() {
+    // An enum needs a value.
+    if (methods.isEmpty) return '';
+
+    final names = [
+      for (final (:method, parameterTypes: _) in methods)
+        toolEnumMemberName(method.displayName),
+    ];
+    final cases = [
+      for (final (:method, parameterTypes: _) in methods)
+        _wireNameCase(method.displayName),
+    ];
+
+    return '''
+/// The names the agent knows the methods of [$className] by.
+// `enum $_toolEnum()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum $_toolEnum implements ToolName {
+  ${names.join(',\n')};
+
+  @override
+  String get value => switch (this) {
+    ${cases.join('\n')}
+  };
+
+  @override
+  String toString() => value;
+}''';
+  }
+
+  String get _toolEnum => '${className}Tool';
+
+  static String _wireNameCase(String method) =>
+      '${toolEnumMemberName(method)} => ${DartLiteral.json(agentName(method))},';
+
   String _generateView(GetterElement getter) {
     final name = getter.displayName;
     final type = AgentTypes(
@@ -84,14 +119,13 @@ AgentView.of(() => surface.$name).as(
           'args.readOr(${DartLiteral.json(name)}, $fallback)',
     );
     final call = 'surface.$name($arguments)';
-    final wireName = DartLiteral.json(agentName(name));
     final description = DartLiteral.json(_documentation(method));
     final invoke = _generateInvocation(method, types: types, call: call);
 
     return '''
 AgentTool(
   surface.$name,
-  name: $wireName,
+  name: $_toolEnum.${toolEnumMemberName(name)},
   description: $description,
   parameters: [$parameterCode],
   invoke: $invoke,

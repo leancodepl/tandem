@@ -30,7 +30,7 @@ void main() {
     final friday = DateTime(2026, 10, 30, 10);
     trip.moveMeeting(' workshop ', friday);
 
-    activity.add(_action('move_meeting', {'meetingId': ' workshop '}), trip, 3);
+    activity.add(_action(.moveMeeting, {'meetingId': ' workshop '}), trip, 3);
 
     expect(activity.state.steps, [
       MeetingMovedStep(3, meeting: 'Design workshop', start: friday),
@@ -39,7 +39,7 @@ void main() {
 
   test('a look-up of flights is a step with its route and day', () {
     activity.add(
-      _action('find_flights', {
+      _action(.findFlights, {
         'origin': ' ber ',
         'destination': ' waw ',
         'date': '2026-10-30',
@@ -64,8 +64,8 @@ void main() {
       ..setHomeboundFlight('WA 390', DateTime(2026, 10, 29));
 
     activity
-      ..add(_action('set_hotel_nights'), trip, 1)
-      ..add(_action('set_homebound_flight'), trip, 2);
+      ..add(_action(.setHotelNights), trip, 1)
+      ..add(_action(.setHomeboundFlight), trip, 2);
 
     expect(activity.state.steps, [
       HotelNightsStep(1, hotel: 'Spree Loft Hotel', nights: NightCount(2)),
@@ -79,16 +79,17 @@ void main() {
 
   test('a call that shows nothing new is no step', () {
     activity
-      ..add(_action('move_meeting', {'meetingId': 'lunch'}), trip, 1)
-      ..add(_action('book_changes'), trip, 2);
+      ..add(_action(.moveMeeting, {'meetingId': 'lunch'}), trip, 1)
+      ..add(_action(.bookChanges), trip, 2);
 
     expect(activity.state.steps, isEmpty);
-    expect(TripAction.of('tandem_show_view'), isNull);
   });
 }
 
-TripAction _action(String tool, [Map<String, Object?> arguments = const {}]) =>
-    switch (TripAction.of(tool, arguments)) {
-      final action? => action,
-      null => fail('$tool is not a tool of the trip.'),
-    };
+TripAction _action(
+  TripCubitTool tool, [
+  Map<String, Object?> arguments = const {},
+]) => switch (TripAction.of(tool, arguments)) {
+  final action? => action,
+  null => fail('$tool is not a tool of the trip.'),
+};

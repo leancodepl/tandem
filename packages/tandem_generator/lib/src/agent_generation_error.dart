@@ -95,6 +95,13 @@ final class AgentGenerationError extends InvalidGenerationSource {
         node: item,
       );
 
+  new reservedToolEnumMember(Expression item, {required String enumMemberName})
+    : super(
+        'Rename $item: it would be $enumMemberName in the enum of tool '
+        'names, and an enum has a member of that name.',
+        node: item,
+      );
+
   new missingDocumentation(Element element)
     : super(
         'Add a doc comment to ${element.displayName}: the agent reads it to '

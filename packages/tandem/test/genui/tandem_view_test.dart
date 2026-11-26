@@ -57,7 +57,8 @@ void main() {
     return session;
   }
 
-  testWidgets('the tool takes the components as a JSON array in a string', (
+  testWidgets('the tool takes the components as a JSON array in a string, '
+      'and its description names each method as the agent calls it', (
     tester,
   ) async {
     await draw(tester);
@@ -76,6 +77,18 @@ void main() {
               'components': containsPair('type', 'string'),
             }),
             containsPair('required', ['components']),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tools,
+      contains(
+        allOf(
+          containsPair('name', 'tandem_show_view'),
+          containsPair(
+            'description',
+            contains('\n- set_pots(pots: integer)\n'),
           ),
         ),
       ),
@@ -269,7 +282,7 @@ final class _Bench() implements AgentSurface {
     calls: [
       AgentTool(
         setPots,
-        name: 'set_pots',
+        name: _BenchTool.setPots,
         description: 'Sets the number of pots.',
         parameters: const [AgentParameter<int>('pots', .integer)],
         invoke: (args) async {
@@ -317,4 +330,8 @@ final class const _Field(final ValueChanged<int> onChanged)
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Text('Pots');
+}
+
+enum _BenchTool(@override final String value) implements ToolName {
+  setPots('set_pots'),
 }

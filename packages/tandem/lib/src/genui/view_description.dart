@@ -98,10 +98,10 @@ String _method(AgentTool tool, AgentListing listing, _Types types) {
     for (final parameter in tool.parameters)
       '${parameter.name}: ${types.label(parameter.type)}',
   ].join(', ');
-  final approval = listing.listedWithApproval(tool.name)
+  final approval = listing.listedWithApproval(tool.name.value)
       ? ' (needs approval)'
       : '';
-  return '- ${tool.name}($parameters)$approval';
+  return '- ${tool.name.value}($parameters)$approval';
 }
 
 String _block(String title, List<String> lines) =>

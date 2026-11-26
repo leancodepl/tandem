@@ -19,7 +19,7 @@ mixin _$LookCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.setPadding,
-          name: 'set_padding',
+          name: LookCubitTool.setPadding,
           description: "Sets the padding of the plant's label.",
           parameters: [
             const AgentParameter<EdgeInsetsDirectional>(
@@ -34,7 +34,7 @@ mixin _$LookCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setIcon,
-          name: 'set_icon',
+          name: LookCubitTool.setIcon,
           description: "Sets the icon of the plant's label.",
           parameters: [
             AgentParameter<IconData>(
@@ -56,7 +56,7 @@ mixin _$LookCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setInk,
-          name: 'set_ink',
+          name: LookCubitTool.setInk,
           description: "Sets the ink of the plant's label.",
           parameters: [
             AgentParameter<KitInk>(
@@ -85,6 +85,25 @@ mixin _$LookCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [LookCubit] by.
+// `enum LookCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum LookCubitTool implements ToolName {
+  setPadding,
+  setIcon,
+  setInk;
+
+  @override
+  String get value => switch (this) {
+    setPadding => 'set_padding',
+    setIcon => 'set_icon',
+    setInk => 'set_ink',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on LookCubit {

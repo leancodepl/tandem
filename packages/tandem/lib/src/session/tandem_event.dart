@@ -1,5 +1,6 @@
 import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/session/caller.dart';
+import 'package:tandem/src/tool_name.dart';
 
 /// Something that happened in a session, for the app to react to, such as
 /// with a snackbar. Approval requests are not events: they go to
@@ -9,8 +10,7 @@ sealed class const TandemEvent();
 /// A call of a listed method that returned. Not sent for a call that was
 /// refused or threw, nor once the session is disposed.
 final class const AgentCall({
-  /// The method's name in snake_case.
-  required final String tool,
+  required final ToolName tool,
 
   /// The arguments the method got, as JSON, each `{"path": ...}` replaced
   /// by the value it pointed at.

@@ -78,7 +78,7 @@ And each method its name in snake_case, its doc comment, its parameters, and a c
 ```dart
         AgentTool(
           surface.setQuantity,
-          name: 'set_quantity',
+          name: OrderCubitTool.setQuantity,
           description: 'Sets how many pieces of [sku] the order has.',
           parameters: [
             const AgentParameter<String>('sku', .string),

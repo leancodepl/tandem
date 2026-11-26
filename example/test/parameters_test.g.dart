@@ -65,7 +65,7 @@ mixin _$EnumShelf implements AgentSurface {
       calls: [
         AgentTool(
           surface.echo,
-          name: 'echo',
+          name: EnumShelfTool.echo,
           description: 'Stores and returns [sample].',
           parameters: [
             AgentParameter<EnumSample>(
@@ -174,6 +174,21 @@ mixin _$EnumShelf implements AgentSurface {
   }
 }
 
+/// The names the agent knows the methods of [EnumShelf] by.
+// `enum EnumShelfTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum EnumShelfTool implements ToolName {
+  echo;
+
+  @override
+  String get value => switch (this) {
+    echo => 'echo',
+  };
+
+  @override
+  String toString() => value;
+}
+
 extension on EnumShelf {
   List<AgentCapability> get _$agentCapabilities => [
     .seesAs('sample', sample),
@@ -191,7 +206,7 @@ mixin _$Shelf implements AgentSurface {
       calls: [
         AgentTool(
           surface.stock,
-          name: 'stock',
+          name: ShelfTool.stock,
           description: 'Puts [skus] on the shelf.',
           parameters: [
             AgentParameter<List<Sku>>(
@@ -246,6 +261,21 @@ mixin _$Shelf implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [Shelf] by.
+// `enum ShelfTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum ShelfTool implements ToolName {
+  stock;
+
+  @override
+  String get value => switch (this) {
+    stock => 'stock',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on Shelf {
@@ -314,7 +344,7 @@ mixin _$Dispatch implements AgentSurface {
       calls: [
         AgentTool(
           surface.book,
-          name: 'book',
+          name: DispatchTool.book,
           description:
               'Books a courier for [lines] and returns the delivery as booked.',
           parameters: [
@@ -450,7 +480,7 @@ mixin _$Dispatch implements AgentSurface {
         ),
         AgentTool(
           surface.setDelivery,
-          name: 'set_delivery',
+          name: DispatchTool.setDelivery,
           description: 'Replaces or clears the delivery.',
           parameters: [
             AgentParameter<Delivery?>(
@@ -515,7 +545,7 @@ mixin _$Dispatch implements AgentSurface {
         ),
         AgentTool(
           surface.findDelivery,
-          name: 'find_delivery',
+          name: DispatchTool.findDelivery,
           description: 'Finds the last booked delivery, if any.',
           parameters: [],
           invoke: (args) async {
@@ -576,7 +606,7 @@ mixin _$Dispatch implements AgentSurface {
         ),
         AgentTool(
           surface.deliveryDay,
-          name: 'delivery_day',
+          name: DispatchTool.deliveryDay,
           description: 'The day of the last booked delivery, if any.',
           parameters: [],
           invoke: (args) async {
@@ -589,6 +619,27 @@ mixin _$Dispatch implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [Dispatch] by.
+// `enum DispatchTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum DispatchTool implements ToolName {
+  book,
+  setDelivery,
+  findDelivery,
+  deliveryDay;
+
+  @override
+  String get value => switch (this) {
+    book => 'book',
+    setDelivery => 'set_delivery',
+    findDelivery => 'find_delivery',
+    deliveryDay => 'delivery_day',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on Dispatch {

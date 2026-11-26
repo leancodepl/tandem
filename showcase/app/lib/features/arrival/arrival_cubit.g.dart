@@ -136,7 +136,7 @@ mixin _$ArrivalCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.bookRide,
-          name: 'book_ride',
+          name: ArrivalCubitTool.bookRide,
           description: 'Books the ride [rideId] from the airport and charges its fare to the company card. Returns the booking, to tell the traveller.',
           parameters: [const AgentParameter<String>('rideId', .string)],
           invoke: (args) async {
@@ -147,7 +147,7 @@ mixin _$ArrivalCubit implements AgentSurface {
         ),
         AgentTool(
           surface.messageHost,
-          name: 'message_host',
+          name: ArrivalCubitTool.messageHost,
           description: "Texts the meeting's host, in the traveller's name, when the traveller lands and arrives. Returns the message as sent.",
           parameters: [],
           invoke: (args) {
@@ -158,7 +158,7 @@ mixin _$ArrivalCubit implements AgentSurface {
         ),
         AgentTool(
           surface.requestEarlyCheckIn,
-          name: 'request_early_check_in',
+          name: ArrivalCubitTool.requestEarlyCheckIn,
           description: 'Asks the hotel to have the room ready early, for the bags. It costs nothing.',
           parameters: [],
           invoke: (args) {
@@ -170,6 +170,25 @@ mixin _$ArrivalCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [ArrivalCubit] by.
+// `enum ArrivalCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum ArrivalCubitTool implements ToolName {
+  bookRide,
+  messageHost,
+  requestEarlyCheckIn;
+
+  @override
+  String get value => switch (this) {
+    bookRide => 'book_ride',
+    messageHost => 'message_host',
+    requestEarlyCheckIn => 'request_early_check_in',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on ArrivalCubit {

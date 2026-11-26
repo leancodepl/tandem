@@ -9,6 +9,7 @@ import 'package:tandem/src/protocol/ag_ui_ids.dart';
 import 'package:tandem/src/report.dart';
 import 'package:tandem/src/session/caller.dart';
 import 'package:tandem/src/session/tool_answer.dart';
+import 'package:tandem/src/tool_name.dart';
 
 /// A call of a listed method or of the view's tool, from the moment it is
 /// made until it has its answer: the in-app agent's goes out with the next
@@ -26,8 +27,9 @@ final class ToolCall({
   /// [id] in a later run of the thread, so the answer has an id of its own.
   final answerId = MessageId.local();
 
-  /// The arguments of a call that waits for the user, frozen when it asked.
-  FrozenArguments? _frozen;
+  /// The listed method and the arguments of a call that waits for the user,
+  /// frozen when it asked.
+  ({ToolName tool, FrozenArguments arguments})? _frozen;
 
   ToolAnswer? _answer;
   final _answered = Completer<ToolAnswer>();
@@ -51,18 +53,18 @@ final class ToolCall({
   JsonObject? get objectArguments => decodeJsonObject(argumentsJson);
 
   CallArguments get argumentsToRun =>
-      _frozen ?? WrittenArguments(objectArguments ?? const {});
+      _frozen?.arguments ?? WrittenArguments(objectArguments ?? const {});
 
   /// Freezes each path at its value in [seen], while it still holds, so the
   /// user approves what the method gets. Returns the answer when it cannot.
   ToolAnswer? freeze(AgentListing seen) {
     try {
-      final (:args, target: _) = seen.prepare(
+      final (:args, :target) = seen.prepare(
         tool,
         WrittenArguments(objectArguments ?? const {}),
         approved: true,
       );
-      _frozen = FrozenArguments(args.json);
+      _frozen = (tool: target.name, arguments: FrozenArguments(args.json));
       return null;
     } on ToolCallRefused catch (refusal) {
       return .refused(refusal.message);
@@ -83,17 +85,20 @@ final class ToolCall({
   /// whatever the order of the keys its caller wrote.
   bool isSameCall(ToolCall other) =>
       tool == other.tool &&
-      jsonEncode(_frozen?.json) == jsonEncode(other._frozen?.json);
+      jsonEncode(_frozen?.arguments.json) ==
+          jsonEncode(other._frozen?.arguments.json);
 
   ApprovalRequest ask(List<ChatItem> chat) {
+    final frozen = _frozen;
+    if (frozen == null) {
+      throw StateError('Freeze $tool before asking for approval.');
+    }
+
     final request = ApprovalRequest.issued(
       toolCallId: id,
-      tool: tool,
+      tool: frozen.tool,
       description: description,
-      argumentsJson: switch (_frozen) {
-        final frozen? => jsonEncode(frozen.json),
-        null => argumentsJson,
-      },
+      argumentsJson: jsonEncode(frozen.arguments.json),
       caller: caller,
     );
     _card = ChatEntry(chat, request);

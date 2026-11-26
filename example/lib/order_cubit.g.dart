@@ -50,7 +50,7 @@ mixin _$OrderCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.setQuantity,
-          name: 'set_quantity',
+          name: OrderCubitTool.setQuantity,
           description: 'Sets how many pieces of [sku] the order has.',
           parameters: [
             const AgentParameter<String>('sku', .string),
@@ -63,7 +63,7 @@ mixin _$OrderCubit implements AgentSurface {
         ),
         AgentTool(
           surface.placeOrder,
-          name: 'place_order',
+          name: OrderCubitTool.placeOrder,
           description: 'Places the order exactly as it is on the screen.',
           parameters: [],
           invoke: (args) async {
@@ -82,6 +82,23 @@ mixin _$OrderCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [OrderCubit] by.
+// `enum OrderCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum OrderCubitTool implements ToolName {
+  setQuantity,
+  placeOrder;
+
+  @override
+  String get value => switch (this) {
+    setQuantity => 'set_quantity',
+    placeOrder => 'place_order',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on OrderCubit {

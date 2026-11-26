@@ -47,7 +47,7 @@ void main() {
       'status': 'result_unavailable',
       'reason': isNotEmpty,
     });
-    expect(outcome.returned?.tool, 'execute');
+    expect(outcome.returned?.tool, _SurfaceTool.execute);
     expect(outcome.returned?.result, isNaN);
     expect(reported.single, isA<JsonUnsupportedObjectError>());
   });
@@ -69,11 +69,15 @@ final class _Surface(final FutureOr<Object?> Function() operation)
     calls: [
       AgentTool(
         execute,
-        name: 'execute',
+        name: _SurfaceTool.execute,
         description: 'Executes an operation.',
         parameters: const [],
         invoke: (_) => execute(),
       ),
     ],
   );
+}
+
+enum _SurfaceTool(@override final String value) implements ToolName {
+  execute('execute'),
 }

@@ -216,7 +216,7 @@ void main() {
       (_) => const [AgentStep.callTool('share')],
       (_) => const [AgentStep.say('Shared.')],
     ]);
-    final asked = <String>[];
+    final asked = <ToolName>[];
     await tester.pumpWidget(connected(agent));
     final session = sessionOf(tester);
 
@@ -233,7 +233,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(sessionOf(tester), same(session));
-    expect(asked, ['share']);
+    expect(asked, [ShopTool.share]);
     expect(agent.requests, hasLength(2));
   });
 

@@ -19,7 +19,7 @@ mixin _$ShoppingListCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.add,
-          name: 'add',
+          name: ShoppingListCubitTool.add,
           description: 'Adds [item] to the list.',
           parameters: [const AgentParameter<String>('item', .string)],
           invoke: (args) {
@@ -29,7 +29,7 @@ mixin _$ShoppingListCubit implements AgentSurface {
         ),
         AgentTool(
           surface.remove,
-          name: 'remove',
+          name: ShoppingListCubitTool.remove,
           description: 'Removes [item] from the list.',
           parameters: [const AgentParameter<String>('item', .string)],
           invoke: (args) {
@@ -39,7 +39,7 @@ mixin _$ShoppingListCubit implements AgentSurface {
         ),
         AgentTool(
           surface.clear,
-          name: 'clear',
+          name: ShoppingListCubitTool.clear,
           description: 'Empties the list.',
           parameters: [],
           invoke: (args) async {
@@ -51,6 +51,25 @@ mixin _$ShoppingListCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [ShoppingListCubit] by.
+// `enum ShoppingListCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum ShoppingListCubitTool implements ToolName {
+  add,
+  remove,
+  clear;
+
+  @override
+  String get value => switch (this) {
+    add => 'add',
+    remove => 'remove',
+    clear => 'clear',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on ShoppingListCubit {

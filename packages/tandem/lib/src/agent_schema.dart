@@ -7,6 +7,7 @@ import 'package:tandem/src/errors.dart';
 import 'package:tandem/src/frozen_json.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/tool_args.dart';
+import 'package:tandem/src/tool_name.dart';
 
 /// A class with an agent list. The `_$ClassName` mixin that
 /// `tandem_generator` writes for a class with `@TandemAgent()` implements it;
@@ -144,8 +145,7 @@ final class const AgentTool(
   /// one method of one object are equal.
   final Function method, {
 
-  /// The method's name in snake_case.
-  required final String name,
+  required final ToolName name,
 
   /// The method's doc comment, sent to the agent as the tool's description.
   required final String description,

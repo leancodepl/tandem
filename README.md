@@ -263,7 +263,10 @@ void wakeOnPlacedOrder(
   TandemEvent event,
   TandemSession session,
 ) {
-  if (event case AgentCall(tool: 'place_order', caller: .view)) {
+  if (event case AgentCall(
+    tool: OrderDeskCubitTool.placeOrder,
+    caller: .view,
+  )) {
     session.wake();
   }
 }
@@ -352,7 +355,7 @@ Future<void> confirmOrder(
 }
 ```
 
-The dialog reads the draft from the Cubit. This is the same draft listed with `.sees`. If several methods need approval, use `request.tool` to choose the dialog's text.
+The dialog reads the draft from the Cubit. This is the same draft listed with `.sees`. If several methods need approval, switch on `request.tool`, such as `OrderCubitTool.placeOrder`, to choose the dialog's text.
 
 - Approval requests from one turn appear one at a time. Rejecting a request cancels the remaining calls, and the agent can plan again.
 - `approve` and `reject` apply the decision or throw `ApprovalNotPending`. Repeating the same decision does nothing, so a double tap is harmless. `session.isPending(request)` checks whether a request is still pending.
@@ -371,7 +374,8 @@ void showOrderMessages(
   TandemSession session,
 ) {
   final message = switch (event) {
-    AgentCall(tool: 'place_order', :final result) => 'Placed order $result.',
+    AgentCall(tool: OrderCubitTool.placeOrder, :final result) =>
+      'Placed order $result.',
     RunFailed() || ConnectionLost() => 'The agent did not answer. Try again.',
     AgentCall() || RunStopped() => null,
   };
@@ -381,7 +385,7 @@ void showOrderMessages(
 }
 ```
 
-`AgentCall` is emitted after a listed method returns, with its `tool`, `arguments`, `result` and `caller`. The caller is `Caller.inAppAgent`, `Caller.codingAgent` or `Caller.view`, for an action of a [view the agent drew](#views-the-agent-draws). Refused calls and methods that throw do not emit `AgentCall`.
+`AgentCall` is emitted after a listed method returns, with its `tool`, `arguments`, `result` and `caller`. The `tool` is a value of the enum `tandem_generator` writes next to the mixin, such as `OrderCubitTool.placeOrder`, so a renamed method breaks the match at compile time. The caller is `Caller.inAppAgent`, `Caller.codingAgent` or `Caller.view`, for an action of a [view the agent drew](#views-the-agent-draws). Refused calls and methods that throw do not emit `AgentCall`.
 
 `RunFailed` and `ConnectionLost` add a `ChatNotice` to `session.items`. `RunStopped` reports a user stop or a backend cancellation. A stop adds a notice or marks the last agent message `stopped`.
 

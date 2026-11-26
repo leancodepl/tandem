@@ -63,7 +63,10 @@ void wakeOnPlacedOrder(
   TandemEvent event,
   TandemSession session,
 ) {
-  if (event case AgentCall(tool: 'place_order', caller: .view)) {
+  if (event case AgentCall(
+    tool: OrderDeskCubitTool.placeOrder,
+    caller: .view,
+  )) {
     session.wake();
   }
 }

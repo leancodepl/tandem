@@ -99,7 +99,7 @@ final class Shop() implements AgentSurface {
     calls: [
       AgentTool(
         add,
-        name: 'add',
+        name: ShopTool.add,
         description: 'Adds [item] to the list.',
         parameters: const [AgentParameter<String>('item', .string)],
         invoke: (args) {
@@ -109,7 +109,7 @@ final class Shop() implements AgentSurface {
       ),
       AgentTool(
         removeAt,
-        name: 'remove_at',
+        name: ShopTool.removeAt,
         description: 'Removes the item at [index].',
         parameters: const [AgentParameter<int>('index', .integer)],
         invoke: (args) {
@@ -119,7 +119,7 @@ final class Shop() implements AgentSurface {
       ),
       AgentTool(
         refresh,
-        name: 'refresh',
+        name: ShopTool.refresh,
         description: 'Reloads the list from the server.',
         parameters: const [],
         invoke: (args) async {
@@ -129,7 +129,7 @@ final class Shop() implements AgentSurface {
       ),
       AgentTool(
         clear,
-        name: 'clear',
+        name: ShopTool.clear,
         description: 'Empties the list.',
         parameters: const [],
         invoke: (args) async {
@@ -139,7 +139,7 @@ final class Shop() implements AgentSurface {
       ),
       AgentTool(
         share,
-        name: 'share',
+        name: ShopTool.share,
         description: 'Sends the list to the family.',
         parameters: const [],
         invoke: (args) async {
@@ -149,4 +149,12 @@ final class Shop() implements AgentSurface {
       ),
     ],
   );
+}
+
+enum ShopTool(@override final String value) implements ToolName {
+  add('add'),
+  removeAt('remove_at'),
+  refresh('refresh'),
+  clear('clear'),
+  share('share'),
 }

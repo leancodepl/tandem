@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:tandem/src/protocol/ag_ui_ids.dart';
 import 'package:tandem/src/session/caller.dart';
+import 'package:tandem/src/tool_name.dart';
 
 /// Immutable: the session replaces an item to change it.
 sealed class const ChatItem();
@@ -78,8 +79,7 @@ final class ApprovalRequest._({
   /// run, so key a card by [key].
   required final ToolCallId toolCallId,
 
-  /// The method's name in snake_case.
-  required final String tool,
+  required final ToolName tool,
 
   /// The method's doc comment, written for the agent. Show the user your
   /// own text, picked by [tool].
@@ -97,7 +97,7 @@ final class ApprovalRequest._({
   /// Throws a [JsonUnsupportedObjectError] when [arguments] hold a value
   /// that is not JSON.
   new({
-    required String tool,
+    required ToolName tool,
     required String description,
     required Map<String, Object?> arguments,
     ApprovalStatus status = .pending,
@@ -114,7 +114,7 @@ final class ApprovalRequest._({
   @internal
   new issued({
     required ToolCallId toolCallId,
-    required String tool,
+    required ToolName tool,
     required String description,
     required String argumentsJson,
     required Caller caller,

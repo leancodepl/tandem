@@ -198,7 +198,7 @@ mixin _$BrowseCubit implements AgentSurface {
       calls: [
         AgentTool(
           surface.pick,
-          name: 'pick',
+          name: BrowseCubitTool.pick,
           description: 'Picks [plant].',
           parameters: [
             AgentParameter<PlantDTO>(
@@ -267,7 +267,7 @@ mixin _$BrowseCubit implements AgentSurface {
         ),
         AgentTool(
           surface.putBackPlant,
-          name: 'put_back_plant',
+          name: BrowseCubitTool.putBackPlant,
           description: 'Puts [plant] back on its bench.',
           parameters: [
             AgentParameter<PlantDTO>(
@@ -336,7 +336,7 @@ mixin _$BrowseCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setPots,
-          name: 'set_pots',
+          name: BrowseCubitTool.setPots,
           description: 'Sets how many pots the user wants.',
           parameters: [const AgentParameter<int>('pots', .integer)],
           invoke: (args) {
@@ -346,7 +346,7 @@ mixin _$BrowseCubit implements AgentSurface {
         ),
         AgentTool(
           surface.setNote,
-          name: 'set_note',
+          name: BrowseCubitTool.setNote,
           description: 'Sets the note, or clears it with null.',
           parameters: [
             AgentParameter<String?>(
@@ -362,7 +362,7 @@ mixin _$BrowseCubit implements AgentSurface {
         ),
         AgentTool(
           surface.keepNote,
-          name: 'keep_note',
+          name: BrowseCubitTool.keepNote,
           description: 'Keeps [note].',
           parameters: [const AgentParameter<String>('note', .string)],
           invoke: (args) {
@@ -372,7 +372,7 @@ mixin _$BrowseCubit implements AgentSurface {
         ),
         AgentTool(
           surface.attach,
-          name: 'attach',
+          name: BrowseCubitTool.attach,
           description: 'Attaches [file] to the note.',
           parameters: [
             AgentParameter<Attachment>(
@@ -397,7 +397,7 @@ mixin _$BrowseCubit implements AgentSurface {
         ),
         AgentTool(
           surface.compare,
-          name: 'compare',
+          name: BrowseCubitTool.compare,
           description: 'Compares the plants of each pair of [pairs].',
           parameters: [
             AgentParameter<List<List<PlantDTO>>>(
@@ -475,7 +475,7 @@ mixin _$BrowseCubit implements AgentSurface {
         ),
         AgentTool(
           surface.compost,
-          name: 'compost',
+          name: BrowseCubitTool.compost,
           description: 'Composts [plant], which cannot be undone.',
           parameters: [
             AgentParameter<PlantDTO>(
@@ -546,6 +546,35 @@ mixin _$BrowseCubit implements AgentSurface {
       capabilities: () => surface._$agentCapabilities,
     );
   }
+}
+
+/// The names the agent knows the methods of [BrowseCubit] by.
+// `enum BrowseCubitTool()` needs Dart 3.13 in the app.
+// ignore: use_primary_constructors
+enum BrowseCubitTool implements ToolName {
+  pick,
+  putBackPlant,
+  setPots,
+  setNote,
+  keepNote,
+  attach,
+  compare,
+  compost;
+
+  @override
+  String get value => switch (this) {
+    pick => 'pick',
+    putBackPlant => 'put_back_plant',
+    setPots => 'set_pots',
+    setNote => 'set_note',
+    keepNote => 'keep_note',
+    attach => 'attach',
+    compare => 'compare',
+    compost => 'compost',
+  };
+
+  @override
+  String toString() => value;
 }
 
 extension on BrowseCubit {
