@@ -71,7 +71,7 @@ class OrderCubit({required final Orders orders})
         ),
 ```
 
-And each method its name in snake_case, its doc comment, its parameters, and a call with the agent's arguments read as their types:
+And each method its name, its doc comment, its parameters, and a call with the agent's arguments read as their types:
 
 <!-- example/lib/order_cubit.g.dart -->
 
@@ -90,5 +90,7 @@ And each method its name in snake_case, its doc comment, its parameters, and a c
           },
         ),
 ```
+
+The name is a value of `OrderCubitTool`, an enum the builder writes next to the mixin. Its `value` is the name the agent calls, in snake_case: `set_quantity`. The app matches the enum, as `AgentCall(tool: OrderCubitTool.setQuantity)`.
 
 How an app uses it, from the scope to the chat: the [example of tandem](https://pub.dev/packages/tandem/example) and its [README](https://pub.dev/packages/tandem).
