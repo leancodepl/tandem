@@ -188,8 +188,10 @@ testWidgets('an agent fills the order screen', (tester) async {
 
 ## Upgrade from 0.3
 
-1. Run `dart run build_runner build`. It writes an enum for every class with `@TandemAgent()`, such as `OrderCubitTool`.
-2. Run `dart analyze --fatal-infos`. A string where the app matches a tool, as `AgentCall(tool: 'place_order')`, `Calling(tool: 'place_order')` or a `case` on `request.tool`, still compiles and never matches. The analyzer warns about it with `constant_pattern_never_matches_value_type`, and about `request.tool == 'place_order'` with `unrelated_type_equality_checks`. Replace each string with the enum value, such as `OrderCubitTool.placeOrder`.
+1. Run `dart run build_runner build`. It writes an enum for every class with `@TandemAgent()` that lists a method, such as `OrderCubitTool`.
+2. Run `dart analyze --fatal-infos`, and replace each string where the app matches a tool with the enum value, such as `OrderCubitTool.placeOrder`. Such a string still compiles and never matches:
+   - `AgentCall(tool: 'place_order')`, `Calling(tool: 'place_order')` or a `case` on `request.tool`: the analyzer warns with `constant_pattern_never_matches_value_type`.
+   - `request.tool == 'place_order'`: only the lint `unrelated_type_equality_checks` of `package:lints/core` finds it. When the app's lints leave it out, turn it on, or search the app for `.tool` compared with a string.
 3. `OnDeviceAgent` is gone. Connect the screen with `FirebaseConnection` from `tandem_firebase_ai`, or with `HttpAgentConnection` to the app's backend, as `tandem-in-app-agent` says.
 4. `TandemThread.id` is a `ThreadId` and `AgentHttpException.status` a `ResponseStatus`. Keep them typed in fields, parameters and comparisons. Read `id.value` where the ID is sent or shown, and `status.code` where a number is needed. `ApprovalRequest()` in tests takes `arguments` as a map, is not `const` and takes no `toolCallId`.
 
