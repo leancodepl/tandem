@@ -41,8 +41,8 @@ final class const Thinking({
 final class const Calling(
   final ToolName tool, {
 
-  /// The user approved the call, so it runs to its end and cannot be
-  /// stopped.
+  /// The user approved the call: once it starts, it runs to its end and
+  /// cannot be stopped.
   required final bool approved,
 }) extends SessionStatus {
   @override

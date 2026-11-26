@@ -2697,6 +2697,22 @@ void main() {
     expect(shop.items, isEmpty);
   });
 
+  test('a session that lets its thread go from an approved Calling listener '
+      'runs no method and cancels the card', () async {
+    final (session, agent) = await askToClear();
+    session.addListener(() {
+      if (session.status case Calling(approved: true) when session.isActive) {
+        open(agent, thread: session.thread);
+      }
+    });
+    session.approve(_card(session));
+    await pumpEventQueue();
+
+    expect(session.isActive, isFalse);
+    expect(shop.items, ['x']);
+    expect(_card(session).status, ApprovalStatus.cancelled);
+  });
+
   test(
     'an unsupported outcome discards calls and preserves queued user input',
     () async {
