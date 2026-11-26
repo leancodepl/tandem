@@ -1,6 +1,8 @@
 /// The name the agent knows a listed method by. `tandem_generator` writes an
 /// enum of them for every class with `@TandemAgent()`, such as
-/// `OrderCubitTool`, and the session hands its values back. A schema written
+/// `OrderCubitTool`, and the session hands its values back. A method whose
+/// name the enum cannot use gets a trailing underscore: `_switch` gives
+/// `OrderCubitTool.switch_`, and its `value` stays `switch`. A schema written
 /// by hand declares an enum of its own:
 ///
 /// ```dart

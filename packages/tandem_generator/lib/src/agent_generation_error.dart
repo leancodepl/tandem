@@ -82,11 +82,7 @@ final class AgentGenerationError extends InvalidGenerationSource {
     String name, {
     required ExecutableElement first,
     required ExecutableElement second,
-  }) : super(
-         'Rename ${first.displayName} or ${second.displayName}: the agent '
-         'knows both as $name.',
-         element: second,
-       );
+  }) : this._nameCollision(first, second, 'the agent knows both as $name.');
 
   new reservedName(Expression item, {required String name})
     : super(
@@ -95,17 +91,29 @@ final class AgentGenerationError extends InvalidGenerationSource {
         node: item,
       );
 
-  new reservedToolEnumMember(Expression item, {required String enumMemberName})
-    : super(
-        'Rename $item: it would be $enumMemberName in the enum of tool '
-        'names, and an enum has a member of that name.',
-        node: item,
-      );
+  new sameToolEnumMemberName(
+    String memberName, {
+    required ExecutableElement first,
+    required ExecutableElement second,
+  }) : this._nameCollision(
+         first,
+         second,
+         'both would be $memberName in the enum of tool names.',
+       );
 
   new missingDocumentation(Element element)
     : super(
         'Add a doc comment to ${element.displayName}: the agent reads it to '
         'know what it is.',
         element: element,
+      );
+
+  new _nameCollision(
+    ExecutableElement first,
+    ExecutableElement second,
+    String explanation,
+  ) : super(
+        'Rename ${first.displayName} or ${second.displayName}: $explanation',
+        element: second,
       );
 }
