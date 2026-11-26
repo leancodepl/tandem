@@ -91,8 +91,7 @@ class _CapabilityReader(final ClassElement _type)
 
     source.accept(this);
 
-    _checkAgentNames(_views);
-    _checkAgentNames(_methods);
+    _checkCapabilityNames();
 
     return _AgentCapabilities(
       views: [..._views],
@@ -157,37 +156,45 @@ class _CapabilityReader(final ClassElement _type)
 
     final methodName = method.displayName;
     final wireName = agentName(methodName);
-    final enumMemberName = toolEnumMemberName(methodName);
 
     if (wireName.startsWith(tandemToolPrefix)) {
       throw AgentGenerationError.reservedName(item, name: wireName);
     }
 
-    if (reservedToolEnumMemberNames.contains(enumMemberName)) {
-      throw AgentGenerationError.reservedToolEnumMember(
-        item,
-        enumMemberName: enumMemberName,
-      );
-    }
-
     return method;
   }
 
-  /// Checks that no two of [elements], all getters or all methods, have the
-  /// name the agent knows them by.
-  void _checkAgentNames(Iterable<ExecutableElement> elements) {
+  void _checkCapabilityNames() {
+    _checkNameCollisions(
+      _views,
+      nameOf: agentName,
+      collisionError: AgentGenerationError.sameAgentName,
+    );
+    _checkNameCollisions(
+      _methods,
+      nameOf: agentName,
+      collisionError: AgentGenerationError.sameAgentName,
+    );
+    _checkNameCollisions(
+      _methods,
+      nameOf: toolEnumMemberName,
+      collisionError: AgentGenerationError.sameToolEnumMemberName,
+    );
+  }
+
+  void _checkNameCollisions(
+    Iterable<ExecutableElement> elements, {
+    required String Function(String displayName) nameOf,
+    required _NameCollisionError collisionError,
+  }) {
     final byName = <String, ExecutableElement>{};
 
     for (final element in elements) {
-      final name = agentName(element.displayName);
+      final name = nameOf(element.displayName);
 
       if (byName[name] case final other?
           when other.baseElement != element.baseElement) {
-        throw AgentGenerationError.sameAgentName(
-          name,
-          first: other,
-          second: element,
-        );
+        throw collisionError(name, first: other, second: element);
       }
 
       byName[name] = element;
@@ -265,6 +272,12 @@ class _CapabilityReader(final ClassElement _type)
     }
   }
 }
+
+typedef _NameCollisionError = AgentGenerationError Function(
+  String name, {
+  required ExecutableElement first,
+  required ExecutableElement second,
+});
 
 final class const _AgentCapabilities({
   required final List<GetterElement> views,

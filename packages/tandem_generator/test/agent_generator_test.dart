@@ -113,14 +113,25 @@ class ViewCubit() {
     );
   });
 
-  test('a private method names its tool with a public enum member', () async {
+  test('a private method names its tool with a public enum member, with a '
+      'trailing underscore where the enum cannot use the name', () async {
     final code = await _generate('''
 @TandemAgent()
 class OrderCubit() {
-  List<AgentCapability> get agentCapabilities => [.calls(_refresh)];
+  List<AgentCapability> get agentCapabilities => [
+    .calls(_refresh),
+    .calls(_switch),
+    .calls(_index),
+  ];
 
   /// Loads the order again.
   void _refresh() {}
+
+  /// Switches the delivery mode.
+  void _switch() {}
+
+  /// Opens the index of orders.
+  void _index() {}
 }
 ''');
 
@@ -130,23 +141,31 @@ class OrderCubit() {
         contains('enum OrderCubitTool implements ToolName {'),
         contains("refresh => 'refresh',"),
         contains('name: OrderCubitTool.refresh,'),
+        contains("switch_ => 'switch',"),
+        contains("index_ => 'index',"),
       ),
     );
   });
 
-  test('a method named like a member of an enum fails the build', () async {
+  test('two methods of one enum member fail the build', () async {
     final errors = await _buildErrors('''
 @TandemAgent()
-class PageCubit() {
-  List<AgentCapability> get agentCapabilities => [.calls(_index)];
+class OrderCubit() {
+  List<AgentCapability> get agentCapabilities => [
+    .calls(_switch),
+    .calls(switch_),
+  ];
 
-  /// Opens the index.
-  void _index() {}
+  /// Switches the delivery mode.
+  void _switch() {}
+
+  /// Switches the delivery mode back.
+  void switch_() {}
 }
 ''');
 
     expect(errors, [
-      contains('Rename _index: it would be index in the enum of tool names'),
+      contains('Rename _switch or switch_: both would be switch_ in'),
     ]);
   });
 
