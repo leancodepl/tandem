@@ -25,7 +25,7 @@ final class TandemThread({
   final items = <ChatItem>[];
 
   @internal
-  final agUiThread = AgUiThread(id ?? GeneratedThreadId());
+  final agUiThread = AgUiThread(appId: id);
 
   TandemSession? _session;
 

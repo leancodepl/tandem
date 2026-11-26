@@ -1007,6 +1007,15 @@ void main() {
     expect(generated.hashCode, fromApp.hashCode);
   });
 
+  test('startOver keeps an id the app took from another thread', () {
+    final id = TandemThread().id;
+    final thread = TandemThread(id: id);
+
+    open(ScriptedAgent([]), thread: thread).startOver();
+
+    expect(thread.id, id);
+  });
+
   test('an app-id thread that started over and closed before the next message '
       'starts over only once on a changed screen', () async {
     shop.add('milk');

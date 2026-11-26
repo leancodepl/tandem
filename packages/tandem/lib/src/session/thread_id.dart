@@ -11,8 +11,6 @@ sealed class ThreadId {
   String get value;
 }
 
-/// An id the app supplied. A reset keeps it, and the backend may still hold
-/// the conversation.
 final class AppThreadId(String id) implements ThreadId {
   @override
   final String value = id.isEmpty
@@ -26,8 +24,6 @@ final class AppThreadId(String id) implements ThreadId {
   int get hashCode => value.hashCode;
 }
 
-/// An id Tandem picked. A reset replaces it, so the backend starts a new
-/// conversation.
 final class GeneratedThreadId() implements ThreadId {
   @override
   final String value = const Uuid().v4();

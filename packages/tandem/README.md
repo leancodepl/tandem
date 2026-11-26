@@ -391,7 +391,7 @@ void showOrderMessages(
 
 When an error has a code, `RunFailed.code` contains a `RunErrorCode`. Match a specific error with a pattern such as `RunFailed(code: .unsupportedOutcome)`.
 
-When the conversation history exceeds the model's context window, call `session.startOver()` to clear Tandem's local history and agent state. The next message starts a new AG-UI thread if Tandem supplied the ID. With an app-supplied ID, the backend may keep its history. A separate conversation needs a new `TandemThread` with a new backend ID. Existing chat items remain, and the chat adds a `startedOver` notice. Pending approval requests are cancelled. `startOver()` does nothing while a run or an approved method is in progress.
+When the conversation history exceeds the model's context window, call `session.startOver()` to clear Tandem's local history and agent state. The next message starts a new AG-UI thread if the `TandemThread` was created without an ID. With an app-supplied ID, the backend may keep its history. A separate conversation needs a new `TandemThread` with a new backend ID. Existing chat items remain, and the chat adds a `startedOver` notice. Pending approval requests are cancelled. `startOver()` does nothing while a run or an approved method is in progress.
 
 ## Notes from the app
 
