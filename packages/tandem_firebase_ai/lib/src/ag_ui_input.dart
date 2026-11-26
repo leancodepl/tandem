@@ -32,12 +32,12 @@ final class const AgUiInput._({
     _ => throw FormatException('Not the body of an AG-UI run.', json),
   };
 
-  Set<ToolName> get toolNames => {for (final tool in tools) tool.name};
+  Set<AgUiToolName> get toolNames => {for (final tool in tools) tool.name};
 }
 
 /// A tool the run offers the agent.
 final class const AgUiTool({
-  required final ToolName name,
+  required final AgUiToolName name,
   required final String description,
 
   /// The JSON Schema of the tool's arguments.
@@ -50,7 +50,7 @@ final class const AgUiTool({
       'parameters': final JsonObject parameters,
     } =>
       .new(
-        name: ToolName(name),
+        name: AgUiToolName(name),
         description: description,
         parameters: parameters,
       ),
@@ -115,7 +115,7 @@ final class const AgUiToolMessage(
 /// A call in a message of the agent.
 final class const AgUiToolCall({
   required final ToolCallId id,
-  required final ToolName name,
+  required final AgUiToolName name,
 
   /// The arguments as JSON text.
   required final String argumentsJson,
@@ -128,7 +128,11 @@ final class const AgUiToolCall({
         'arguments': final String argumentsJson,
       },
     } =>
-      .new(id: .wire(id), name: ToolName(name), argumentsJson: argumentsJson),
+      .new(
+        id: .wire(id),
+        name: AgUiToolName(name),
+        argumentsJson: argumentsJson,
+      ),
     _ => throw FormatException('Not a tool call of an AG-UI message.', json),
   };
 }

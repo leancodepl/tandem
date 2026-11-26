@@ -24,7 +24,7 @@ final class FirebaseResponse() {
   /// The whole answer. Throws a [FirebaseFailure] when the stream ended
   /// before the answer finished, when Tandem cannot run every call of the
   /// answer, or when the answer has neither text nor calls.
-  FirebaseAnswer complete({required Set<ToolName> offeredTools}) {
+  FirebaseAnswer complete({required Set<AgUiToolName> offeredTools}) {
     if (!_finished) throw FirebaseFailure.unfinished();
 
     final calls = [for (final part in _parts) ?part.proposedCall];
@@ -119,10 +119,13 @@ final class _AnswerPart._(final Part _part, final JsonObject json) {
 
 /// One unusable call means the batch was read wrong, and Tandem gets none
 /// of it.
-bool _hasUnusableCall(List<FunctionCall> calls, Set<ToolName> offeredTools) {
+bool _hasUnusableCall(
+  List<FunctionCall> calls,
+  Set<AgUiToolName> offeredTools,
+) {
   final ids = [for (final call in calls) ?call.id];
   final callsUnknownTool = calls.any(
-    (call) => !offeredTools.contains(ToolName(call.name)),
+    (call) => !offeredTools.contains(AgUiToolName(call.name)),
   );
   final hasEmptyId = ids.contains('');
   final repeatsId = ids.toSet().length < ids.length;

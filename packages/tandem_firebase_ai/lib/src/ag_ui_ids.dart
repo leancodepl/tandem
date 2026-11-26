@@ -4,7 +4,7 @@ extension type const AgUiThreadId(String value);
 
 extension type const AgUiRunId(String value);
 
-extension type const ToolName(String value);
+extension type const AgUiToolName(String value);
 
 /// The id of a tool call in an AG-UI thread. Tandem runs the call and names
 /// its result with this id. Tandem's own `ToolCallId` has no public

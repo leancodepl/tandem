@@ -99,7 +99,7 @@ final class const ProposedCall({
 
   /// Null when Firebase gave the call no ID.
   required final FunctionCallId? functionCallId,
-  required final ToolName name,
+  required final AgUiToolName name,
 
   /// The arguments, a JSON object, as text.
   required final String argumentsJson,
@@ -108,7 +108,7 @@ final class const ProposedCall({
   factory of(FunctionCall call) => .new(
     id: .unique(),
     functionCallId: .orNull(call.id),
-    name: ToolName(call.name),
+    name: AgUiToolName(call.name),
     argumentsJson: jsonEncode(call.args),
   );
 
@@ -123,7 +123,7 @@ final class const ProposedCall({
       ProposedCall(
         id: .wire(id),
         functionCallId: .orNull(functionCallId),
-        name: ToolName(name),
+        name: AgUiToolName(name),
         argumentsJson: argumentsJson,
       ),
     _ => null,
