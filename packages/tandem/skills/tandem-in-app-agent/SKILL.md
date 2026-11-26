@@ -45,7 +45,7 @@ TandemScope(
 
 For a screen that opens again, such as a page the user leaves and comes back to, keep a `TandemThread` above it and pass it as `thread:`, so the chat and the agent's history go on. One screen at a time has it. When the backend keeps the conversation under its own ID, pass it: `TandemThread(id: ThreadId(conversationId))`, kept in a field or a `State` like any thread, not built in `build`. Tandem then never changes the ID. [What the backend must do](https://github.com/leancodepl/tandem#the-agent-backend).
 
-`onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result` and `caller`, who called it), `RunStopped`, `RunFailed` and `ConnectionLost`. Without a chat, show `RunFailed` and `ConnectionLost` to the user, such as in a snackbar. To tell the agent what happened outside the chat, call `session.note(text)`; `session.wake()` lets it take a turn on it.
+`onEvent: (context, event, session) { ... }` hears what happens in the session: an `AgentCall` for every listed method that returned (`tool`, `arguments`, `result` and `caller`, who called it), `RunStopped`, `RunFailed` and `ConnectionLost`. Match a method by the enum that `tandem_generator` writes, as `AgentCall(tool: OrderCubitTool.placeOrder)`. A string pattern, as `AgentCall(tool: 'place_order')`, compiles with a warning and never matches. Without a chat, show `RunFailed` and `ConnectionLost` to the user, such as in a snackbar. To tell the agent what happened outside the chat, call `session.note(text)`; `session.wake()` lets it take a turn on it.
 
 **Done when** the scope has `agent:`, or `TandemScope.connected` with the connection, and the app builds.
 
@@ -87,7 +87,7 @@ A screen with `.callsWithApproval` asks the user in one place. With a chat, that
 
 ## 5. Show the status
 
-When the screen has no chat, show what the agent does now, such as a progress line, by switching on `session.status`: `Idle`, `Thinking` (with the `backendTool` that runs now, if any), `Calling(:tool)`, `AwaitingApproval(:request)` and `Stopping`. A chat shows it in its button. When the backend keeps a state of its own, such as the steps of its plan, `session.agentState` has it as it streams: read the keys that backend writes.
+When the screen has no chat, show what the agent does now, such as a progress line, by switching on `session.status`: `Idle`, `Thinking` (with the `backendTool` that runs now, if any), `Calling(:tool)`, `AwaitingApproval(:request)` and `Stopping`. A chat shows it in its button. For a method's own text, match `Calling(tool: OrderCubitTool.placeOrder)` before `Calling()`. When the backend keeps a state of its own, such as the steps of its plan, `session.agentState` has it as it streams: read the keys that backend writes.
 
 **Done when** the user sees that the agent works, and when it waits for them.
 

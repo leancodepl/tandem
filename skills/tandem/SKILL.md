@@ -42,6 +42,8 @@ The skills land in the folder that holds this skill: `.claude/skills/`, `.cursor
 
 The last two came with `tandem` 0.2.1. When one is missing, tell the user that their version of `tandem` is too old for it, offer `flutter pub upgrade tandem tandem_generator`, and run the command above again after the upgrade.
 
+When `flutter pub outdated` shows a newer minor version of `tandem` than `pubspec.lock`, ask the user whether to upgrade. If they want to, run `flutter pub upgrade --major-versions tandem tandem_generator`, run the command above again for the new version's skills, and follow the upgrade section of `tandem-agent-aware-screen` before step 3.
+
 **Done when** the three skills are in the folder, or the user knows which version they need.
 
 ## 3. Choose the path with the user

@@ -385,7 +385,7 @@ void showOrderMessages(
 }
 ```
 
-`AgentCall` is emitted after a listed method returns, with its `tool`, `arguments`, `result` and `caller`. The `tool` is a value of the enum `tandem_generator` writes next to the mixin, such as `OrderCubitTool.placeOrder`, so a renamed method breaks the match at compile time. The caller is `Caller.inAppAgent`, `Caller.codingAgent` or `Caller.view`, for an action of a [view the agent drew](#views-the-agent-draws). Refused calls and methods that throw do not emit `AgentCall`.
+`AgentCall` is emitted after a listed method returns, with its `tool`, `arguments`, `result` and `caller`. The `tool` is a value of the enum `tandem_generator` writes next to the mixin, such as `OrderCubitTool.placeOrder`, so a renamed method breaks the match at compile time. A string pattern, such as `AgentCall(tool: 'place_order')`, still compiles with the warning `constant_pattern_never_matches_value_type` and never matches. The caller is `Caller.inAppAgent`, `Caller.codingAgent` or `Caller.view`, for an action of a [view the agent drew](#views-the-agent-draws). Refused calls and methods that throw do not emit `AgentCall`.
 
 `RunFailed` and `ConnectionLost` add a `ChatNotice` to `session.items`. `RunStopped` reports a user stop or a backend cancellation. A stop adds a notice or marks the last agent message `stopped`.
 

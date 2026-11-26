@@ -186,6 +186,15 @@ testWidgets('an agent fills the order screen', (tester) async {
 
 **Done when** the test passes and the screen shows the value the agent set.
 
+## Upgrade from 0.3
+
+1. Run `dart run build_runner build`. It writes an enum for every class with `@TandemAgent()`, such as `OrderCubitTool`.
+2. Run `dart analyze --fatal-infos`. A string where the app matches a tool, as `AgentCall(tool: 'place_order')`, `Calling(tool: 'place_order')` or a `case` on `request.tool`, still compiles and never matches. The analyzer warns about it with `constant_pattern_never_matches_value_type`, and about `request.tool == 'place_order'` with `unrelated_type_equality_checks`. Replace each string with the enum value, such as `OrderCubitTool.placeOrder`.
+3. `OnDeviceAgent` is gone. Connect the screen with `FirebaseConnection` from `tandem_firebase_ai`, or with `HttpAgentConnection` to the app's backend, as `tandem-in-app-agent` says.
+4. `TandemThread.id` is a `ThreadId` and `AgentHttpException.status` a `ResponseStatus`. Keep them typed in fields, parameters and comparisons. Read `id.value` where the ID is sent or shown, and `status.code` where a number is needed. `ApprovalRequest()` in tests takes `arguments` as a map, is not `const` and takes no `toolCallId`.
+
+**Done when** `dart analyze --fatal-infos` is clean and the app's tests pass.
+
 ## Mistakes
 
 - `super.agentCapabilities` or a `.sees` written in another method that `agentCapabilities` calls. Tandem reads a copy of the getter, so the build fails or the list throws a `StateError`. Write every capability in `agentCapabilities` itself.
