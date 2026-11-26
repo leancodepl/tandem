@@ -562,11 +562,6 @@ void main() {
       context: context,
     );
     final missing = await TandemBridge.call('open', arguments: second);
-    final unknown = await TandemBridge.call(
-      'open',
-      arguments: second,
-      context: 'context-0',
-    );
 
     expect(
       moved['reason'],
@@ -579,7 +574,6 @@ void main() {
       'ext.tandem.describe gave for this screen, so that the paths read what '
       'you saw.',
     );
-    expect(unknown['reason'], contains('unknown or too old'));
     expect(pantry.opened, isNull);
   });
 
@@ -664,6 +658,34 @@ void main() {
     );
     expect(before.opened, isNull);
     expect(after.opened, isNull);
+  });
+
+  testWidgets('a context of a closed screen is refused, and a call without '
+      'one goes to the front screen', (tester) async {
+    final shop = newShop();
+    final closed = newShop();
+    await tester.pumpWidget(Column(children: [scope(shop), scope(closed)]));
+    final closedContext = switch (TandemBridge.describe()) {
+      {'screens': [_, {'context': final String context}]} => context,
+      final other => throw StateError('No context in $other.'),
+    };
+
+    await tester.pumpWidget(Column(children: [scope(shop), const SizedBox()]));
+    final refused = await TandemBridge.call(
+      'add',
+      arguments: {'item': 'tea'},
+      context: closedContext,
+    );
+    await TandemBridge.call('add', arguments: {'item': 'milk'});
+
+    expect(refused, containsPair('status', 'refused'));
+    expect(
+      refused['reason'],
+      'No open screen keeps the context $closedContext. Describe the screens '
+      'again and pass a new context.',
+    );
+    expect(shop.items, ['milk']);
+    expect(closed.items, isEmpty);
   });
 
   testWidgets('once the user decided, describe shows the last approval with '

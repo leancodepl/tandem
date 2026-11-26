@@ -22,9 +22,8 @@ import 'package:tandem/src/session/tool_call.dart';
 /// ```
 ///
 /// Every `TandemScope` of a debug build is an open screen, also one without
-/// `agent`. A call goes to the front screen: the only one open, or else the
-/// only one on the current route. [describe] and [call] give the JSON of the
-/// extensions, for tests.
+/// `agent`. [describe] and [call] give the JSON of the extensions, for
+/// tests.
 final class TandemBridge._() {
   static var _registered = false;
   static var _autoApprove = false;
@@ -70,19 +69,21 @@ final class TandemBridge._() {
 
   /// Calls [tool] with [arguments] on the screen whose id is [screen].
   /// Without [screen], the call goes to the screen that [context] describes,
-  /// or else to the front screen. The answer is the in-app agent's tool
-  /// answer with its `status`, such as `returned` with the `result`, and the
-  /// `screens` after the call.
+  /// and without [context] to the front screen: the only one open, or else
+  /// the only one on the current route. The answer is the in-app agent's
+  /// tool answer with its `status`, such as `returned` with the `result`,
+  /// and the `screens` after the call.
   ///
   /// A call that waits for the user answers once the user decided, such as
   /// `rejected_by_user`. Meanwhile the same call waits for the same answer,
   /// and another call that needs approval is refused.
   ///
-  /// An argument that points at a value of the screen, `{"path": ...}`,
-  /// needs the [context] that [describe] gave for the screen: the call is
-  /// refused without it, when it is unknown or when a new session of the
-  /// scope replaced the one it showed, and a path whose value changed since
-  /// is refused as for the in-app agent.
+  /// A call with a [context] that no open screen keeps, such as one of a
+  /// closed screen, is refused. So is a call with a [context] of a session
+  /// that a new one of the scope replaced. An argument that points at a
+  /// value of the screen, `{"path": ...}`, needs the [context] that
+  /// [describe] gave for the screen: the call is refused without it, and a
+  /// path whose value changed since is refused as for the in-app agent.
   ///
   /// [call] throws a [StateError] before the method runs when the agent list
   /// of its screen does not fit the generated code, and the extension
@@ -98,6 +99,14 @@ final class TandemBridge._() {
     final described = contextId == null
         ? null
         : OpenScreens.described(contextId);
+    if (contextId != null && described == null) {
+      return _withScreens(
+        .refused(
+          'No open screen keeps the context ${contextId.value}. Describe the '
+          'screens again and pass a new context.',
+        ),
+      );
+    }
     final target = switch (screenId) {
       final id? => OpenScreens.find(id),
       null => described?.screen ?? OpenScreens.front,
@@ -120,7 +129,11 @@ final class TandemBridge._() {
     }
     final seen =
         described?.seen ??
-        AgentListing.of(target.session.surface).unseen(_noContext(contextId));
+        AgentListing.of(target.session.surface).unseen(
+          'The arguments point at values with "path". Pass the context that '
+          'ext.tandem.describe gave for this screen, so that the paths read '
+          'what you saw.',
+        );
     final answer = await target.session.callFor(
       .codingAgent,
       tool,
@@ -170,16 +183,6 @@ final class TandemBridge._() {
       context: parameters['context'],
     );
   }
-
-  static String _noContext(ContextId? context) => switch (context) {
-    null =>
-      'The arguments point at values with "path". Pass the context that '
-          'ext.tandem.describe gave for this screen, so that the paths read '
-          'what you saw.',
-    final context =>
-      'The context $context is unknown or too old. Describe the screen again '
-          'and pass its new context.',
-  };
 
   static JsonObject _describe(OpenScreen screen, {required bool front}) {
     final session = screen.session;
