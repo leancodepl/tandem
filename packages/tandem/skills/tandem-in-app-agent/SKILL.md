@@ -29,10 +29,10 @@ TandemScope(
   agent: Uri.parse(agentUrl),
   approvals: const .fromState(),
   onEvent: showOrderMessages,
-  child: const Row(
+  child: const Column(
     children: [
       Expanded(child: OrderForm()),
-      SizedBox(width: 360, child: AgentChat()),
+      Expanded(child: AgentChat()),
     ],
   ),
 )

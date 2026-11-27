@@ -52,18 +52,23 @@ final class const OrderChatScreen({super.key}) extends StatelessWidget {
       agent: Uri.parse('http://localhost:8000/agent'),
       approvals: const .fromState(),
       onEvent: showOrderMessages,
-      child: const Row(
-        children: [
-          Expanded(child: OrderForm()),
-          SizedBox(width: 360, child: AgentChat()),
-        ],
+      child: Scaffold(
+        body: Flex(
+          direction: MediaQuery.sizeOf(context).width < 600
+              ? .vertical
+              : .horizontal,
+          children: const [
+            Expanded(child: OrderForm()),
+            Expanded(child: AgentChat()),
+          ],
+        ),
       ),
     ),
   );
 }
 ```
 
-[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. `approvals: const .fromState()` lets the chat draw the approval card, which `AgentChat` keys with `request.key`. Its `approvalBuilder` gives the card's content: switch on `request.tool`, such as `OrderCubitTool.placeOrder` from `order_cubit.g.dart`, to say what the method will do in the app's words. A chat that builds its own card keys it with `request.key`, so the card keeps its identity when the status changes. [`showOrderMessages`](https://github.com/leancodepl/tandem/blob/main/example/lib/order_messages.dart) shows a snackbar when the order is placed or a run fails. Start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt.
+[`agent_chat.dart`](https://github.com/leancodepl/tandem/blob/main/example/lib/agent_chat.dart) is the chat of the example: copy it into your app, make its texts and look your own, and import it from there. `approvals: const .fromState()` lets the chat draw the approval card, which `AgentChat` keys with `request.key`. Its `approvalBuilder` gives the card's content: switch on `request.tool`, such as `OrderCubitTool.placeOrder` from `order_cubit.g.dart`, to say what the method will do in the app's words. A chat that builds its own card keys it with `request.key`, so the card keeps its identity when the status changes. [`showOrderMessages`](https://github.com/leancodepl/tandem/blob/main/example/lib/order_messages.dart) shows a snackbar when the order is placed or a run fails. Start an AG-UI agent on `localhost:8000` that puts `context` into the model's prompt. On an Android emulator or a phone, `localhost` is the device itself: set `agent:` to the address that [the example](https://github.com/leancodepl/tandem/blob/main/example/README.md#connect-the-order-desk-to-a-backend) gives for it.
 
 To use Firebase AI Logic without an agent backend, pass a `FirebaseConnection` from [`tandem_firebase_ai`](https://github.com/leancodepl/tandem/tree/main/packages/tandem_firebase_ai) to `TandemScope.connected`. The same surface and approvals apply. The [Firebase example](https://github.com/leancodepl/tandem/blob/main/example/README.md#connect-directly-to-firebase-ai-logic) shows the setup.
 

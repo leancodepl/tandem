@@ -189,6 +189,50 @@ void main() {
     expect(orders.placed, hasLength(1));
   });
 
+  testWidgets('the chat screen shows a line and a snackbar as the app home', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepositoryProvider.value(
+        value: orders,
+        child: const MaterialApp(home: OrderChatScreen()),
+      ),
+    );
+    await TandemBridge.call(
+      'set_quantity',
+      arguments: {'sku': 'VM-27Q', 'quantity': 2},
+    );
+
+    unawaited(TandemBridge.call('place_order'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Approve'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Placed order'), findsOneWidget);
+  });
+
+  testWidgets('the chat screen leaves the order room on a phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      RepositoryProvider.value(
+        value: orders,
+        child: const MaterialApp(home: OrderChatScreen()),
+      ),
+    );
+
+    await TandemBridge.call(
+      'set_quantity',
+      arguments: {'sku': 'VM-27Q', 'quantity': 2},
+    );
+    await tester.pump();
+
+    expect(tester.getSize(find.text('VM-27Q')).width, greaterThan(0));
+  });
+
   test(
     'every call checks the list as it is now, not as the run began',
     () async {

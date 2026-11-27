@@ -164,7 +164,7 @@ A coding agent reaches the extensions through the `vm_service` tool of the Dart 
 
 - The coding agent sees what an in-app agent would see, and calls only the listed methods, with the same checks.
 - An argument that points at an object of the screen, `{"path": ...}`, needs the `context` that `ext.tandem.describe` gave for the screen, so the path reads what the coding agent saw. A call without it, or whose object changed since, is refused.
-- A call targets the front screen. This is the only open `TandemScope`, or the only one on the current route. If several screens match, the call must identify the screen.
+- A call with a `context` goes to the screen that keeps it, and is refused when no open screen does, such as after the screen closed. A call with neither a screen nor a `context` goes to the front screen: the only open `TandemScope`, or the only one on the current route. If several screens match, that call must identify the screen.
 - A `.callsWithApproval` call waits for the user to approve it in the app. The scope's `approvals:` setting controls how the request is shown. For scripted runs, `TandemBridge.enable(autoApprove: true)` lets the coding agent approve its own calls.
 
 ## An in-app agent
@@ -178,14 +178,21 @@ An in-app agent works with your app's users, in a chat or behind a button. Set `
       agent: Uri.parse('http://localhost:8000/agent'),
       approvals: const .fromState(),
       onEvent: showOrderMessages,
-      child: const Row(
-        children: [
-          Expanded(child: OrderForm()),
-          SizedBox(width: 360, child: AgentChat()),
-        ],
+      child: Scaffold(
+        body: Flex(
+          direction: MediaQuery.sizeOf(context).width < 600
+              ? .vertical
+              : .horizontal,
+          children: const [
+            Expanded(child: OrderForm()),
+            Expanded(child: AgentChat()),
+          ],
+        ),
       ),
     ),
 ```
+
+On an Android emulator or a phone, `localhost` is the device itself: set `agent:` to the address that [the example](https://github.com/leancodepl/tandem/blob/main/example/README.md#connect-the-order-desk-to-a-backend) gives for it.
 
 For Firebase AI Logic, pass a `FirebaseConnection` from `tandem_firebase_ai` to `TandemScope.connected`. Initialize Firebase and App Check first, and keep the connection outside `build`. The surface, chat and approvals work the same way. [Firebase setup and example](https://github.com/leancodepl/tandem/tree/main/packages/tandem_firebase_ai).
 

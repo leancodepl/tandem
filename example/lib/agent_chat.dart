@@ -11,9 +11,8 @@ typedef ApprovalBuilder = Widget Function(
 /// approval, and the field to write in. It uses only the public
 /// [TandemSession], so an app can copy it and give it its own texts and look.
 /// It needs a `TandemScope` above it, fills its parent and has its own
-/// background. Next to the screen, give it a width, as in
-/// `Row(children: [Expanded(child: OrderForm()),
-/// SizedBox(width: 360, child: AgentChat())])`.
+/// background. Give it bounds, such as an `Expanded` next to the screen or
+/// under it.
 final class const AgentChat({
   super.key,
 

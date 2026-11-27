@@ -81,7 +81,7 @@ The user's end of a run. The run is still read to its end, but its later text is
 _Avoid_: abort, disconnect
 
 **In-app agent**:
-The agent a screen chats with through its session, over AG-UI or on the device. The app's user talks to it. Where nothing else is said, "the agent" is this one.
+The agent a screen chats with through its session. The app's user talks to it. Where nothing else is said, "the agent" is this one.
 _Avoid_: assistant, chatbot
 
 **Coding agent**:
