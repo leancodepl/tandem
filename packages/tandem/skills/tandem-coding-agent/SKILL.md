@@ -1,6 +1,6 @@
 ---
 name: tandem-coding-agent
-description: Fill in or change a screen of a running Flutter debug app that uses Tandem, such as a form, through the methods its state class lists, and set up TandemBridge so a coding agent can. Use when asked to fill a Flutter form or screen from a text, an e-mail or a ticket, or to let the coding agent drive the app.
+description: Fill in or change a screen of a running Flutter debug app that uses Tandem, such as a form, through the methods its state class lists, draw a view on its TandemView, and set up TandemBridge so a coding agent can. Use when asked to fill a Flutter form or screen from a text, an e-mail or a ticket, or to let the coding agent drive the app.
 user-invocable: false
 ---
 
@@ -8,7 +8,7 @@ user-invocable: false
 
 You, the coding agent, call the methods a Tandem screen lists, in the running debug app: the same setters the screen's widgets call, with the same checks and approvals. No backend, no API key, no chat. The screen needs a `TandemScope` around a state class with `@TandemAgent()`; if it has none, follow `tandem-agent-aware-screen` first.
 
-The app answers through two VM service extensions: `ext.tandem.describe` and `ext.tandem.call`. Use them, not the widget inspector, Flutter Driver or taps on the widgets. Do the steps in order and check each "Done when" before the next.
+The app answers through two VM service extensions: `ext.tandem.describe` and `ext.tandem.call`. Use them, not the widget inspector, Flutter Driver or taps on the widgets. Do steps 1 and 2, then the step for the task: 3 to fill in the screen, with 4 when a call waits for the user, or 5 to draw a view. Check each "Done when" before you go on.
 
 ## 1. Enable the bridge
 
@@ -107,3 +107,15 @@ The request keeps waiting in the app after your call timed out. Then:
 4. When `lastApproval` is `pending` or `approved`, call `ext.tandem.describe` again every few seconds until it has the answer, and report it. Do not call the tool again: once the user decided, the same call asks the user again.
 
 **Done when** you reported the user's decision, or told them the request still waits in the app or that its outcome is uncertain.
+
+## 5. Draw a view
+
+When a screen's `tools` have `tandem_show_view`, you can draw a view on it. Draw one only when the user asks for a view.
+
+- Read the tool's `description` first, and draw only with what it lists.
+- Call it with the components as an array: `--data-urlencode 'arguments={"components": [{"id": "root", ...}]}'`. A string with the array, as the schema says, works too. The call needs no `context`.
+- `shown`: the view is on the screen in place of the one before. It follows the screen's data, and its actions call the listed methods when the user uses them. The `app_notes` that the description names are the in-app agent's: you read what an action did in `sees`.
+- `refused`: `reason` has one problem per line. Fix each one and send the whole view again. The screen keeps the view it had.
+- Without `tandem_show_view` in its `tools`, the screen cannot show a view now. Tell the user.
+
+**Done when** the answer is `shown` and you told the user what the view shows, or you told them why it did not show.
