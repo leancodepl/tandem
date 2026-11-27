@@ -1,4 +1,4 @@
-A Cubit with `@TandemAgent()` lists what the agent sees and calls. It is the order form of the [README of tandem](https://github.com/leancodepl/tandem#quick-start):
+A Cubit with `@TandemAgent()` lists what the agent sees and calls. It is the order form of the [README of tandem](https://github.com/leancodepl/tandem#how-it-works):
 
 <!-- example/lib/order_cubit.dart -->
 

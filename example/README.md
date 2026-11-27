@@ -31,9 +31,10 @@ The order desk is on bloc, in [lib/desk](lib/desk), and [`order_desk_agent.dart`
 holds its script. It uses `ScriptedAgent.repeating` with `AgentRequest` to read the order, offered
 tools, answers and pressed actions from each run. [`AgentChat`](lib/agent_chat.dart) is the chat to copy
 into your app and make your own. The app enables `TandemBridge`, so your coding agent can fill the
-order too. The code of the
-[README](../README.md) is a smaller order form, in [`order_cubit.dart`](lib/order_cubit.dart) and
-[`order_screen.dart`](lib/order_screen.dart), with its tests.
+order too. The [README](../README.md) takes its quick start from
+[`quick_start.dart`](lib/quick_start.dart) and its order form from
+[`order_cubit.dart`](lib/order_cubit.dart) and [`order_screen.dart`](lib/order_screen.dart), each
+with its tests.
 
 ## Connect the order desk to a backend
 
