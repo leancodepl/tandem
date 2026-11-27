@@ -30,11 +30,16 @@ final class const OrderChatScreen({super.key}) extends StatelessWidget {
       agent: Uri.parse('http://localhost:8000/agent'),
       approvals: const .fromState(),
       onEvent: showOrderMessages,
-      child: const Row(
-        children: [
-          Expanded(child: OrderForm()),
-          SizedBox(width: 360, child: AgentChat()),
-        ],
+      child: Scaffold(
+        body: Flex(
+          direction: MediaQuery.sizeOf(context).width < 600
+              ? .vertical
+              : .horizontal,
+          children: const [
+            Expanded(child: OrderForm()),
+            Expanded(child: AgentChat()),
+          ],
+        ),
       ),
     ),
   );

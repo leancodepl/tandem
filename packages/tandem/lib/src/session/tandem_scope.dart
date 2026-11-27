@@ -24,10 +24,10 @@ import 'package:tandem/src/session/tandem_thread.dart';
 ///     surface: (context) => context.read<OrderCubit>(),
 ///     agent: Uri.parse('https://example.com/agent'),
 ///     approvals: const .fromState(),
-///     child: const Row(
+///     child: const Column(
 ///       children: [
 ///         Expanded(child: OrderForm()),
-///         SizedBox(width: 360, child: AgentChat()),
+///         Expanded(child: AgentChat()),
 ///       ],
 ///     ),
 ///   ),
