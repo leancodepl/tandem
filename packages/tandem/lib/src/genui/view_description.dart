@@ -7,7 +7,7 @@ import 'package:tandem/src/genui/agent_catalog.dart';
 import 'package:tandem/src/genui/view_check.dart';
 import 'package:tandem/src/genui/view_requirements.dart';
 
-/// The description of `tandem_show_view` for a run that sees [listing]: the
+/// The description of `tandem_show_view` for an agent that sees [listing]: the
 /// components of [catalog], the names and forms of their types, the data
 /// and methods a view may bind, the rules, and the catalog's guidelines and
 /// example.

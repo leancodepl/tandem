@@ -27,13 +27,21 @@ void main() {
     child: const SizedBox(),
   );
 
-  Widget connected(AgentSurface surface, AgentConnection connection) =>
-      TandemScope.connected(
-        surface: (context) => surface,
-        connection: connection,
-        approvals: const .fromState(),
-        child: const SizedBox(),
-      );
+  Widget connected(
+    AgentSurface surface,
+    AgentConnection connection, {
+    Widget child = const SizedBox(),
+    void Function(BuildContext, TandemEvent, TandemSession)? onEvent,
+  }) => Directionality(
+    textDirection: .ltr,
+    child: TandemScope.connected(
+      surface: (context) => surface,
+      connection: connection,
+      approvals: const .fromState(),
+      onEvent: onEvent,
+      child: child,
+    ),
+  );
 
   TandemSession sessionOf(WidgetTester tester) =>
       TandemSessionScope.of(tester.element(find.byType(SizedBox)));
@@ -709,6 +717,95 @@ void main() {
       }),
     );
   });
+
+  testWidgets('a view sent to tandem_show_view shows, and its action calls '
+      'the listed method for the view', (tester) async {
+    final shop = newShop();
+    final events = <TandemEvent>[];
+    await tester.pumpWidget(
+      connected(
+        shop,
+        ScriptedAgent(const []),
+        child: TandemView(catalog: _Buttons()),
+        onEvent: (context, event, _) => events.add(event),
+      ),
+    );
+
+    final answer = await TandemBridge.call(
+      'tandem_show_view',
+      arguments: {'components': _addTea},
+    );
+    await tester.pump();
+    await tester.tap(find.text('Add tea'));
+    await tester.pumpAndSettle();
+
+    expect(answer, containsPair('status', 'shown'));
+    expect(shop.items, ['tea']);
+    expect(events, [
+      isA<AgentCall>().having((call) => call.caller, 'caller', Caller.view),
+    ]);
+  });
+
+  testWidgets('describe lists tandem_show_view while a TandemView is on the '
+      'screen, and a call of it without one is refused', (tester) async {
+    final shop = newShop();
+    final agent = ScriptedAgent(const []);
+    List<Object?> tools() => switch (TandemBridge.describe()) {
+      {'screens': [{'tools': final List<Object?> tools}]} => tools,
+      final other => throw StateError('No tools in $other.'),
+    };
+    final viewTool = containsPair('name', 'tandem_show_view');
+
+    await tester.pumpWidget(
+      connected(shop, agent, child: TandemView(catalog: _Buttons())),
+    );
+    final withView = tools();
+    await tester.pumpWidget(connected(shop, agent));
+    final withoutView = tools();
+    final refused = await TandemBridge.call(
+      'tandem_show_view',
+      arguments: {'components': _addTea},
+    );
+
+    expect(withView, contains(viewTool));
+    expect(withoutView, isNot(contains(viewTool)));
+    expect(refused, containsPair('status', 'refused'));
+    expect(refused, containsPair('reason', contains('TandemView')));
+  });
+
+  testWidgets('four views in a row from the bridge that do not fit each get '
+      "their problems, and do not count toward the in-app agent's limit", (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    final agent = ScriptedAgent([
+      (_) => [.waitFor(gate.future), .showView(_misfit)],
+      (_) => const [.say('In text, then.')],
+    ]);
+    await tester.pumpWidget(
+      connected(newShop(), agent, child: TandemView(catalog: _Buttons())),
+    );
+    sessionOf(tester).send('draw');
+    await tester.pump();
+
+    for (var draw = 0; draw < 4; draw++) {
+      final answer = await TandemBridge.call(
+        'tandem_show_view',
+        arguments: {'components': _misfit},
+      );
+      expect(answer['reason'], contains('Slider'));
+    }
+    gate.complete();
+    await tester.pumpAndSettle();
+
+    final next = AgentRequest(agent.requests.last);
+    expect(
+      next.latestToolResults.single.value,
+      containsPair('reason', contains('Slider')),
+    );
+    expect(next.offersView, isTrue);
+    expect(find.text('Add tea'), findsNothing);
+  });
 }
 
 /// Ends its run with an interrupt, which Tandem cannot follow, once [_gate]
@@ -793,6 +890,47 @@ final class _Pantry() implements AgentSurface {
     fields: (field) => [field('path', (value) => value.path).as(.string)],
     build: (values) => .new(values('path')),
   );
+}
+
+const _addTea = [
+  {
+    'id': 'root',
+    'component': 'Button',
+    'onPressed': {
+      'action': {
+        'event': {
+          'name': 'add',
+          'context': {'item': 'tea'},
+        },
+      },
+    },
+  },
+];
+
+const _misfit = [
+  ..._addTea,
+  {'id': 'slider', 'component': 'Slider'},
+];
+
+final class _Buttons() implements AgentCatalog {
+  @override
+  List<AgentComponent> get components => [
+    AgentComponent<GestureDetector>.of(
+      name: 'Button',
+      description: 'A button.',
+      properties: (property) => [property.press('onPressed')],
+      build: (args) => GestureDetector(
+        onTap: args.press('onPressed'),
+        child: const Text('Add tea'),
+      ),
+    ),
+  ];
+
+  @override
+  String get guidelines => 'Draw one button.';
+
+  @override
+  List<Map<String, Object?>> get example => _addTea;
 }
 
 PageRouteBuilder<void> _route(Widget screen) =>

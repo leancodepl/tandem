@@ -3,12 +3,13 @@ import 'package:tandem/src/genui/agent_catalog.dart';
 import 'package:tandem/src/genui/drawn_view.dart';
 import 'package:tandem/src/session/session_scope.dart';
 
-/// Where the in-app agent draws a view, with the widgets of [catalog]. Put
-/// one below a `TandemScope`: while it is there, every run offers the agent
-/// `tandem_show_view`. Tandem checks each view before it draws: its
-/// components and properties against the catalog, its paths against what
-/// the screen lists with `.sees`, its actions against the methods it lists.
-/// A view that does not fit goes back to the agent, one line per problem.
+/// Where an agent draws a view, with the widgets of [catalog]. Put one below
+/// a `TandemScope`: while it is there, every run offers the in-app agent
+/// `tandem_show_view`, and `TandemBridge` lists it for a coding agent.
+/// Tandem checks each view before it draws: its components and properties
+/// against the catalog, its paths against what the screen lists with
+/// `.sees`, its actions against the methods it lists. A view that does not
+/// fit goes back to the agent, one line per problem.
 ///
 /// The view follows the screen: every change of the surface draws it again
 /// with the data now. A component whose required value or action is

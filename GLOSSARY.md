@@ -37,7 +37,7 @@ Who called a listed method: the in-app agent, a coding agent, or the user with a
 _Avoid_: source, origin
 
 **View**:
-What the in-app agent drew with the tool `tandem_show_view`, which a `TandemView` shows: components of the catalog, bound to what the screen lists with `.sees`.
+What an agent drew with the tool `tandem_show_view`, which a `TandemView` shows: components of the catalog, bound to what the screen lists with `.sees`.
 _Avoid_: surface, generated UI, screen
 
 **Catalog**:

@@ -17,12 +17,12 @@ import 'package:tandem/src/session/tandem_session.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/view_tool.dart';
 
-/// What the in-app agent drew on one screen with [catalog], attached to
-/// [session] from the start. It reads what the screen lists with `.sees`
-/// again on every change of the surface, and draws with it. An action of
-/// the view calls its method for the view, through the session, one at a
-/// time. The latest entry of a required field made meanwhile goes once the
-/// method before it returned.
+/// What an agent drew on one screen with [catalog], attached to [session]
+/// from the start. It reads what the screen lists with `.sees` again on
+/// every change of the surface, and draws with it. An action of the view
+/// calls its method for the view, through the session, one at a time. The
+/// latest entry of a required field made meanwhile goes once the method
+/// before it returned.
 ///
 /// Notifies when the view, the data or the session changes, for
 /// `TandemView`.

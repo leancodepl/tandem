@@ -277,11 +277,11 @@ final class TandemSession({
   @internal
   bool get asksForApproval => _asksForApproval();
 
-  /// Offers the agent [view] to draw on, from the next run on.
+  /// Offers [view] to draw on: to the in-app agent from the next run on.
   @internal
   void attach(ViewTool view) => _drawing.attach(view);
 
-  /// Stops offering [view], from the next run on.
+  /// Stops offering [view]: to the in-app agent from the next run on.
   @internal
   void detach(ViewTool view) => _drawing.detach(view);
 
@@ -708,6 +708,14 @@ final class TandemSession({
       unawaited(_ask(request));
     }
   }
+}
+
+extension ViewOutsideRuns on TandemSession {
+  JsonObject? viewToolDefinition(AgentListing listing) =>
+      _drawing.definitionOutsideRun(listing);
+
+  ToolAnswer showView(JsonObject arguments) =>
+      _drawing.showOutsideRun(arguments);
 }
 
 bool _alwaysAsks() => true;

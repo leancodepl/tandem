@@ -6,13 +6,16 @@ import 'package:tandem/src/agent_list.dart';
 import 'package:tandem/src/debug/open_screens.dart';
 import 'package:tandem/src/protocol/ag_ui.dart';
 import 'package:tandem/src/report.dart';
+import 'package:tandem/src/session/tandem_session.dart';
 import 'package:tandem/src/session/tool_answer.dart';
 import 'package:tandem/src/session/tool_call.dart';
+import 'package:tandem/src/session/view_tool.dart';
 
 /// Lets a coding agent, such as Claude Code or Cursor, call the methods that
-/// the open screens of a debug build list, as the in-app agent does. The
-/// coding agent reaches the app through the Dart MCP server and the VM
-/// service extensions `ext.tandem.describe` and `ext.tandem.call`:
+/// the open screens of a debug build list and draw on their `TandemView`, as
+/// the in-app agent does. The coding agent reaches the app through the Dart
+/// MCP server and the VM service extensions `ext.tandem.describe` and
+/// `ext.tandem.call`:
 ///
 /// ```dart
 /// void main() {
@@ -44,9 +47,11 @@ final class TandemBridge._() {
 
   /// The open screens under `screens`, each with its `id`, whether it is the
   /// `front` one, what the agent `sees`, the `tools` it may call and which of
-  /// them `needsApproval`. Once a call of a coding agent asked the user, its
-  /// `tool`, `arguments` and answer are the `lastApproval`: `pending` while
-  /// the user decides, `approved` while the method runs.
+  /// them `needsApproval`. A screen with a `TandemView` whose catalog fits
+  /// it also has `tandem_show_view` at the end of its `tools`. Once a call of
+  /// a coding agent asked the user, its `tool`, `arguments` and answer are
+  /// the `lastApproval`: `pending` while the user decides, `approved` while
+  /// the method runs.
   ///
   /// Each screen has a `context`, which a [call] whose arguments point at
   /// values with `{"path": ...}` passes back, so that the paths read what
@@ -84,6 +89,10 @@ final class TandemBridge._() {
   /// value of the screen, `{"path": ...}`, needs the [context] that
   /// [describe] gave for the screen: the call is refused without it, and a
   /// path whose value changed since is refused as for the in-app agent.
+  ///
+  /// A call of `tandem_show_view` draws on the screen's `TandemView` and
+  /// answers as in a run: `shown`, or why the view did not show. It needs no
+  /// [context], and a screen without a `TandemView` refuses it.
   ///
   /// [call] throws a [StateError] before the method runs when the agent list
   /// of its screen does not fit the generated code, and the extension
@@ -126,6 +135,9 @@ final class TandemBridge._() {
           'Describe the screen again and pass its new context.',
         ),
       );
+    }
+    if (tool == ViewTool.name) {
+      return _withScreens(target.session.showView(arguments));
     }
     final seen =
         described?.seen ??
@@ -199,7 +211,7 @@ final class TandemBridge._() {
       'front': front,
       'context': screen.contextFor(session, listing),
       'sees': listing.context,
-      'tools': listing.tools,
+      'tools': [...listing.tools, ?session.viewToolDefinition(listing)],
       'needsApproval': [
         for (final tool in listing.toolNames)
           if (listing.needsApproval(tool)) tool,
