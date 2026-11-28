@@ -1,6 +1,6 @@
 name: tandem_firebase_ai
 description: Add an AI agent to Flutter screens with Tandem and Firebase AI Logic, without an agent backend. Gemini reads what a screen lists and proposes calls of its methods.
-version: 0.1.1
+version: 0.2.0
 homepage: https://tandem.leancode.co
 repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem_firebase_ai
 issue_tracker: https://github.com/leancodepl/tandem/issues
@@ -24,7 +24,7 @@ environment:
 dependencies:
   firebase_ai: ^5.2.0
   http: ^1.6.0
-  tandem: ^0.3.3
+  tandem: ^0.4.0
   uuid: ^4.6.0
 
 dev_dependencies:

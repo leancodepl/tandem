@@ -1,3 +1,11 @@
+## 0.4.0
+
+- **Breaking:** Upgrade `tandem` to 0.4.0 and run `dart run build_runner build` again.
+- The builder writes an enum of the methods a class lists next to its mixin, such as `OrderCubitTool`, and each `AgentTool` names its method with it. A value's `value` and `toString()` give the name the agent calls, such as `set_quantity`.
+- The build fails, naming both, when two listed methods would be the same member of the enum, or when the class's library already declares the enum's name.
+- `example/example.md` shows the enum in the generated `AgentTool` and how an app matches it.
+- The description and topics on pub.dev say what the builder writes and name GenUI and A2UI.
+
 ## 0.3.1
 
 ### Generation

@@ -1,3 +1,9 @@
+## 0.2.0
+
+- **Breaking:** Upgrade `tandem` to 0.4.0 with it: `tandem_firebase_ai` depends on `tandem` 0.4.0 or a later 0.4.x release.
+- The README links to `doc/checks.json` for the models and Firebase backends each release ran on, in place of the two models it named.
+- The description on pub.dev says the adapter needs no agent backend, and the topics add `genui`, `generative-ai` and `function-calling`.
+
 ## 0.1.1
 
 - `idleTimeout` is 120 seconds by default. Before, it was 60 seconds, and `gemini-3.6-flash` can take longer to send its first bytes.

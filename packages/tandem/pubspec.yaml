@@ -1,6 +1,6 @@
 name: tandem
 description: Add an AI agent to a Flutter screen over AG-UI. Choose which data and methods to expose and which calls need approval. The agent draws GenUI views with A2UI and your widgets.
-version: 0.3.3
+version: 0.4.0
 homepage: https://tandem.leancode.co
 repository: https://github.com/leancodepl/tandem/tree/main/packages/tandem
 issue_tracker: https://github.com/leancodepl/tandem/issues
