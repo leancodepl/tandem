@@ -126,6 +126,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer. The example is a shopping list on a 
    <!-- example/lib/quick_start.dart -->
    ```dart
    final class const ShoppingScreen({super.key}) extends StatelessWidget {
+   
      @override
      Widget build(BuildContext context) => BlocProvider(
        create: (context) => ShoppingCubit(),
@@ -191,6 +192,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer. The example is a shopping list on a 
    /// Suggested items, one below another.
    final class const Suggestions({super.key, required final List<Widget> children})
        extends StatelessWidget {
+       
      @override
      Widget build(BuildContext context) => Column(children: children);
    }
@@ -201,6 +203,7 @@ Requires Dart 3.13 (Flutter 3.47) or newer. The example is a shopping list on a 
      required final String item,
      required final VoidCallback onAdd,
    }) extends StatelessWidget {
+   
      @override
      Widget build(BuildContext context) => ListTile(
        title: Text(item),
