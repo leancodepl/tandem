@@ -10,7 +10,7 @@ calls that need approval.
 
 ## Connect a screen
 
-`tandem_firebase_ai` needs `tandem` 0.3.3 or a later 0.3.x release.
+`tandem_firebase_ai` needs `tandem` 0.4.0 or a later 0.4.x release.
 
 Set up [Firebase AI Logic](https://firebase.google.com/docs/ai-logic/get-started?platform=flutter)
 and [App Check](https://firebase.google.com/docs/ai-logic/app-check) in your app.
