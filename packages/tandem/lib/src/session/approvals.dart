@@ -4,7 +4,7 @@ import 'package:tandem/src/session/tandem_session.dart';
 
 /// Gets [request] when it shows, with the context of the `TandemScope`, which
 /// is above the session's `TandemSessionScope`. It decides with
-/// `session.approve` or `session.reject`.
+/// `session.decide`, `approve` or `reject`.
 typedef ApprovalCallback = Future<void> Function(
   BuildContext context,
   ApprovalRequest request,

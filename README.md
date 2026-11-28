@@ -178,19 +178,11 @@ Requires Dart 3.13 (Flutter 3.47) or newer. The example is a shopping list on a 
            ),
          ) ??
          false;
-     try {
-       if (approved) {
-         session.approve(request);
-       } else {
-         session.reject(request);
-       }
-     } on ApprovalNotPending {
-       // The list changed, or the screen closed, while the dialog showed.
-     }
+     session.decide(request, approved: approved);
    }
    ```
 
-   `clear` is listed with `.callsWithApproval`, so Tandem calls `confirmClear` before the method runs. A change of `items` while the dialog is open invalidates the request, and `approve` then throws `ApprovalNotPending`.
+   `clear` is listed with `.callsWithApproval`, so Tandem calls `confirmClear` before the method runs. A change of `items` while the dialog is open invalidates the request, and `decide` then returns false instead of deciding.
 
 5. List the widgets the agent may draw with:
 
@@ -378,7 +370,7 @@ The scope's `approvals:` setting controls how requests are shown:
 The [quick start](#quick-start) passes `approvals: const .callback(confirmClear)`, and its `confirmClear` shows a dialog.
 
 - Requests from one turn appear one at a time. Rejecting a request cancels the turn's remaining calls, and the agent can plan again.
-- `approve` and `reject` throw `ApprovalNotPending` when the request is no longer pending. Repeating the same decision does nothing, so a double tap is harmless.
+- `approve` and `reject` throw `ApprovalNotPending` when the request is no longer pending, and `decide` returns false. Repeating the same decision does nothing, so a double tap is harmless.
 - A new user message cancels the pending request.
 - Requests from a coding agent and from a view the agent drew use the same UI. `request.caller` says who asked.
 

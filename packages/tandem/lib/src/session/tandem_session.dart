@@ -200,6 +200,23 @@ final class TandemSession({
     }
   }
 
+  /// Approves [request] when [approved] is true and rejects it otherwise, as
+  /// [approve] and [reject] do, and returns whether [request] has that
+  /// decision now. Where they throw an [ApprovalNotPending], such as for a
+  /// request invalidated while a dialog showed, it returns false.
+  bool decide(ApprovalRequest request, {required bool approved}) {
+    try {
+      if (approved) {
+        approve(request);
+      } else {
+        reject(request);
+      }
+    } on ApprovalNotPending {
+      return false;
+    }
+    return true;
+  }
+
   /// Whether [request] waits for the user to approve or reject it.
   bool isPending(ApprovalRequest request) => _waiting.isPending(request);
 
