@@ -137,22 +137,14 @@ Future<void> confirmOrder(
       ],
     ),
   );
-  try {
-    if (place ?? false) {
-      session.approve(request);
-    } else {
-      session.reject(request);
-    }
-  } on ApprovalNotPending {
-    // The order changed, or the screen closed, while the dialog showed.
-  }
+  session.decide(request, approved: place ?? false);
 }
 ```
 
 - Tandem calls it for each request when it shows, with the scope's context, so `context.read<OrderCubit>()` works.
 - `request.tool` names the method with a value of the enum that `tandem_generator` writes, such as `OrderCubitTool.placeOrder`. `request.description` and `request.arguments` are written for the agent: show the user what the screen shows, in the app's words.
 - Write the texts as the rest of the app does: from its localization when it has one, inline when it has none.
-- `approve` and `reject` throw `ApprovalNotPending` when the request changed meanwhile: catch it.
+- Use `decide`, not `approve` and `reject`, which throw `ApprovalNotPending` when the request changed while the dialog showed. `decide` then returns false.
 
 **Done when** every `.callsWithApproval` method of the class has a way to be approved: this callback, or a UI that draws the requests with `.fromState()`.
 

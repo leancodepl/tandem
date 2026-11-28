@@ -55,15 +55,7 @@ Future<void> confirmOrder(
     context: context,
     builder: (context) => _PlaceOrderDialog(draft),
   );
-  try {
-    if (place ?? false) {
-      session.approve(request);
-    } else {
-      session.reject(request);
-    }
-  } on ApprovalNotPending {
-    // The order changed, or the screen closed, while the dialog showed.
-  }
+  session.decide(request, approved: place ?? false);
 }
 
 final class const _PlaceOrderDialog(final OrderDraft draft)

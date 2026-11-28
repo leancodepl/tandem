@@ -74,15 +74,7 @@ Future<void> confirmClear(
         ),
       ) ??
       false;
-  try {
-    if (approved) {
-      session.approve(request);
-    } else {
-      session.reject(request);
-    }
-  } on ApprovalNotPending {
-    // The list changed, or the screen closed, while the dialog showed.
-  }
+  session.decide(request, approved: approved);
 }
 
 /// Suggested items, one below another.

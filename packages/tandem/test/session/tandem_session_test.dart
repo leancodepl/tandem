@@ -1271,6 +1271,37 @@ void main() {
     expect(_card(session).status, ApprovalStatus.rejected);
   });
 
+  for (final approved in [true, false]) {
+    test('decide with approved: $approved decides, and returns true also '
+        'when repeated', () async {
+      final (session, _) = await askToClear();
+      final card = _card(session);
+
+      expect(session.decide(card, approved: approved), isTrue);
+      expect(session.decide(card, approved: approved), isTrue);
+      await pumpEventQueue();
+
+      expect(
+        _card(session).status,
+        approved ? ApprovalStatus.approved : ApprovalStatus.rejected,
+      );
+    });
+  }
+
+  test('decide returns false for a card invalidated while it showed, and '
+      'runs nothing', () async {
+    final (session, agent) = await askToClear();
+    final card = _card(session);
+
+    shop.items.add('y');
+
+    expect(session.decide(card, approved: true), isFalse);
+    await pumpEventQueue();
+    expect(_card(session).status, ApprovalStatus.invalidated);
+    expect(shop.items, ['x', 'y']);
+    expect(agent.requests, hasLength(1));
+  });
+
   for (final reset in [true, false]) {
     test('a reused tool call ID needs its own approval after '
         '${reset ? 'startOver' : 'Reject'}', () async {
