@@ -1,3 +1,25 @@
+## 0.4.0
+
+- **Breaking:** Run `dart run build_runner build` again after upgrading both packages.
+- **Breaking:** `AgentCall.tool`, `ApprovalRequest.tool`, `Calling.tool` and `AgentTool.name` are a `ToolName`. Match a method by the enum that `tandem_generator` writes, such as `AgentCall(tool: OrderCubitTool.placeOrder)`: a string, as in `AgentCall(tool: 'place_order')`, compiles with a warning and never matches.
+- **Breaking:** `OnDeviceAgent`, `OnDeviceAvailability` and `OnDeviceErrorCode` are gone. Without a backend, connect the screen with `FirebaseConnection` from `tandem_firebase_ai`; with one, use `HttpAgentConnection`.
+- **Breaking:** `TandemThread.id` is a `ThreadId` instead of a `String`. Read the AG-UI thread ID from `id.value`.
+- **Breaking:** `ApprovalRequest()` takes `arguments` as a map instead of `argumentsJson`, takes no `toolCallId` and is not `const`. `ApprovalRequest.toolCallId` is a `ToolCallId`: read the ID from its `value`.
+- **Breaking:** `AgentHttpException.status` replaces `statusCode`: a `ResponseStatus` instead of an `int`. Build one with `ResponseStatus(500)` and read the number from `code`.
+- **Breaking:** A schema written by hand names its tools with an enum of its own that implements `ToolName`.
+- **Breaking:** `package:tandem/tandem.dart` no longer exports `AgentReading`, `AgentPaths` and `AgentObjects`, and `AgentTool.read` takes no `paths`. `AgentView.write`, `AgentView.checked` and `AgentComponent.property`, which were `@internal`, are gone.
+- **Breaking:** `ext.tandem.call` and `TandemBridge.call` refuse a `context` that no open screen keeps, such as one of a closed screen, instead of calling the front screen. Describe the screens again and pass the new `context`, or leave it out to call the front screen.
+- While a `TandemView` is on the screen, `ext.tandem.describe` lists `tandem_show_view` among the screen's `tools`, and `ext.tandem.call` draws with it as a run does, so a coding agent can draw a view. The `tandem-coding-agent` skill has a step for it.
+- `TandemSession.decide(request, approved:)` approves or rejects a request and returns false where `approve` and `reject` throw `ApprovalNotPending`, such as for a request invalidated while its dialog showed. The quick start and the skills use it in place of a `try` block.
+- `tandem` is a plain Flutter package: it no longer registers a native plugin on iOS and macOS.
+- When a listener of `Calling(approved: true)` lets the session's thread go, such as by opening the next screen with the same thread, the method does not run, and the call and its approval card are `cancelled`. Before, the method ran on the screen the app was leaving.
+- `ext.tandem.describe` gives a screen a new `context` when the methods it lists change. Before, it kept the old one while the screen saw the same, and a call of a newly listed method with it was refused.
+- The README starts with a quick start that runs: one file with a method the agent calls, a method that waits for approval and a catalog for views, which a coding agent drives without a backend. Its other sections are short guides that link to the docs site.
+- The chat screen of `example/example.md` works as an app's home and on a phone: it has a `Scaffold`, puts the chat under the order below 600 pixels, and points to the agent's address on an Android emulator or a phone. Before, it threw "No Material widget found" once the order had a line.
+- The Agent Skills match methods by the generated enum, and `tandem-agent-aware-screen` has the steps to upgrade an app from 0.3. `/tandem` asks before it moves an app to a newer minor of `tandem`, upgrades `tandem_firebase_ai` with it when the app depends on it, then installs that version's skills.
+- After a call that timed out, the `tandem-coding-agent` skill has the agent read `lastApproval` until the user decided, instead of calling the tool again. Before, a retry that crossed the user's decision could run the method twice.
+- The description and topics on pub.dev name AG-UI, GenUI and A2UI.
+
 ## 0.3.3
 
 - The README, `example/example.md` and the skills show how to connect a screen to Firebase AI Logic with `FirebaseConnection` from `tandem_firebase_ai`, without an agent backend. They also name it as a replacement for `OnDeviceAgent`.
